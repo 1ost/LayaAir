@@ -15,24 +15,24 @@ export class ECSCameraNodeData implements ICameraNodeData {
         this._nativeObj.setTransform(value._nativeObj);
     }
     public get farplane(): number {
-        return this._nativeObj._farplane;
+        return this._nativeObj.get_farplane();
     }
     public set farplane(value: number) {
-        this._nativeObj._farplane = value;
+        this._nativeObj.set_farplane(value);
     }
 
     public get nearplane(): number {
-        return this._nativeObj._nearplane;
+        return this._nativeObj.get_nearplane();
     }
     public set nearplane(value: number) {
-        this._nativeObj._nearplane = value;
+       this._nativeObj.set_nearplane(value);
     }
 
     public get fieldOfView(): number {
-        return this._nativeObj._fieldOfView;
+        return this._nativeObj.get_fieldOfView();
     }
     public set fieldOfView(value: number) {
-        this._nativeObj._fieldOfView = value;
+      this._nativeObj.set_fieldOfView(value);
     }
 
     public get aspectRatio(): number {
@@ -44,7 +44,7 @@ export class ECSCameraNodeData implements ICameraNodeData {
 
     _nativeObj: any;
     constructor() {
-        this._nativeObj = new (window as any).conchRTCameraNodeData();
+        this._nativeObj = new (window as any).conchECSCameraNodeData();
     }
 
     setProjectionViewMatrix(value: Matrix4x4): void {
@@ -54,7 +54,7 @@ export class ECSCameraNodeData implements ICameraNodeData {
     setOwner(owner: Sprite3D): void {
         let scenePtr = (owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
         let transform = owner.transform as ECSTransform;
-        this._nativeObj.addToEntity(scenePtr, transform._entityID);
+        this._nativeObj.addToEntity(scenePtr._nativeObj, transform._entityID);
     }
 
     removeOwner(): void {
