@@ -22,7 +22,7 @@ const viewport = new Viewport(0, 0, 0, 0);
 const offsetScale = new Vector4();
 const shadowParams = new Vector4();
 export class GLESRender3DProcess implements IRender3DProcess {
-    private _nativeObj: any;
+    protected _nativeObj: any;
     private _tempList: any = [];
     private renderpass: GLESForwardAddRP = new GLESForwardAddRP();
     constructor() {

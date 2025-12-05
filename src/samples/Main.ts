@@ -22,6 +22,8 @@ import { WebUnitRenderModuleDataFactory } from "laya/RenderDriver/RenderModuleDa
 import { Laya3DRender } from "laya/d3/RenderObjs/Laya3DRender";
 import { LayaGL } from "laya/layagl/LayaGL";
 import { RTStatisContext } from "laya/RenderDriver/RenderModuleData/RuntimeModuleData/RTStatisticContext";
+import { ECS3DRenderModuleFactory } from "laya/RenderDriver/RenderModuleData/RTECSModuleData/3D/ECS3DRenderModuleFactory";
+import { ECSRT3DRenderPassFactory } from "laya/RenderDriver/RenderModuleData/RTECSModuleData/ECSRenderDriver/ECS3DRenderPass";
 
 export class Main {
     static useWebGPU: boolean = false;
@@ -53,20 +55,28 @@ export class Main {
      * @param singleDemo  单个Demo入口
      */
     constructor(is3D: boolean = true, isReadNetWorkRes: boolean = false, singleDemo?: any) {
-        this.startTest(is3D,isReadNetWorkRes,singleDemo);
+        this.startTest(is3D, isReadNetWorkRes, singleDemo);
     }
-    async startTest(is3D: boolean = true, isReadNetWorkRes: boolean = false, singleDemo?: any){
+    async startTest(is3D: boolean = true, isReadNetWorkRes: boolean = false, singleDemo?: any) {
         this._singleDemo = singleDemo;
         if (!LayaEnv.isConch || (LayaEnv.isConch && (window as any).conchConfig.getGraphicsAPI() == 2)) {
             LayaGL.unitRenderModuleDataFactory = new WebUnitRenderModuleDataFactory();
             Laya3DRender.renderOBJCreate = new LengencyRenderEngine3DFactory();
             Laya3DRender.Render3DModuleDataFactory = new Web3DRenderModuleFactory();
         } else {
+
+            if (LayaEnv.isECSConch) {
+                Laya3DRender.Render3DModuleDataFactory = new ECS3DRenderModuleFactory();
+                Laya3DRender.Render3DPassFactory = new ECSRT3DRenderPassFactory();
+            } else {
+                Laya3DRender.Render3DModuleDataFactory = new RT3DRenderModuleFactory();
+                Laya3DRender.Render3DPassFactory = new GLES3DRenderPassFactory();
+            }
             LayaGL.unitRenderModuleDataFactory = new RTUintRenderModuleDataFactory();
             LayaGL.renderDeviceFactory = new GLESRenderDeviceFactory();
             Laya3DRender.renderOBJCreate = new LengencyRenderEngine3DFactory();
-            Laya3DRender.Render3DModuleDataFactory = new RT3DRenderModuleFactory();
-            Laya3DRender.Render3DPassFactory = new GLES3DRenderPassFactory();
+
+
             LayaGL.render2DRenderPassFactory = new GLESRender2DProcess();
             LayaGL.statAgent = new RTStatisContext();
 

@@ -2,7 +2,7 @@ import { Laya } from "../../../../../Laya";
 import { Laya3DRender } from "../../../../d3/RenderObjs/Laya3DRender";
 import { Sprite3D } from "../../../../d3/core/Sprite3D";
 import { Vector3 } from "../../../../maths/Vector3";
-import { IPointLightData, ISimpleSkinRenderNode, ISkinRenderNode } from "../../Design/3D/I3DRenderModuleData";
+import { ICameraNodeData, IDirectLightData, IPointLightData, ISceneNodeData, ISimpleSkinRenderNode, ISkinRenderNode, ISpotLightData } from "../../Design/3D/I3DRenderModuleData";
 import { I3DRenderModuleFactory } from "../../Design/3D/I3DRenderModuleFactory";
 import { NativeBounds } from "./NativeBounds";
 import { RTTransform3D } from "./RTTransform3D";
@@ -15,13 +15,14 @@ import { RTPointLight } from "./RTPointLight";
 import { RTReflectionProb } from "./RTReflectionProb";
 import { RTSimpleSkinRenderNode } from "./RTSimpleSkinRenderNode";
 import { RTSkinRenderNode } from "./RTSkinRenderNode";
-import { RTSpotLight } from "./RTSpotLight";
 import { RTVolumetricGI } from "./RTVolumetricGI";
+import { Transform3D } from "../../../../d3/core/Transform3D";
+import { ECSSpotLight } from "../../RTECSModuleData/3D/ECSSpotLight";
 
 export class RT3DRenderModuleFactory implements I3DRenderModuleFactory {
-  
 
-    createTransform(owner: Sprite3D): RTTransform3D {
+
+    createTransform(owner: Sprite3D): Transform3D {
         return new RTTransform3D(owner);
     }
     createBounds(min: Vector3, max: Vector3): NativeBounds {
@@ -36,19 +37,19 @@ export class RT3DRenderModuleFactory implements I3DRenderModuleFactory {
     createLightmapData(): RTLightmapData {
         return new RTLightmapData();
     }
-    createDirectLight(): RTDirectLight {
+    createDirectLight(): IDirectLightData {
         return new RTDirectLight();
     }
-    createSpotLight(): RTSpotLight {
-        return new RTSpotLight();
+    createSpotLight(): ISpotLightData {
+        return new ECSSpotLight();
     }
     createPointLight(): IPointLightData {
         return new RTPointLight();
     }
-    createCameraModuleData(): RTCameraNodeData {
+    createCameraModuleData(): ICameraNodeData {
         return new RTCameraNodeData();
     }
-    createSceneModuleData(): RTSceneNodeData {
+    createSceneModuleData(): ISceneNodeData {
         return new RTSceneNodeData();
     }
 
@@ -64,7 +65,7 @@ export class RT3DRenderModuleFactory implements I3DRenderModuleFactory {
     }
 
     createSimpleSkinRenderNode(): ISimpleSkinRenderNode {
-      return new RTSimpleSkinRenderNode();
+        return new RTSimpleSkinRenderNode();
     }
 
 }

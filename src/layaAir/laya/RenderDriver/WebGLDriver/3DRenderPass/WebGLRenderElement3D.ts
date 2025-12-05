@@ -186,7 +186,6 @@ export class WebGLRenderElement3D implements IRenderElement3D {
             }
         }
 
-
         return comDef;
     }
 

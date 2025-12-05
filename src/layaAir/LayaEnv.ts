@@ -30,6 +30,8 @@ export class LayaEnv {
      */
     static isConch: boolean = window ? ((<any>window).conch != null) : false;
 
+    static isECSConch: boolean = false;
+
     /**
      * @en Whether the engine is running in the editor. The engine may have two states in the editor, one is running in the scene view of the editor, and the other is running in the game view of the editor. Please distinguish these two states through isPlaying.
      * @zh 引擎是否正在运行在编辑器下。引擎在编辑器下可能有两种状态，一种是运行在编辑器的场景视图，一种是运行在编辑器的游戏视图，请通过isPlaying区别这两种情况。

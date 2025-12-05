@@ -226,6 +226,23 @@ export class Sprite3D extends Node {
     }
 
     /**
+     * @en Actions performed when the node is added to the scene.
+     * @zh 节点被添加到场景时执行的操作。
+     */
+    protected _onActiveInScene(): void {
+        //override it.
+    }
+
+    /**
+     * @en Actions performed when the node is removed from the scene.
+     * @zh 节点从场景中移除时执行的操作。
+     */
+    protected _onInActiveInScene(): void {
+        //override it.
+    }
+
+
+    /**
      * @internal
      * 克隆。
      * @param destObject 克隆源。

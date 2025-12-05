@@ -665,6 +665,10 @@ export class BaseRender extends Component {
         this._changeStaticMask(this.owner._isStatic);
         this.owner.scene._addRenderObject(this);
         this._setBelongScene(this.owner.scene);
+        if (this._baseRenderNode.setOwner) {
+            this._baseRenderNode.setOwner(this.owner);
+        }
+
     }
 
     protected _onDisable(): void {
@@ -675,7 +679,9 @@ export class BaseRender extends Component {
         this.owner.scene._removeRenderObject(this);
         this._setUnBelongScene();
         this.volume = null;
-
+        if (this._baseRenderNode.removeOwner) {
+            this._baseRenderNode.removeOwner();
+        }
     }
     protected _onDestroy() {
         //按理说this.owner不会是空，但引擎里有直接new BaseRender的特殊用法

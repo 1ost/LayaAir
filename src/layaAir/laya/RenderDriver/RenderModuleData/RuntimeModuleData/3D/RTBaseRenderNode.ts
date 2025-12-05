@@ -279,14 +279,6 @@ export class RTBaseRenderNode implements IBaseRenderNode {
         this._nativeObj.setCommonUniformMap(value);
     }
 
-    setOneMaterial(index: number, mat: Material): void {
-        if (!this.renderelements[index])
-            return;
-        this.renderelements[index].materialShaderData = mat.shaderData;
-        this.renderelements[index].materialRenderQueue = mat.renderQueue;
-        this.renderelements[index].subShader = mat.shader.getSubShaderAt(0);
-    }
-
     destroy(): void {
         this._nativeObj.destroy();
         for (let i = 0, n = this.renderelements.length; i < n; i++) {

@@ -257,6 +257,9 @@ export class Light extends Component {
             scene._lightCount++;
             this._addToLightQueue();
             this._isAlternate = false;
+            if (this._dataModule.setOwner) {
+                this._dataModule.setOwner(this.owner);
+            }
         }
         else {
             scene._alternateLights.add(this);
@@ -274,7 +277,11 @@ export class Light extends Component {
         }
         else {
             scene._lightCount--;
+            if (this._dataModule.removeOwner) {
+                this._dataModule.removeOwner();
+            }
             this._removeFromLightQueue();
+
             if (scene._alternateLights._length > 0) {
                 var alternateLight = scene._alternateLights.shift();
                 alternateLight!._addToLightQueue();

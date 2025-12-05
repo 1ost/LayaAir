@@ -1,12 +1,15 @@
-import { Sprite3D } from "../../../../d3/core/Sprite3D";
-import { Transform3D } from "../../../../d3/core/Transform3D";
-import { Matrix4x4 } from "../../../../maths/Matrix4x4";
-import { Quaternion } from "../../../../maths/Quaternion";
-import { Vector3 } from "../../../../maths/Vector3";
-import { NativeMemory } from "../NativeMemory";
-import { Event } from "../../../../events/Event";
+import { Sprite3D } from "../../../d3/core/Sprite3D";
+import { Transform3D } from "../../../d3/core/Transform3D";
+import { Matrix4x4 } from "../../../maths/Matrix4x4";
+import { Quaternion } from "../../../maths/Quaternion";
+import { Vector3 } from "../../../maths/Vector3";
+import { NativeMemory } from "../RuntimeModuleData/NativeMemory";
+import { Event } from "../../../events/Event";
+import { Scene3D } from "../../../d3/core/scene/Scene3D";
+import { ECSSceneNodeData } from "./3D/ECSSceneNodeData";
 
-export class RTTransform3D extends Transform3D {
+
+export class ECSTransform extends Transform3D {
 
     /**@internal */
     static TRANSFORM_LOCALQUATERNION_DATAOFFSET: number = 0;
@@ -34,20 +37,36 @@ export class RTTransform3D extends Transform3D {
     static TRANSFORM_RT_SYNC_FLAG_DATAOFFSET: number = 59;
     /**@internal */
     static TRANSFORM_SHARE_MEMORY_SIZE: number = 60;
+
+    /**native Share Memory */
     private _nativeMemory: NativeMemory;
     private _nativeFloat32Buffer: Float32Array;
     private _nativeUInt32Buffer: Uint32Array;
-    _nativeObj: any;
-    constructor(owner: Sprite3D) {
+    _entityID: number;
 
+    _nativeObj: any;
+
+
+    constructor(owner: Sprite3D) {
         super(owner);
     }
 
+
+    _setBelongScene() {
+        let scenePtr = (this.owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
+        this._entityID = this._nativeObj.addEntity(scenePtr._nativeObj);
+    }
+
+    _setUnBelongScene() {
+        let scenePtr = (this.owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
+        this._nativeObj.removeEntity(scenePtr._nativeObj);
+    }
+
     protected _initProperty() {
-        this._nativeMemory = new NativeMemory(RTTransform3D.TRANSFORM_SHARE_MEMORY_SIZE * 4, false);
+        this._nativeMemory = new NativeMemory(ECSTransform.TRANSFORM_SHARE_MEMORY_SIZE * 4, false);
         this._nativeFloat32Buffer = this._nativeMemory.float32Array;
         this._nativeUInt32Buffer = this._nativeMemory.Uint32Array;
-        this._nativeObj = new (window as any).conchRTTransform(this._nativeMemory._buffer);
+        this._nativeObj = new (window as any).conchECSRTTransform(this._nativeMemory._buffer);
         this._setTransformFlag(Transform3D.TRANSFORM_WORLDPOSITION | Transform3D.TRANSFORM_WORLDQUATERNION | Transform3D.TRANSFORM_WORLDEULER | Transform3D.TRANSFORM_WORLDSCALE | Transform3D.TRANSFORM_WORLDMATRIX, true);
         this.rotation = this._rotation;
         this.localScale = this._localScale;
@@ -72,81 +91,43 @@ export class RTTransform3D extends Transform3D {
 
         this._nativeObj.setTransformFlag(type, value);
     }
+
     /**
      * @internal
      */
     protected _getTransformFlag(type: number): boolean {
-        return (this._nativeUInt32Buffer[RTTransform3D.TRANSFORM_CHANGEFLAG_DATAOFFSET] & type) != 0;
+        return (this._nativeUInt32Buffer[ECSTransform.TRANSFORM_CHANGEFLAG_DATAOFFSET] & type) != 0;
     }
 
     /**
      * @internal
      */
     protected _getRTSyncFlag(type: number): boolean {
-        return (this._nativeUInt32Buffer[RTTransform3D.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET] & type) != 0;
+        return (this._nativeUInt32Buffer[ECSTransform.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET] & type) != 0;
     }
 
     protected _setRTSyncFlag(type: number, value: boolean): void {
-        let flag = this._nativeUInt32Buffer[RTTransform3D.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET];
+        let flag = this._nativeUInt32Buffer[ECSTransform.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET];
         if (value)
             flag |= type;
         else
             flag &= ~type;
-        this._nativeUInt32Buffer[RTTransform3D.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET] = flag;
+        this._nativeUInt32Buffer[ECSTransform.TRANSFORM_RT_SYNC_FLAG_DATAOFFSET] = flag;
     }
 
     get _RTtransformFlag() {
-        return this._nativeUInt32Buffer[RTTransform3D.TRANSFORM_CHANGEFLAG_DATAOFFSET];
+        return this._nativeUInt32Buffer[ECSTransform.TRANSFORM_CHANGEFLAG_DATAOFFSET];
     }
 
     /**
-     * 局部位置X轴分量。
-     */
-    get localPositionX(): number {
-        return this.localPosition.x;
-    }
-
-    set localPositionX(x: number) {
-        let localPos = this.localPosition;
-        localPos.x = x;
-        this.localPosition = localPos;
-    }
-
-    /**
-     * 局部位置Y轴分量。
-     */
-    get localPositionY(): number {
-        return this.localPosition.y;
-    }
-
-    set localPositionY(y: number) {
-        let localPos = this.localPosition;
-        localPos.y = y;
-        this.localPosition = localPos;
-    }
-
-    /**
-     * 局部位置Z轴分量。
-     */
-    get localPositionZ(): number {
-        return this.localPosition.z;
-    }
-
-    set localPositionZ(z: number) {
-        let localPos = this.localPosition;
-        localPos.z = z;
-        this.localPosition = localPos;
-    }
-
-    /**
-     * 局部位置。
-     */
+ * 局部位置。
+ */
     get localPosition(): Vector3 {
         if (this._getTransformFlag(Transform3D.TRANSFORM_LOCALPOS)) {//parent==null
             this._nativeObj.getLocalPosition();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_LOCALPOS)) {
-            let index = RTTransform3D.TRANSFORM_LOCALPOS_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_LOCALPOS_DATAOFFSET;
             this._localPosition.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_LOCALPOS, false);
         }
@@ -154,7 +135,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set localPosition(value: Vector3) {
-        let index = RTTransform3D.TRANSFORM_LOCALPOS_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_LOCALPOS_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -170,7 +151,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getLocalRotation();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_LOCALQUATERNION)) {
-            let index = RTTransform3D.TRANSFORM_LOCALQUATERNION_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_LOCALQUATERNION_DATAOFFSET;
             this._localRotation.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2], this._nativeFloat32Buffer[index + 3]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_LOCALQUATERNION, false);
         }
@@ -179,7 +160,7 @@ export class RTTransform3D extends Transform3D {
 
     set localRotation(value: Quaternion) {
         value.normalize(this._localRotation);
-        let index = RTTransform3D.TRANSFORM_LOCALQUATERNION_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_LOCALQUATERNION_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -189,46 +170,6 @@ export class RTTransform3D extends Transform3D {
     }
 
     /**
-     * 局部缩放X。
-     */
-    get localScaleX(): number {
-        return this.localScale.x;
-    }
-
-    set localScaleX(value: number) {
-        let scale = this.localScale;
-        scale.x = value;
-        this.localScale = scale;
-    }
-
-    /**
-     * 局部缩放Y。
-     */
-    get localScaleY(): number {
-        return this.localScale.y;
-    }
-
-    set localScaleY(value: number) {
-        let scale = this.localScale;
-        scale.y = value;
-        this.localScale = scale;
-    }
-
-    /**
-     * 局部缩放Z。
-     */
-    get localScaleZ(): number {
-        return this.localScale.z;
-    }
-
-    set localScaleZ(value: number) {
-        let scale = this.localScale;
-        scale.z = value;
-        this.localScale = scale;
-    }
-
-
-    /**
      * 局部缩放。
      */
     get localScale(): Vector3 {
@@ -236,7 +177,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getLocalScale();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_LOCALSCALE)) {
-            let index = RTTransform3D.TRANSFORM_LOCALSCALE_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_LOCALSCALE_DATAOFFSET;
             this._localScale.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_LOCALSCALE, false);
         }
@@ -244,7 +185,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set localScale(value: Vector3) {
-        let index = RTTransform3D.TRANSFORM_LOCALSCALE_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_LOCALSCALE_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -260,7 +201,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getLocalRotationEuler();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_LOCALEULER)) {
-            let index = RTTransform3D.TRANSFORM_LOCALEULER_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_LOCALEULER_DATAOFFSET;
             this._localRotationEuler.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_LOCALEULER, false);
         }
@@ -268,7 +209,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set localRotationEuler(value: Vector3) {
-        let index = RTTransform3D.TRANSFORM_LOCALEULER_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_LOCALEULER_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -284,7 +225,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getLocalMatrix()
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_LOCALEULER)) {
-            let index = RTTransform3D.TRANSFORM_LOCALMATRIX_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_LOCALMATRIX_DATAOFFSET;
             for (var i = 0; i < 16; ++i) {
                 this._localMatrix.elements[i] = this._nativeFloat32Buffer[i + index];
             }
@@ -294,12 +235,13 @@ export class RTTransform3D extends Transform3D {
     }
 
     set localMatrix(value: Matrix4x4) {
-        let index = RTTransform3D.TRANSFORM_LOCALMATRIX_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_LOCALMATRIX_DATAOFFSET;
         this._nativeFloat32Buffer.set(value.elements, index);
         this._nativeObj.setLocalMatrix();
         this._isDefaultMatrix = value.isIdentity();
         this._onWorldTransform();
     }
+
 
 
     /**
@@ -310,7 +252,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getPosition();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDPOSITION)) {
-            let index = RTTransform3D.TRANSFORM_WORLDPOS_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_WORLDPOS_DATAOFFSET;
             this._position.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_WORLDPOSITION, false);
         }
@@ -318,7 +260,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set position(value: Vector3) {
-        let index = RTTransform3D.TRANSFORM_WORLDPOS_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_WORLDPOS_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -334,7 +276,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getRotation()
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDQUATERNION)) {
-            let index = RTTransform3D.TRANSFORM_WORLDQUATERNION_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_WORLDQUATERNION_DATAOFFSET;
             this._rotation.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2], this._nativeFloat32Buffer[index + 3]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_WORLDQUATERNION, false);
         }
@@ -342,7 +284,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set rotation(value: Quaternion) {
-        let index = RTTransform3D.TRANSFORM_WORLDQUATERNION_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_WORLDQUATERNION_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -360,7 +302,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getRotationEuler()
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDEULER)) {
-            let index = RTTransform3D.TRANSFORM_WORLDEULER_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_WORLDEULER_DATAOFFSET;
             this._rotationEuler.setValue(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
             this._setRTSyncFlag(Transform3D.TRANSFORM_WORLDEULER, false);
         }
@@ -368,7 +310,7 @@ export class RTTransform3D extends Transform3D {
     }
 
     set rotationEuler(value: Vector3) {
-        let index = RTTransform3D.TRANSFORM_WORLDEULER_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_WORLDEULER_DATAOFFSET;
         this._nativeFloat32Buffer[index] = value.x;
         this._nativeFloat32Buffer[index + 1] = value.y;
         this._nativeFloat32Buffer[index + 2] = value.z;
@@ -385,7 +327,7 @@ export class RTTransform3D extends Transform3D {
             this._nativeObj.getWorldMatrix();
         }
         if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDMATRIX)) {
-            let index = RTTransform3D.TRANSFORM_WORLDMATRIX_DATAOFFSET;
+            let index = ECSTransform.TRANSFORM_WORLDMATRIX_DATAOFFSET;
             for (var i = 0; i < 16; ++i) {
                 this._worldMatrix.elements[i] = this._nativeFloat32Buffer[i + index];
             }
@@ -395,13 +337,31 @@ export class RTTransform3D extends Transform3D {
     }
 
     set worldMatrix(value: Matrix4x4) {
-        let index = RTTransform3D.TRANSFORM_WORLDMATRIX_DATAOFFSET;
+        let index = ECSTransform.TRANSFORM_WORLDMATRIX_DATAOFFSET;
         this._nativeFloat32Buffer.set(value.elements, index);
         this._nativeObj.setWorldMatrix();
         this._onWorldTransform();
     }
 
+    getWorldLossyScale(): Vector3 {
+        if (this._getTransformFlag(Transform3D.TRANSFORM_WORLDSCALE)) {
+            this._nativeObj.getWorldLossyScale();
+        }
+        if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDSCALE)) {
+            let index = ECSTransform.TRANSFORM_WORLDSCALE_DATAOFFSET;
+            this._scale.set(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
+            this._setRTSyncFlag(Transform3D.TRANSFORM_WORLDSCALE, false);
+        }
+        return this._scale;
+    }
 
+    setWorldLossyScale(value: Vector3): void {
+        let index = ECSTransform.TRANSFORM_WORLDSCALE_DATAOFFSET;
+        this._nativeFloat32Buffer[index] = value.x;
+        this._nativeFloat32Buffer[index + 1] = value.y;
+        this._nativeFloat32Buffer[index + 2] = value.z;
+        this._nativeObj.setWorldLossyScale();
+    }
 
     /**
      * @internal
@@ -410,9 +370,6 @@ export class RTTransform3D extends Transform3D {
         super._setParent(value);
         this._nativeObj.setParent(value ? (value as any)._nativeObj : null);
     }
-
-    //override
-    //_getScaleMatrix(): Matrix3x3 {
 
     /**
      * @internal
@@ -423,19 +380,19 @@ export class RTTransform3D extends Transform3D {
             this.event(Event.TRANSFORM_CHANGED, this._RTtransformFlag);
         }
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
-            (this._children[i] as RTTransform3D)._onWorldPositionRotationTransform();
+            (this._children[i] as ECSTransform)._onWorldPositionRotationTransform();
     }
 
     /**
-     * @internal
-     */
+ * @internal
+ */
     protected _onWorldPositionScaleTransform(): void {
         if (!this._getTransformFlag(Transform3D.TRANSFORM_WORLDMATRIX) || !this._getTransformFlag(Transform3D.TRANSFORM_WORLDPOSITION) || !this._getTransformFlag(Transform3D.TRANSFORM_WORLDSCALE)) {
             this._setTransformFlag(Transform3D.TRANSFORM_WORLDMATRIX | Transform3D.TRANSFORM_WORLDPOSITION | Transform3D.TRANSFORM_WORLDSCALE, true);
             this.event(Event.TRANSFORM_CHANGED, this._RTtransformFlag);
         }
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
-            (this._children[i] as RTTransform3D)._onWorldPositionScaleTransform();
+            (this._children[i] as ECSTransform)._onWorldPositionScaleTransform();
     }
 
     /**
@@ -447,7 +404,7 @@ export class RTTransform3D extends Transform3D {
             this.event(Event.TRANSFORM_CHANGED, this._RTtransformFlag);
         }
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
-            (this._children[i] as RTTransform3D)._onWorldPositionTransform();
+            (this._children[i] as ECSTransform)._onWorldPositionTransform();
     }
 
     /**
@@ -459,7 +416,7 @@ export class RTTransform3D extends Transform3D {
             this.event(Event.TRANSFORM_CHANGED, this._RTtransformFlag);
         }
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
-            (this._children[i] as RTTransform3D)._onWorldPositionRotationTransform();//父节点旋转发生变化，子节点的世界位置和旋转都需要更新
+            (this._children[i] as ECSTransform)._onWorldPositionRotationTransform();//父节点旋转发生变化，子节点的世界位置和旋转都需要更新
     }
 
     /**
@@ -471,7 +428,7 @@ export class RTTransform3D extends Transform3D {
             this.event(Event.TRANSFORM_CHANGED, this._RTtransformFlag);
         }
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
-            (this._children[i] as RTTransform3D)._onWorldPositionScaleTransform();//父节点缩放发生变化，子节点的世界位置和缩放都需要更新
+            (this._children[i] as ECSTransform)._onWorldPositionScaleTransform();//父节点缩放发生变化，子节点的世界位置和缩放都需要更新
     }
 
     /**
@@ -485,29 +442,6 @@ export class RTTransform3D extends Transform3D {
         for (var i: number = 0, n: number = this._children!.length; i < n; i++)
             this._children![i]._onWorldTransform();
     }
-
-
-    getWorldLossyScale(): Vector3 {
-        if (this._getTransformFlag(Transform3D.TRANSFORM_WORLDSCALE)) {
-            this._nativeObj.getWorldLossyScale();
-        }
-        if (this._getRTSyncFlag(Transform3D.TRANSFORM_WORLDSCALE)) {
-            let index = RTTransform3D.TRANSFORM_WORLDSCALE_DATAOFFSET;
-            this._scale.set(this._nativeFloat32Buffer[index], this._nativeFloat32Buffer[index + 1], this._nativeFloat32Buffer[index + 2]);
-            this._setRTSyncFlag(Transform3D.TRANSFORM_WORLDSCALE, false);
-        }
-        return this._scale;
-    }
-
-    setWorldLossyScale(value: Vector3): void {
-        let index = RTTransform3D.TRANSFORM_WORLDSCALE_DATAOFFSET;
-        this._nativeFloat32Buffer[index] = value.x;
-        this._nativeFloat32Buffer[index + 1] = value.y;
-        this._nativeFloat32Buffer[index + 2] = value.z;
-        this._nativeObj.setWorldLossyScale();
-    }
 }
 
-// const _tempVector30: Vector3 = new Vector3();
-// const _tempQuaternion0: Quaternion = new Quaternion();
-// const _tempMatrix0: Matrix4x4 = new Matrix4x4();
+//

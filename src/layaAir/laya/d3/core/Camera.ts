@@ -963,6 +963,20 @@ export class Camera extends BaseCamera {
         }
     }
 
+    protected _onActive(): void {
+        super._onActive();
+        if (this._renderDataModule.setOwner) {
+            this._renderDataModule.setOwner(this);
+        }
+    }
+
+    protected _onInActive(): void {
+        super._onInActive();
+        if (this._renderDataModule.removeOwner) {
+            this._renderDataModule.removeOwner();
+        }
+    }
+
     /**
      * @internal
      * @en Check if a layer is visible based on the culling mask.
@@ -1576,6 +1590,8 @@ export class Camera extends BaseCamera {
 
     /** @internal [NATIVE]*/
     _boundFrustumBuffer: Float32Array;
+
+
 }
 
 

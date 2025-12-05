@@ -32,13 +32,17 @@ export enum ENodeCustomData {
     custom_2
 }
 
+export interface IComponentModuleData {
+    setOwner?(owner: Sprite3D): void;
+    removeOwner?(): void;
+}
 
 /**
  * 3D Render Node
  * @ignore
  * @blueprintIgnore @blueprintIgnoreSubclasses
  */
-export interface IBaseRenderNode {
+export interface IBaseRenderNode extends IComponentModuleData {
     renderNodeType: number;//Flag
     transform: Transform3D;
     distanceForSort: number;
@@ -112,7 +116,7 @@ export interface ISimpleSkinRenderNode extends IBaseRenderNode {
 }
 
 //Light
-export interface IDirectLightData {
+export interface IDirectLightData extends IComponentModuleData {
     transform: Transform3D;
     shadowResolution: number;
     shadowDistance: number;
@@ -127,7 +131,7 @@ export interface IDirectLightData {
     setDirection(value: Vector3): void;
 }
 
-export interface ISpotLightData {
+export interface ISpotLightData extends IComponentModuleData {
     transform: Transform3D;
     shadowResolution: number;
     shadowDistance: number;
@@ -141,7 +145,7 @@ export interface ISpotLightData {
     setDirection(value: Vector3): void;
 }
 
-export interface IPointLightData {
+export interface IPointLightData extends IComponentModuleData {
     transform: Transform3D;
     range: number;
     shadowResolution: number;
@@ -162,7 +166,7 @@ export interface ILightMapData {
     destroy(): void;
 }
 
-export interface IReflectionProbeData {
+export interface IReflectionProbeData extends IComponentModuleData {
     /** @internal */
     _id: number;
     /**@internal */
@@ -195,7 +199,7 @@ export interface IReflectionProbeData {
     destroy(): void;
 }
 
-export interface IVolumetricGIData {
+export interface IVolumetricGIData extends IComponentModuleData {
     _id: number;
     irradiance: InternalTexture;
     distance: InternalTexture;
@@ -210,7 +214,7 @@ export interface IVolumetricGIData {
 }
 
 //global data
-export interface ICameraNodeData {
+export interface ICameraNodeData extends IComponentModuleData {
     transform: Transform3D;
     farplane: number;
     nearplane: number;

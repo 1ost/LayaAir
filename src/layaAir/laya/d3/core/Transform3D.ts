@@ -983,6 +983,13 @@ export class Transform3D extends EventDispatcher {
         }
     }
 
+    _setBelongScene() {
+
+    }
+
+    _setUnBelongScene() {
+
+    }
     //----------------------------------------Discard-------------------------------------------------
     /**
      * 世界坐标系缩放。
