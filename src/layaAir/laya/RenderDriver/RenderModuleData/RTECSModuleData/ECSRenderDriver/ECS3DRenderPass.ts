@@ -70,7 +70,7 @@ export class ECSMeshVertexBuffer implements IVertexBuffer {
 export class ECSIndexBuffer implements IIndexBuffer {
     indexType: IndexFormat;
     indexCount: number;
-    buffer: Uint16Array;
+    buffer: Uint32Array;
     private _bufferLength: number;
     destroy(): void {
         this.buffer = null;
@@ -79,10 +79,24 @@ export class ECSIndexBuffer implements IIndexBuffer {
         this._bufferLength = data;
     }
     _setIndexData(data: Uint32Array | Uint16Array | Uint8Array, bufferOffset: number): void {
-        this.buffer = data as Uint16Array;
+        if (IndexFormat.UInt16 == this.indexType) {
+            this.buffer = new Uint32Array(data.length);
+            for (var i = 0; i < data.length; i++) {
+                this.buffer[i] = data[i];
+            }
+        }
     }
     setData(buffer: ArrayBuffer, bufferOffset: number, dataStartIndex: number, dataCount: number): void {
-        this.buffer = new Uint16Array(buffer, 0, dataCount);
+
+        if (IndexFormat.UInt16 == this.indexType) {
+            this.buffer = new Uint32Array(dataCount / 2);
+            let oribuffer = new Uint16Array(buffer);
+            for (var i = 0; i < oribuffer.length; i++) {
+                this.buffer[i] = oribuffer[i];
+            }
+        } else {
+            this.buffer = new Uint32Array(buffer, 0, dataCount);
+        }
     }
 
 
@@ -175,7 +189,7 @@ export class ECSBufferState extends GLESBufferState {
         this._setVertexCount(vertexCount);
         this._setIndexCount(indexCount);
         this._setIndices(indexBuffer.buffer.buffer as ArrayBuffer, indexBuffer.buffer.byteLength);
-
+        this._nativeObj.applyBuffer();
     }
     destroy(): void {
         this._nativeObj.destroy();
