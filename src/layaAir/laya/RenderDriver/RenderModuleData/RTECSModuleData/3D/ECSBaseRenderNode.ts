@@ -6,7 +6,6 @@ import { RTBaseRenderNode } from "../../RuntimeModuleData/3D/RTBaseRenderNode";
 import { RTMeshRenderNode } from "../../RuntimeModuleData/3D/RTMeshRenderNode";
 import { ECSBufferState } from "../ECSRenderDriver/ECS3DRenderPass";
 import { ECSTransform } from "../ECSTransform";
-import { ECSSceneNodeData } from "./ECSSceneNodeData";
 
 export class ECSMeshRenderNode extends RTBaseRenderNode implements RTMeshRenderNode {
     //create runtime Node
@@ -26,9 +25,7 @@ export class ECSMeshRenderNode extends RTBaseRenderNode implements RTMeshRenderN
     }
 
     setOwner(owner: Sprite3D): void {
-        let scenePtr = (owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
-        //let transform = owner.transform as ECSTransform;
-        this._nativeObj.addToEntity(scenePtr, this._transforma._entityID);
+        this._nativeObj.addToEntity(this._transforma._nativeObj);
     }
 
     removeOwner(): void {

@@ -7,9 +7,6 @@ import { ECSTransform } from "../ECSTransform";
 import { ECSCameraNodeData } from "./ECSCameraNodeData";
 import { ECSMeshRenderNode } from "./ECSBaseRenderNode";
 import { ECSDirectLight } from "./ECSDirectLight";
-import { ECSPointLight } from "./ECSPointLight";
-import { ECSSpotLight } from "./ECSSpotLight";
-import { ECSSceneNodeData } from "./ECSSceneNodeData";
 
 
 export class ECS3DRenderModuleFactory extends RT3DRenderModuleFactory {

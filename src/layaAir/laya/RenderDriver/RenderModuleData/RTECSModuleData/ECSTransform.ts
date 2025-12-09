@@ -6,7 +6,6 @@ import { Vector3 } from "../../../maths/Vector3";
 import { NativeMemory } from "../RuntimeModuleData/NativeMemory";
 import { Event } from "../../../events/Event";
 import { Scene3D } from "../../../d3/core/scene/Scene3D";
-import { ECSSceneNodeData } from "./3D/ECSSceneNodeData";
 
 
 export class ECSTransform extends Transform3D {
@@ -42,7 +41,6 @@ export class ECSTransform extends Transform3D {
     private _nativeMemory: NativeMemory;
     private _nativeFloat32Buffer: Float32Array;
     private _nativeUInt32Buffer: Uint32Array;
-    _entityID: number;
 
     _nativeObj: any;
 
@@ -53,13 +51,11 @@ export class ECSTransform extends Transform3D {
 
 
     _setBelongScene() {
-        let scenePtr = (this.owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
-        this._entityID = this._nativeObj.addEntity(scenePtr._nativeObj);
+        this._nativeObj.addEntity();
     }
 
     _setUnBelongScene() {
-        let scenePtr = (this.owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
-        this._nativeObj.removeEntity(scenePtr._nativeObj);
+        this._nativeObj.removeEntity();
     }
 
     protected _initProperty() {

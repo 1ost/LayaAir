@@ -3,7 +3,6 @@ import { Sprite3D } from "../../../../d3/core/Sprite3D";
 import { Matrix4x4 } from "../../../../maths/Matrix4x4";
 import { ICameraNodeData } from "../../Design/3D/I3DRenderModuleData";
 import { ECSTransform } from "../ECSTransform";
-import { ECSSceneNodeData } from "./ECSSceneNodeData";
 
 export class ECSCameraNodeData implements ICameraNodeData {
     private _transform: ECSTransform;
@@ -25,14 +24,14 @@ export class ECSCameraNodeData implements ICameraNodeData {
         return this._nativeObj.get_nearplane();
     }
     public set nearplane(value: number) {
-       this._nativeObj.set_nearplane(value);
+        this._nativeObj.set_nearplane(value);
     }
 
     public get fieldOfView(): number {
         return this._nativeObj.get_fieldOfView();
     }
     public set fieldOfView(value: number) {
-      this._nativeObj.set_fieldOfView(value);
+        this._nativeObj.set_fieldOfView(value);
     }
 
     public get aspectRatio(): number {
@@ -52,9 +51,8 @@ export class ECSCameraNodeData implements ICameraNodeData {
     }
 
     setOwner(owner: Sprite3D): void {
-        let scenePtr = (owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
         let transform = owner.transform as ECSTransform;
-        this._nativeObj.addToEntity(scenePtr._nativeObj, transform._entityID);
+        this._nativeObj.addToEntity(transform._nativeObj);
     }
 
     removeOwner(): void {

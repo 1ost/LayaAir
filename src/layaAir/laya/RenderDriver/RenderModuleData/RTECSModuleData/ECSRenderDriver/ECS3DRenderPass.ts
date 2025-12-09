@@ -5,7 +5,6 @@ import { IRenderContext3D } from "../../../DriverDesign/3DRenderPass/I3DRenderPa
 import { ISceneRenderManager } from "../../../DriverDesign/3DRenderPass/ISceneRenderManager";
 import { IIndexBuffer } from "../../../DriverDesign/RenderDevice/IIndexBuffer";
 import { IVertexBuffer } from "../../../DriverDesign/RenderDevice/IVertexBuffer";
-import { ECSSceneNodeData } from "../3D/ECSSceneNodeData";
 import { IRender3DProcess } from "../../../DriverDesign/3DRenderPass/I3DRenderPass"
 import { GLES3DRenderPassFactory } from "../../../OpenGLESDriver/3DRenderPass/GLES3DRenderPassFactory";
 import { GLESBufferState } from "../../../OpenGLESDriver/RenderDevice/GLESBufferState";

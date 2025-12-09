@@ -1,9 +1,7 @@
 import { ShadowMode } from "../../../../d3/core/light/ShadowMode";
-import { Scene3D } from "../../../../d3/core/scene/Scene3D";
 import { Sprite3D } from "../../../../d3/core/Sprite3D";
 import { IPointLightData } from "../../Design/3D/I3DRenderModuleData";
 import { ECSTransform } from "../ECSTransform";
-import { ECSSceneNodeData } from "./ECSSceneNodeData";
 
 export class ECSPointLight implements IPointLightData {
 
@@ -75,9 +73,9 @@ export class ECSPointLight implements IPointLightData {
     }
 
     setOwner(owner: Sprite3D): void {
-        let scenePtr = (owner.scene as Scene3D)._sceneModuleData as ECSSceneNodeData;
+ 
         let transform = owner.transform as ECSTransform;
-        this._nativeObj.addToEntity(scenePtr, transform._entityID);
+        this._nativeObj.addToEntity(transform._nativeObj);
     }
 
     removeOwner(): void {
