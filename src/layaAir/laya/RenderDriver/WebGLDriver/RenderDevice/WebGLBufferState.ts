@@ -31,6 +31,7 @@ export class WebGLBufferState implements IBufferState {
         this.applyIndexBuffers();
         this.unBind();
         indexBuffer && indexBuffer._glBuffer.unbindBuffer();//清空绑定
+        
     }
 
     /**

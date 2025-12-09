@@ -23,7 +23,7 @@ import { Laya3DRender } from "laya/d3/RenderObjs/Laya3DRender";
 import { LayaGL } from "laya/layagl/LayaGL";
 import { RTStatisContext } from "laya/RenderDriver/RenderModuleData/RuntimeModuleData/RTStatisticContext";
 import { ECS3DRenderModuleFactory } from "laya/RenderDriver/RenderModuleData/RTECSModuleData/3D/ECS3DRenderModuleFactory";
-import { ECSRT3DRenderPassFactory } from "laya/RenderDriver/RenderModuleData/RTECSModuleData/ECSRenderDriver/ECS3DRenderPass";
+import { ECSRenderDeviceFactory, ECSRT3DRenderPassFactory } from "laya/RenderDriver/RenderModuleData/RTECSModuleData/ECSRenderDriver/ECS3DRenderPass";
 
 export class Main {
     static useWebGPU: boolean = false;
@@ -68,12 +68,14 @@ export class Main {
             if (LayaEnv.isECSConch) {
                 Laya3DRender.Render3DModuleDataFactory = new ECS3DRenderModuleFactory();
                 Laya3DRender.Render3DPassFactory = new ECSRT3DRenderPassFactory();
+                 LayaGL.renderDeviceFactory = new ECSRenderDeviceFactory();
             } else {
                 Laya3DRender.Render3DModuleDataFactory = new RT3DRenderModuleFactory();
                 Laya3DRender.Render3DPassFactory = new GLES3DRenderPassFactory();
+                 LayaGL.renderDeviceFactory = new GLESRenderDeviceFactory();
             }
             LayaGL.unitRenderModuleDataFactory = new RTUintRenderModuleDataFactory();
-            LayaGL.renderDeviceFactory = new GLESRenderDeviceFactory();
+           
             Laya3DRender.renderOBJCreate = new LengencyRenderEngine3DFactory();
 
 

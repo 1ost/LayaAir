@@ -21,7 +21,7 @@ import { DirectionLightCom } from "laya/d3/core/light/DirectionLightCom";
 import { Sprite3D } from "laya/d3/core/Sprite3D";
 import { Matrix4x4 } from "laya/maths/Matrix4x4";
 
-export class PBRMaterialDemo {
+export class ECSPBRMaterialDemo {
 	private static _tempPos: Vector3 = new Vector3();
 
 	constructor() {
@@ -43,6 +43,7 @@ export class PBRMaterialDemo {
 			directlightSprite.transform.worldMatrix = mat;
 
 			var camera: Camera = (<Camera>scene.addChild(new Camera(0, 0.1, 1000)));
+			camera.transform.position = new Vector3(0, 0, 8);
 			var moveScript: CameraMoveScript = camera.addComponent(CameraMoveScript);
 			moveScript.speed = 0.005;
 
@@ -84,7 +85,7 @@ export class PBRMaterialDemo {
 				var smoothness: number = i / (n - 1);
 				var metallic: number = 1.0 - j / (m - 1);
 
-				var pos: Vector3 = PBRMaterialDemo._tempPos;
+				var pos: Vector3 = ECSPBRMaterialDemo._tempPos;
 				pos.setValue(-width / 2 + i * width / (n - 1), height / 2 - j * height / (m - 1), 3.0);
 				Vector3.add(offset, pos, pos);
 
@@ -102,7 +103,7 @@ export class PBRMaterialDemo {
 			var smoothness: number = i / (n - 1);
 			// var metallic: number = metallic;
 
-			var pos: Vector3 = PBRMaterialDemo._tempPos;
+			var pos: Vector3 = ECSPBRMaterialDemo._tempPos;
 			pos.setValue(-width / 2 + i * width / (n - 1), 0, 3.0);
 			Vector3.add(offset, pos, pos);
 

@@ -13,9 +13,8 @@ import "laya/platform/MediaAdapter";
 import "laya/platform/PlatformAdapters";
 import "laya/platform/StorageAdapter";
 import "laya/platform/TextInputAdapter";
-import { PBRMaterialDemo } from "./3d/LayaAir3D_Material/PBRMaterialDemo";
 import { LayaEnv } from "LayaEnv";
-import { PBRCoatMaterialDemo } from "./3d/LayaAir3D_Material/PBRCoatMaterialDemo";
+import { ECSPBRMaterialDemo } from "./3d/LayaAir3D_Material/ECSPBRMaterialDemo";
 
 Resource.DEBUG = true;
 Physics2D.I._factory = new physics2DwasmFactory();
@@ -29,7 +28,7 @@ async function start() {
     } else {
         await import("./importWebGL")
     }
-    new Main(false, false, PBRCoatMaterialDemo);
+    new Main(false, false, ECSPBRMaterialDemo);
 }
 
 start();

@@ -19,17 +19,14 @@ export class ECS3DRenderModuleFactory extends RT3DRenderModuleFactory {
     createDirectLight(): ECSDirectLight {
         return new ECSDirectLight();
     }
-    createSpotLight(): ECSSpotLight {
-        return new ECSSpotLight();
-    }
-    createPointLight(): ECSPointLight {
-        return new ECSPointLight();
-    }
+    // createSpotLight(): ECSSpotLight {
+    //     return new ECSSpotLight();
+    // }
+    // createPointLight(): ECSPointLight {
+    //     return new ECSPointLight();
+    // }
     createCameraModuleData(): ECSCameraNodeData {
         return new ECSCameraNodeData();
-    }
-    createSceneModuleData(): ECSSceneNodeData {
-        return new ECSSceneNodeData();
     }
     createMeshRenderNode(): ECSMeshRenderNode {
         return new ECSMeshRenderNode();
