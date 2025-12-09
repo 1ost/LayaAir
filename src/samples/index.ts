@@ -20,7 +20,7 @@ Resource.DEBUG = true;
 Physics2D.I._factory = new physics2DwasmFactory();
 Laya3D.PhysicsCreateUtil = new btPhysicsCreateUtil();
 var useWebGPU = false;
-LayaEnv.isECSConch = false;
+LayaEnv.isECSConch = true;
 async function start() {
     if (useWebGPU) {
         var webGPUFile = './importWebGPU';//使用变量，避免tsc检查，因为有时候没有webgpu源码

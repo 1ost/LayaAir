@@ -2,9 +2,12 @@ import { Config } from "../../../../Config";
 import { BufferUsage } from "../../../RenderEngine/RenderEnum/BufferTargetType";
 import { DrawType } from "../../../RenderEngine/RenderEnum/DrawType";
 import { IndexFormat } from "../../../RenderEngine/RenderEnum/IndexFormat";
+import { RenderCapable } from "../../../RenderEngine/RenderEnum/RenderCapable";
+import { RenderParams } from "../../../RenderEngine/RenderEnum/RenderParams";
 import { MeshTopology } from "../../../RenderEngine/RenderEnum/RenderPologyMode";
 import { ShaderPass } from "../../../RenderEngine/RenderShader/ShaderPass";
 import { VertexDeclaration } from "../../../RenderEngine/VertexDeclaration";
+import { LayaGL } from "../../../layagl/LayaGL";
 import { Color } from "../../../maths/Color";
 import { Matrix3x3 } from "../../../maths/Matrix3x3";
 import { Matrix4x4 } from "../../../maths/Matrix4x4";
@@ -23,14 +26,17 @@ import { IBufferState } from "../../DriverDesign/RenderDevice/IBufferState";
 import { IIndexBuffer } from "../../DriverDesign/RenderDevice/IIndexBuffer";
 import { SetRenderDataCMD, RenderCMDType, SetShaderDefineCMD } from "../../DriverDesign/RenderDevice/IRenderCMD";
 import { IRenderDeviceFactory } from "../../DriverDesign/RenderDevice/IRenderDeviceFactory";
+import { IRenderEngine } from "../../DriverDesign/RenderDevice/IRenderEngine";
 import { IRenderGeometryElement } from "../../DriverDesign/RenderDevice/IRenderGeometryElement";
 import { IShaderInstance } from "../../DriverDesign/RenderDevice/IShaderInstance";
+import { ITextureContext } from "../../DriverDesign/RenderDevice/ITextureContext";
 import { IVertexBuffer } from "../../DriverDesign/RenderDevice/IVertexBuffer";
 import { InternalTexture } from "../../DriverDesign/RenderDevice/InternalTexture";
 import { ShaderData, ShaderDataItem, ShaderDataType } from "../../DriverDesign/RenderDevice/ShaderData";
 import { IDefineDatas } from "../../RenderModuleData/Design/IDefineDatas";
 import { ShaderDefine } from "../../RenderModuleData/Design/ShaderDefine";
 import { WebDefineDatas } from "../../RenderModuleData/WebModuleData/WebDefineDatas";
+import { NoRenderEngine } from "./NoRenderEngineFactory";
 
 export class NoRenderDeviceFactory implements IRenderDeviceFactory {
     createShaderInstance(shaderProcessInfo: ShaderProcessInfo, shaderPass: ShaderCompileDefineBase): IShaderInstance {
@@ -49,6 +55,8 @@ export class NoRenderDeviceFactory implements IRenderDeviceFactory {
         return new NoRenderGeometryElement();
     }
     createEngine(config: Config, canvas: HTMLCanvas): Promise<void> {
+        LayaGL.renderEngine = new NoRenderEngine();
+        LayaGL.textureContext = LayaGL.renderEngine.getTextureContext();
         return Promise.resolve();
     }
     createGlobalUniformMap(blockName: string): CommandUniformMap {
@@ -59,6 +67,7 @@ export class NoRenderDeviceFactory implements IRenderDeviceFactory {
     }
 
 }
+
 
 export class NoRenderCommandUnifojrmMap extends CommandUniformMap {
     constructor(stateName: string) {

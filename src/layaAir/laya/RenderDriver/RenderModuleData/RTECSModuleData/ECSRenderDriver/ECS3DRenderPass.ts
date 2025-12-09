@@ -25,8 +25,10 @@ import { IShaderInstance } from "../../../DriverDesign/RenderDevice/IShaderInsta
 import { ShaderData } from "../../../DriverDesign/RenderDevice/ShaderData";
 import { GLESRenderDeviceFactory } from "../../../OpenGLESDriver/RenderDevice/GLESRenderDeviceFactory";
 import { VertexMesh } from "../../../../RenderEngine/RenderShader/VertexMesh";
+import { NoRender3DRenderPassFactory } from "../../../NoRenderDriver/3DRenderPass/NoRender3DRenderPassFactory";
+import { NoRenderBufferState, NoRenderDeviceFactory } from "../../../NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 
-export class ECSRT3DRenderPassFactory extends GLES3DRenderPassFactory {
+export class ECSRT3DRenderPassFactory extends NoRender3DRenderPassFactory {
     createRender3DProcess(): IRender3DProcess {
         return new ECS3DRenderProcess();
     }
@@ -55,7 +57,8 @@ export class ECSMeshVertexBuffer implements IVertexBuffer {
     buffer: Float32Array;
     private _bufferLength: number;
     setData(buffer: ArrayBuffer, bufferOffset: number, dataStartIndex: number, dataCount: number): void {
-        this.buffer = new Float32Array(buffer, 0, dataCount);
+        let count = dataCount > buffer.byteLength ? buffer.byteLength : dataCount;
+        this.buffer = new Float32Array(buffer, 0, count / 4);
     }
     setDataLength(byteLength: number): void {
         this._bufferLength = byteLength;
@@ -102,7 +105,7 @@ export class ECSIndexBuffer implements IIndexBuffer {
 }
 
 
-export class ECSBufferState extends GLESBufferState {
+export class ECSBufferState extends NoRenderBufferState {
     _bindedIndexBuffer: ECSIndexBuffer;
     _vertexBuffers: ECSMeshVertexBuffer[];
     _meshNativeObj: any;
@@ -116,7 +119,7 @@ export class ECSBufferState extends GLESBufferState {
         this._bindedIndexBuffer = indexBuffer;
         //TODO 分拣
         let vertexCount = vertexBuffers[0].buffer.byteLength / vertexBuffers[0].vertexDeclaration.vertexStride;
-        let indexCount = indexBuffer.buffer.byteLength / 2;
+
         for (var i = 0; i < vertexBuffers.length; i++) {
             let vbBuffer = vertexBuffers[i];
             if (vbBuffer.instanceBuffer)
@@ -130,7 +133,7 @@ export class ECSBufferState extends GLESBufferState {
             let vbData: Float32Array;
             for (var j = 0; j < VAEElement.length; j++) {
                 let element = VAEElement[j];
-
+                let offset;
                 switch (element.shaderLocation) {
                     case VertexMesh.MESH_POSITION0:
                     case VertexMesh.MESH_NORMAL0:
@@ -138,7 +141,7 @@ export class ECSBufferState extends GLESBufferState {
                             continue;
                         }
                         vbData = new Float32Array(vertexCount * 3);
-                        let offset = element.stride / 4;
+                        offset = element.stride / 4;
                         for (var k = 0; k < vertexCount; k++) {
                             let pos = k * 3;
                             let oriPos = k * stride + offset;
@@ -186,12 +189,16 @@ export class ECSBufferState extends GLESBufferState {
             }
         }
         this._setVertexCount(vertexCount);
-        this._setIndexCount(indexCount);
-        this._setIndices(indexBuffer.buffer.buffer as ArrayBuffer, indexBuffer.buffer.byteLength);
-        this._nativeObj.applyBuffer();
+        if (indexBuffer && indexBuffer.buffer) {
+            let indexCount = indexBuffer.buffer.byteLength / 2;
+            this._setIndexCount(indexCount);
+            this._setIndices(indexBuffer.buffer.buffer as ArrayBuffer, indexBuffer.buffer.byteLength);
+            this._meshNativeObj.applyBuffer();
+        }
+
     }
     destroy(): void {
-        this._nativeObj.destroy();
+        this._meshNativeObj.destroy();
     }
 
 
@@ -227,7 +234,7 @@ export class ECSBufferState extends GLESBufferState {
 
 
 
-export class ECSRenderDeviceFactory extends GLESRenderDeviceFactory {
+export class ECSRenderDeviceFactory extends NoRenderDeviceFactory {
 
     createIndexBuffer(bufferUsage: BufferUsage): IIndexBuffer {
         return new ECSIndexBuffer();

@@ -14,58 +14,59 @@ import { IRender2DDataHandle, I2DPrimitiveDataHandle, I2DBaseRenderDataHandle, I
 import { IRender2DPass, IRender2DPassManager } from "../../RenderModuleData/Design/2D/IRender2DPass";
 import { IRenderStruct2D } from "../../RenderModuleData/Design/2D/IRenderStruct2D";
 import { NotImplementedError } from "../../../utils/Error";
+import { NoRender2D2DPrimitiveDataHandle, NoRender2DBaseRenderDataHandle, NoRender2DGlobalRenderData, NoRender2DGraphicIndexDataView, NoRender2DGraphics2DVertexBlock, NoRender2DGraphicVertexDataView, NoRender2DGraphicWholeBuffer, NoRender2DMesh2DRenderDataHandle, NoRender2Draphics2DBufferBlock, NoRender2DRender2DDataHandle, NoRender2DRender2DPass, NoRender2DRender2DPassManager, NoRender2DRenderStruct2D, NoRender2DSpineRenderDataHandle } from "./NoRenderPassProcessElement";
 
 
 export class NoRender2DProcess implements I2DRenderPassFactory {
     createGraphic2DBufferBlock(): IGraphics2DBufferBlock {
-        throw new NotImplementedError();
+        return new NoRender2Draphics2DBufferBlock();
     }
     
     createGraphic2DVertexBlock(): IGraphics2DVertexBlock {
-        throw new NotImplementedError();
+        return new NoRender2DGraphics2DVertexBlock();
     }
 
     create2DGraphicVertexDataView(wholeBuffer: I2DGraphicWholeBuffer, elementOffset: number, elementSize: number, stride: number): I2DGraphicVertexDataView {
-        throw new NotImplementedError();
+        return new NoRender2DGraphicVertexDataView();
     }
     create2DGraphicIndexDataView(wholeBuffer: I2DGraphicWholeBuffer, elementSize: number): I2DGraphicIndexDataView {
-        throw new NotImplementedError();
+        return new NoRender2DGraphicIndexDataView();
     }
     create2DGraphicIndexBuffer(): I2DGraphicWholeBuffer {
-        throw new NotImplementedError();
+        return new NoRender2DGraphicWholeBuffer();
     }
 
     create2DGraphicVertexBuffer(): I2DGraphicWholeBuffer {
-        throw new NotImplementedError();
+       return new NoRender2DGraphicWholeBuffer()
     }
 
     createRender2DPassManager(): IRender2DPassManager {
-        throw new NotImplementedError();
+        return new NoRender2DRender2DPassManager();
     }
 
     create2DGlobalRenderDataHandle(): I2DGlobalRenderData {
-        return null;
+        return new NoRender2DGlobalRenderData();
     }
     createSpineRenderDataHandle(): ISpineRenderDataHandle {
-        return null;
+        return new NoRender2DSpineRenderDataHandle();
     }
     createRender2DPass(): IRender2DPass {
-        return null;
+        return new NoRender2DRender2DPass();
     }
     createRenderStruct2D(): IRenderStruct2D {
-        return null;
+        return new NoRender2DRenderStruct2D();
     }
     createRender2DDataHandle(): IRender2DDataHandle {
-        return null;
+        return new NoRender2DRender2DDataHandle();
     }
     create2D2DPrimitiveDataHandle(): I2DPrimitiveDataHandle {
-        return null;
+        return new NoRender2D2DPrimitiveDataHandle();
     }
     create2DBaseRenderDataHandle(): I2DBaseRenderDataHandle {
-        return null;
+        return new NoRender2DBaseRenderDataHandle();
     }
     createMesh2DRenderDataHandle(): IMesh2DRenderDataHandle {
-        return null;
+        return new NoRender2DMesh2DRenderDataHandle();
     }
     createSetRenderDataCMD(): SetRenderDataCMD {
         return new NoRenderSetRenderData();
