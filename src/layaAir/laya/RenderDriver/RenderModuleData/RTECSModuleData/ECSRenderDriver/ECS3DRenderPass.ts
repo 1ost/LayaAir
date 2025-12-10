@@ -119,7 +119,8 @@ export class ECSBufferState extends NoRenderBufferState {
         this._bindedIndexBuffer = indexBuffer;
         //TODO 分拣
         let vertexCount = vertexBuffers[0].buffer.byteLength / vertexBuffers[0].vertexDeclaration.vertexStride;
-
+        let hasPosition: boolean = false;
+        let hasNormal: boolean = false;
         for (var i = 0; i < vertexBuffers.length; i++) {
             let vbBuffer = vertexBuffers[i];
             if (vbBuffer.instanceBuffer)
@@ -131,6 +132,7 @@ export class ECSBufferState extends NoRenderBufferState {
             let VAEElement = declaration._VAElements;
 
             let vbData: Float32Array;
+
             for (var j = 0; j < VAEElement.length; j++) {
                 let element = VAEElement[j];
                 let offset;
@@ -140,6 +142,7 @@ export class ECSBufferState extends NoRenderBufferState {
                         if (element.format != "vector3") {
                             continue;
                         }
+                        (element.shaderLocation == VertexMesh.MESH_POSITION0) ? hasPosition = true : hasNormal = true;
                         vbData = new Float32Array(vertexCount * 3);
                         offset = element.stride / 4;
                         for (var k = 0; k < vertexCount; k++) {
@@ -190,10 +193,11 @@ export class ECSBufferState extends NoRenderBufferState {
         }
         this._setVertexCount(vertexCount);
         if (indexBuffer && indexBuffer.buffer) {
-            let indexCount = indexBuffer.buffer.byteLength / 2;
+            let indexCount = indexBuffer.buffer.byteLength / 4;
             this._setIndexCount(indexCount);
             this._setIndices(indexBuffer.buffer.buffer as ArrayBuffer, indexBuffer.buffer.byteLength);
-            this._meshNativeObj.applyBuffer();
+            if (hasPosition && hasNormal)
+                this._meshNativeObj.applyBuffer();
         }
 
     }

@@ -47,7 +47,9 @@ export class ECSPBRMaterialDemo {
 			var moveScript: CameraMoveScript = camera.addComponent(CameraMoveScript);
 			moveScript.speed = 0.005;
 
-			var sphereMesh: Mesh = PrimitiveMesh.createSphere(0.25, 32, 32);
+			//var sphereMesh: Mesh = PrimitiveMesh.createSphere(0.25, 32, 32);
+			var sphereMesh: Mesh = PrimitiveMesh.createBox(1, 1, 1);
+
 			const row: number = 6;
 			this.addSpheresSpecialMetallic(sphereMesh, new Vector3(0, 1.5, 0), scene, row, new Color(186 / 255, 110 / 255, 64 / 255, 1.0), 1.0);
 			this.addSpheresSmoothnessMetallic(sphereMesh, new Vector3(0, 0, 0), scene, 3, row, new Color(1.0, 1.0, 1.0, 1.0));

@@ -7,14 +7,15 @@ import { ECSTransform } from "../ECSTransform";
 import { ECSCameraNodeData } from "./ECSCameraNodeData";
 import { ECSMeshRenderNode } from "./ECSBaseRenderNode";
 import { ECSDirectLight } from "./ECSDirectLight";
+import { Web3DRenderModuleFactory } from "../../WebModuleData/3D/Web3DRenderModuleFactory";
 
 
-export class ECS3DRenderModuleFactory extends RT3DRenderModuleFactory {
+export class ECS3DRenderModuleFactory extends Web3DRenderModuleFactory {
     createTransform(owner: Sprite3D): ECSTransform {
         return new ECSTransform(owner);
     }
     createDirectLight(): ECSDirectLight {
-        return new ECSDirectLight();
+        return new ECSDirectLight() as any;
     }
     // createSpotLight(): ECSSpotLight {
     //     return new ECSSpotLight();

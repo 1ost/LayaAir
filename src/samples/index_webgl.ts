@@ -14,8 +14,9 @@ import "laya/platform/PlatformAdapters";
 import "laya/platform/StorageAdapter";
 import "laya/platform/TextInputAdapter";
 import "./importWebGL"
+import { ECSPBRMaterialDemo } from "./3d/LayaAir3D_Material/ECSPBRMaterialDemo";
 
 Resource.DEBUG = true;
 Physics2D.I._factory = new physics2DwasmFactory();
 Laya3D.PhysicsCreateUtil = new btPhysicsCreateUtil();
-new Main(false, false);
+new Main(false, false,ECSPBRMaterialDemo);

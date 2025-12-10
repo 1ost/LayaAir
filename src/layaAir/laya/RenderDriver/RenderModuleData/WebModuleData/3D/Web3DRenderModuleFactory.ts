@@ -7,7 +7,7 @@ import { BoundsImpl } from "../../../../d3/math/BoundsImpl";
 import { LayaGL } from "../../../../layagl/LayaGL";
 import { Vector3 } from "../../../../maths/Vector3";
 import { Stat } from "../../../../utils/Stat";
-import { IMeshRenderNode, IPointLightData, ISimpleSkinRenderNode, ISkinRenderNode } from "../../Design/3D/I3DRenderModuleData";
+import { IBaseRenderNode, ICameraNodeData, IDirectLightData, IMeshRenderNode, IPointLightData, IReflectionProbeData, ISceneNodeData, ISimpleSkinRenderNode, ISkinRenderNode, ISpotLightData, IVolumetricGIData } from "../../Design/3D/I3DRenderModuleData";
 import { I3DRenderModuleFactory } from "../../Design/3D/I3DRenderModuleFactory";
 import { WebBaseRenderNode } from "./WebBaseRenderNode";
 import { WebDirectLight } from "./WebDirectLight";
@@ -34,11 +34,11 @@ export class Web3DRenderModuleFactory implements I3DRenderModuleFactory {
     return new BoundsImpl(min, max);
   }
 
-  createVolumetricGI(): WebVolumetricGI {
+  createVolumetricGI(): IVolumetricGIData {
     return new WebVolumetricGI();
   }
 
-  createReflectionProbe(): WebReflectionProbe {
+  createReflectionProbe(): IReflectionProbeData {
     return new WebReflectionProbe();
   }
 
@@ -46,11 +46,11 @@ export class Web3DRenderModuleFactory implements I3DRenderModuleFactory {
     return new WebLightmap();
   }
 
-  createDirectLight(): WebDirectLight {
+  createDirectLight(): IDirectLightData {
     return new WebDirectLight();
   }
 
-  createSpotLight(): WebSpotLight {
+  createSpotLight(): ISpotLightData {
     return new WebSpotLight();
   }
 
@@ -58,17 +58,17 @@ export class Web3DRenderModuleFactory implements I3DRenderModuleFactory {
     return new WebPointLight();
   }
 
-  createCameraModuleData(): WebCameraNodeData {
+  createCameraModuleData(): ICameraNodeData {
     return new WebCameraNodeData();
   }
 
-  createSceneModuleData(): WebSceneNodeData {
+  createSceneModuleData(): ISceneNodeData {
     return new WebSceneNodeData();
   }
 
 
 
-  createBaseRenderNode(): WebBaseRenderNode {
+  createBaseRenderNode(): IBaseRenderNode {
 
     let renderNode = new WebBaseRenderNode();
     return renderNode;

@@ -146,10 +146,10 @@ export class NoRender2DRenderStruct2D implements IRenderStruct2D
     stackingRoot: boolean;
     enableCulling: boolean;
     inheritedEnableCulling: boolean;
-    rect: Rectangle;
+    rect: Rectangle = new Rectangle();
     renderLayer: number;
     parent: IRenderStruct2D;
-    children: IRenderStruct2D[];
+    children: IRenderStruct2D[] =[];
     renderType: number;
     renderUpdateMask: number;
     renderMatrix: Matrix;
