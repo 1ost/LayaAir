@@ -1,3 +1,4 @@
+import { debug } from "console";
 import { ShadowCascadesMode } from "../../../../d3/core/light/ShadowCascadesMode";
 import { ShadowMode } from "../../../../d3/core/light/ShadowMode";
 import { Scene3D } from "../../../../d3/core/scene/Scene3D";
@@ -87,6 +88,7 @@ export class ECSDirectLight implements IDirectLightData {
     }
 
     setOwner(owner: Sprite3D): void {
+        debugger;
         let transform = owner.transform as ECSTransform;
         this._nativeObj.addToEntity( transform._nativeObj);
     }

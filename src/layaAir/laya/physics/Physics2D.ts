@@ -77,7 +77,7 @@ export class Physics2D extends EventDispatcher {
      * @zh 开启物理世界。此方法初始化物理引擎并启动模拟。
      */
     enable(): Promise<void> {
-        if (this._factory) {
+        if (false) {
             PhysicsLineShader.__init__();
             if (PlayerConfig.physics2D != null && PlayerConfig.physics2D.defaultConfig != null)
                 Object.assign(Physics2DOption, PlayerConfig.physics2D.defaultConfig);

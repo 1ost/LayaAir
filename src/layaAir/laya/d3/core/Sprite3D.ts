@@ -231,6 +231,7 @@ export class Sprite3D extends Node {
      */
     protected _onActiveInScene(): void {
         //override it.
+        this.transform._setBelongScene();
     }
 
     /**
@@ -238,7 +239,7 @@ export class Sprite3D extends Node {
      * @zh 节点从场景中移除时执行的操作。
      */
     protected _onInActiveInScene(): void {
-        //override it.
+        this.transform._setUnBelongScene();
     }
 
 
