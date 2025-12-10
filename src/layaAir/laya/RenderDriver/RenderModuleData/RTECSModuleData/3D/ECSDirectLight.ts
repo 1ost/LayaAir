@@ -98,6 +98,6 @@ export class ECSDirectLight implements IDirectLightData {
     _nativeObj: any;
 
     constructor() {
-        this._nativeObj = new (window as any).conchRTDirectLight();
+        this._nativeObj = new (window as any).conchECSDirectLight();
     }
 }
