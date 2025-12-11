@@ -15,7 +15,7 @@ export class ECS3DRenderModuleFactory extends Web3DRenderModuleFactory {
         return new ECSTransform(owner);
     }
     createDirectLight(): ECSDirectLight {
-        return new ECSDirectLight() as any;
+        return new ECSDirectLight();
     }
     // createSpotLight(): ECSSpotLight {
     //     return new ECSSpotLight();

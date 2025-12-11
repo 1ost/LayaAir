@@ -27,6 +27,7 @@ import { GLESRenderDeviceFactory } from "../../../OpenGLESDriver/RenderDevice/GL
 import { VertexMesh } from "../../../../RenderEngine/RenderShader/VertexMesh";
 import { NoRender3DRenderPassFactory } from "../../../NoRenderDriver/3DRenderPass/NoRender3DRenderPassFactory";
 import { NoRenderBufferState, NoRenderDeviceFactory } from "../../../NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
+import { GLESShaderData } from "../../../OpenGLESDriver/RenderDevice/GLESShaderData";
 
 export class ECSRT3DRenderPassFactory extends NoRender3DRenderPassFactory {
     createRender3DProcess(): IRender3DProcess {
@@ -250,5 +251,9 @@ export class ECSRenderDeviceFactory extends NoRenderDeviceFactory {
 
     createBufferState(): IBufferState {
         return new ECSBufferState();
+    }
+
+    createShaderData(ownerResource?: Resource): ShaderData {
+        return new GLESShaderData(ownerResource);
     }
 }
