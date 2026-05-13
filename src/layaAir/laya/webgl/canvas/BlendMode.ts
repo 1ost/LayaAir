@@ -22,6 +22,9 @@ export enum BlendMode {
     addOld,
     lighterOld,
     sourceAlpha,
+    alpha,
+    layer,
+    hardlight,
 };
 
 const TOINT: Record<string, number> = {
@@ -36,7 +39,10 @@ const TOINT: Record<string, number> = {
     [BlendMode.lighter]: 1,
     [BlendMode.lighterOld]: 8,
     [BlendMode.addOld]: 8,
-    [BlendMode.sourceAlpha]: 9
+    [BlendMode.sourceAlpha]: 9,
+    [BlendMode.alpha]: 6,
+    [BlendMode.layer]: 0,
+    [BlendMode.hardlight]: 4
 };
 
 /**

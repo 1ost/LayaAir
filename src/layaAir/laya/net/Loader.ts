@@ -162,6 +162,11 @@ export class Loader extends EventDispatcher {
      */
     static readonly BUFFER = "arraybuffer";
     /**
+     * @en Raw Flash SWF type. This is intentionally explicit so it does not conflict with legacy tool-processed SWF MovieClip files.
+     * @zh 原始 Flash SWF 类型。该类型需要显式指定，避免与旧的工具处理后 SWF MovieClip 文件冲突。
+     */
+    static readonly FLASH_SWF = "flashSwf";
+    /**
      * @en Texture type, returns a Texture after loading is complete.
      * @zh 纹理类型，加载完成后返回 Texture。
      */

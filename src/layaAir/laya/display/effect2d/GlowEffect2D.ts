@@ -87,6 +87,17 @@ export class GlowEffect2D extends PostProcess2DEffect {
         this.sv_blurInfo1 = this._sv_blurInfo1;
     }
 
+    get strength(): number {
+        return this._sv_blurInfo2.z;
+    }
+
+    set strength(value: number) {
+        if (value !== this._sv_blurInfo2.z) {
+            this._sv_blurInfo2.z = value;
+            this.sv_blurInfo2 = this._sv_blurInfo2;
+        }
+    }
+
     /**
      * @en Gets Y offset value
      * @zh 获取Y偏移值

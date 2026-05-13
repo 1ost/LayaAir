@@ -10,7 +10,6 @@ node_modules
 .DS_Store
 build
 .history
-package-lock.json
 .rpt2_cache
 /docTool/dist
 docs

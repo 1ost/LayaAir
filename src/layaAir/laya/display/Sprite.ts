@@ -36,11 +36,14 @@ import { Color } from "../maths/Color";
 import { ShaderFeatureType } from "../RenderEngine/RenderShader/Shader3D";
 import { Config } from "../../Config";
 import { MathUtil } from "../maths/MathUtil";
+import { Vector4 } from "../maths/Vector4";
 import { FilterMode } from "../RenderEngine/RenderEnum/FilterMode";
 import { RenderCapable } from "../RenderEngine/RenderEnum/RenderCapable";
 import { StatElement } from "../layagl/StatisticsContext";
 
 const hiddenBits = NodeFlags.NOT_IN_PAGE;
+const EMPTY_COLOR_TRANSFORM_MUL = new Vector4(1, 1, 1, 1);
+const EMPTY_COLOR_TRANSFORM_ADD = new Vector4(0, 0, 0, 0);
 
 /**
  * @en Sprite is a basic display list node for displaying graphical content. By default, Sprite does not accept mouse events. Through the graphics API, images or vector graphics can be drawn, supporting operations like rotation, scaling, translation, and more. Sprite also functions as a container class, allowing the addition of multiple child nodes.
@@ -124,6 +127,18 @@ export class Sprite extends Node {
      * @zh 透明度
      */
     _alpha: number = 1;
+    /**
+     * @internal
+     * @en RGB color-transform multiplier.
+     * @zh RGB 颜色变换乘数。
+     */
+    _colorTransformMul: Vector4 = new Vector4(1, 1, 1, 1);
+    /**
+     * @internal
+     * @en RGB color-transform additive offset.
+     * @zh RGB 颜色变换偏移量。
+     */
+    _colorTransformAdd: Vector4 = new Vector4(0, 0, 0, 0);
     /**
      * @internal
      * @en Scroll area
@@ -653,6 +668,36 @@ export class Sprite extends Node {
             this._struct.alpha = value;
             this.repaint();
         }
+    }
+
+    /**
+     * @en The inherited RGB multiplier applied in the 2D render path. Defaults to `(1, 1, 1, 1)`.
+     * @zh 应用于 2D 渲染路径的 RGB 乘数，默认值为 `(1, 1, 1, 1)`。
+     */
+    get colorTransformMul(): Vector4 {
+        return this._colorTransformMul;
+    }
+
+    set colorTransformMul(value: Vector4) {
+        const next = value ?? EMPTY_COLOR_TRANSFORM_MUL;
+        this._colorTransformMul.setValue(next.x, next.y, next.z, next.w);
+        this._struct.colorTransformMul = this._colorTransformMul;
+        this.repaint();
+    }
+
+    /**
+     * @en The inherited RGB additive offset applied in the 2D render path. Defaults to `(0, 0, 0, 0)`.
+     * @zh 应用于 2D 渲染路径的 RGB 偏移量，默认值为 `(0, 0, 0, 0)`。
+     */
+    get colorTransformAdd(): Vector4 {
+        return this._colorTransformAdd;
+    }
+
+    set colorTransformAdd(value: Vector4) {
+        const next = value ?? EMPTY_COLOR_TRANSFORM_ADD;
+        this._colorTransformAdd.setValue(next.x, next.y, next.z, next.w);
+        this._struct.colorTransformAdd = this._colorTransformAdd;
+        this.repaint();
     }
 
     /**

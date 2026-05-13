@@ -53,6 +53,8 @@ export interface IRenderStruct2D {
    globalAlpha: number;
 
    alpha: number;
+   colorTransformMul: Vector4;
+   colorTransformAdd: Vector4;
 
    blendMode: BlendMode;
    /** 是否启动 */

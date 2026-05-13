@@ -113,6 +113,7 @@ export class Input extends Text {
 
     protected _multiline: boolean = false;
     protected _editable: boolean = true;
+    protected _selectable: boolean = true;
     protected _type: string;
 
     constructor() {
@@ -200,6 +201,18 @@ export class Input extends Text {
 
     set editable(value: boolean) {
         this._editable = value;
+    }
+
+    /**
+     * @en Whether text selection is allowed while the input remains focusable/editable.
+     * @zh 输入框在保持可聚焦/可编辑时，是否允许选择文本。
+     */
+    get selectable(): boolean {
+        return this._selectable;
+    }
+
+    set selectable(value: boolean) {
+        this._selectable = value;
     }
 
     /**
@@ -293,6 +306,8 @@ export class Input extends Text {
      * @param endIndex 光标结束位置。
      */
     setSelection(startIndex: number, endIndex: number): void {
+        if (!this._selectable)
+            return;
         this.focus = true;
         PAL.textInput.setSelection(startIndex, endIndex);
     }
@@ -302,6 +317,8 @@ export class Input extends Text {
      * @zh 选中当前实例的所有文本。
      */
     select(): void {
+        if (!this._selectable)
+            return;
         this.focus = true;
         PAL.textInput.setSelection(0, -1);
     }

@@ -14,6 +14,9 @@ import { Stat } from "../../../../utils/Stat";
 import { Sprite } from "../../../../display/Sprite";
 
 
+const _DefaultColorTransformMul = new Vector4(1, 1, 1, 1);
+const _DefaultColorTransformAdd = new Vector4(0, 0, 0, 0);
+
 export class RTGlobalRenderData implements I2DGlobalRenderData {
    _nativeObj: any;
    constructor() {
@@ -194,6 +197,32 @@ export class RTRenderStruct2D implements IRenderStruct2D {
       this._nativeObj.alpha = value;
    }
 
+   private _colorTransformMul: Vector4 = new Vector4(1, 1, 1, 1);
+   public get colorTransformMul(): Vector4 {
+      return this._colorTransformMul;
+   }
+
+   public set colorTransformMul(value: Vector4) {
+      const next = value ?? _DefaultColorTransformMul;
+      this._colorTransformMul.setValue(next.x, next.y, next.z, next.w);
+      if (this._nativeObj.setColorTransformMul) {
+         this._nativeObj.setColorTransformMul(this._colorTransformMul);
+      }
+   }
+
+   private _colorTransformAdd: Vector4 = new Vector4(0, 0, 0, 0);
+   public get colorTransformAdd(): Vector4 {
+      return this._colorTransformAdd;
+   }
+
+   public set colorTransformAdd(value: Vector4) {
+      const next = value ?? _DefaultColorTransformAdd;
+      this._colorTransformAdd.setValue(next.x, next.y, next.z, next.w);
+      if (this._nativeObj.setColorTransformAdd) {
+         this._nativeObj.setColorTransformAdd(this._colorTransformAdd);
+      }
+   }
+
    private _blendMode: BlendMode;
    public get blendMode(): BlendMode {
       if (this._subStruct && this._subStruct.enabled) {
@@ -292,6 +321,8 @@ export class RTRenderStruct2D implements IRenderStruct2D {
       this.renderUpdateMask = 0;
       this.globalAlpha = 1.0;
       this.alpha = 1.0;
+      this.colorTransformMul = _DefaultColorTransformMul;
+      this.colorTransformAdd = _DefaultColorTransformAdd;
       this.blendMode = BlendMode.invalid;
       this.enabled = true;
       this.isRenderStruct = false;

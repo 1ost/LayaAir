@@ -30,6 +30,7 @@ export class PostProcess2D extends EventDispatcher {
       Effect2DShaderInit.colorEffect2DShaderInit();
       Effect2DShaderInit.blurEffect2DShaderInit();
       Effect2DShaderInit.glow2DShaderInit();
+      Effect2DShaderInit.flashGradientFilter2DShaderInit();
    }
 
    /**

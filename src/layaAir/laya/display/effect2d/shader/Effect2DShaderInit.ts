@@ -5,6 +5,8 @@ import ColorEffect2DVS from "./ColorEffect2D.vs"
 import ColorEffect2DFS from "./ColorEffect2D.fs"
 import GlowEffect2DVS from "./GlowEffect2D.vs"
 import GlowEffect2DFS from "./GlowEffect2D.fs"
+import FlashGradientFilter2DVS from "./FlashGradientFilter2D.vs"
+import FlashGradientFilter2DFS from "./FlashGradientFilter2D.fs"
 import { ShaderDataType } from "../../../RenderDriver/DriverDesign/RenderDevice/ShaderData"
 import { RenderState } from "../../../RenderDriver/RenderModuleData/Design/RenderState"
 import { Shader3D, ShaderFeatureType } from "../../../RenderEngine/RenderShader/Shader3D"
@@ -77,6 +79,44 @@ export class Effect2DShaderInit {
         let subShader = new SubShader(attributeMap, uniformMap);
         shader.addSubShader(subShader);
         let blitPass = subShader.addShaderPass(GlowEffect2DVS, GlowEffect2DFS);
+        blitPass.statefirst = true;
+        blitPass.renderState.depthWrite = false;
+        blitPass.renderState.depthTest = RenderState.DEPTHTEST_OFF;
+        blitPass.renderState.blend = RenderState.BLEND_ENABLE_ALL;
+        blitPass.renderState.blendEquation = RenderState.BLENDEQUATION_ADD;
+        blitPass.renderState.srcBlend = RenderState.BLENDPARAM_ONE;
+        blitPass.renderState.dstBlend = RenderState.BLENDPARAM_ONE_MINUS_SRC_ALPHA;
+        blitPass.renderState.cull = RenderState.CULL_NONE;
+    }
+
+    static flashGradientFilter2DShaderInit() {
+        let attributeMap: { [name: string]: [number, ShaderDataType] } = {
+            "a_PositionTexcoord": [0, ShaderDataType.Vector4]
+        };
+
+        let uniformMap = {
+            "u_centerScale": ShaderDataType.Vector2,
+            "u_MainTex": ShaderDataType.Texture2D,
+            "u_filterInfo1": ShaderDataType.Vector4,
+            "u_filterInfo2": ShaderDataType.Vector4,
+            "u_filterFlags": ShaderDataType.Vector4,
+            "u_gradientInfo": ShaderDataType.Vector4,
+            "u_gradientRatios0": ShaderDataType.Vector4,
+            "u_gradientRatios1": ShaderDataType.Vector4,
+            "u_gradientColor0": ShaderDataType.Vector4,
+            "u_gradientColor1": ShaderDataType.Vector4,
+            "u_gradientColor2": ShaderDataType.Vector4,
+            "u_gradientColor3": ShaderDataType.Vector4,
+            "u_gradientColor4": ShaderDataType.Vector4,
+            "u_gradientColor5": ShaderDataType.Vector4,
+            "u_highlightColor": ShaderDataType.Vector4,
+            "u_shadowColor": ShaderDataType.Vector4
+        };
+        let shader = Shader3D.add("FlashGradientFilter2D");
+        shader.shaderType = ShaderFeatureType.PostProcess;
+        let subShader = new SubShader(attributeMap, uniformMap);
+        shader.addSubShader(subShader);
+        let blitPass = subShader.addShaderPass(FlashGradientFilter2DVS, FlashGradientFilter2DFS);
         blitPass.statefirst = true;
         blitPass.renderState.depthWrite = false;
         blitPass.renderState.depthTest = RenderState.DEPTHTEST_OFF;

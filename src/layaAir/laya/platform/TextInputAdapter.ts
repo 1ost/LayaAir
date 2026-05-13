@@ -25,6 +25,8 @@ export class TextInputAdapter {
     protected _enterEvent: Event;
     protected _lastTransform: { x: number, y: number, width: number, height: number, scaleX: number, scaleY: number };
     protected _beginFlag: number = 0;
+    protected _autoSizeWidth: number = 0;
+    protected _autoSizeHeight: number = 0;
 
     /**
      * If true, the input box will be displayed inline with the canvas.
@@ -129,6 +131,8 @@ export class TextInputAdapter {
         style.direction = Text.RightToLeft ? "rtl" : "";
 
         this.setPromptColor();
+        this.syncSelectableState();
+        this.syncAutoSize();
         this.syncTransform();
         if (this._editInline)
             ILaya.systemTimer.frameLoop(1, this, this.syncTransform);
@@ -138,8 +142,10 @@ export class TextInputAdapter {
 
     //和onBegin区别在于，onBegin在touchBegin调用，这个在touchEnd调用
     protected onCanShowKeyboard(): Promise<void> {
-        if (this._visEle)
+        if (this._visEle) {
             this._visEle.focus();
+            this.enforceSelectionState();
+        }
         return Promise.resolve();
     }
 
@@ -150,6 +156,8 @@ export class TextInputAdapter {
         this._visEle.blur();
         this.hideInputElement();
         this._visEle = null;
+        this._autoSizeWidth = 0;
+        this._autoSizeHeight = 0;
 
         if (this._editInline)
             ILaya.systemTimer.clear(this, this.syncTransform);
@@ -163,12 +171,18 @@ export class TextInputAdapter {
     }
 
     setText(value: string) {
-        if (this._visEle)
+        if (this._visEle) {
             this._visEle.value = value;
+            this.syncAutoSize();
+            this.syncTransform();
+            this.enforceSelectionState();
+        }
     }
 
     setSelection(startIndex: number, endIndex: number): void {
         if (this._visEle) {
+            if (!this.target.selectable)
+                return;
             this._visEle.selectionStart = startIndex;
             this._visEle.selectionEnd = endIndex;
         }
@@ -241,6 +255,45 @@ export class TextInputAdapter {
             this._restrictPattern = null;
     }
 
+    protected syncSelectableState(): void {
+        if (!this._visEle)
+            return;
+
+        let selectable = this.target.selectable;
+        let style = this._visEle.style;
+        let value = selectable ? "text" : "none";
+        style.userSelect = value;
+        (<any>style).webkitUserSelect = value;
+        (<any>style).mozUserSelect = value;
+        (<any>style).msUserSelect = value;
+        if (!selectable)
+            this.enforceSelectionState();
+    }
+
+    protected enforceSelectionState(): void {
+        if (!this._visEle || this.target.selectable)
+            return;
+
+        let end = this._visEle.selectionEnd;
+        if (end == null || end < 0)
+            end = this._visEle.value.length;
+        this._visEle.selectionStart = end;
+        this._visEle.selectionEnd = end;
+    }
+
+    protected syncAutoSize(): void {
+        if (!this._visEle || !this.target.autoSize)
+            return;
+
+        let padding = this.target.padding;
+        let fallbackLineHeight = this.target.fontSize + this.target.leading;
+        let width = Math.max(1, Math.ceil(this._visEle.scrollWidth) + padding[1] + padding[3] + 2);
+        let height = Math.max(1, Math.ceil(Math.max(this._visEle.scrollHeight, fallbackLineHeight)) + padding[0] + padding[2] + 2);
+        this._autoSizeWidth = width;
+        this._autoSizeHeight = height;
+        this.target.size(width, height);
+    }
+
     protected validateText(str: string): string {
         if (str == null)
             str = "";
@@ -287,8 +340,15 @@ export class TextInputAdapter {
     protected getTargetTransform() {
         let padding = this.target.padding;
         let { x, y, scaleX, scaleY } = SpriteUtils.getTransformRelativeToWindow(this.target, padding[3], padding[0]);
-        let w = this.target.width - padding[1] - padding[3];
-        let h = this.target.height - padding[0] - padding[2];
+        let width = this.target.width;
+        let height = this.target.height;
+        if (this.target.autoSize && this._visEle) {
+            this.syncAutoSize();
+            width = this._autoSizeWidth || width;
+            height = this._autoSizeHeight || height;
+        }
+        let w = width - padding[1] - padding[3];
+        let h = height - padding[0] - padding[2];
 
         let t = this._lastTransform;
         if (x !== t.x || y !== t.y || w !== t.width || h !== t.height || scaleX !== t.scaleX || scaleY !== t.scaleY) {
@@ -343,6 +403,10 @@ export class TextInputAdapter {
 
         input.addEventListener('input', ev => !(<InputEvent>ev).isComposing && this.processInputting(ev));
         input.addEventListener("compositionend", ev => this.processInputting(ev));
+        input.addEventListener("select", ev => this.processSelectionChange(ev));
+        input.addEventListener("keyup", ev => this.processSelectionChange(ev));
+        input.addEventListener("mouseup", ev => this.processSelectionChange(ev));
+        input.addEventListener("keydown", ev => this.processSelectionKeydown(<KeyboardEvent>ev));
 
         input.addEventListener('mousemove', ev => this.stopEvent(ev), { passive: false });
         input.addEventListener('mousedown', ev => this.stopEvent(ev), { passive: false });
@@ -356,8 +420,26 @@ export class TextInputAdapter {
         let ele = <HTMLInputElement | HTMLTextAreaElement>ev.target;
         let value = this.validateText(ele.value);
         ele.value = value;
+        this.syncAutoSize();
+        this.syncTransform();
+        this.enforceSelectionState();
         if (this.updateTargetText(value))
             this.target.event(Event.INPUT);
+    }
+
+    protected processSelectionChange(ev: globalThis.Event): void {
+        if (!this.target || this.target.selectable)
+            return;
+        this.enforceSelectionState();
+    }
+
+    protected processSelectionKeydown(ev: KeyboardEvent): void {
+        if (!this.target || this.target.selectable)
+            return;
+        if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "a") {
+            ev.preventDefault();
+            this.enforceSelectionState();
+        }
     }
 
     protected stopEvent(e: any): void {

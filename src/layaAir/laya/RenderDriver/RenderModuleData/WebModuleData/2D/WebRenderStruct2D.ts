@@ -21,6 +21,9 @@ const _DefaultClipInfo: IClipInfo = {
    _updateFrame: 0
 }
 
+const _DefaultColorTransformMul = new Vector4(1, 1, 1, 1);
+const _DefaultColorTransformAdd = new Vector4(0, 0, 0, 0);
+
 export class WebGlobalRenderData implements I2DGlobalRenderData {
    cullRect: Vector4;
    renderLayerMask: number;
@@ -37,6 +40,7 @@ enum ChildrenUpdateType {
    Global = 16,
    Culling = 32,
    DcOptimize = 64,
+   ColorTransform = 128,
 }
 
 interface StructTransform {
@@ -52,6 +56,8 @@ type ParentData = {
    enableCulling: boolean;
    dcOptimize: boolean;
    globalAlpha: number;
+   globalColorTransformMul: Vector4;
+   globalColorTransformAdd: Vector4;
 }
 
 const _DefaultParentData: ParentData = {
@@ -62,6 +68,8 @@ const _DefaultParentData: ParentData = {
    enableCulling: false,
    dcOptimize: false,
    globalAlpha: 1,
+   globalColorTransformMul: _DefaultColorTransformMul,
+   globalColorTransformAdd: _DefaultColorTransformAdd,
 }
 
 export class WebRenderStruct2D implements IRenderStruct2D {
@@ -167,6 +175,50 @@ export class WebRenderStruct2D implements IRenderStruct2D {
       this.updateChildren(ChildrenUpdateType.Alpha);
    }
 
+   private _colorTransformMul: Vector4 = new Vector4(1, 1, 1, 1);
+
+   public get colorTransformMul(): Vector4 {
+      return this._colorTransformMul;
+   }
+
+   public set colorTransformMul(value: Vector4) {
+      const next = value ?? _DefaultColorTransformMul;
+      this._colorTransformMul.setValue(next.x, next.y, next.z, next.w);
+      this._updateGlobalColorTransform(
+         this._colorTransformMul,
+         this._colorTransformAdd,
+         this.parent ? this.parent.globalColorTransformMul : _DefaultColorTransformMul,
+         this.parent ? this.parent.globalColorTransformAdd : _DefaultColorTransformAdd,
+      );
+      this.updateChildren(ChildrenUpdateType.ColorTransform);
+   }
+
+   private _colorTransformAdd: Vector4 = new Vector4(0, 0, 0, 0);
+
+   public get colorTransformAdd(): Vector4 {
+      return this._colorTransformAdd;
+   }
+
+   public set colorTransformAdd(value: Vector4) {
+      const next = value ?? _DefaultColorTransformAdd;
+      this._colorTransformAdd.setValue(next.x, next.y, next.z, next.w);
+      this._updateGlobalColorTransform(
+         this._colorTransformMul,
+         this._colorTransformAdd,
+         this.parent ? this.parent.globalColorTransformMul : _DefaultColorTransformMul,
+         this.parent ? this.parent.globalColorTransformAdd : _DefaultColorTransformAdd,
+      );
+      this.updateChildren(ChildrenUpdateType.ColorTransform);
+   }
+
+   public get globalColorTransformMul(): Vector4 {
+      return this._currentData.globalColorTransformMul;
+   }
+
+   public get globalColorTransformAdd(): Vector4 {
+      return this._currentData.globalColorTransformAdd;
+   }
+
    /** @internal 最特殊，需要最后一个处理混合 */
    private _blendMode: BlendMode = BlendMode.invalid;
 
@@ -185,6 +237,8 @@ export class WebRenderStruct2D implements IRenderStruct2D {
 
    /** @internal */
    needUploadAlpha = true;
+   /** @internal */
+   needUploadColorTransform = true;
 
    /** 是否启动 */
    enabled: boolean = true;
@@ -296,6 +350,10 @@ export class WebRenderStruct2D implements IRenderStruct2D {
                updateFlag |= ChildrenUpdateType.Alpha;
             }
 
+            if (this._hasInheritedColorTransform(parentData)) {
+               updateFlag |= ChildrenUpdateType.ColorTransform;
+            }
+
             if (!this._globalRenderData && parentData.globalRenderData) {
                updateFlag |= ChildrenUpdateType.Global;
             }
@@ -313,6 +371,7 @@ export class WebRenderStruct2D implements IRenderStruct2D {
             this._blendMode = BlendMode.invalid;
             this._currentData = _DefaultParentData;
             value.needUploadAlpha = true;
+            value.needUploadColorTransform = true;
 
          } else if (this._subStruct) {
 
@@ -322,6 +381,10 @@ export class WebRenderStruct2D implements IRenderStruct2D {
 
             if (parentData.globalAlpha !== 1) {
                updateFlag |= ChildrenUpdateType.Alpha;
+            }
+
+            if (this._hasInheritedColorTransform(parentData)) {
+               updateFlag |= ChildrenUpdateType.ColorTransform;
             }
 
             if (!this._clipInfo && parentData.clipInfo) { 
@@ -519,6 +582,53 @@ export class WebRenderStruct2D implements IRenderStruct2D {
       // }
    }
 
+   private _ensureParentColorTransformStorage(): void {
+      if (this._parentData.globalColorTransformMul === _DefaultColorTransformMul) {
+         this._parentData.globalColorTransformMul = new Vector4(1, 1, 1, 1);
+      }
+      if (this._parentData.globalColorTransformAdd === _DefaultColorTransformAdd) {
+         this._parentData.globalColorTransformAdd = new Vector4(0, 0, 0, 0);
+      }
+   }
+
+   private _updateGlobalColorTransform(
+      localMul: Vector4,
+      localAdd: Vector4,
+      parentMul: Vector4 = _DefaultColorTransformMul,
+      parentAdd: Vector4 = _DefaultColorTransformAdd,
+   ): void {
+      this._ensureParentColorTransformStorage();
+      const globalMul = this._parentData.globalColorTransformMul;
+      const globalAdd = this._parentData.globalColorTransformAdd;
+      globalMul.setValue(
+         parentMul.x * localMul.x,
+         parentMul.y * localMul.y,
+         parentMul.z * localMul.z,
+         parentMul.w * localMul.w,
+      );
+      globalAdd.setValue(
+         parentMul.x * localAdd.x + parentAdd.x,
+         parentMul.y * localAdd.y + parentAdd.y,
+         parentMul.z * localAdd.z + parentAdd.z,
+         parentMul.w * localAdd.w + parentAdd.w,
+      );
+   }
+
+   private _hasInheritedColorTransform(parentData: ParentData): boolean {
+      return (
+         parentData.globalColorTransformMul !== _DefaultColorTransformMul ||
+         parentData.globalColorTransformAdd !== _DefaultColorTransformAdd ||
+         parentData.globalColorTransformMul.x !== 1 ||
+         parentData.globalColorTransformMul.y !== 1 ||
+         parentData.globalColorTransformMul.z !== 1 ||
+         parentData.globalColorTransformMul.w !== 1 ||
+         parentData.globalColorTransformAdd.x !== 0 ||
+         parentData.globalColorTransformAdd.y !== 0 ||
+         parentData.globalColorTransformAdd.z !== 0 ||
+         parentData.globalColorTransformAdd.w !== 0
+      );
+   }
+
    private _updateBlendMode(blendMode: BlendMode): void {
       if (this._subStruct && this._subStruct.enabled) {
          this._subStruct._blendMode = blendMode;
@@ -534,9 +644,10 @@ export class WebRenderStruct2D implements IRenderStruct2D {
    private updateChildren(type: ChildrenUpdateType): void {
       if (type == ChildrenUpdateType.None) return;
       let info: IClipInfo, blendMode: BlendMode, alpha: number;
+      let colorTransformMul: Vector4, colorTransformAdd: Vector4;
       let priority: number = 0, pass: WebRender2DPass = null, enableCulling: boolean = false, dcOptimize: boolean = false;
       let globalShaderData: ShaderData = null, globalRenderData: WebGlobalRenderData = null;
-      let updateBlend = false, updateClip = false, updateAlpha = false, updatePass = false, updateGlobal = false, updateCulling = false, updateDcOptimize = false;
+      let updateBlend = false, updateClip = false, updateAlpha = false, updateColorTransform = false, updatePass = false, updateGlobal = false, updateCulling = false, updateDcOptimize = false;
 
       if (type & ChildrenUpdateType.Clip) {
          info = this.getClipInfo();
@@ -559,6 +670,16 @@ export class WebRenderStruct2D implements IRenderStruct2D {
             this._subStruct.needUploadAlpha = true;
          }
          updateAlpha = true;
+      }
+
+      if (type & ChildrenUpdateType.ColorTransform) {
+         colorTransformMul = this.globalColorTransformMul;
+         colorTransformAdd = this.globalColorTransformAdd;
+         this.needUploadColorTransform = true;
+         if (this._subStruct) {
+            this._subStruct.needUploadColorTransform = true;
+         }
+         updateColorTransform = true;
       }
 
       if (type & ChildrenUpdateType.Pass) {
@@ -603,6 +724,16 @@ export class WebRenderStruct2D implements IRenderStruct2D {
 
          if (updateAlpha) {
             child._updateGlobalAlpha(child.alpha , alpha);
+            updateChild = true;
+         }
+
+         if (updateColorTransform) {
+            child._updateGlobalColorTransform(
+               child.colorTransformMul,
+               child.colorTransformAdd,
+               colorTransformMul,
+               colorTransformAdd,
+            );
             updateChild = true;
          }
 
@@ -660,6 +791,12 @@ export class WebRenderStruct2D implements IRenderStruct2D {
       childParentData.blendMode = this.blendMode;
       child._setBlendMode();
       child._updateGlobalAlpha(child.alpha , this.globalAlpha);
+      child._updateGlobalColorTransform(
+         child.colorTransformMul,
+         child.colorTransformAdd,
+         this.globalColorTransformMul,
+         this.globalColorTransformAdd,
+      );
       let parentPass = this.pass;
 
       childParentData.pass = parentPass;
@@ -698,6 +835,7 @@ export class WebRenderStruct2D implements IRenderStruct2D {
          childParentData.clipInfo = null;
          childParentData.blendMode = BlendMode.invalid;
          child._updateGlobalAlpha(child._alpha);
+         child._updateGlobalColorTransform(child.colorTransformMul, child.colorTransformAdd);
          childParentData.globalRenderData = null;
          child._updateGlobalShaderData();
          childParentData.enableCulling = false;
