@@ -1,17 +1,27 @@
 import {
     SwfCharacter,
     SwfColorTransformWithAlpha,
+    SwfCsmTextSettings,
     SwfDefineBitsJpeg,
     SwfDefineBitsLossless,
     SwfDefineEditText,
+    SwfDefineFont,
+    SwfDefineFontInfo,
+    SwfDefineFontName,
+    SwfDefineScalingGrid,
     SwfDefineShape,
     SwfDefineSprite,
+    SwfDefineText,
     SwfExportAsset,
     SwfFillStyle,
     SwfFileAttributes,
     SwfFilter,
+    SwfFontAlignZones,
+    SwfFontGlyph,
+    SwfFontZoneRecord,
     SwfGradientRecord,
     SwfHeader,
+    SwfJpegTables,
     SwfLineStyle,
     SwfMatrix,
     SwfMovie,
@@ -95,6 +105,7 @@ class SwfTagParser {
     readonly characters: Map<number, SwfCharacter> = new Map();
     readonly exports: SwfExportAsset[] = [];
     readonly symbolClasses: SwfSymbolClass[] = [];
+    jpegTables?: Uint8Array;
 
     parseTags(reader: SwfDataReader, end: number): SwfTag[] {
         const tags: SwfTag[] = [];
@@ -141,6 +152,15 @@ class SwfTagParser {
                 return parseRemoveObject(reader, tag.code);
             case 20:
                 return this.rememberCharacter(parseDefineBitsLossless(reader, false));
+            case 6:
+                return this.rememberCharacter(parseDefineBitsJpeg(reader, this.jpegTables));
+            case 8:
+                return this.parseJpegTables(reader);
+            case 10:
+                return this.rememberCharacter(parseDefineFont(reader));
+            case 11:
+            case 33:
+                return this.rememberCharacter(parseDefineText(reader, tag.code));
             case 21:
                 return this.rememberCharacter(parseDefineBitsJpeg2(reader));
             case 36:
@@ -160,16 +180,30 @@ class SwfTagParser {
                 return parseRemoveObject(reader, tag.code);
             case 37:
                 return this.rememberCharacter(parseDefineEditText(reader));
+            case 13:
+            case 62:
+                return this.parseDefineFontInfo(reader, tag.code);
             case 39:
                 return this.rememberCharacter(this.parseDefineSprite(reader));
+            case 48:
+            case 75:
+                return this.rememberCharacter(parseDefineFont2Or3(reader, tag.code));
             case 56:
                 return this.parseExportAssets(reader);
             case 69:
                 return parseFileAttributes(reader);
+            case 73:
+                return this.parseDefineFontAlignZones(reader);
+            case 74:
+                return this.parseCsmTextSettings(reader);
             case 70:
                 return parsePlaceObject3(reader, tag.code);
             case 76:
                 return this.parseSymbolClass(reader);
+            case 78:
+                return this.parseDefineScalingGrid(reader);
+            case 88:
+                return this.parseDefineFontName(reader);
             default:
                 return undefined;
         }
@@ -229,6 +263,98 @@ class SwfTagParser {
         this.symbolClasses.push(...symbols);
         return symbols;
     }
+
+    private parseJpegTables(reader: SwfDataReader): SwfJpegTables {
+        const jpegData = reader.readRemaining();
+        this.jpegTables = jpegData;
+        return { jpegData };
+    }
+
+    private parseDefineFontAlignZones(reader: SwfDataReader): SwfFontAlignZones {
+        const fontId = reader.readUI16();
+        const packed = reader.readUI8();
+        const zones: SwfFontZoneRecord[] = [];
+        const font = this.characters.get(fontId) as SwfDefineFont | undefined;
+        const glyphCount = font?.glyphCount ?? 0;
+        for (let glyph = 0; glyph < glyphCount && reader.pos < reader.length; glyph++) {
+            const count = reader.readUI8();
+            const data: { alignmentCoordinate: number; range: number }[] = [];
+            for (let index = 0; index < count; index++) {
+                data.push({
+                    alignmentCoordinate: reader.readUI16() / 65536,
+                    range: reader.readUI16() / 65536
+                });
+            }
+            const flags = reader.readUI8();
+            zones.push({
+                data,
+                maskX: !!(flags & 0x01),
+                maskY: !!(flags & 0x02)
+            });
+        }
+        const alignZones = {
+            fontId,
+            csmTableHint: packed >> 6,
+            zones
+        };
+        if (font) {
+            font.alignZones = alignZones;
+        }
+        return alignZones;
+    }
+
+    private parseDefineFontInfo(reader: SwfDataReader, tagCode: number): SwfDefineFontInfo {
+        const fontInfo = parseDefineFontInfo(reader, tagCode);
+        const font = this.characters.get(fontInfo.fontId) as SwfDefineFont | undefined;
+        if (font) {
+            font.fontName = fontInfo.fontName;
+            font.codes = fontInfo.codes;
+            font.fontInfo = fontInfo;
+            font.flags = {
+                ...font.flags,
+                shiftJis: fontInfo.flags.shiftJis,
+                smallText: fontInfo.flags.smallText,
+                ansi: fontInfo.flags.ansi,
+                italic: fontInfo.flags.italic,
+                bold: fontInfo.flags.bold,
+                wideCodes: fontInfo.flags.wideCodes
+            };
+            if (fontInfo.languageCode != null) {
+                font.languageCode = fontInfo.languageCode;
+            }
+        }
+        return fontInfo;
+    }
+
+    private parseCsmTextSettings(reader: SwfDataReader): SwfCsmTextSettings {
+        const csmTextSettings = parseCsmTextSettings(reader);
+        const character = this.characters.get(csmTextSettings.textId) as SwfDefineText | SwfDefineEditText | undefined;
+        if (character && ("records" in character || "variableName" in character)) {
+            character.csmTextSettings = csmTextSettings;
+        }
+        return csmTextSettings;
+    }
+
+    private parseDefineScalingGrid(reader: SwfDataReader): SwfDefineScalingGrid {
+        const scalingGrid = parseDefineScalingGrid(reader);
+        const character = this.characters.get(scalingGrid.characterId) as SwfCharacter | undefined;
+        if (character) {
+            (character as any).scalingGrid = scalingGrid;
+        }
+        return scalingGrid;
+    }
+
+    private parseDefineFontName(reader: SwfDataReader): SwfDefineFontName {
+        const fontId = reader.readUI16();
+        const fontName = reader.readString();
+        const fontCopyright = reader.readString();
+        const font = this.characters.get(fontId) as SwfDefineFont | undefined;
+        if (font) {
+            font.fontDisplayName = fontName;
+            font.fontCopyright = fontCopyright;
+        }
+        return { fontId, fontName, fontCopyright };
+    }
 }
 
 function parseFileAttributes(reader: SwfDataReader): SwfFileAttributes {
@@ -242,6 +368,16 @@ function parseFileAttributes(reader: SwfDataReader): SwfFileAttributes {
         swfRelativeUrls: !!(flags & 0x800),
         useNetwork: !!(flags & 0x1000),
         rawFlags: flags
+    };
+}
+
+function parseDefineBitsJpeg(reader: SwfDataReader, jpegTables: Uint8Array | undefined): SwfDefineBitsJpeg {
+    const characterId = reader.readUI16();
+    return {
+        characterId,
+        imageData: reader.readRemaining(),
+        jpegTables,
+        requiresJpegTables: true
     };
 }
 
@@ -338,6 +474,25 @@ function parseDefineShape(reader: SwfDataReader, tagCode: number): SwfDefineShap
 function parseShapeWithStyle(reader: SwfDataReader, tagCode: number): { fillStyles: SwfFillStyle[]; lineStyles: SwfLineStyle[]; paths: SwfShapePath[] } {
     const fillStyles = parseFillStyleArray(reader, tagCode);
     const lineStyles = parseLineStyleArray(reader, tagCode);
+    const paths = parseShapeRecords(reader, tagCode, fillStyles, lineStyles, true);
+    return { fillStyles, lineStyles, paths };
+}
+
+function parseGlyphShape(bytes: Uint8Array): SwfShapePath[] {
+    if (bytes.length === 0) {
+        return [];
+    }
+    const reader = new SwfDataReader(bytes);
+    return parseShapeRecords(reader, 75, [], [], false);
+}
+
+function parseShapeRecords(
+    reader: SwfDataReader,
+    tagCode: number,
+    fillStyles: SwfFillStyle[],
+    lineStyles: SwfLineStyle[],
+    allowNewStyles: boolean
+): SwfShapePath[] {
     const bits = new SwfBitReader(reader.bytes, reader.pos);
     let fillBits = bits.readUB(4);
     let lineBits = bits.readUB(4);
@@ -460,6 +615,9 @@ function parseShapeWithStyle(reader: SwfDataReader, tagCode: number): { fillStyl
             lineStyle = bits.readUB(lineBits);
         }
         if (flags & 0x10) {
+            if (!allowNewStyles) {
+                throw new Error("Unsupported SWF glyph SHAPE record with new styles.");
+            }
             bits.align();
             reader.pos = bits.bytePos;
             fillStyles.push(...parseFillStyleArray(reader, tagCode));
@@ -476,7 +634,7 @@ function parseShapeWithStyle(reader: SwfDataReader, tagCode: number): { fillStyl
 
     bits.align();
     reader.pos = bits.bytePos;
-    return { fillStyles, lineStyles, paths };
+    return paths;
 }
 
 function parseFillStyleArray(reader: SwfDataReader, tagCode: number): SwfFillStyle[] {
@@ -500,6 +658,11 @@ function parseFillStyle(reader: SwfDataReader, tagCode: number, index: number): 
         case 0x13:
             style.gradientMatrix = parseMatrix(reader);
             style.gradientRecords = parseGradientRecords(reader, tagCode);
+            style.spreadMode = (style.gradientRecords as any).spreadMode;
+            style.interpolationMode = (style.gradientRecords as any).interpolationMode;
+            if (type === 0x13) {
+                style.focalPoint = reader.readFixed8();
+            }
             break;
         case 0x40:
         case 0x41:
@@ -516,6 +679,8 @@ function parseFillStyle(reader: SwfDataReader, tagCode: number, index: number): 
 
 function parseGradientRecords(reader: SwfDataReader, tagCode: number): SwfGradientRecord[] {
     const packed = reader.readUI8();
+    const spreadMode = (packed >> 6) & 0x03;
+    const interpolationMode = (packed >> 4) & 0x03;
     const count = packed & 0x0f;
     const records: SwfGradientRecord[] = [];
     for (let index = 0; index < count; index++) {
@@ -524,6 +689,8 @@ function parseGradientRecords(reader: SwfDataReader, tagCode: number): SwfGradie
             color: tagCode >= 32 ? parseRgba(reader) : rgbToRgba(parseRgb(reader))
         });
     }
+    (records as any).spreadMode = spreadMode;
+    (records as any).interpolationMode = interpolationMode;
     return records;
 }
 
@@ -657,6 +824,266 @@ function parseDefineEditText(reader: SwfDataReader): SwfDefineEditText {
         editText.initialText = reader.readString();
     }
     return editText;
+}
+
+function parseDefineFont(reader: SwfDataReader): SwfDefineFont {
+    const characterId = reader.readUI16();
+    const offsetTableStart = reader.pos;
+    if (reader.pos >= reader.length) {
+        return createDefineFont1(characterId, [], 0, reader.bytes.subarray(reader.pos, reader.pos), []);
+    }
+    const firstOffset = reader.readUI16();
+    if ((firstOffset & 1) !== 0) {
+        throw new Error(`Invalid DefineFont glyph offset table for font ${characterId}.`);
+    }
+    const glyphCount = firstOffset / 2;
+    const glyphOffsets = [firstOffset];
+    for (let index = 1; index < glyphCount; index++) {
+        glyphOffsets.push(reader.readUI16());
+    }
+    const glyphShapeStart = offsetTableStart + glyphCount * 2;
+    const glyphShapeEnd = reader.length;
+    const glyphShapeBytes = reader.bytes.subarray(glyphShapeStart, glyphShapeEnd);
+    const glyphs: SwfFontGlyph[] = [];
+    for (let index = 0; index < glyphCount; index++) {
+        const start = offsetTableStart + glyphOffsets[index];
+        const end = index + 1 < glyphCount ? offsetTableStart + glyphOffsets[index + 1] : glyphShapeEnd;
+        if (start < glyphShapeStart || end < start || end > glyphShapeEnd) {
+            throw new Error(`Invalid DefineFont glyph offset ${index} for font ${characterId}.`);
+        }
+        const shapeBytes = reader.bytes.subarray(start, end);
+        glyphs.push({
+            index,
+            shapeBytes,
+            paths: parseGlyphShape(shapeBytes)
+        });
+    }
+    reader.pos = reader.length;
+    return createDefineFont1(characterId, glyphOffsets, glyphShapeEnd - offsetTableStart, glyphShapeBytes, glyphs);
+}
+
+function createDefineFont1(
+    characterId: number,
+    glyphOffsets: number[],
+    codeTableOffset: number,
+    glyphShapeBytes: Uint8Array,
+    glyphs: SwfFontGlyph[]
+): SwfDefineFont {
+    return {
+        characterId,
+        tagCode: 10,
+        flags: {
+            hasLayout: false,
+            shiftJis: false,
+            smallText: false,
+            ansi: false,
+            wideOffsets: false,
+            wideCodes: false,
+            italic: false,
+            bold: false
+        },
+        languageCode: 0,
+        fontName: "",
+        glyphCount: glyphOffsets.length,
+        glyphOffsets,
+        codeTableOffset,
+        glyphShapeBytes,
+        glyphs,
+        codes: []
+    };
+}
+
+function parseDefineFontInfo(reader: SwfDataReader, tagCode: number): SwfDefineFontInfo {
+    const fontId = reader.readUI16();
+    const fontNameLength = reader.readUI8();
+    const fontName = decodeString(reader.readBytes(fontNameLength)).replace(/\0+$/g, "");
+    const flagsByte = reader.readUI8();
+    const flags = {
+        smallText: !!(flagsByte & 0x20),
+        shiftJis: !!(flagsByte & 0x10),
+        ansi: !!(flagsByte & 0x08),
+        italic: !!(flagsByte & 0x04),
+        bold: !!(flagsByte & 0x02),
+        wideCodes: !!(flagsByte & 0x01)
+    };
+    const languageCode = tagCode === 62 ? reader.readUI8() : undefined;
+    const codes: number[] = [];
+    while (reader.pos < reader.length) {
+        codes.push(flags.wideCodes ? reader.readUI16() : reader.readUI8());
+    }
+    return { fontId, tagCode, fontName, flags, languageCode, codes };
+}
+
+function parseCsmTextSettings(reader: SwfDataReader): SwfCsmTextSettings {
+    const textId = reader.readUI16();
+    const packed = reader.readUI8();
+    const thickness = reader.readFixed();
+    const sharpness = reader.readFixed();
+    if (reader.pos < reader.length) {
+        reader.skip(1);
+    }
+    return {
+        textId,
+        useFlashType: packed >> 6,
+        gridFit: (packed >> 3) & 0x07,
+        thickness,
+        sharpness
+    };
+}
+
+function parseDefineScalingGrid(reader: SwfDataReader): SwfDefineScalingGrid {
+    return {
+        characterId: reader.readUI16(),
+        splitter: parseRect(reader)
+    };
+}
+
+function parseDefineText(reader: SwfDataReader, tagCode: number): SwfDefineText {
+    const characterId = reader.readUI16();
+    const bounds = parseRect(reader);
+    const matrix = parseMatrix(reader);
+    const glyphBits = reader.readUI8();
+    const advanceBits = reader.readUI8();
+    const records: import("./SwfTypes").SwfTextRecord[] = [];
+    let currentFontId: number | undefined;
+    let currentColor: SwfRgba | undefined;
+    let currentXOffsetTwips: number | undefined;
+    let currentYOffsetTwips: number | undefined;
+    let currentTextHeightTwips: number | undefined;
+    while (reader.pos < reader.length) {
+        const flags = reader.readUI8();
+        if (flags === 0) {
+            break;
+        }
+        if ((flags & 0x80) === 0) {
+            throw new Error(`Unsupported SWF text glyph record continuation byte 0x${flags.toString(16)}.`);
+        }
+        if (flags & 0x08) {
+            currentFontId = reader.readUI16();
+        }
+        if (flags & 0x04) {
+            currentColor = tagCode === 33 ? parseRgba(reader) : rgbToRgba(parseRgb(reader));
+        }
+        if (flags & 0x01) {
+            currentXOffsetTwips = reader.readSI16();
+        }
+        if (flags & 0x02) {
+            currentYOffsetTwips = reader.readSI16();
+        }
+        if (flags & 0x08) {
+            currentTextHeightTwips = reader.readUI16();
+        }
+        const glyphCount = reader.readUI8();
+        const bits = new SwfBitReader(reader.bytes, reader.pos);
+        const glyphs: { glyphIndex: number; advanceTwips: number }[] = [];
+        for (let index = 0; index < glyphCount; index++) {
+            glyphs.push({
+                glyphIndex: bits.readUB(glyphBits),
+                advanceTwips: bits.readSB(advanceBits)
+            });
+        }
+        bits.align();
+        reader.pos = bits.bytePos;
+        records.push({
+            fontId: currentFontId,
+            textColor: currentColor,
+            xOffsetTwips: currentXOffsetTwips,
+            yOffsetTwips: currentYOffsetTwips,
+            textHeightTwips: currentTextHeightTwips,
+            glyphs
+        });
+    }
+    return { characterId, tagCode, bounds, matrix, glyphBits, advanceBits, records };
+}
+
+function parseDefineFont2Or3(reader: SwfDataReader, tagCode: number): SwfDefineFont {
+    const characterId = reader.readUI16();
+    const flagsByte = reader.readUI8();
+    const flags = {
+        hasLayout: !!(flagsByte & 0x80),
+        shiftJis: !!(flagsByte & 0x40),
+        smallText: !!(flagsByte & 0x20),
+        ansi: !!(flagsByte & 0x10),
+        wideOffsets: !!(flagsByte & 0x08),
+        wideCodes: !!(flagsByte & 0x04),
+        italic: !!(flagsByte & 0x02),
+        bold: !!(flagsByte & 0x01)
+    };
+    const languageCode = reader.readUI8();
+    const fontNameLength = reader.readUI8();
+    const fontName = decodeString(reader.readBytes(fontNameLength)).replace(/\0+$/g, "");
+    const glyphCount = reader.readUI16();
+    const offsetTableStart = reader.pos;
+    const glyphOffsets: number[] = [];
+    let codeTableOffset = 0;
+    if (glyphCount > 0) {
+        for (let index = 0; index < glyphCount; index++) {
+            glyphOffsets.push(flags.wideOffsets ? reader.readUI32() : reader.readUI16());
+        }
+        codeTableOffset = flags.wideOffsets ? reader.readUI32() : reader.readUI16();
+    }
+    const glyphShapeStart = reader.pos;
+    const codeTableStart = offsetTableStart + codeTableOffset;
+    if (codeTableStart < glyphShapeStart || codeTableStart > reader.length) {
+        throw new Error(`Invalid DefineFont${tagCode === 75 ? "3" : "2"} code table offset for font ${characterId}.`);
+    }
+    const glyphShapeBytes = reader.bytes.subarray(glyphShapeStart, codeTableStart);
+    const glyphs: SwfFontGlyph[] = [];
+    for (let index = 0; index < glyphCount; index++) {
+        const start = offsetTableStart + glyphOffsets[index];
+        const end = index + 1 < glyphCount ? offsetTableStart + glyphOffsets[index + 1] : codeTableStart;
+        if (start < glyphShapeStart || end < start || end > codeTableStart) {
+            throw new Error(`Invalid DefineFont${tagCode === 75 ? "3" : "2"} glyph offset ${index} for font ${characterId}.`);
+        }
+        const shapeBytes = reader.bytes.subarray(start, end);
+        glyphs.push({
+            index,
+            shapeBytes,
+            paths: parseGlyphShape(shapeBytes)
+        });
+    }
+    reader.pos = codeTableStart;
+    const codes: number[] = [];
+    for (let index = 0; index < glyphCount; index++) {
+        codes.push(flags.wideCodes ? reader.readUI16() : reader.readUI8());
+    }
+    const font: SwfDefineFont = {
+        characterId,
+        tagCode,
+        flags,
+        languageCode,
+        fontName,
+        glyphCount,
+        glyphOffsets,
+        codeTableOffset,
+        glyphShapeBytes,
+        glyphs,
+        codes
+    };
+    if (flags.hasLayout) {
+        const advancesTwips: number[] = [];
+        const bounds: SwfRect[] = [];
+        const ascentTwips = reader.readSI16();
+        const descentTwips = reader.readSI16();
+        const leadingTwips = reader.readSI16();
+        for (let index = 0; index < glyphCount; index++) {
+            advancesTwips.push(reader.readSI16());
+        }
+        for (let index = 0; index < glyphCount; index++) {
+            bounds.push(parseRect(reader));
+        }
+        const kerningCount = reader.readUI16();
+        const kerning: import("./SwfTypes").SwfKerningRecord[] = [];
+        for (let index = 0; index < kerningCount; index++) {
+            kerning.push({
+                code1: flags.wideCodes ? reader.readUI16() : reader.readUI8(),
+                code2: flags.wideCodes ? reader.readUI16() : reader.readUI8(),
+                adjustmentTwips: reader.readSI16()
+            });
+        }
+        font.layout = { ascentTwips, descentTwips, leadingTwips, advancesTwips, bounds, kerning };
+    }
+    return font;
 }
 
 function parsePlaceObject2(reader: SwfDataReader, tagCode: number): SwfPlaceObject {
@@ -1119,6 +1546,13 @@ class SwfDataReader {
     readRemaining(): Uint8Array {
         const value = this.bytes.subarray(this.pos);
         this.pos = this.bytes.length;
+        return value;
+    }
+
+    readBytes(length: number): Uint8Array {
+        this.require(length);
+        const value = this.bytes.subarray(this.pos, this.pos + length);
+        this.pos += length;
         return value;
     }
 

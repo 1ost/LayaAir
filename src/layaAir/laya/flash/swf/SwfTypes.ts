@@ -55,6 +55,9 @@ export interface SwfFillStyle {
     bitmapId?: number;
     bitmapMatrix?: SwfMatrix;
     gradientMatrix?: SwfMatrix;
+    spreadMode?: number;
+    interpolationMode?: number;
+    focalPoint?: number;
     gradientRecords?: SwfGradientRecord[];
 }
 
@@ -218,6 +221,12 @@ export interface SwfDefineBitsJpeg {
     alphaData?: Uint8Array;
     alphaDataOffset?: number;
     deblockParam?: number;
+    jpegTables?: Uint8Array;
+    requiresJpegTables?: boolean;
+}
+
+export interface SwfJpegTables {
+    jpegData: Uint8Array;
 }
 
 export interface SwfDefineBitsLossless {
@@ -249,6 +258,123 @@ export interface SwfDefineEditText {
     };
     variableName: string;
     initialText?: string;
+    csmTextSettings?: SwfCsmTextSettings;
+}
+
+export interface SwfDefineFont {
+    characterId: number;
+    tagCode: number;
+    flags: {
+        hasLayout: boolean;
+        shiftJis: boolean;
+        smallText: boolean;
+        ansi: boolean;
+        wideOffsets: boolean;
+        wideCodes: boolean;
+        italic: boolean;
+        bold: boolean;
+    };
+    languageCode: number;
+    fontName: string;
+    glyphCount: number;
+    glyphOffsets: number[];
+    codeTableOffset: number;
+    glyphShapeBytes: Uint8Array;
+    glyphs: SwfFontGlyph[];
+    codes: number[];
+    layout?: {
+        ascentTwips: number;
+        descentTwips: number;
+        leadingTwips: number;
+        advancesTwips: number[];
+        bounds: SwfRect[];
+        kerning: SwfKerningRecord[];
+    };
+    alignZones?: SwfFontAlignZones;
+    fontDisplayName?: string;
+    fontCopyright?: string;
+    fontInfo?: SwfDefineFontInfo;
+    scalingGrid?: SwfDefineScalingGrid;
+}
+
+export interface SwfFontGlyph {
+    index: number;
+    shapeBytes: Uint8Array;
+    paths: SwfShapePath[];
+}
+
+export interface SwfKerningRecord {
+    code1: number;
+    code2: number;
+    adjustmentTwips: number;
+}
+
+export interface SwfFontAlignZones {
+    fontId: number;
+    csmTableHint: number;
+    zones: SwfFontZoneRecord[];
+}
+
+export interface SwfFontZoneRecord {
+    data: { alignmentCoordinate: number; range: number }[];
+    maskX: boolean;
+    maskY: boolean;
+}
+
+export interface SwfDefineFontName {
+    fontId: number;
+    fontName: string;
+    fontCopyright: string;
+}
+
+export interface SwfDefineText {
+    characterId: number;
+    tagCode: number;
+    bounds: SwfRect;
+    matrix: SwfMatrix;
+    glyphBits: number;
+    advanceBits: number;
+    records: SwfTextRecord[];
+    csmTextSettings?: SwfCsmTextSettings;
+    scalingGrid?: SwfDefineScalingGrid;
+}
+
+export interface SwfDefineFontInfo {
+    fontId: number;
+    tagCode: number;
+    fontName: string;
+    flags: {
+        smallText: boolean;
+        shiftJis: boolean;
+        ansi: boolean;
+        italic: boolean;
+        bold: boolean;
+        wideCodes: boolean;
+    };
+    languageCode?: number;
+    codes: number[];
+}
+
+export interface SwfCsmTextSettings {
+    textId: number;
+    useFlashType: number;
+    gridFit: number;
+    thickness: number;
+    sharpness: number;
+}
+
+export interface SwfDefineScalingGrid {
+    characterId: number;
+    splitter: SwfRect;
+}
+
+export interface SwfTextRecord {
+    fontId?: number;
+    textColor?: SwfRgba;
+    xOffsetTwips?: number;
+    yOffsetTwips?: number;
+    textHeightTwips?: number;
+    glyphs: { glyphIndex: number; advanceTwips: number }[];
 }
 
 export interface SwfDefineShape {
@@ -279,13 +405,23 @@ export type SwfParsedTag =
     | SwfDefineBitsJpeg
     | SwfDefineBitsLossless
     | SwfDefineEditText
-    | SwfDefineShape;
+    | SwfDefineFont
+    | SwfDefineText
+    | SwfFontAlignZones
+    | SwfDefineFontName
+    | SwfDefineShape
+    | SwfJpegTables
+    | SwfDefineFontInfo
+    | SwfCsmTextSettings
+    | SwfDefineScalingGrid;
 
 export type SwfCharacter =
     | SwfDefineSprite
     | SwfDefineBitsJpeg
     | SwfDefineBitsLossless
     | SwfDefineEditText
+    | SwfDefineFont
+    | SwfDefineText
     | SwfDefineShape;
 
 export class SwfMovie {

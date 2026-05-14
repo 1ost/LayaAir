@@ -456,6 +456,9 @@ export class GraphicsRunner {
                 case "arcTo":
                     this.arcTo(x + path[1], y + path[2], x + path[3], y + path[4], path[5]);
                     break;
+                case "quadraticCurveTo":
+                    this.quadraticCurveTo(x + path[1], y + path[2], x + path[3], y + path[4]);
+                    break;
                 case "closePath":
                     this.closePath();
                     break;
