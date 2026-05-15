@@ -1,21 +1,32 @@
 import {
     SwfCharacter,
+    SwfAvm1ActionRecord,
+    SwfAvm1ActionValue,
+    SwfButtonAction,
+    SwfButtonRecord,
+    SwfButtonStateName,
     SwfColorTransformWithAlpha,
     SwfCsmTextSettings,
     SwfDefineBitsJpeg,
     SwfDefineBitsLossless,
+    SwfDefineButton,
+    SwfDefineButtonSound,
     SwfDefineEditText,
     SwfDefineFont,
     SwfDefineFontInfo,
     SwfDefineFontName,
+    SwfDefineMorphShape,
     SwfDefineScalingGrid,
     SwfDefineShape,
     SwfDefineSprite,
     SwfDefineText,
+    SwfDoAction,
+    SwfDoInitAction,
     SwfExportAsset,
     SwfFillStyle,
     SwfFileAttributes,
     SwfFilter,
+    SwfFrameLabel,
     SwfFontAlignZones,
     SwfFontGlyph,
     SwfFontZoneRecord,
@@ -24,6 +35,9 @@ import {
     SwfJpegTables,
     SwfLineStyle,
     SwfMatrix,
+    SwfMorphFillStyle,
+    SwfMorphGradientRecord,
+    SwfMorphLineStyle,
     SwfMovie,
     SwfParsedTag,
     SwfPlaceObject,
@@ -34,6 +48,7 @@ import {
     SwfShapePath,
     SwfShapePoint,
     SwfShapeSegment,
+    SwfSoundInfo,
     SwfSymbolClass,
     SwfTag,
     SwfTagNames
@@ -92,11 +107,15 @@ export class SwfParser {
 
     private static async inflateCwsWithPlatform(compressedBody: Uint8Array, _expectedLength: number): Promise<Uint8Array> {
         const decompressionStream = (globalThis as any).DecompressionStream;
-        if (typeof decompressionStream !== "function" || typeof Blob !== "function" || typeof Response !== "function") {
+        if (typeof decompressionStream !== "function" || typeof Response !== "function") {
             throw new Error("CWS compressed SWF requires platform DecompressionStream support or a custom inflateCws option.");
         }
 
-        const stream = new Blob([compressedBody]).stream().pipeThrough(new decompressionStream("deflate"));
+        const body = new Response(compressedBody).body;
+        if (body == null) {
+            throw new Error("CWS compressed SWF could not create a byte stream.");
+        }
+        const stream = body.pipeThrough(new decompressionStream("deflate"));
         return new Uint8Array(await new Response(stream).arrayBuffer());
     }
 }
@@ -146,6 +165,8 @@ class SwfTagParser {
         switch (tag.code) {
             case 9:
                 return parseRgb(reader);
+            case 12:
+                return parseDoAction(reader);
             case 4:
                 return parsePlaceObject(reader, tag.code);
             case 5:
@@ -158,6 +179,11 @@ class SwfTagParser {
                 return this.parseJpegTables(reader);
             case 10:
                 return this.rememberCharacter(parseDefineFont(reader));
+            case 7:
+            case 34:
+                return this.rememberCharacter(parseDefineButton(reader, tag.code));
+            case 17:
+                return this.parseDefineButtonSound(reader);
             case 11:
             case 33:
                 return this.rememberCharacter(parseDefineText(reader, tag.code));
@@ -185,11 +211,18 @@ class SwfTagParser {
                 return this.parseDefineFontInfo(reader, tag.code);
             case 39:
                 return this.rememberCharacter(this.parseDefineSprite(reader));
+            case 43:
+                return parseFrameLabel(reader);
+            case 46:
+            case 84:
+                return this.rememberCharacter(parseDefineMorphShape(reader, tag.code));
             case 48:
             case 75:
                 return this.rememberCharacter(parseDefineFont2Or3(reader, tag.code));
             case 56:
                 return this.parseExportAssets(reader);
+            case 59:
+                return this.parseDoInitAction(reader);
             case 69:
                 return parseFileAttributes(reader);
             case 73:
@@ -200,10 +233,18 @@ class SwfTagParser {
                 return parsePlaceObject3(reader, tag.code);
             case 76:
                 return this.parseSymbolClass(reader);
+            case 77:
+                return parseMetadata(reader);
             case 78:
                 return this.parseDefineScalingGrid(reader);
+            case 82:
+                return parseDoAbc(reader);
+            case 86:
+                return parseDefineSceneAndFrameLabelData(reader);
             case 88:
                 return this.parseDefineFontName(reader);
+            case 23:
+                return this.parseDefineButtonCxform(reader);
             default:
                 return undefined;
         }
@@ -228,13 +269,23 @@ class SwfTagParser {
             }
         }
         const frames = buildTimelineFrames(tags);
+        const frameLabels = frames.flatMap(frame => frame.labels);
+        const frameLabelsByName = new Map<string, SwfFrameLabel>();
+        for (const label of frameLabels) {
+            if (!frameLabelsByName.has(label.name)) {
+                frameLabelsByName.set(label.name, label);
+            }
+        }
         return {
             characterId,
             frameCount,
             tags,
             placements,
             namedPlacements,
-            frames
+            frames,
+            frameLabels,
+            frameLabelsByName,
+            initActions: []
         };
     }
 
@@ -268,6 +319,41 @@ class SwfTagParser {
         const jpegData = reader.readRemaining();
         this.jpegTables = jpegData;
         return { jpegData };
+    }
+
+    private parseDoInitAction(reader: SwfDataReader): SwfDoInitAction {
+        const initAction = parseDoInitAction(reader);
+        const sprite = this.characters.get(initAction.spriteId) as SwfDefineSprite | undefined;
+        if (sprite && "tags" in sprite) {
+            sprite.initActions.push(initAction);
+        }
+        return initAction;
+    }
+
+    private parseDefineButtonSound(reader: SwfDataReader): SwfDefineButtonSound {
+        const buttonSound = parseDefineButtonSound(reader);
+        const button = this.characters.get(buttonSound.buttonId) as SwfDefineButton | undefined;
+        if (button && "statePlacements" in button) {
+            button.sounds = buttonSound;
+        }
+        return buttonSound;
+    }
+
+    private parseDefineButtonCxform(reader: SwfDataReader): { buttonId: number; colorTransform: SwfColorTransformWithAlpha } {
+        const buttonId = reader.readUI16();
+        const colorTransform = parseColorTransformNoAlpha(reader);
+        const button = this.characters.get(buttonId) as SwfDefineButton | undefined;
+        if (button && "statePlacements" in button) {
+            button.colorTransform = colorTransform;
+            for (const state of Object.keys(button.statePlacements) as SwfButtonStateName[]) {
+                button.statePlacements[state] = button.statePlacements[state].map(placement => ({
+                    ...placement,
+                    colorTransform: composeColorTransforms(placement.colorTransform, colorTransform)
+                }));
+            }
+            button.frames = buildButtonFrames(button.statePlacements);
+        }
+        return { buttonId, colorTransform };
     }
 
     private parseDefineFontAlignZones(reader: SwfDataReader): SwfFontAlignZones {
@@ -435,6 +521,241 @@ function parseDefineBitsLossless(reader: SwfDataReader, hasAlpha: boolean): SwfD
     };
 }
 
+function parseDefineButton(reader: SwfDataReader, tagCode: number): SwfDefineButton {
+    const characterId = reader.readUI16();
+    let trackAsMenu = false;
+    let actionOffset: number | undefined;
+    if (tagCode === 34) {
+        trackAsMenu = (reader.readUI8() & 0x01) !== 0;
+        actionOffset = reader.readUI16();
+    }
+    const records: SwfButtonRecord[] = [];
+    while (reader.pos < reader.length) {
+        const flags = reader.readUI8();
+        if (flags === 0) {
+            break;
+        }
+        records.push(parseButtonRecord(reader, tagCode, flags));
+    }
+    const actions = tagCode === 34 && actionOffset !== 0 ? parseButtonActions(reader) : [];
+    const statePlacements = buildButtonStatePlacements(tagCode, records);
+    const frames = buildButtonFrames(statePlacements);
+    const frameLabels = frames.flatMap(frame => frame.labels);
+    const frameLabelsByName = new Map<string, SwfFrameLabel>();
+    for (const label of frameLabels) {
+        frameLabelsByName.set(label.name, label);
+    }
+    return {
+        characterId,
+        tagCode,
+        trackAsMenu,
+        actionOffset,
+        records,
+        actions,
+        statePlacements,
+        frames,
+        frameLabels,
+        frameLabelsByName
+    };
+}
+
+function parseButtonRecord(reader: SwfDataReader, tagCode: number, flags: number): SwfButtonRecord {
+    const characterId = reader.readUI16();
+    const depth = reader.readUI16();
+    const matrix = parseMatrix(reader);
+    const record: SwfButtonRecord = {
+        tagCode,
+        characterId,
+        depth,
+        matrix,
+        states: {
+            up: !!(flags & 0x01),
+            over: !!(flags & 0x02),
+            down: !!(flags & 0x04),
+            hitTest: !!(flags & 0x08)
+        },
+        rawFlags: flags
+    };
+    if (tagCode === 34) {
+        record.colorTransform = parseColorTransformWithAlpha(reader);
+        if (flags & 0x10) {
+            record.filters = parseFilterList(reader);
+        }
+        if (flags & 0x20) {
+            record.blendMode = reader.readUI8();
+        }
+    }
+    return record;
+}
+
+function parseButtonActions(reader: SwfDataReader): SwfButtonAction[] {
+    const actions: SwfButtonAction[] = [];
+    while (reader.pos < reader.length) {
+        const actionStart = reader.pos;
+        const rawSize = reader.readUI16();
+        const rawConditionFlags = reader.readUI16();
+        const actionEnd = rawSize === 0
+            ? reader.length
+            : Math.min(reader.length, actionStart + 2 + rawSize);
+        const keyPress = (rawConditionFlags >> 9) & 0x7f;
+        const actionBytes = reader.readBytes(Math.max(0, actionEnd - reader.pos));
+        actions.push({
+            conditions: {
+                idleToOverDown: !!(rawConditionFlags & 0x0001),
+                outDownToIdle: !!(rawConditionFlags & 0x0002),
+                outDownToOverDown: !!(rawConditionFlags & 0x0004),
+                overDownToOutDown: !!(rawConditionFlags & 0x0008),
+                overDownToOverUp: !!(rawConditionFlags & 0x0010),
+                overUpToOverDown: !!(rawConditionFlags & 0x0020),
+                overUpToIdle: !!(rawConditionFlags & 0x0040),
+                idleToOverUp: !!(rawConditionFlags & 0x0080),
+                overDownToIdle: !!(rawConditionFlags & 0x0100)
+            },
+            keyPress,
+            actions: actionBytes,
+            decodedActions: decodeAvm1Actions(actionBytes),
+            rawConditionFlags,
+            rawSize
+        });
+        if (rawSize === 0) {
+            break;
+        }
+    }
+    return actions;
+}
+
+function parseDefineButtonSound(reader: SwfDataReader): SwfDefineButtonSound {
+    const buttonSound: SwfDefineButtonSound = {
+        buttonId: reader.readUI16()
+    };
+    const slots: (keyof Omit<SwfDefineButtonSound, "buttonId">)[] = [
+        "upToOver",
+        "overToUp",
+        "overToDown",
+        "downToOver"
+    ];
+    for (const slot of slots) {
+        const soundId = reader.readUI16();
+        if (soundId !== 0) {
+            buttonSound[slot] = {
+                soundId,
+                soundInfo: parseSoundInfo(reader)
+            };
+        }
+    }
+    return buttonSound;
+}
+
+function parseSoundInfo(reader: SwfDataReader): SwfSoundInfo {
+    const flags = reader.readUI8();
+    const soundInfo: SwfSoundInfo = {
+        syncStop: !!(flags & 0x20),
+        syncNoMultiple: !!(flags & 0x10),
+        hasEnvelope: !!(flags & 0x08),
+        hasLoops: !!(flags & 0x04),
+        hasOutPoint: !!(flags & 0x02),
+        hasInPoint: !!(flags & 0x01),
+        rawFlags: flags
+    };
+    if (soundInfo.hasInPoint) {
+        soundInfo.inPoint = reader.readUI32();
+    }
+    if (soundInfo.hasOutPoint) {
+        soundInfo.outPoint = reader.readUI32();
+    }
+    if (soundInfo.hasLoops) {
+        soundInfo.loopCount = reader.readUI16();
+    }
+    if (soundInfo.hasEnvelope) {
+        const count = reader.readUI8();
+        soundInfo.envelopeRecords = [];
+        for (let index = 0; index < count; index++) {
+            soundInfo.envelopeRecords.push({
+                position44: reader.readUI32(),
+                leftLevel: reader.readUI16(),
+                rightLevel: reader.readUI16()
+            });
+        }
+    }
+    return soundInfo;
+}
+
+function composeColorTransforms(
+    placement: SwfColorTransformWithAlpha | undefined,
+    button: SwfColorTransformWithAlpha
+): SwfColorTransformWithAlpha {
+    return {
+        ...button,
+        ...placement
+    };
+}
+
+function buildButtonStatePlacements(tagCode: number, records: SwfButtonRecord[]): Record<SwfButtonStateName, SwfPlaceObject[]> {
+    const statePlacements: Record<SwfButtonStateName, SwfPlaceObject[]> = {
+        up: [],
+        over: [],
+        down: [],
+        hit: []
+    };
+    for (const record of records) {
+        const placement: SwfPlaceObject = {
+            tagCode,
+            depth: record.depth,
+            characterId: record.characterId,
+            matrix: record.matrix,
+            colorTransform: record.colorTransform,
+            filters: record.filters,
+            blendMode: record.blendMode,
+            rawFlags: [record.rawFlags]
+        };
+        if (record.states.up) {
+            statePlacements.up.push({ ...placement, rawFlags: [...placement.rawFlags] });
+        }
+        if (record.states.over) {
+            statePlacements.over.push({ ...placement, rawFlags: [...placement.rawFlags] });
+        }
+        if (record.states.down) {
+            statePlacements.down.push({ ...placement, rawFlags: [...placement.rawFlags] });
+        }
+        if (record.states.hitTest) {
+            statePlacements.hit.push({ ...placement, rawFlags: [...placement.rawFlags] });
+        }
+    }
+    for (const state of Object.keys(statePlacements) as SwfButtonStateName[]) {
+        statePlacements[state].sort(comparePlacementDepth);
+    }
+    return statePlacements;
+}
+
+function buildButtonFrames(statePlacements: Record<SwfButtonStateName, SwfPlaceObject[]>): import("./SwfTypes").SwfFrame[] {
+    return (["up", "over", "down", "hit"] as SwfButtonStateName[]).map((state, index) => {
+        const labels = [
+            { name: state, frameIndex: index },
+            { name: `_${state}`, frameIndex: index }
+        ];
+        return snapshotButtonFrame(index, statePlacements[state], labels);
+    });
+}
+
+function snapshotButtonFrame(index: number, placements: SwfPlaceObject[], labels: SwfFrameLabel[]): import("./SwfTypes").SwfFrame {
+    const byDepth = new Map<number, SwfPlaceObject>();
+    for (const placement of placements) {
+        byDepth.set(placement.depth, { ...placement, rawFlags: [...placement.rawFlags] });
+    }
+    return {
+        index,
+        placements: [...byDepth.values()].sort(comparePlacementDepth),
+        byDepth,
+        namedPlacements: new Map(),
+        labels,
+        actions: []
+    };
+}
+
+function comparePlacementDepth(left: SwfPlaceObject, right: SwfPlaceObject): number {
+    return left.depth - right.depth;
+}
+
 function parseDefineShape(reader: SwfDataReader, tagCode: number): SwfDefineShape {
     const characterId = reader.readUI16();
     const shapeBounds = parseRect(reader);
@@ -469,6 +790,233 @@ function parseDefineShape(reader: SwfDataReader, tagCode: number): SwfDefineShap
         lineStyles: shape.lineStyles,
         paths: shape.paths
     };
+}
+
+function parseDefineMorphShape(reader: SwfDataReader, tagCode: number): SwfDefineMorphShape {
+    const characterId = reader.readUI16();
+    const startBounds = parseRect(reader);
+    const endBounds = parseRect(reader);
+    let startEdgeBounds: SwfRect | undefined;
+    let endEdgeBounds: SwfRect | undefined;
+    let usesNonScalingStrokes: boolean | undefined;
+    let usesScalingStrokes: boolean | undefined;
+    if (tagCode === 84) {
+        startEdgeBounds = parseRect(reader);
+        endEdgeBounds = parseRect(reader);
+        const flags = reader.readUI8();
+        usesNonScalingStrokes = !!(flags & 0x02);
+        usesScalingStrokes = !!(flags & 0x01);
+    }
+    const offsetPosition = reader.pos;
+    const offset = reader.readUI32();
+    const fillStyles = parseMorphFillStyleArray(reader, tagCode);
+    const lineStyles = parseMorphLineStyleArray(reader, tagCode);
+    const edgeStart = reader.pos;
+    const edgeCandidates = [
+        offsetPosition + offset,
+        offsetPosition + 4 + offset
+    ].filter(candidate => candidate > edgeStart && candidate <= reader.length);
+    let parsedEdges: { startPaths: SwfShapePath[]; endPaths: SwfShapePath[] } | null = null;
+    for (const endEdgesOffset of edgeCandidates) {
+        parsedEdges = tryParseMorphEdges(reader.bytes, edgeStart, endEdgesOffset, reader.length, tagCode, fillStyles, lineStyles);
+        if (parsedEdges) {
+            break;
+        }
+    }
+    if (!parsedEdges) {
+        throw new Error(`Invalid DefineMorphShape ${characterId}: could not split start/end edge records.`);
+    }
+    reader.pos = reader.length;
+    return {
+        characterId,
+        tagCode,
+        startBounds,
+        endBounds,
+        startEdgeBounds,
+        endEdgeBounds,
+        usesNonScalingStrokes,
+        usesScalingStrokes,
+        offset,
+        fillStyles,
+        lineStyles,
+        startPaths: parsedEdges.startPaths,
+        endPaths: parsedEdges.endPaths
+    };
+}
+
+function tryParseMorphEdges(
+    bytes: Uint8Array,
+    startOffset: number,
+    endEdgesOffset: number,
+    endOffset: number,
+    tagCode: number,
+    fillStyles: SwfMorphFillStyle[],
+    lineStyles: SwfMorphLineStyle[]
+): { startPaths: SwfShapePath[]; endPaths: SwfShapePath[] } | null {
+    try {
+        const startShapeReader = new SwfDataReader(bytes.subarray(startOffset, endEdgesOffset));
+        const endShapeReader = new SwfDataReader(bytes.subarray(endEdgesOffset, endOffset));
+        return {
+            startPaths: parseShapeRecords(startShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 0), morphLineStylesAtRatio(lineStyles, 0), false),
+            endPaths: parseShapeRecords(endShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 65535), morphLineStylesAtRatio(lineStyles, 65535), false)
+        };
+    }
+    catch (_error) {
+        return null;
+    }
+}
+
+function parseMorphFillStyleArray(reader: SwfDataReader, tagCode: number): SwfMorphFillStyle[] {
+    const count = readExtendedCount(reader, tagCode);
+    const fillStyles: SwfMorphFillStyle[] = [];
+    for (let index = 1; index <= count; index++) {
+        fillStyles.push(parseMorphFillStyle(reader, tagCode, index));
+    }
+    return fillStyles;
+}
+
+function parseMorphFillStyle(reader: SwfDataReader, tagCode: number, index: number): SwfMorphFillStyle {
+    const type = reader.readUI8();
+    const style: SwfMorphFillStyle = { index, type };
+    switch (type) {
+        case 0x00:
+            style.startColor = parseRgba(reader);
+            style.endColor = parseRgba(reader);
+            break;
+        case 0x10:
+        case 0x12:
+        case 0x13:
+            style.startGradientMatrix = parseMatrix(reader);
+            style.endGradientMatrix = parseMatrix(reader);
+            style.gradientRecords = parseMorphGradientRecords(reader);
+            if (type === 0x13) {
+                style.focalPoint = reader.readFixed8();
+            }
+            break;
+        case 0x40:
+        case 0x41:
+        case 0x42:
+        case 0x43:
+            style.bitmapId = reader.readUI16();
+            style.startBitmapMatrix = parseMatrix(reader);
+            style.endBitmapMatrix = parseMatrix(reader);
+            break;
+        default:
+            throw new Error(`Unsupported SWF morph fill style type 0x${type.toString(16)} in tag ${tagCode}.`);
+    }
+    return style;
+}
+
+function parseMorphGradientRecords(reader: SwfDataReader): SwfMorphGradientRecord[] {
+    const count = reader.readUI8() & 0x0f;
+    const records: SwfMorphGradientRecord[] = [];
+    for (let index = 0; index < count; index++) {
+        records.push({
+            startRatio: reader.readUI8(),
+            startColor: parseRgba(reader),
+            endRatio: reader.readUI8(),
+            endColor: parseRgba(reader)
+        });
+    }
+    return records;
+}
+
+function parseMorphLineStyleArray(reader: SwfDataReader, tagCode: number): SwfMorphLineStyle[] {
+    const count = readExtendedCount(reader, tagCode);
+    const lineStyles: SwfMorphLineStyle[] = [];
+    for (let index = 1; index <= count; index++) {
+        lineStyles.push(parseMorphLineStyle(reader, tagCode, index));
+    }
+    return lineStyles;
+}
+
+function parseMorphLineStyle(reader: SwfDataReader, tagCode: number, index: number): SwfMorphLineStyle {
+    const startWidthTwips = reader.readUI16();
+    const endWidthTwips = reader.readUI16();
+    const lineStyle: SwfMorphLineStyle = {
+        index,
+        startWidthTwips,
+        endWidthTwips,
+        startWidth: startWidthTwips / 20,
+        endWidth: endWidthTwips / 20
+    };
+    if (tagCode === 84) {
+        const flags = reader.readUI16();
+        lineStyle.startCapStyle = (flags >> 14) & 0x03;
+        lineStyle.joinStyle = (flags >> 12) & 0x03;
+        const hasFill = !!(flags & 0x0008);
+        lineStyle.hasFill = hasFill;
+        lineStyle.noHScale = !!(flags & 0x0400);
+        lineStyle.noVScale = !!(flags & 0x0200);
+        lineStyle.pixelHinting = !!(flags & 0x0100);
+        lineStyle.noClose = !!(flags & 0x0004);
+        lineStyle.endCapStyle = flags & 0x03;
+        if (lineStyle.joinStyle === 2) {
+            lineStyle.miterLimitFactor = reader.readUI16() / 256;
+        }
+        if (hasFill) {
+            lineStyle.fillStyle = parseMorphFillStyle(reader, tagCode, 0);
+        }
+        else {
+            lineStyle.startColor = parseRgba(reader);
+            lineStyle.endColor = parseRgba(reader);
+        }
+        return lineStyle;
+    }
+    lineStyle.startColor = parseRgba(reader);
+    lineStyle.endColor = parseRgba(reader);
+    return lineStyle;
+}
+
+function morphFillStylesAtRatio(styles: SwfMorphFillStyle[], ratio: number): SwfFillStyle[] {
+    return styles.map(style => morphFillStyleAtRatio(style, ratio));
+}
+
+function morphFillStyleAtRatio(style: SwfMorphFillStyle, ratio: number): SwfFillStyle {
+    const normalized = morphRatioToUnit(ratio);
+    const fill: SwfFillStyle = {
+        index: style.index,
+        type: style.type
+    };
+    if (style.startColor || style.endColor) {
+        fill.color = interpolateRgba(style.startColor, style.endColor, normalized);
+    }
+    if (style.bitmapId != null) {
+        fill.bitmapId = style.bitmapId;
+        fill.bitmapMatrix = interpolateMatrix(style.startBitmapMatrix, style.endBitmapMatrix, normalized);
+    }
+    if (style.gradientRecords?.length) {
+        fill.gradientMatrix = interpolateMatrix(style.startGradientMatrix, style.endGradientMatrix, normalized);
+        fill.gradientRecords = style.gradientRecords.map(record => ({
+            ratio: Math.round(interpolateNumber(record.startRatio, record.endRatio, normalized)),
+            color: interpolateRgba(record.startColor, record.endColor, normalized)
+        }));
+        fill.focalPoint = style.focalPoint;
+    }
+    return fill;
+}
+
+function morphLineStylesAtRatio(styles: SwfMorphLineStyle[], ratio: number): SwfLineStyle[] {
+    const normalized = morphRatioToUnit(ratio);
+    return styles.map(style => {
+        const lineStyle: SwfLineStyle = {
+            index: style.index,
+            widthTwips: Math.round(interpolateNumber(style.startWidthTwips, style.endWidthTwips, normalized)),
+            width: interpolateNumber(style.startWidth, style.endWidth, normalized),
+            color: style.startColor || style.endColor ? interpolateRgba(style.startColor, style.endColor, normalized) : undefined,
+            fillStyle: style.fillStyle ? morphFillStyleAtRatio(style.fillStyle, ratio) : undefined,
+            startCapStyle: style.startCapStyle,
+            joinStyle: style.joinStyle,
+            hasFill: style.hasFill,
+            noHScale: style.noHScale,
+            noVScale: style.noVScale,
+            pixelHinting: style.pixelHinting,
+            noClose: style.noClose,
+            endCapStyle: style.endCapStyle,
+            miterLimitFactor: style.miterLimitFactor
+        };
+        return lineStyle;
+    });
 }
 
 function parseShapeWithStyle(reader: SwfDataReader, tagCode: number): { fillStyles: SwfFillStyle[]; lineStyles: SwfLineStyle[]; paths: SwfShapePath[] } {
@@ -1125,6 +1673,178 @@ function parseRemoveObject(reader: SwfDataReader, tagCode: number): SwfRemoveObj
     };
 }
 
+function parseFrameLabel(reader: SwfDataReader): SwfFrameLabel {
+    const name = reader.readString();
+    const namedAnchor = reader.pos < reader.length ? reader.readUI8() !== 0 : undefined;
+    return {
+        name,
+        frameIndex: -1,
+        namedAnchor
+    };
+}
+
+function parseMetadata(reader: SwfDataReader): { metadata: string } {
+    return { metadata: reader.readString() };
+}
+
+function decodeAvm1Actions(bytes: Uint8Array): SwfAvm1ActionRecord[] {
+    const records: SwfAvm1ActionRecord[] = [];
+    const reader = new SwfDataReader(bytes);
+    while (reader.pos < reader.length) {
+        const offset = reader.pos;
+        const opcode = reader.readUI8();
+        if (opcode === 0) {
+            break;
+        }
+        const dataLength = opcode >= 0x80 ? reader.readUI16() : 0;
+        const data = dataLength > 0 ? reader.readBytes(Math.min(dataLength, reader.length - reader.pos)) : new Uint8Array(0);
+        const record: SwfAvm1ActionRecord = {
+            opcode,
+            name: avm1ActionName(opcode),
+            offset,
+            size: reader.pos - offset,
+            data
+        };
+        decodeAvm1ActionPayload(record);
+        records.push(record);
+    }
+    return records;
+}
+
+function decodeAvm1ActionPayload(record: SwfAvm1ActionRecord): void {
+    const reader = new SwfDataReader(record.data);
+    if (record.opcode === 0x81 && reader.length >= 2) {
+        record.frame = reader.readUI16();
+        return;
+    }
+    if (record.opcode === 0x8c) {
+        record.label = reader.readString();
+        return;
+    }
+    if (record.opcode === 0x83) {
+        record.url = reader.readString();
+        record.target = reader.readString();
+        return;
+    }
+    if (record.opcode === 0x99 && reader.length >= 2) {
+        record.branchOffset = reader.readSI16();
+        return;
+    }
+    if (record.opcode === 0x88 && reader.length >= 2) {
+        const count = reader.readUI16();
+        const constantPool: string[] = [];
+        for (let index = 0; index < count && reader.pos < reader.length; index++) {
+            constantPool.push(reader.readString());
+        }
+        record.constantPool = constantPool;
+        return;
+    }
+    if (record.opcode === 0x96) {
+        const values: SwfAvm1ActionValue[] = [];
+        while (reader.pos < reader.length) {
+            const type = reader.readUI8();
+            if (type === 0) {
+                values.push(reader.readString());
+            } else if (type === 1 && reader.pos + 4 <= reader.length) {
+                values.push(reader.readFloat32());
+            } else if (type === 2) {
+                values.push(null);
+            } else if (type === 3) {
+                values.push(undefined);
+            } else if (type === 4 && reader.pos < reader.length) {
+                values.push(reader.readUI8());
+            } else if (type === 5 && reader.pos < reader.length) {
+                values.push(reader.readUI8() !== 0);
+            } else if (type === 7 && reader.pos + 4 <= reader.length) {
+                values.push(reader.readUI32());
+            } else if (type === 8 && reader.pos < reader.length) {
+                values.push(reader.readUI8());
+            } else if (type === 9 && reader.pos + 2 <= reader.length) {
+                values.push(reader.readUI16());
+            } else {
+                break;
+            }
+        }
+        record.values = values;
+    }
+}
+
+function avm1ActionName(opcode: number): string {
+    switch (opcode) {
+        case 0x04: return "ActionNextFrame";
+        case 0x05: return "ActionPreviousFrame";
+        case 0x06: return "ActionPlay";
+        case 0x07: return "ActionStop";
+        case 0x0a: return "ActionAdd";
+        case 0x0b: return "ActionSubtract";
+        case 0x0c: return "ActionMultiply";
+        case 0x0d: return "ActionDivide";
+        case 0x12: return "ActionNot";
+        case 0x17: return "ActionPop";
+        case 0x1c: return "ActionGetVariable";
+        case 0x1d: return "ActionSetVariable";
+        case 0x26: return "ActionTrace";
+        case 0x3d: return "ActionCallFunction";
+        case 0x81: return "ActionGotoFrame";
+        case 0x83: return "ActionGetURL";
+        case 0x88: return "ActionConstantPool";
+        case 0x8c: return "ActionGotoLabel";
+        case 0x96: return "ActionPush";
+        case 0x99: return "ActionJump";
+        case 0x9d: return "ActionIf";
+        default: return `Action0x${opcode.toString(16).padStart(2, "0")}`;
+    }
+}
+
+function parseDoAbc(reader: SwfDataReader): { flags: number; name: string; abcData: Uint8Array } {
+    return {
+        flags: reader.readUI32(),
+        name: reader.readString(),
+        abcData: reader.readRemaining()
+    };
+}
+
+function parseDoAction(reader: SwfDataReader): SwfDoAction {
+    const actions = reader.readRemaining();
+    return {
+        actions,
+        decodedActions: decodeAvm1Actions(actions)
+    };
+}
+
+function parseDoInitAction(reader: SwfDataReader): SwfDoInitAction {
+    const spriteId = reader.readUI16();
+    const actions = reader.readRemaining();
+    return {
+        spriteId,
+        actions,
+        decodedActions: decodeAvm1Actions(actions)
+    };
+}
+
+function parseDefineSceneAndFrameLabelData(reader: SwfDataReader): {
+    scenes: { offset: number; name: string }[];
+    frameLabels: { frameNumber: number; name: string }[];
+} {
+    const scenes: { offset: number; name: string }[] = [];
+    const sceneCount = reader.readEncodedU32();
+    for (let index = 0; index < sceneCount; index++) {
+        scenes.push({
+            offset: reader.readEncodedU32(),
+            name: reader.readString()
+        });
+    }
+    const frameLabels: { frameNumber: number; name: string }[] = [];
+    const frameLabelCount = reader.readEncodedU32();
+    for (let index = 0; index < frameLabelCount; index++) {
+        frameLabels.push({
+            frameNumber: reader.readEncodedU32(),
+            name: reader.readString()
+        });
+    }
+    return { scenes, frameLabels };
+}
+
 function parsePlaceObject3(reader: SwfDataReader, tagCode: number): SwfPlaceObject {
     const flags1 = reader.readUI8();
     const flags2 = reader.readUI8();
@@ -1292,6 +2012,27 @@ function parseColorTransformWithAlpha(reader: SwfDataReader): SwfColorTransformW
     return parseColorTransform(reader);
 }
 
+function parseColorTransformNoAlpha(reader: SwfDataReader): SwfColorTransformWithAlpha {
+    const bits = new SwfBitReader(reader.bytes, reader.pos);
+    const hasAdd = bits.readUB(1) !== 0;
+    const hasMult = bits.readUB(1) !== 0;
+    const nbits = bits.readUB(4);
+    const transform: SwfColorTransformWithAlpha = {};
+    if (hasMult) {
+        transform.redMultiplier = bits.readSB(nbits);
+        transform.greenMultiplier = bits.readSB(nbits);
+        transform.blueMultiplier = bits.readSB(nbits);
+    }
+    if (hasAdd) {
+        transform.redAdd = bits.readSB(nbits);
+        transform.greenAdd = bits.readSB(nbits);
+        transform.blueAdd = bits.readSB(nbits);
+    }
+    bits.align();
+    reader.pos = bits.bytePos;
+    return transform;
+}
+
 function parseColorTransform(reader: SwfDataReader): SwfColorTransformWithAlpha {
     const bits = new SwfBitReader(reader.bytes, reader.pos);
     const hasAdd = bits.readUB(1) !== 0;
@@ -1313,6 +2054,45 @@ function parseColorTransform(reader: SwfDataReader): SwfColorTransformWithAlpha 
     bits.align();
     reader.pos = bits.bytePos;
     return transform;
+}
+
+function morphRatioToUnit(ratio: number): number {
+    return Math.max(0, Math.min(1, ratio / 65535));
+}
+
+function interpolateNumber(start: number | undefined, end: number | undefined, ratio: number): number {
+    const from = start ?? end ?? 0;
+    const to = end ?? start ?? 0;
+    return from + (to - from) * ratio;
+}
+
+function interpolateRgba(start: SwfRgba | undefined, end: SwfRgba | undefined, ratio: number): SwfRgba {
+    const from = start ?? end ?? { red: 0, green: 0, blue: 0, alpha: 255 };
+    const to = end ?? start ?? from;
+    return {
+        red: Math.round(interpolateNumber(from.red, to.red, ratio)),
+        green: Math.round(interpolateNumber(from.green, to.green, ratio)),
+        blue: Math.round(interpolateNumber(from.blue, to.blue, ratio)),
+        alpha: Math.round(interpolateNumber(from.alpha, to.alpha, ratio))
+    };
+}
+
+function interpolateMatrix(start: SwfMatrix | undefined, end: SwfMatrix | undefined, ratio: number): SwfMatrix | undefined {
+    if (!start && !end) {
+        return undefined;
+    }
+    const from = start ?? end!;
+    const to = end ?? start!;
+    return {
+        scaleX: interpolateNumber(from.scaleX, to.scaleX, ratio),
+        scaleY: interpolateNumber(from.scaleY, to.scaleY, ratio),
+        rotateSkew0: interpolateNumber(from.rotateSkew0, to.rotateSkew0, ratio),
+        rotateSkew1: interpolateNumber(from.rotateSkew1, to.rotateSkew1, ratio),
+        translateXTwips: Math.round(interpolateNumber(from.translateXTwips, to.translateXTwips, ratio)),
+        translateYTwips: Math.round(interpolateNumber(from.translateYTwips, to.translateYTwips, ratio)),
+        translateX: interpolateNumber(from.translateX, to.translateX, ratio),
+        translateY: interpolateNumber(from.translateY, to.translateY, ratio)
+    };
 }
 
 function parseRect(reader: SwfDataReader): SwfRect {
@@ -1396,9 +2176,15 @@ function isRemoveObject(parsed: SwfParsedTag | undefined): parsed is SwfRemoveOb
     return !!parsed && "depth" in parsed && !("rawFlags" in parsed) && (parsed as SwfRemoveObject).tagCode !== undefined;
 }
 
+function isFrameLabel(parsed: SwfParsedTag | undefined): parsed is SwfFrameLabel {
+    return !!parsed && "name" in parsed && "frameIndex" in parsed;
+}
+
 function buildTimelineFrames(tags: SwfTag[]): import("./SwfTypes").SwfFrame[] {
     const frames: import("./SwfTypes").SwfFrame[] = [];
     const byDepth = new Map<number, SwfPlaceObject>();
+    const pendingLabels: SwfFrameLabel[] = [];
+    const pendingActions: SwfDoAction[] = [];
     for (const tag of tags) {
         const parsed = tag.parsed;
         if (isPlaceObject(parsed)) {
@@ -1409,8 +2195,16 @@ function buildTimelineFrames(tags: SwfTag[]): import("./SwfTypes").SwfFrame[] {
             byDepth.delete(parsed.depth);
             continue;
         }
+        if (isFrameLabel(parsed)) {
+            pendingLabels.push(parsed);
+            continue;
+        }
+        if (tag.code === 12 && isDoAction(parsed)) {
+            pendingActions.push(parsed);
+            continue;
+        }
         if (tag.code === 1) {
-            frames.push(snapshotFrame(frames.length, byDepth));
+            frames.push(snapshotFrame(frames.length, byDepth, pendingLabels.splice(0), pendingActions.splice(0)));
             continue;
         }
         if (tag.code === 0) {
@@ -1418,6 +2212,10 @@ function buildTimelineFrames(tags: SwfTag[]): import("./SwfTypes").SwfFrame[] {
         }
     }
     return frames;
+}
+
+function isDoAction(parsed: SwfParsedTag | undefined): parsed is SwfDoAction {
+    return !!parsed && "actions" in parsed && "decodedActions" in parsed && !("spriteId" in parsed);
 }
 
 function applyPlacementToDisplayList(byDepth: Map<number, SwfPlaceObject>, placement: SwfPlaceObject): void {
@@ -1444,7 +2242,7 @@ function applyPlacementToDisplayList(byDepth: Map<number, SwfPlaceObject>, place
     byDepth.set(placement.depth, placement);
 }
 
-function snapshotFrame(index: number, byDepth: Map<number, SwfPlaceObject>): import("./SwfTypes").SwfFrame {
+function snapshotFrame(index: number, byDepth: Map<number, SwfPlaceObject>, labels: SwfFrameLabel[], actions: SwfDoAction[]): import("./SwfTypes").SwfFrame {
     const snapshot = new Map<number, SwfPlaceObject>();
     for (const [depth, placement] of byDepth) {
         snapshot.set(depth, { ...placement, rawFlags: [...placement.rawFlags] });
@@ -1460,7 +2258,9 @@ function snapshotFrame(index: number, byDepth: Map<number, SwfPlaceObject>): imp
         index,
         placements,
         byDepth: snapshot,
-        namedPlacements
+        namedPlacements,
+        labels: labels.map(label => ({ ...label, frameIndex: index })),
+        actions
     };
 }
 
@@ -1510,6 +2310,18 @@ class SwfDataReader {
             | (this.bytes[this.pos + 3] << 24)) >>> 0;
         this.pos += 4;
         return value;
+    }
+
+    readEncodedU32(): number {
+        let result = 0;
+        for (let index = 0; index < 5; index++) {
+            const byte = this.readUI8();
+            result |= (byte & 0x7f) << (7 * index);
+            if ((byte & 0x80) === 0) {
+                return result >>> 0;
+            }
+        }
+        return result >>> 0;
     }
 
     readSI32(): number {

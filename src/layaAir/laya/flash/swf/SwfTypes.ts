@@ -151,6 +151,95 @@ export interface SwfDefineSprite {
     placements: SwfPlaceObject[];
     namedPlacements: Map<string, SwfPlaceObject>;
     frames: SwfFrame[];
+    frameLabels: SwfFrameLabel[];
+    frameLabelsByName: Map<string, SwfFrameLabel>;
+    initActions: SwfDoInitAction[];
+}
+
+export type SwfButtonStateName = "up" | "over" | "down" | "hit";
+
+export interface SwfButtonRecord {
+    tagCode: number;
+    characterId: number;
+    depth: number;
+    states: {
+        up: boolean;
+        over: boolean;
+        down: boolean;
+        hitTest: boolean;
+    };
+    matrix: SwfMatrix;
+    colorTransform?: SwfColorTransformWithAlpha;
+    filters?: SwfFilter[];
+    blendMode?: number;
+    rawFlags: number;
+}
+
+export interface SwfButtonAction {
+    conditions: {
+        idleToOverDown: boolean;
+        outDownToIdle: boolean;
+        outDownToOverDown: boolean;
+        overDownToOutDown: boolean;
+        overDownToOverUp: boolean;
+        overUpToOverDown: boolean;
+        overUpToIdle: boolean;
+        idleToOverUp: boolean;
+        overDownToIdle: boolean;
+    };
+    keyPress: number;
+    actions: Uint8Array;
+    decodedActions: SwfAvm1ActionRecord[];
+    rawConditionFlags: number;
+    rawSize: number;
+}
+
+export interface SwfDefineButton {
+    characterId: number;
+    tagCode: number;
+    trackAsMenu: boolean;
+    actionOffset?: number;
+    records: SwfButtonRecord[];
+    actions: SwfButtonAction[];
+    sounds?: SwfDefineButtonSound;
+    colorTransform?: SwfColorTransformWithAlpha;
+    statePlacements: Record<SwfButtonStateName, SwfPlaceObject[]>;
+    frames: SwfFrame[];
+    frameLabels: SwfFrameLabel[];
+    frameLabelsByName: Map<string, SwfFrameLabel>;
+}
+
+export interface SwfButtonSoundInfo {
+    soundId: number;
+    soundInfo: SwfSoundInfo;
+}
+
+export interface SwfDefineButtonSound {
+    buttonId: number;
+    upToOver?: SwfButtonSoundInfo;
+    overToUp?: SwfButtonSoundInfo;
+    overToDown?: SwfButtonSoundInfo;
+    downToOver?: SwfButtonSoundInfo;
+}
+
+export interface SwfSoundInfo {
+    syncStop: boolean;
+    syncNoMultiple: boolean;
+    hasEnvelope: boolean;
+    hasLoops: boolean;
+    hasOutPoint: boolean;
+    hasInPoint: boolean;
+    inPoint?: number;
+    outPoint?: number;
+    loopCount?: number;
+    envelopeRecords?: SwfSoundEnvelopeRecord[];
+    rawFlags: number;
+}
+
+export interface SwfSoundEnvelopeRecord {
+    position44: number;
+    leftLevel: number;
+    rightLevel: number;
 }
 
 export interface SwfPlaceObject {
@@ -185,6 +274,14 @@ export interface SwfFrame {
     placements: SwfPlaceObject[];
     byDepth: Map<number, SwfPlaceObject>;
     namedPlacements: Map<string, SwfPlaceObject>;
+    labels: SwfFrameLabel[];
+    actions: SwfDoAction[];
+}
+
+export interface SwfFrameLabel {
+    name: string;
+    frameIndex: number;
+    namedAnchor?: boolean;
 }
 
 export interface SwfFilter {
@@ -389,6 +486,121 @@ export interface SwfDefineShape {
     paths?: SwfShapePath[];
 }
 
+export interface SwfMorphFillStyle {
+    index: number;
+    type: number;
+    startColor?: SwfRgba;
+    endColor?: SwfRgba;
+    bitmapId?: number;
+    startBitmapMatrix?: SwfMatrix;
+    endBitmapMatrix?: SwfMatrix;
+    startGradientMatrix?: SwfMatrix;
+    endGradientMatrix?: SwfMatrix;
+    gradientRecords?: SwfMorphGradientRecord[];
+    focalPoint?: number;
+}
+
+export interface SwfMorphGradientRecord {
+    startRatio: number;
+    startColor: SwfRgba;
+    endRatio: number;
+    endColor: SwfRgba;
+}
+
+export interface SwfMorphLineStyle {
+    index: number;
+    startWidthTwips: number;
+    endWidthTwips: number;
+    startWidth: number;
+    endWidth: number;
+    startColor?: SwfRgba;
+    endColor?: SwfRgba;
+    fillStyle?: SwfMorphFillStyle;
+    startCapStyle?: number;
+    joinStyle?: number;
+    hasFill?: boolean;
+    noHScale?: boolean;
+    noVScale?: boolean;
+    pixelHinting?: boolean;
+    noClose?: boolean;
+    endCapStyle?: number;
+    miterLimitFactor?: number;
+}
+
+export interface SwfDefineMorphShape {
+    characterId: number;
+    tagCode: number;
+    startBounds: SwfRect;
+    endBounds: SwfRect;
+    startEdgeBounds?: SwfRect;
+    endEdgeBounds?: SwfRect;
+    usesNonScalingStrokes?: boolean;
+    usesScalingStrokes?: boolean;
+    offset: number;
+    fillStyles: SwfMorphFillStyle[];
+    lineStyles: SwfMorphLineStyle[];
+    startPaths: SwfShapePath[];
+    endPaths: SwfShapePath[];
+}
+
+export interface SwfDoAbc {
+    flags: number;
+    name: string;
+    abcData: Uint8Array;
+}
+
+export interface SwfDoAction {
+    actions: Uint8Array;
+    decodedActions: SwfAvm1ActionRecord[];
+}
+
+export interface SwfDoInitAction {
+    spriteId: number;
+    actions: Uint8Array;
+    decodedActions: SwfAvm1ActionRecord[];
+}
+
+export type SwfAvm1ActionValue =
+    | string
+    | number
+    | boolean
+    | null
+    | undefined;
+
+export interface SwfAvm1ActionRecord {
+    opcode: number;
+    name: string;
+    offset: number;
+    size: number;
+    data: Uint8Array;
+    constantPool?: string[];
+    values?: SwfAvm1ActionValue[];
+    frame?: number;
+    label?: string;
+    url?: string;
+    target?: string;
+    branchOffset?: number;
+}
+
+export interface SwfMetadata {
+    metadata: string;
+}
+
+export interface SwfSceneAndFrameLabelData {
+    scenes: SwfSceneData[];
+    frameLabels: SwfSceneFrameLabelData[];
+}
+
+export interface SwfSceneData {
+    offset: number;
+    name: string;
+}
+
+export interface SwfSceneFrameLabelData {
+    frameNumber: number;
+    name: string;
+}
+
 export interface SwfSymbolClass {
     characterId: number;
     name: string;
@@ -400,6 +612,7 @@ export type SwfParsedTag =
     | SwfExportAsset[]
     | SwfSymbolClass[]
     | SwfDefineSprite
+    | SwfDefineButton
     | SwfPlaceObject
     | SwfRemoveObject
     | SwfDefineBitsJpeg
@@ -410,19 +623,29 @@ export type SwfParsedTag =
     | SwfFontAlignZones
     | SwfDefineFontName
     | SwfDefineShape
+    | SwfDefineMorphShape
+    | SwfDoAction
+    | SwfDoInitAction
+    | SwfFrameLabel
     | SwfJpegTables
     | SwfDefineFontInfo
     | SwfCsmTextSettings
-    | SwfDefineScalingGrid;
+    | SwfDefineScalingGrid
+    | SwfDefineButtonSound
+    | SwfDoAbc
+    | SwfMetadata
+    | SwfSceneAndFrameLabelData;
 
 export type SwfCharacter =
     | SwfDefineSprite
+    | SwfDefineButton
     | SwfDefineBitsJpeg
     | SwfDefineBitsLossless
     | SwfDefineEditText
     | SwfDefineFont
     | SwfDefineText
-    | SwfDefineShape;
+    | SwfDefineShape
+    | SwfDefineMorphShape;
 
 export class SwfMovie {
     readonly header: SwfHeader;
@@ -445,6 +668,9 @@ export class SwfMovie {
         this.exportsByCharacterId = new Map();
         this.symbolClassesByName = new Map();
         this.symbolClassesByCharacterId = new Map();
+        for (const character of characters.values()) {
+            (character as any).__rawSwfMovie = this;
+        }
         for (const asset of exports) {
             this.exportsByName.set(asset.name, asset);
             let characterExports = this.exportsByCharacterId.get(asset.characterId);
@@ -483,6 +709,13 @@ export class SwfMovie {
             ? this.getExportedCharacter(characterIdOrExportName)
             : this.getCharacter(characterIdOrExportName);
         return character && "tags" in character ? character : undefined;
+    }
+
+    getButton(characterIdOrExportName: number | string): SwfDefineButton | undefined {
+        const character = typeof characterIdOrExportName === "string"
+            ? this.getExportedCharacter(characterIdOrExportName)
+            : this.getCharacter(characterIdOrExportName);
+        return character && "statePlacements" in character ? character : undefined;
     }
 }
 

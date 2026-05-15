@@ -1,5 +1,5 @@
-import { ILaya } from "../../../ILaya";
 import { Sprite } from "../../display/Sprite";
+import { Input } from "../../display/Input";
 import { Text } from "../../display/Text";
 import { BevelFilter } from "../../filters/BevelFilter";
 import { BlurFilter } from "../../filters/BlurFilter";
@@ -7,17 +7,23 @@ import { ColorFilter } from "../../filters/ColorFilter";
 import { GlowFilter } from "../../filters/GlowFilter";
 import { GradientBevelFilter } from "../../filters/GradientBevelFilter";
 import { GradientGlowFilter } from "../../filters/GradientGlowFilter";
-import { Loader } from "../../net/Loader";
 import type {
     SwfDefineEditText,
     SwfDefineBitsLossless,
+    SwfButtonStateName,
+    SwfDefineButton,
     SwfDefineFont,
+    SwfDefineMorphShape,
     SwfDefineShape,
     SwfDefineSprite,
     SwfDefineText,
+    SwfDoAction,
+    SwfAvm1ActionRecord,
+    SwfAvm1ActionValue,
     SwfFillStyle,
     SwfFilter,
     SwfLineStyle,
+    SwfMatrix,
     SwfMovie,
     SwfPlaceObject,
     SwfRect,
@@ -36,20 +42,71 @@ export interface SwfRenderOptions {
     frameIndex?: number;
 }
 
-const imageUrlCache = new WeakMap<object, Promise<string>>();
+export interface SwfTimelineInstanceOptions {
+    frameIndex?: number;
+    autoPlay?: boolean;
+}
+
+export interface SwfDisplayObjectShell {
+    root: Sprite;
+    namedInstances: Map<string, Sprite | Text>;
+    renderedShapeCount: number;
+    bitmapFillCount: number;
+}
+
+const imageSurfaceCache = new WeakMap<object, Promise<DecodedSwfImage>>();
+const fillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | null>>();
+const staticTextOutlineCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement>>();
+const scale9TextureCache = new WeakMap<object, Promise<any | null>>();
+
+interface DecodedSwfImage {
+    source: CanvasImageSource;
+    width: number;
+    height: number;
+    pixels?: ImageData;
+}
 
 interface OrientedShapePath {
     path: SwfShapePath;
     reverse: boolean;
 }
 
+interface SwfRuntimePlacementNode {
+    characterId: number;
+    ratio?: number;
+    node: Sprite | Text;
+    timeline?: SwfTimelineInstance;
+}
+
+function isSpriteCharacter(character: any): character is SwfDefineSprite {
+    return !!character && "tags" in character;
+}
+
+function isButtonCharacter(character: any): character is SwfDefineButton {
+    return !!character && "statePlacements" in character;
+}
+
+function isMorphShapeCharacter(character: any): character is SwfDefineMorphShape {
+    return !!character && "startPaths" in character && "endPaths" in character;
+}
+
 export class SwfRenderer {
     static async renderExport(movie: SwfMovie, exportName: string, options: SwfRenderOptions = {}): Promise<SwfRenderResult> {
-        const sprite = movie.getSprite(exportName);
-        if (!sprite) {
-            throw new Error(`Raw SWF export '${exportName}' is not a sprite.`);
+        const character = movie.getExportedCharacter(exportName);
+        if (isButtonCharacter(character)) {
+            const namedInstances = new Map<string, Sprite | Text>();
+            const root = await createButtonNode(movie, character, namedInstances);
+            return {
+                root,
+                namedInstances,
+                renderedShapeCount: renderedShapeCountFor(root),
+                bitmapFillCount: childrenDebugCount(root, "__rawSwfBitmapFillCount")
+            };
         }
-        return SwfRenderer.renderSprite(movie, sprite, options);
+        if (!character || !("tags" in character)) {
+            throw new Error(`Raw SWF export '${exportName}' is not a renderable sprite or button.`);
+        }
+        return SwfRenderer.renderSprite(movie, character, options);
     }
 
     static async renderSprite(movie: SwfMovie, sprite: SwfDefineSprite, options: SwfRenderOptions = {}): Promise<SwfRenderResult> {
@@ -60,6 +117,41 @@ export class SwfRenderer {
             namedInstances,
             renderedShapeCount: (root as any).__rawSwfRenderedShapeCount ?? 0,
             bitmapFillCount: (root as any).__rawSwfBitmapFillCount ?? 0
+        };
+    }
+
+    static async instantiateExport(movie: SwfMovie, exportName: string, options: SwfTimelineInstanceOptions = {}): Promise<SwfTimelineInstance> {
+        const sprite = movie.getSprite(exportName);
+        if (!sprite) {
+            throw new Error(`Raw SWF export '${exportName}' is not a sprite.`);
+        }
+        return SwfRenderer.instantiateSprite(movie, sprite, options);
+    }
+
+    static async instantiateSprite(movie: SwfMovie, sprite: SwfDefineSprite, options: SwfTimelineInstanceOptions = {}): Promise<SwfTimelineInstance> {
+        const instance = new SwfTimelineInstance(movie, sprite, options);
+        await instance.ready;
+        return instance;
+    }
+
+    static instantiateSpriteShell(movie: SwfMovie, sprite: SwfDefineSprite, options: SwfRenderOptions = {}): SwfDisplayObjectShell {
+        return instantiateSpriteShell(movie, sprite, options.frameIndex ?? 0);
+    }
+
+    static instantiateCharacterShell(movie: SwfMovie, character: any, options: SwfRenderOptions = {}): SwfDisplayObjectShell | null {
+        if (isSpriteCharacter(character)) {
+            return instantiateSpriteShell(movie, character, options.frameIndex ?? 0);
+        }
+        if (isButtonCharacter(character)) {
+            return instantiateButtonShell(movie, character);
+        }
+        const namedInstances = new Map<string, Sprite | Text>();
+        const root = createShellNodeForCharacter(movie, character, namedInstances, options.frameIndex ?? 0) as Sprite;
+        return {
+            root,
+            namedInstances,
+            renderedShapeCount: renderedShapeCountFor(root),
+            bitmapFillCount: childrenDebugCount(root, "__rawSwfBitmapFillCount")
         };
     }
 }
@@ -82,7 +174,7 @@ async function instantiateSprite(
             continue;
         }
         const character = movie.getCharacter(placement.characterId);
-        const node = await createNodeForCharacter(movie, character, namedInstances, frameIndex);
+        const node = await createNodeForCharacter(movie, character, namedInstances, frameIndex, placement.ratio);
         node.name = placement.name ?? "";
         applyPlacement(node, placement, character);
         if (placement.clipDepth != null) {
@@ -103,11 +195,142 @@ async function instantiateSprite(
     }
     (root as any).__rawSwfRenderedShapeCount = renderedShapeCount;
     (root as any).__rawSwfBitmapFillCount = childrenDebugCount(root, "__rawSwfBitmapFillCount");
+    executeInitAvm1Actions(root, sprite);
+    executeFrameAvm1Actions(root, sprite.frames[normalizeTimelineFrameIndex(frameIndex, Math.max(1, sprite.frames.length || sprite.frameCount || 1))]);
     return root;
 }
 
 function currentMaskContainer(root: Sprite, maskStack: { clipDepth: number; group: Sprite }[]): Sprite {
     return maskStack.length ? maskStack[maskStack.length - 1].group : root;
+}
+
+function instantiateSpriteShell(movie: SwfMovie, sprite: SwfDefineSprite, frameIndex: number): SwfDisplayObjectShell {
+    const namedInstances = new Map<string, Sprite | Text>();
+    const root = instantiateSpriteShellNode(movie, sprite, namedInstances, frameIndex);
+    return {
+        root,
+        namedInstances,
+        renderedShapeCount: (root as any).__rawSwfRenderedShapeCount ?? 0,
+        bitmapFillCount: childrenDebugCount(root, "__rawSwfBitmapFillCount")
+    };
+}
+
+function instantiateSpriteShellNode(
+    movie: SwfMovie,
+    sprite: SwfDefineSprite,
+    namedInstances: Map<string, Sprite | Text>,
+    frameIndex: number
+): Sprite {
+    const root = new Sprite();
+    (root as any).__rawSwfLinkedCharacterId = sprite.characterId;
+    (root as any).__rawSwfTimelineShell = true;
+    (root as any).currentFrame = normalizeTimelineFrameIndex(frameIndex, Math.max(1, sprite.frames.length || sprite.frameCount || 1)) + 1;
+    (root as any).totalFrames = Math.max(1, sprite.frames.length || sprite.frameCount || 1);
+    (root as any).play = (): void => {};
+    (root as any).stop = (): void => {};
+    (root as any).gotoAndStop = (target: number | string): void => {
+        const targetIndex = resolveTimelineFrameInput(target, Number((root as any).totalFrames ?? 1), sprite);
+        replaceSpriteShellFrame(root, movie, sprite, namedInstances, targetIndex);
+    };
+    (root as any).gotoAndPlay = (target: number | string): void => {
+        (root as any).gotoAndStop(target);
+    };
+    replaceSpriteShellFrame(root, movie, sprite, namedInstances, frameIndex);
+    return root;
+}
+
+function replaceSpriteShellFrame(
+    root: Sprite,
+    movie: SwfMovie,
+    sprite: SwfDefineSprite,
+    namedInstances: Map<string, Sprite | Text>,
+    frameIndex: number
+): void {
+    namedInstances.clear();
+    root.removeChildren();
+    const placements = framePlacements(sprite, frameIndex);
+    const maskStack: { clipDepth: number; group: Sprite }[] = [];
+    let renderedShapeCount = 0;
+    for (const placement of placements) {
+        while (maskStack.length && placement.depth > maskStack[maskStack.length - 1].clipDepth) {
+            maskStack.pop();
+        }
+        if (placement.characterId == null) {
+            continue;
+        }
+        const character = movie.getCharacter(placement.characterId);
+        const node = createShellNodeForCharacter(movie, character, namedInstances, frameIndex, placement.ratio);
+        node.name = placement.name ?? "";
+        applyPlacement(node, placement, character);
+        if (placement.name) {
+            namedInstances.set(placement.name, node);
+        }
+        if (placement.clipDepth != null) {
+            const group = new Sprite();
+            group.mask = node as Sprite;
+            currentMaskContainer(root, maskStack).addChild(group);
+            maskStack.push({ clipDepth: placement.clipDepth, group });
+            continue;
+        }
+        currentMaskContainer(root, maskStack).addChild(node);
+        renderedShapeCount += renderedShapeCountFor(node);
+    }
+    (root as any).currentFrame = normalizeTimelineFrameIndex(frameIndex, Math.max(1, sprite.frames.length || sprite.frameCount || 1)) + 1;
+    (root as any).currentLabel = frameLabelNameAt(sprite, frameIndex);
+    (root as any).currentLabels = frameLabelNamesAt(sprite, frameIndex);
+    (root as any).__rawSwfRenderedShapeCount = renderedShapeCount;
+    (root as any).__rawSwfBitmapFillCount = childrenDebugCount(root, "__rawSwfBitmapFillCount");
+}
+
+function createShellNodeForCharacter(
+    movie: SwfMovie,
+    character: any,
+    namedInstances: Map<string, Sprite | Text>,
+    frameIndex: number,
+    ratio: number = 0
+): Sprite | Text {
+    if (isSpriteCharacter(character)) {
+        return instantiateSpriteShellNode(movie, character, namedInstances, frameIndex);
+    }
+    if (isButtonCharacter(character)) {
+        return createButtonShellNode(movie, character, namedInstances);
+    }
+    if (isMorphShapeCharacter(character)) {
+        const sprite = new Sprite();
+        const bounds = interpolatedMorphBounds(character, ratio);
+        sprite.size(Math.max(1, bounds.width), Math.max(1, bounds.height));
+        (sprite as any).__rawSwfRenderedShape = true;
+        (sprite as any).__rawSwfRenderedShapeCount = 1;
+        (sprite as any).__rawSwfMorphShapeShell = true;
+        (sprite as any).__rawSwfShapeCharacterId = character.characterId;
+        (sprite as any).__rawSwfMorphRatio = ratio;
+        return sprite;
+    }
+    if (character?.variableName !== undefined || character?.initialText !== undefined) {
+        return createTextNode(movie, character);
+    }
+    if (character?.records) {
+        return createFallbackStaticTextNode(movie, character);
+    }
+    const sprite = new Sprite();
+    if (character?.zlibBitmapData || character?.imageData) {
+        sprite.size(Math.max(1, character.width ?? 1), Math.max(1, character.height ?? 1));
+        (sprite as any).__rawSwfBitmapShell = true;
+        (sprite as any).__rawSwfBitmapCharacterId = character.characterId;
+        return sprite;
+    }
+    if (character?.shapeBounds) {
+        sprite.size(Math.max(1, character.shapeBounds.width), Math.max(1, character.shapeBounds.height));
+        (sprite as any).__rawSwfRenderedShape = true;
+        (sprite as any).__rawSwfRenderedShapeCount = 1;
+        (sprite as any).__rawSwfShapeShell = true;
+        (sprite as any).__rawSwfShapeCharacterId = character.characterId;
+        return sprite;
+    }
+    if (character?.bounds) {
+        sprite.size(character.bounds.width, character.bounds.height);
+    }
+    return sprite;
 }
 
 function renderedShapeCountFor(node: Sprite | Text): number {
@@ -138,10 +361,17 @@ async function createNodeForCharacter(
     movie: SwfMovie,
     character: any,
     namedInstances: Map<string, Sprite | Text>,
-    frameIndex: number
+    frameIndex: number,
+    ratio: number = 0
 ): Promise<Sprite | Text> {
-    if (character?.tags) {
+    if (isSpriteCharacter(character)) {
         return instantiateSprite(movie, character, namedInstances, frameIndex);
+    }
+    if (isButtonCharacter(character)) {
+        return createButtonNode(movie, character, namedInstances);
+    }
+    if (isMorphShapeCharacter(character)) {
+        return renderMorphShapeNode(movie, character, ratio);
     }
     if (character?.variableName !== undefined || character?.initialText !== undefined) {
         return createTextNode(movie, character);
@@ -149,7 +379,7 @@ async function createNodeForCharacter(
     if (character?.records) {
         return await createStaticTextNode(movie, character);
     }
-    if (character?.zlibBitmapData) {
+    if (character?.zlibBitmapData || character?.imageData) {
         return createBitmapNode(character);
     }
     if (character?.shapeBounds) {
@@ -162,12 +392,579 @@ async function createNodeForCharacter(
     return sprite;
 }
 
-async function createBitmapNode(character: SwfDefineBitsLossless): Promise<Sprite> {
+async function createBitmapNode(character: SwfDefineBitsLossless | any): Promise<Sprite> {
     const sprite = new Sprite();
     sprite.size(character.width, character.height);
-    const imageUrl = await imageCharacterToObjectUrl(character);
-    await loadImageOntoSprite(sprite, imageUrl);
+    await loadImageCharacterOntoSprite(sprite, character);
     return sprite;
+}
+
+async function createButtonNode(
+    movie: SwfMovie,
+    button: SwfDefineButton,
+    _namedInstances: Map<string, Sprite | Text>
+): Promise<Sprite> {
+    const stateRoots = new Map<SwfButtonStateName, Sprite>();
+    for (const state of buttonStateNames()) {
+        stateRoots.set(state, await createButtonStateNode(movie, button, state, false));
+    }
+    const root = new Sprite();
+    installButtonBridge(root, movie, button, stateRoots);
+    setButtonState(root, button, stateRoots, "up");
+    return root;
+}
+
+function createButtonShellNode(
+    movie: SwfMovie,
+    button: SwfDefineButton,
+    _namedInstances: Map<string, Sprite | Text>
+): Sprite {
+    const stateRoots = new Map<SwfButtonStateName, Sprite>();
+    for (const state of buttonStateNames()) {
+        stateRoots.set(state, createButtonStateShellNode(movie, button, state));
+    }
+    const root = new Sprite();
+    installButtonBridge(root, movie, button, stateRoots);
+    (root as any).__rawSwfButtonShell = true;
+    setButtonState(root, button, stateRoots, "up");
+    return root;
+}
+
+function instantiateButtonShell(movie: SwfMovie, button: SwfDefineButton): SwfDisplayObjectShell {
+    const namedInstances = new Map<string, Sprite | Text>();
+    const root = createButtonShellNode(movie, button, namedInstances);
+    return {
+        root,
+        namedInstances,
+        renderedShapeCount: renderedShapeCountFor(root),
+        bitmapFillCount: childrenDebugCount(root, "__rawSwfBitmapFillCount")
+    };
+}
+
+async function createButtonStateNode(movie: SwfMovie, button: SwfDefineButton, state: SwfButtonStateName, shell: boolean): Promise<Sprite> {
+    const root = new Sprite();
+    const placements = button.statePlacements[state] ?? [];
+    const maskStack: { clipDepth: number; group: Sprite }[] = [];
+    let renderedShapeCount = 0;
+    for (const placement of placements) {
+        while (maskStack.length && placement.depth > maskStack[maskStack.length - 1].clipDepth) {
+            maskStack.pop();
+        }
+        if (placement.characterId == null) {
+            continue;
+        }
+        const character = movie.getCharacter(placement.characterId);
+        const node = shell
+            ? createShellNodeForCharacter(movie, character, new Map(), 0, placement.ratio)
+            : await createNodeForCharacter(movie, character, new Map(), 0, placement.ratio);
+        applyPlacement(node, placement, character);
+        if (placement.clipDepth != null) {
+            const group = new Sprite();
+            group.mask = node as Sprite;
+            currentMaskContainer(root, maskStack).addChild(group);
+            maskStack.push({ clipDepth: placement.clipDepth, group });
+            continue;
+        }
+        currentMaskContainer(root, maskStack).addChild(node);
+        renderedShapeCount += renderedShapeCountFor(node);
+    }
+    (root as any).__rawSwfButtonState = state;
+    (root as any).__rawSwfButtonCharacterId = button.characterId;
+    (root as any).__rawSwfRenderedShapeCount = renderedShapeCount;
+    (root as any).__rawSwfBitmapFillCount = childrenDebugCount(root, "__rawSwfBitmapFillCount");
+    return root;
+}
+
+function createButtonStateShellNode(movie: SwfMovie, button: SwfDefineButton, state: SwfButtonStateName): Sprite {
+    const placeholder = new Sprite();
+    void createButtonStateNode(movie, button, state, true).then(stateRoot => {
+        placeholder.removeChildren();
+        while (Number(stateRoot.numChildren ?? 0) > 0) {
+            const child = stateRoot.getChildAt(0);
+            if (!child) {
+                break;
+            }
+            placeholder.addChild(child);
+        }
+        (placeholder as any).__rawSwfRenderedShapeCount = (stateRoot as any).__rawSwfRenderedShapeCount ?? 0;
+        (placeholder as any).__rawSwfBitmapFillCount = (stateRoot as any).__rawSwfBitmapFillCount ?? 0;
+        (placeholder as any).__rawSwfButtonStateShellReady = true;
+    });
+    (placeholder as any).__rawSwfButtonState = state;
+    (placeholder as any).__rawSwfButtonStateShell = true;
+    return placeholder;
+}
+
+function installButtonBridge(root: Sprite, movie: SwfMovie, button: SwfDefineButton, stateRoots: Map<SwfButtonStateName, Sprite>): void {
+    const raw = root as any;
+    raw.__rawSwfButtonCharacterId = button.characterId;
+    raw.__rawSwfButtonRecords = button.records;
+    raw.__rawSwfButtonActions = button.actions;
+    raw._flashButtonActions = button.actions;
+    raw._flashButtonActionRecords = button.actions;
+    raw._flashButtonActionDispatches = [];
+    raw.trackAsMenu = button.trackAsMenu;
+    raw.enabled = true;
+    raw.mouseEnabled = true;
+    raw.buttonMode = true;
+    raw.useHandCursor = true;
+    raw.tabEnabled = false;
+    raw.doubleClickEnabled = false;
+    raw.upState = stateRoots.get("up") ?? null;
+    raw.overState = stateRoots.get("over") ?? null;
+    raw.downState = stateRoots.get("down") ?? null;
+    raw.hitTestState = stateRoots.get("hit") ?? null;
+    raw._flashHitTestLocalPoint = (x: number, y: number): boolean => buttonHitTestLocal(movie, button, x, y);
+    raw._flashHitTestPoint = (x: number, y: number): boolean => {
+        const point = typeof raw.globalToLocal === "function"
+            ? raw.globalToLocal({ x, y })
+            : { x: x - Number(raw.x ?? 0), y: y - Number(raw.y ?? 0) };
+        return raw._flashHitTestLocalPoint(point.x, point.y);
+    };
+    raw.hitTestPrior = true;
+    raw.hitArea = {
+        contains: (x: number, y: number): boolean => raw._flashHitTestLocalPoint(x, y)
+    };
+    raw._flashDispatchButtonActions = (trigger: string) => dispatchButtonActions(raw, button, trigger);
+    raw.gotoAndStop = (target: number | string): void => {
+        setButtonState(root, button, stateRoots, resolveButtonState(target));
+    };
+    raw.gotoAndPlay = raw.gotoAndStop;
+    raw.stop = (): void => {};
+    raw.play = (): void => {};
+    const addHandler = (eventName: string, handler: () => void): void => {
+        if (typeof raw.on === "function") {
+            raw.on(eventName, root, handler);
+        }
+    };
+    addHandler("mouseover", () => {
+        if (raw.enabled !== false && raw.mouseEnabled !== false) {
+            dispatchButtonActions(raw, button, "idleToOverUp");
+            setButtonState(root, button, stateRoots, "over");
+        }
+    });
+    addHandler("mousedown", () => {
+        if (raw.enabled !== false && raw.mouseEnabled !== false) {
+            dispatchButtonActions(raw, button, raw.currentFrame === 2 ? "overUpToOverDown" : "idleToOverDown");
+            setButtonState(root, button, stateRoots, "down");
+        }
+    });
+    addHandler("mouseup", () => {
+        if (raw.enabled !== false && raw.mouseEnabled !== false) {
+            dispatchButtonActions(raw, button, "overDownToOverUp");
+            setButtonState(root, button, stateRoots, "over");
+        }
+    });
+    addHandler("mouseout", () => {
+        if (raw.enabled !== false && raw.mouseEnabled !== false) {
+            dispatchButtonActions(raw, button, raw.currentFrame === 3 ? "overDownToIdle" : "overUpToIdle");
+            setButtonState(root, button, stateRoots, "up");
+        }
+    });
+}
+
+function setButtonState(root: Sprite, button: SwfDefineButton, stateRoots: Map<SwfButtonStateName, Sprite>, state: SwfButtonStateName): void {
+    const raw = root as any;
+    const stateRoot = stateRoots.get(state) ?? stateRoots.get("up") ?? new Sprite();
+    raw.__rawSwfButtonState = state;
+    raw.currentFrame = buttonStateFrameNumber(state);
+    raw.currentLabel = state;
+    raw.currentLabels = [state, `_${state}`];
+    raw.totalFrames = 4;
+    root.removeChildren();
+    root.addChild(stateRoot);
+    (root as any).__rawSwfRenderedShapeCount = renderedShapeCountFor(stateRoot);
+    (root as any).__rawSwfBitmapFillCount = childrenDebugCount(stateRoot, "__rawSwfBitmapFillCount");
+}
+
+function dispatchButtonActions(raw: any, button: SwfDefineButton, trigger: string): any[] {
+    const matched = button.actions.filter(action => buttonActionMatchesTrigger(action, trigger));
+    for (const action of matched) {
+        const execution = executeAvm1Actions(raw, action.decodedActions, {
+            trigger,
+            source: "button",
+            rawBytes: action.actions
+        });
+        raw._flashButtonActionDispatches.push({ trigger, action, execution });
+    }
+    return matched;
+}
+
+function buttonActionMatchesTrigger(action: any, trigger: string): boolean {
+    const conditions = action.conditions ?? {};
+    if (trigger === "keyPress") {
+        return Number(action.keyPress ?? 0) !== 0;
+    }
+    return !!conditions[trigger];
+}
+
+interface Avm1ExecutionContext {
+    source: "button" | "frame" | "init";
+    trigger?: string;
+    frameIndex?: number;
+    rawBytes?: Uint8Array;
+}
+
+function executeInitAvm1Actions(root: Sprite, sprite: SwfDefineSprite): void {
+    const raw = root as any;
+    raw.__rawSwfInitActions = sprite.initActions ?? [];
+    for (const action of sprite.initActions ?? []) {
+        executeAvm1Actions(raw, action.decodedActions, {
+            source: "init",
+            rawBytes: action.actions
+        });
+    }
+}
+
+function executeFrameAvm1Actions(root: Sprite, frame: { index?: number; actions?: SwfDoAction[] } | undefined, timeline?: SwfTimelineInstance): void {
+    const raw = root as any;
+    const actions = frame?.actions ?? [];
+    raw.__rawSwfFrameActions = actions;
+    if (!actions.length) {
+        return;
+    }
+    for (const action of actions) {
+        executeAvm1Actions(raw, action.decodedActions, {
+            source: "frame",
+            frameIndex: frameIndexFromFrame(frame),
+            rawBytes: action.actions
+        }, timeline);
+    }
+}
+
+function frameIndexFromFrame(frame: { index?: number } | undefined): number | undefined {
+    return typeof frame?.index === "number" ? frame.index : undefined;
+}
+
+function executeAvm1Actions(target: any, actions: SwfAvm1ActionRecord[] | undefined, context: Avm1ExecutionContext, timeline?: SwfTimelineInstance): any {
+    const records = actions ?? [];
+    const execution = {
+        source: context.source,
+        trigger: context.trigger,
+        frameIndex: context.frameIndex,
+        executed: [] as string[],
+        stack: [] as SwfAvm1ActionValue[],
+        variables: {} as Record<string, SwfAvm1ActionValue>,
+        stopped: false,
+        played: false,
+        jumpedToFrame: null as number | string | null,
+        traces: [] as SwfAvm1ActionValue[]
+    };
+    const raw = target as any;
+    raw.__rawSwfAvm1Executions ??= [];
+    const stack = execution.stack;
+    const offsetToIndex = new Map<number, number>();
+    records.forEach((record, index) => offsetToIndex.set(record.offset, index));
+    let constantPool: string[] = [];
+    for (let pc = 0; pc >= 0 && pc < records.length; pc++) {
+        const record = records[pc];
+        execution.executed.push(record.name);
+        switch (record.opcode) {
+            case 0x04:
+                gotoAvm1Frame(raw, timeline, Number(raw.currentFrame ?? 1) + 1);
+                execution.jumpedToFrame = Number(raw.currentFrame ?? 1) + 1;
+                break;
+            case 0x05:
+                gotoAvm1Frame(raw, timeline, Number(raw.currentFrame ?? 1) - 1);
+                execution.jumpedToFrame = Number(raw.currentFrame ?? 1) - 1;
+                break;
+            case 0x06:
+                execution.played = true;
+                void raw.play?.();
+                break;
+            case 0x07:
+                execution.stopped = true;
+                raw.stop?.();
+                break;
+            case 0x0a:
+                stack.push(Number(stack.pop() ?? 0) + Number(stack.pop() ?? 0));
+                break;
+            case 0x0b: {
+                const right = Number(stack.pop() ?? 0);
+                const left = Number(stack.pop() ?? 0);
+                stack.push(left - right);
+                break;
+            }
+            case 0x0c:
+                stack.push(Number(stack.pop() ?? 0) * Number(stack.pop() ?? 0));
+                break;
+            case 0x0d: {
+                const right = Number(stack.pop() ?? 0);
+                const left = Number(stack.pop() ?? 0);
+                stack.push(right === 0 ? Number.NaN : left / right);
+                break;
+            }
+            case 0x12:
+                stack.push(!avm1Truthy(stack.pop()));
+                break;
+            case 0x17:
+                stack.pop();
+                break;
+            case 0x1c:
+                stack.push(getAvm1Variable(raw, String(stack.pop() ?? "")));
+                break;
+            case 0x1d: {
+                const value = stack.pop();
+                const name = String(stack.pop() ?? "");
+                setAvm1Variable(raw, name, value);
+                execution.variables[name] = value;
+                break;
+            }
+            case 0x26: {
+                const value = stack.pop();
+                execution.traces.push(value);
+                avm1Trace(value);
+                break;
+            }
+            case 0x81:
+                if (typeof record.frame === "number") {
+                    const frame = record.frame + 1;
+                    execution.jumpedToFrame = frame;
+                    gotoAvm1Frame(raw, timeline, frame);
+                }
+                break;
+            case 0x83:
+                raw.__rawSwfAvm1GetUrls ??= [];
+                raw.__rawSwfAvm1GetUrls.push({ url: record.url ?? "", target: record.target ?? "" });
+                break;
+            case 0x88:
+                constantPool = record.constantPool ?? [];
+                break;
+            case 0x8c:
+                if (record.label) {
+                    execution.jumpedToFrame = record.label;
+                    gotoAvm1Frame(raw, timeline, record.label);
+                }
+                break;
+            case 0x96:
+                for (const value of record.values ?? []) {
+                    stack.push(typeof value === "number" && Number.isInteger(value) && constantPool[value] != null
+                        ? constantPool[value]
+                        : value);
+                }
+                break;
+            case 0x99:
+                pc = avm1JumpIndex(records, offsetToIndex, record, pc);
+                break;
+            case 0x9d:
+                if (avm1Truthy(stack.pop())) {
+                    pc = avm1JumpIndex(records, offsetToIndex, record, pc);
+                }
+                break;
+            default:
+                raw.__rawSwfAvm1UnsupportedActions ??= [];
+                raw.__rawSwfAvm1UnsupportedActions.push(record);
+                break;
+        }
+    }
+    raw.__rawSwfAvm1Executions.push(execution);
+    return execution;
+}
+
+function gotoAvm1Frame(raw: any, timeline: SwfTimelineInstance | undefined, frame: number | string): void {
+    if (timeline) {
+        void timeline.gotoAndStop(frame);
+        return;
+    }
+    void raw.gotoAndStop?.(frame);
+}
+
+function avm1JumpIndex(records: SwfAvm1ActionRecord[], offsetToIndex: Map<number, number>, record: SwfAvm1ActionRecord, pc: number): number {
+    const targetOffset = record.offset + record.size + Number(record.branchOffset ?? 0);
+    const exact = offsetToIndex.get(targetOffset);
+    if (exact != null) {
+        return exact - 1;
+    }
+    const next = records.findIndex(candidate => candidate.offset >= targetOffset);
+    return next >= 0 ? next - 1 : pc;
+}
+
+function avm1Truthy(value: SwfAvm1ActionValue): boolean {
+    return !(value == null || value === false || value === 0 || value === "");
+}
+
+function getAvm1Variable(raw: any, name: string): SwfAvm1ActionValue {
+    if (!name) {
+        return undefined;
+    }
+    if (name.startsWith("_root.")) {
+        return getPathValue(raw, name.slice("_root.".length));
+    }
+    return getPathValue(raw, name);
+}
+
+function setAvm1Variable(raw: any, name: string, value: SwfAvm1ActionValue): void {
+    if (!name) {
+        return;
+    }
+    const normalized = name.startsWith("_root.") ? name.slice("_root.".length) : name;
+    setPathValue(raw, normalized, value);
+}
+
+function getPathValue(root: any, path: string): SwfAvm1ActionValue {
+    const parts = path.split(".").filter(Boolean);
+    let current = root;
+    for (const part of parts) {
+        current = current?.[part];
+    }
+    return current;
+}
+
+function setPathValue(root: any, path: string, value: SwfAvm1ActionValue): void {
+    const parts = path.split(".").filter(Boolean);
+    if (!parts.length) {
+        return;
+    }
+    let current = root;
+    for (const part of parts.slice(0, -1)) {
+        current[part] ??= {};
+        current = current[part];
+    }
+    current[parts[parts.length - 1]] = value;
+}
+
+function avm1Trace(value: SwfAvm1ActionValue): void {
+    const global = globalThis as any;
+    global.__rawSwfAvm1Trace ??= [];
+    global.__rawSwfAvm1Trace.push(value);
+}
+
+function buttonHitTestLocal(movie: SwfMovie, button: SwfDefineButton, x: number, y: number): boolean {
+    const placements = button.statePlacements.hit.length > 0
+        ? button.statePlacements.hit
+        : button.statePlacements.up;
+    return placements.some(placement => placementHitTestLocal(movie, placement, x, y));
+}
+
+function placementHitTestLocal(movie: SwfMovie, placement: SwfPlaceObject, x: number, y: number): boolean {
+    if (placement.characterId == null) {
+        return false;
+    }
+    const point = inversePlacementPoint(placement, x, y);
+    const character = movie.getCharacter(placement.characterId);
+    return characterHitTestLocal(movie, character, point.x, point.y);
+}
+
+function characterHitTestLocal(movie: SwfMovie, character: any, x: number, y: number): boolean {
+    if (isSpriteCharacter(character)) {
+        const placements = framePlacements(character, 0);
+        return placements.some(placement => placementHitTestLocal(movie, placement, x, y));
+    }
+    if (isButtonCharacter(character)) {
+        return buttonHitTestLocal(movie, character, x, y);
+    }
+    if (isMorphShapeCharacter(character)) {
+        return pointInShape(morphShapeAtRatio(character, 0), x, y);
+    }
+    if (character?.shapeBounds) {
+        return pointInShape(character, x, y);
+    }
+    const bounds = character?.bounds ?? (
+        character?.width != null && character?.height != null
+            ? { xMin: 0, yMin: 0, xMax: character.width, yMax: character.height }
+            : null
+    );
+    return !!bounds && x >= bounds.xMin && x <= bounds.xMax && y >= bounds.yMin && y <= bounds.yMax;
+}
+
+function inversePlacementPoint(placement: SwfPlaceObject, x: number, y: number): { x: number; y: number } {
+    const matrix = placement.matrix;
+    if (!matrix) {
+        return { x, y };
+    }
+    const a = matrix.scaleX;
+    const b = matrix.rotateSkew1;
+    const c = matrix.rotateSkew0;
+    const d = matrix.scaleY;
+    const tx = matrix.translateX;
+    const ty = matrix.translateY;
+    const det = a * d - b * c;
+    if (Math.abs(det) < 0.000001) {
+        return { x, y };
+    }
+    const dx = x - tx;
+    const dy = y - ty;
+    return {
+        x: (d * dx - c * dy) / det,
+        y: (-b * dx + a * dy) / det
+    };
+}
+
+function pointInShape(shape: SwfDefineShape, x: number, y: number): boolean {
+    for (const fill of shape.fillStyles ?? []) {
+        const paths = orientedFillPathsForStyle(shape.paths ?? [], fill.index);
+        if (paths.length > 0 && windingForPaths(paths, x, y) !== 0) {
+            return true;
+        }
+    }
+    const bounds = shape.shapeBounds;
+    return !!bounds && x >= bounds.xMin && x <= bounds.xMax && y >= bounds.yMin && y <= bounds.yMax;
+}
+
+function windingForPaths(paths: OrientedShapePath[], x: number, y: number): number {
+    let winding = 0;
+    for (const orientedPath of paths) {
+        const points = orientedPath.reverse ? reversedFlatPoints(orientedPath.path) : flattenPathForLaya(orientedPath.path);
+        for (let index = 0; index + 3 < points.length; index += 2) {
+            winding += edgeWinding(points[index], points[index + 1], points[index + 2], points[index + 3], x, y);
+        }
+        if (points.length >= 4) {
+            winding += edgeWinding(points[points.length - 2], points[points.length - 1], points[0], points[1], x, y);
+        }
+    }
+    return winding;
+}
+
+function edgeWinding(x0: number, y0: number, x1: number, y1: number, x: number, y: number): number {
+    if (y0 <= y) {
+        return y1 > y && isLeftOfEdge(x0, y0, x1, y1, x, y) > 0 ? 1 : 0;
+    }
+    return y1 <= y && isLeftOfEdge(x0, y0, x1, y1, x, y) < 0 ? -1 : 0;
+}
+
+function isLeftOfEdge(x0: number, y0: number, x1: number, y1: number, x: number, y: number): number {
+    return (x1 - x0) * (y - y0) - (x - x0) * (y1 - y0);
+}
+
+function resolveButtonState(target: number | string): SwfButtonStateName {
+    if (typeof target === "number") {
+        switch (Math.max(1, Math.min(4, Math.trunc(target)))) {
+            case 2: return "over";
+            case 3: return "down";
+            case 4: return "hit";
+            case 1:
+            default: return "up";
+        }
+    }
+    switch (target) {
+        case "over":
+        case "_over":
+            return "over";
+        case "down":
+        case "_down":
+            return "down";
+        case "hit":
+        case "_hit":
+            return "hit";
+        case "up":
+        case "_up":
+        default:
+            return "up";
+    }
+}
+
+function buttonStateFrameNumber(state: SwfButtonStateName): number {
+    switch (state) {
+        case "over": return 2;
+        case "down": return 3;
+        case "hit": return 4;
+        case "up":
+        default: return 1;
+    }
+}
+
+function buttonStateNames(): SwfButtonStateName[] {
+    return ["up", "over", "down", "hit"];
 }
 
 async function createStaticTextNode(movie: SwfMovie, character: SwfDefineText): Promise<Sprite | Text> {
@@ -235,7 +1032,7 @@ async function createStaticTextOutlineNode(movie: SwfMovie, character: SwfDefine
         return null;
     }
     if (canvas && context) {
-        await loadImageOntoSprite(root, await canvasToObjectUrl(canvas));
+        await loadCanvasOntoSprite(root, await cachedStaticTextOutlineCanvas(character, canvas));
     }
     (root as any).__rawSwfTextCharacterId = character.characterId;
     (root as any).__rawSwfTextRenderedAsGlyphOutlines = true;
@@ -346,7 +1143,7 @@ function textRecordsToString(movie: SwfMovie, character: SwfDefineText): string 
 }
 
 function createTextNode(movie: SwfMovie, character: SwfDefineEditText): Text {
-    const text = new Text();
+    const text = character.flags.readOnly ? new Text() : new Input();
     text.text = character.initialText ?? "";
     text.color = rgbaToCss(character.textColor) ?? "#ffffff";
     text.align = character.layout?.align === 2 ? "center" : character.layout?.align === 1 ? "right" : "left";
@@ -379,6 +1176,13 @@ function createTextNode(movie: SwfMovie, character: SwfDefineEditText): Text {
     }
     if (character.flags.password) {
         (text as any)._asPassword = true;
+        (text as any).type = "password";
+    }
+    if (text instanceof Input) {
+        text.editable = true;
+        text.selectable = !character.flags.noSelect;
+        text.multiline = !!character.flags.multiline;
+        text.maxChars = character.maxLength ?? 0;
     }
     if (character.flags.border) {
         text.borderColor = rgbaToCss(character.textColor) ?? "#000000";
@@ -386,10 +1190,139 @@ function createTextNode(movie: SwfMovie, character: SwfDefineEditText): Text {
     (text as any).__rawSwfVariableName = character.variableName;
     (text as any).__rawSwfReadOnly = character.flags.readOnly;
     (text as any).__rawSwfSelectable = !character.flags.noSelect;
+    (text as any).__rawSwfTextNodeKind = text instanceof Input ? "Input" : "Text";
+    (text as any).__rawSwfMaxLength = character.maxLength ?? 0;
+    (text as any).__rawSwfMultiline = !!character.flags.multiline;
+    (text as any).__rawSwfWordWrap = !!character.flags.wordWrap;
     if (character.csmTextSettings) {
         (text as any).__rawSwfCsmTextSettings = character.csmTextSettings;
     }
     return text;
+}
+
+async function renderMorphShapeNode(movie: SwfMovie, morph: SwfDefineMorphShape, ratio: number): Promise<Sprite> {
+    const shape = morphShapeAtRatio(morph, ratio);
+    const node = await renderShapeNode(movie, shape);
+    (node as any).__rawSwfMorphShape = true;
+    (node as any).__rawSwfMorphCharacterId = morph.characterId;
+    (node as any).__rawSwfMorphRatio = ratio;
+    (node as any).__rawSwfMorphStartPathCount = morph.startPaths.length;
+    (node as any).__rawSwfMorphEndPathCount = morph.endPaths.length;
+    return node;
+}
+
+function morphShapeAtRatio(morph: SwfDefineMorphShape, ratio: number): SwfDefineShape {
+    const normalized = morphRatioToUnit(ratio);
+    return {
+        characterId: morph.characterId,
+        shapeBounds: interpolatedMorphBounds(morph, ratio),
+        edgeBounds: morph.startEdgeBounds && morph.endEdgeBounds
+            ? interpolateRect(morph.startEdgeBounds, morph.endEdgeBounds, normalized)
+            : undefined,
+        usesNonScalingStrokes: morph.usesNonScalingStrokes,
+        usesScalingStrokes: morph.usesScalingStrokes,
+        fillStyles: morph.fillStyles.map(style => ({
+            index: style.index,
+            type: style.type,
+            color: style.startColor || style.endColor ? interpolateRgba(style.startColor, style.endColor, normalized) : undefined,
+            bitmapId: style.bitmapId,
+            bitmapMatrix: interpolateMatrix(style.startBitmapMatrix, style.endBitmapMatrix, normalized),
+            gradientMatrix: interpolateMatrix(style.startGradientMatrix, style.endGradientMatrix, normalized),
+            focalPoint: style.focalPoint,
+            gradientRecords: style.gradientRecords?.map(record => ({
+                ratio: Math.round(interpolateNumber(record.startRatio, record.endRatio, normalized)),
+                color: interpolateRgba(record.startColor, record.endColor, normalized)
+            }))
+        })),
+        lineStyles: morph.lineStyles.map(style => ({
+            index: style.index,
+            widthTwips: Math.round(interpolateNumber(style.startWidthTwips, style.endWidthTwips, normalized)),
+            width: interpolateNumber(style.startWidth, style.endWidth, normalized),
+            color: style.startColor || style.endColor ? interpolateRgba(style.startColor, style.endColor, normalized) : undefined,
+            fillStyle: style.fillStyle ? {
+                index: style.fillStyle.index,
+                type: style.fillStyle.type,
+                color: style.fillStyle.startColor || style.fillStyle.endColor
+                    ? interpolateRgba(style.fillStyle.startColor, style.fillStyle.endColor, normalized)
+                    : undefined,
+                bitmapId: style.fillStyle.bitmapId,
+                bitmapMatrix: interpolateMatrix(style.fillStyle.startBitmapMatrix, style.fillStyle.endBitmapMatrix, normalized),
+                gradientMatrix: interpolateMatrix(style.fillStyle.startGradientMatrix, style.fillStyle.endGradientMatrix, normalized),
+                gradientRecords: style.fillStyle.gradientRecords?.map(record => ({
+                    ratio: Math.round(interpolateNumber(record.startRatio, record.endRatio, normalized)),
+                    color: interpolateRgba(record.startColor, record.endColor, normalized)
+                }))
+            } : undefined,
+            startCapStyle: style.startCapStyle,
+            joinStyle: style.joinStyle,
+            hasFill: style.hasFill,
+            noHScale: style.noHScale,
+            noVScale: style.noVScale,
+            pixelHinting: style.pixelHinting,
+            noClose: style.noClose,
+            endCapStyle: style.endCapStyle,
+            miterLimitFactor: style.miterLimitFactor
+        })),
+        paths: interpolateShapePaths(morph.startPaths, morph.endPaths, normalized)
+    };
+}
+
+function interpolatedMorphBounds(morph: SwfDefineMorphShape, ratio: number): SwfRect {
+    return interpolateRect(morph.startBounds, morph.endBounds, morphRatioToUnit(ratio));
+}
+
+function interpolateShapePaths(startPaths: SwfShapePath[], endPaths: SwfShapePath[], ratio: number): SwfShapePath[] {
+    if (startPaths.length !== endPaths.length) {
+        return ratio < 0.5 ? startPaths : endPaths;
+    }
+    return startPaths.map((startPath, index) => interpolateShapePath(startPath, endPaths[index], ratio));
+}
+
+function interpolateShapePath(startPath: SwfShapePath, endPath: SwfShapePath, ratio: number): SwfShapePath {
+    if (startPath.segments.length !== endPath.segments.length) {
+        return ratio < 0.5 ? startPath : endPath;
+    }
+    const segments = startPath.segments.map((startSegment, index) => {
+        const endSegment = endPath.segments[index];
+        if (startSegment.type !== endSegment.type) {
+            return ratio < 0.5 ? startSegment : endSegment;
+        }
+        if (startSegment.type === "line" && endSegment.type === "line") {
+            return {
+                type: "line" as const,
+                start: interpolateShapePoint(startSegment.start, endSegment.start, ratio),
+                end: interpolateShapePoint(startSegment.end, endSegment.end, ratio)
+            };
+        }
+        if (startSegment.type === "curve" && endSegment.type === "curve") {
+            return {
+                type: "curve" as const,
+                start: interpolateShapePoint(startSegment.start, endSegment.start, ratio),
+                control: interpolateShapePoint(startSegment.control, endSegment.control, ratio),
+                end: interpolateShapePoint(startSegment.end, endSegment.end, ratio)
+            };
+        }
+        return ratio < 0.5 ? startSegment : endSegment;
+    });
+    return {
+        fillStyleIndex: startPath.fillStyleIndex || endPath.fillStyleIndex,
+        fillStyle0Index: startPath.fillStyle0Index || endPath.fillStyle0Index,
+        fillStyle1Index: startPath.fillStyle1Index || endPath.fillStyle1Index,
+        lineStyleIndex: startPath.lineStyleIndex || endPath.lineStyleIndex,
+        points: segments.length > 0 ? [segments[0].start, ...segments.map(segment => segment.end)] : startPath.points,
+        segments
+    };
+}
+
+function interpolateShapePoint(start: any, end: any, ratio: number): any {
+    const xTwips = Math.round(interpolateNumber(start.xTwips, end.xTwips, ratio));
+    const yTwips = Math.round(interpolateNumber(start.yTwips, end.yTwips, ratio));
+    return {
+        xTwips,
+        yTwips,
+        x: xTwips / 20,
+        y: yTwips / 20
+    };
 }
 
 async function renderShapeNode(movie: SwfMovie, shape: SwfDefineShape): Promise<Sprite> {
@@ -427,12 +1360,12 @@ async function renderFillPaths(root: Sprite, movie: SwfMovie, paths: OrientedSha
     const pathBounds = boundsForPaths(paths);
     if (fill?.bitmapId != null || fill?.gradientRecords?.length || fill?.color) {
         const image = fill?.bitmapId == null ? null : movie.getCharacter(fill.bitmapId) as any;
-        const rasterUrl = await rasterizeCompoundFill(paths, pathBounds, fill, image);
-        if (rasterUrl) {
+        const rasterCanvas = await cachedFillRasterCanvas(paths, pathBounds, fill, image);
+        if (rasterCanvas) {
             const child = new Sprite();
             child.pos(pathBounds.xMin, pathBounds.yMin);
             child.size(Math.max(1, Math.ceil(pathBounds.width)), Math.max(1, Math.ceil(pathBounds.height)));
-            await loadImageOntoSprite(child, rasterUrl);
+            await loadCanvasOntoSprite(child, rasterCanvas);
             if (fill?.bitmapId != null) {
                 (child as any).__rawSwfBitmapFillCount = 1;
                 (child as any).__rawSwfBitmapFillType = fill.type;
@@ -449,11 +1382,10 @@ async function renderFillPaths(root: Sprite, movie: SwfMovie, paths: OrientedSha
     if (fill?.bitmapId != null) {
         const image = movie.getCharacter(fill.bitmapId) as any;
         if (image?.imageData || image?.zlibBitmapData) {
-            const imageUrl = await imageCharacterToObjectUrl(image);
             const child = new Sprite();
             child.pos(pathBounds.xMin, pathBounds.yMin);
             child.size(Math.max(1, pathBounds.width), Math.max(1, pathBounds.height));
-            await loadImageOntoSprite(child, imageUrl);
+            await loadImageCharacterOntoSprite(child, image);
             if (paths.length !== 1 || !isAxisAlignedRectanglePath(paths[0].path)) {
                 child.mask = maskForPaths(paths, pathBounds);
             }
@@ -477,6 +1409,26 @@ async function renderFillPaths(root: Sprite, movie: SwfMovie, paths: OrientedSha
         return true;
     }
     return false;
+}
+
+function cachedFillRasterCanvas(paths: OrientedShapePath[], bounds: SwfRect, fill: SwfFillStyle, image: any): Promise<HTMLCanvasElement | null> {
+    const cacheKey = fill as object;
+    let cached = fillRasterCanvasCache.get(cacheKey);
+    if (!cached) {
+        cached = rasterizeCompoundFill(paths, bounds, fill, image);
+        fillRasterCanvasCache.set(cacheKey, cached);
+    }
+    return cached;
+}
+
+function cachedStaticTextOutlineCanvas(character: SwfDefineText, canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+    const cacheKey = character as object;
+    let cached = staticTextOutlineCanvasCache.get(cacheKey);
+    if (!cached) {
+        cached = Promise.resolve(canvas);
+        staticTextOutlineCanvasCache.set(cacheKey, cached);
+    }
+    return cached;
 }
 
 function renderStrokePath(root: Sprite, path: SwfShapePath, line: SwfLineStyle | undefined): boolean {
@@ -523,6 +1475,7 @@ function applyPlacement(node: Sprite | Text, placement: SwfPlaceObject, characte
     if (b === 0 && c === 0) {
         node.pos(tx, ty);
         node.scale(a, d);
+        applyScalingGridPlacementMetadata(node, character, a, d);
         applyPlacementDisplayState(node, placement);
         return;
     }
@@ -536,43 +1489,328 @@ function applyPlacement(node: Sprite | Text, placement: SwfPlaceObject, characte
     node.y = ty;
     node.scaleX = a;
     node.scaleY = d;
+    applyScalingGridPlacementMetadata(node, character, a, d);
     applyPlacementDisplayState(node, placement);
+}
+
+function applyScalingGridPlacementMetadata(node: Sprite | Text, character: any, scaleX: number, scaleY: number): void {
+    const scalingGrid = character?.scalingGrid;
+    if (!scalingGrid?.splitter) {
+        return;
+    }
+    const bounds = characterNominalBounds(character, scalingGrid.splitter);
+    const splitter = scalingGrid.splitter;
+    const left = Math.max(0, splitter.xMin - bounds.xMin);
+    const right = Math.max(0, bounds.xMax - splitter.xMax);
+    const top = Math.max(0, splitter.yMin - bounds.yMin);
+    const bottom = Math.max(0, bounds.yMax - splitter.yMax);
+    const targetWidth = Math.max(1, bounds.width * Math.abs(scaleX || 1));
+    const targetHeight = Math.max(1, bounds.height * Math.abs(scaleY || 1));
+    (node as any).__rawSwfScalingGrid = scalingGrid;
+    (node as any).__rawSwfScale9OriginalBounds = bounds;
+    (node as any).__rawSwfScale9Margins = { left, right, top, bottom };
+    (node as any).__rawSwfScale9TargetWidth = targetWidth;
+    (node as any).__rawSwfScale9TargetHeight = targetHeight;
+    (node as any).__rawSwfScale9PlacementScale = { x: scaleX, y: scaleY };
+    (node as any).__rawSwfScale9NeedsNativeDraw9Grid = true;
+    (node as any).__rawSwfScale9NativeReady = false;
+    (node as any).__rawSwfScale9NativePromise = installNativeScale9Draw(node, character, bounds, scaleX, scaleY);
+}
+
+function characterNominalBounds(character: any, splitter: SwfRect): SwfRect {
+    const bounds = character?.shapeBounds ?? character?.bounds;
+    if (bounds) {
+        return bounds;
+    }
+    const xMin = 0;
+    const yMin = 0;
+    const xMax = Math.max(1, splitter.xMin + splitter.xMax);
+    const yMax = Math.max(1, splitter.yMin + splitter.yMax);
+    return {
+        xMinTwips: xMin * 20,
+        xMaxTwips: xMax * 20,
+        yMinTwips: yMin * 20,
+        yMaxTwips: yMax * 20,
+        xMin,
+        xMax,
+        yMin,
+        yMax,
+        width: xMax - xMin,
+        height: yMax - yMin
+    };
+}
+
+async function installNativeScale9Draw(
+    node: Sprite | Text,
+    character: any,
+    bounds: SwfRect,
+    scaleX: number,
+    scaleY: number
+): Promise<boolean> {
+    const graphics = (node as any).graphics;
+    if (!graphics?.draw9Grid || !graphics?.clear) {
+        (node as any).__rawSwfScale9NativeError = "Laya Graphics.draw9Grid is unavailable.";
+        return false;
+    }
+    if (scaleX === 0 || scaleY === 0) {
+        (node as any).__rawSwfScale9NativeError = "Zero scale cannot be converted to a native scale-9 surface.";
+        return false;
+    }
+    const texture = await scale9TextureForCharacter(character);
+    if (!texture) {
+        (node as any).__rawSwfScale9NativeError = "Scale-9 source character could not be rasterized.";
+        return false;
+    }
+    const margins = (node as any).__rawSwfScale9Margins;
+    const sizeGrid = [
+        Math.max(0, Number(margins?.top ?? 0)),
+        Math.max(0, Number(margins?.right ?? 0)),
+        Math.max(0, Number(margins?.bottom ?? 0)),
+        Math.max(0, Number(margins?.left ?? 0)),
+        0
+    ];
+    const targetWidth = Math.max(1, Math.abs(bounds.width * scaleX));
+    const targetHeight = Math.max(1, Math.abs(bounds.height * scaleY));
+    const drawX = scaleX < 0 ? bounds.xMax * scaleX : bounds.xMin * scaleX;
+    const drawY = scaleY < 0 ? bounds.yMax * scaleY : bounds.yMin * scaleY;
+    (node as any).texture = null;
+    if (typeof (node as any).removeChildren === "function") {
+        (node as any).removeChildren();
+    }
+    graphics.clear();
+    (node as any).scale(1, 1);
+    (node as any).size(Math.max(1, Math.abs(drawX) + targetWidth), Math.max(1, Math.abs(drawY) + targetHeight));
+    graphics.draw9Grid(texture, drawX, drawY, targetWidth, targetHeight, sizeGrid);
+    (node as any).__rawSwfScale9SizeGrid = sizeGrid;
+    (node as any).__rawSwfScale9NativeDraw9Grid = true;
+    (node as any).__rawSwfScale9NativeReady = true;
+    (node as any).__rawSwfScale9NeedsNativeDraw9Grid = false;
+    rawSwfRendererAssetMetrics().scale9Draw9GridInstalls += 1;
+    return true;
+}
+
+function scale9TextureForCharacter(character: any): Promise<any | null> {
+    const cacheKey = character as object;
+    let cached = scale9TextureCache.get(cacheKey);
+    if (!cached) {
+        cached = scale9TextureForCharacterUncached(character);
+        scale9TextureCache.set(cacheKey, cached);
+    }
+    return cached;
+}
+
+async function scale9TextureForCharacterUncached(character: any): Promise<any | null> {
+    if (typeof document === "undefined") {
+        return null;
+    }
+    const splitter = character?.scalingGrid?.splitter ?? character?.shapeBounds ?? character?.bounds;
+    const bounds = characterNominalBounds(character, splitter);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(bounds.width));
+    canvas.height = Math.max(1, Math.ceil(bounds.height));
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return null;
+    }
+    context.save();
+    context.translate(-bounds.xMin, -bounds.yMin);
+    await drawCharacterToCanvas(context, character);
+    context.restore();
+    const texture = createTextureFromSource(canvas, canvas.width, canvas.height);
+    if (texture) {
+        (texture as any)._sizeGrid = scale9SizeGridForCharacter(character, bounds);
+        rawSwfRendererAssetMetrics().scale9SourceUploads += 1;
+    }
+    return texture;
+}
+
+function scale9SizeGridForCharacter(character: any, bounds: SwfRect): number[] {
+    const splitter = character?.scalingGrid?.splitter;
+    if (!splitter) {
+        return [0, 0, 0, 0, 0];
+    }
+    return [
+        Math.max(0, splitter.yMin - bounds.yMin),
+        Math.max(0, bounds.xMax - splitter.xMax),
+        Math.max(0, bounds.yMax - splitter.yMax),
+        Math.max(0, splitter.xMin - bounds.xMin),
+        0
+    ];
+}
+
+async function drawCharacterToCanvas(context: CanvasRenderingContext2D, character: any): Promise<void> {
+    if (isSpriteCharacter(character)) {
+        for (const placement of framePlacements(character, 0)) {
+            if (placement.characterId == null) {
+                continue;
+            }
+            const child = (character as any).__rawSwfMovie?.getCharacter?.(placement.characterId);
+            if (!child) {
+                continue;
+            }
+            context.save();
+            applyPlacementMatrixToCanvas(context, placement.matrix);
+            await drawCharacterToCanvas(context, child);
+            context.restore();
+        }
+        return;
+    }
+    if (isMorphShapeCharacter(character)) {
+        await drawShapeToCanvas(context, morphShapeAtRatio(character, 0));
+        return;
+    }
+    if (character?.shapeBounds) {
+        await drawShapeToCanvas(context, character);
+        return;
+    }
+    if (character?.zlibBitmapData || character?.imageData) {
+        const surface = await imageCharacterToSurface(character);
+        context.drawImage(surface.source, 0, 0);
+        return;
+    }
+    if (character?.records) {
+        await drawStaticTextToCanvas(context, character);
+    }
+}
+
+function applyPlacementMatrixToCanvas(context: CanvasRenderingContext2D, matrix: SwfMatrix | undefined): void {
+    if (!matrix) {
+        return;
+    }
+    context.transform(
+        matrix.scaleX,
+        matrix.rotateSkew1,
+        matrix.rotateSkew0,
+        matrix.scaleY,
+        matrix.translateX,
+        matrix.translateY
+    );
+}
+
+async function drawShapeToCanvas(context: CanvasRenderingContext2D, shape: SwfDefineShape): Promise<void> {
+    const paths = shape.paths?.filter(path => (path.fillStyleIndex > 0 || path.lineStyleIndex > 0) && path.points.length >= 2) ?? [];
+    for (const fill of shape.fillStyles ?? []) {
+        const fillPaths = orientedFillPathsForStyle(paths, fill.index);
+        if (fillPaths.length === 0) {
+            continue;
+        }
+        const pathBounds = boundsForPaths(fillPaths);
+        const image = fill.bitmapId == null ? null : (shape as any).__rawSwfMovie?.getCharacter?.(fill.bitmapId);
+        const raster = await rasterizeCompoundFill(fillPaths, pathBounds, fill, image);
+        if (raster) {
+            context.drawImage(raster, pathBounds.xMin, pathBounds.yMin);
+            continue;
+        }
+        if (fill.color) {
+            buildCanvasCompoundPath(context, fillPaths, 0, 0);
+            context.fillStyle = rgbaToCss(fill.color) ?? "#000000";
+            context.fill("nonzero");
+        }
+    }
+    for (const path of paths) {
+        const line = shape.lineStyles?.find(candidate => candidate.index === path.lineStyleIndex);
+        const lineColor = colorForLineStyle(line);
+        if (!lineColor) {
+            continue;
+        }
+        const commands = drawPathCommands(path, false);
+        context.beginPath();
+        for (const command of commands) {
+            if (command[0] === "moveTo") {
+                context.moveTo(command[1], command[2]);
+            }
+            else if (command[0] === "lineTo") {
+                context.lineTo(command[1], command[2]);
+            }
+            else if (command[0] === "quadraticCurveTo") {
+                context.quadraticCurveTo(command[1], command[2], command[3], command[4]);
+            }
+        }
+        context.strokeStyle = lineColor;
+        context.lineWidth = Math.max(1, line?.width ?? 1);
+        context.stroke();
+    }
+}
+
+async function drawStaticTextToCanvas(context: CanvasRenderingContext2D, character: SwfDefineText): Promise<void> {
+    for (const record of character.records) {
+        if (record.fontId == null) {
+            continue;
+        }
+        const font = (character as any).__rawSwfMovie?.getCharacter?.(record.fontId) as SwfDefineFont | undefined;
+        if (!font?.glyphs) {
+            continue;
+        }
+        const textHeightTwips = record.textHeightTwips ?? 1024;
+        const glyphScale = textHeightTwips / fontGlyphCoordinateDivisor(font);
+        let xCursor = (record.xOffsetTwips ?? 0) / 20;
+        const yOffset = (record.yOffsetTwips ?? 0) / 20;
+        context.fillStyle = rgbaToCss(record.textColor) ?? "#ffffff";
+        for (const entry of record.glyphs) {
+            const glyph = font.glyphs[entry.glyphIndex];
+            const paths = glyph ? orientedFillPathsForStyle(glyph.paths, 1) : [];
+            if (paths.length) {
+                buildCanvasTextGlyphPath(context, paths, character, xCursor, yOffset, glyphScale);
+                context.fill("nonzero");
+            }
+            xCursor += entry.advanceTwips * glyphScale / 20;
+        }
+    }
 }
 
 function applyPlacementDisplayState(node: Sprite | Text, placement: SwfPlaceObject): void {
     if (placement.visible === false) {
         node.visible = false;
     }
-    applyColorTransform(node, placement.colorTransform);
+    const displayFilters: any[] = [];
+    const colorFilter = applyColorTransform(node, placement.colorTransform);
+    const renderSurfaceReasons = placementRenderSurfaceReasons(placement);
+    if (colorFilter) {
+        displayFilters.push(colorFilter);
+        (node as any).__rawSwfColorTransformMatrix = colorTransformMatrix(placement.colorTransform);
+    }
+    const flashFilters = createFlashFilters(placement.filters);
+    displayFilters.push(...flashFilters);
+    (node as any).filters = displayFilters.length > 0 ? displayFilters : null;
+    (node as any).__rawSwfFilterOrder = displayFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
+    (node as any).__rawSwfFlashFilterOrder = flashFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
     const blendMode = flashBlendModeToLaya(placement.blendMode);
     if (blendMode) {
         (node as any).blendMode = blendMode;
     }
-    if (placement.cacheAsBitmap || shouldIsolatePlacement(placement)) {
+    if (placement.cacheAsBitmap || renderSurfaceReasons.length > 0) {
         (node as any).cacheAs = "bitmap";
+        (node as any).__rawSwfRenderSurfaceReasons = renderSurfaceReasons;
     }
-    applyFlashFilters(node, placement.filters);
 }
 
-function shouldIsolatePlacement(placement: SwfPlaceObject): boolean {
+function placementRenderSurfaceReasons(placement: SwfPlaceObject): string[] {
+    const reasons: string[] = [];
     const blendMode = flashBlendModeToLaya(placement.blendMode);
-    return !!blendMode && blendMode !== "normal" || !!placement.filters?.length;
+    if (blendMode && blendMode !== "normal") {
+        reasons.push("blend");
+    }
+    if (placement.filters?.length) {
+        reasons.push("filter");
+    }
+    if (needsColorFilter(placement.colorTransform)) {
+        reasons.push("colorTransform");
+    }
+    return reasons;
 }
 
-function applyColorTransform(node: Sprite | Text, transform: SwfPlaceObject["colorTransform"]): void {
+function applyColorTransform(node: Sprite | Text, transform: SwfPlaceObject["colorTransform"]): any | null {
     if (!transform) {
-        return;
+        return null;
     }
     if (needsColorFilter(transform)) {
-        const colorFilter = new ColorFilter(colorTransformMatrix(transform));
-        const existing = ((node as any).filters ?? []) as any[];
-        (node as any).filters = [...existing, colorFilter];
-        return;
+        return new ColorFilter(colorTransformMatrix(transform));
     }
     const alpha = alphaFromColorTransform(transform);
     if (alpha != null) {
         node.alpha = alpha;
     }
+    return null;
 }
 
 function needsColorFilter(transform: SwfPlaceObject["colorTransform"]): boolean {
@@ -602,15 +1840,22 @@ function colorTransformMatrix(transform: SwfPlaceObject["colorTransform"]): numb
 }
 
 function applyFlashFilters(node: Sprite | Text, filters: SwfFilter[] | undefined): void {
-    if (!filters?.length) {
-        return;
-    }
-    const layaFilters = filters.map(flashFilterToLaya).filter((filter): filter is any => !!filter);
+    const layaFilters = createFlashFilters(filters);
     if (layaFilters.length === 0) {
         return;
     }
-    const existing = ((node as any).filters ?? []) as any[];
-    (node as any).filters = [...existing, ...layaFilters];
+    (node as any).filters = layaFilters;
+}
+
+function createFlashFilters(filters: SwfFilter[] | undefined): any[] {
+    if (!filters?.length) {
+        return [];
+    }
+    const layaFilters = filters.map(flashFilterToLaya).filter((filter): filter is any => !!filter);
+    if (layaFilters.length === 0) {
+        return [];
+    }
+    return layaFilters;
 }
 
 function flashFilterToLaya(filter: SwfFilter): any {
@@ -716,7 +1961,7 @@ async function rasterizeCompoundFill(
     bounds: SwfRect,
     fill: SwfFillStyle,
     image: any
-): Promise<string | null> {
+): Promise<HTMLCanvasElement | null> {
     if (typeof document === "undefined") {
         return null;
     }
@@ -740,9 +1985,8 @@ async function rasterizeCompoundFill(
             context.restore();
             return null;
         }
-        const imageUrl = await imageCharacterToObjectUrl(image);
-        const bitmap = await loadDomImage(imageUrl);
-        drawBitmapFill(context, bitmap, bounds, fill);
+        const bitmap = await imageCharacterToSurface(image);
+        drawBitmapFill(context, bitmap.source, bounds, fill);
     }
     else if (fill.gradientRecords?.length) {
         context.fillStyle = canvasGradientForFill(context, bounds, fill);
@@ -757,7 +2001,7 @@ async function rasterizeCompoundFill(
         return null;
     }
     context.restore();
-    return canvasToObjectUrl(canvas);
+    return canvas;
 }
 
 function buildCanvasCompoundPath(
@@ -795,7 +2039,7 @@ function buildCanvasCompoundPath(
 
 function drawBitmapFill(
     context: CanvasRenderingContext2D,
-    bitmap: HTMLImageElement,
+    bitmap: CanvasImageSource,
     bounds: SwfRect,
     fill: SwfFillStyle
 ): void {
@@ -818,13 +2062,15 @@ function drawBitmapFill(
             transformPoint(inverse, 0, bounds.height),
             transformPoint(inverse, bounds.width, bounds.height)
         ];
-        const minX = Math.floor(Math.min(...corners.map(point => point.x)) / bitmap.width) - 1;
-        const maxX = Math.ceil(Math.max(...corners.map(point => point.x)) / bitmap.width) + 1;
-        const minY = Math.floor(Math.min(...corners.map(point => point.y)) / bitmap.height) - 1;
-        const maxY = Math.ceil(Math.max(...corners.map(point => point.y)) / bitmap.height) + 1;
+        const bitmapWidth = sourceWidth(bitmap);
+        const bitmapHeight = sourceHeight(bitmap);
+        const minX = Math.floor(Math.min(...corners.map(point => point.x)) / bitmapWidth) - 1;
+        const maxX = Math.ceil(Math.max(...corners.map(point => point.x)) / bitmapWidth) + 1;
+        const minY = Math.floor(Math.min(...corners.map(point => point.y)) / bitmapHeight) - 1;
+        const maxY = Math.ceil(Math.max(...corners.map(point => point.y)) / bitmapHeight) + 1;
         for (let y = minY; y <= maxY; y++) {
             for (let x = minX; x <= maxX; x++) {
-                context.drawImage(bitmap, x * bitmap.width, y * bitmap.height);
+                context.drawImage(bitmap, x * bitmapWidth, y * bitmapHeight);
             }
         }
     }
@@ -863,37 +2109,142 @@ function transformPoint(matrix: { a: number; b: number; c: number; d: number; tx
 function canvasGradientForFill(context: CanvasRenderingContext2D, bounds: SwfRect, fill: SwfFillStyle): CanvasGradient {
     const records = [...(fill.gradientRecords ?? [])].sort((left, right) => left.ratio - right.ratio);
     const matrix = fill.gradientMatrix;
-    const scaleX = Math.max(0.0001, Math.abs((matrix?.scaleX ?? 32768) / 20));
-    const scaleY = Math.max(0.0001, Math.abs((matrix?.scaleY ?? 32768) / 20));
-    const centerX = (matrix?.translateX ?? (bounds.xMin + bounds.width / 2)) - bounds.xMin;
-    const centerY = (matrix?.translateY ?? (bounds.yMin + bounds.height / 2)) - bounds.yMin;
+    const center = transformGradientPoint(matrix, bounds, 0, 0);
+    const axisX = transformGradientPoint(matrix, bounds, 16384, 0);
+    const axisY = transformGradientPoint(matrix, bounds, 0, 16384);
     const gradient = fill.type === 0x12 || fill.type === 0x13
-        ? context.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(scaleX, scaleY))
-        : context.createLinearGradient(centerX - scaleX, centerY, centerX + scaleX, centerY);
+        ? context.createRadialGradient(
+            center.x,
+            center.y,
+            0,
+            center.x,
+            center.y,
+            Math.max(distanceBetween(center, axisX), distanceBetween(center, axisY), 0.0001)
+        )
+        : context.createLinearGradient(
+            transformGradientPoint(matrix, bounds, -16384, 0).x,
+            transformGradientPoint(matrix, bounds, -16384, 0).y,
+            axisX.x,
+            axisX.y
+        );
     for (const record of records) {
         gradient.addColorStop(Math.max(0, Math.min(1, record.ratio / 255)), rgbaToCss(record.color) ?? "#000000");
     }
     return gradient;
 }
 
-async function loadImageOntoSprite(sprite: Sprite, url: string): Promise<void> {
-    const texture = await ILaya.loader.load(url, Loader.IMAGE as any);
+function transformGradientPoint(
+    matrix: SwfFillStyle["gradientMatrix"],
+    bounds: SwfRect,
+    x: number,
+    y: number
+): { x: number; y: number } {
+    if (!matrix) {
+        return {
+            x: bounds.width / 2 + x / 32768 * bounds.width,
+            y: bounds.height / 2 + y / 32768 * bounds.height
+        };
+    }
+    return {
+        x: (matrix.scaleX * x + matrix.rotateSkew0 * y) / 20 + matrix.translateX - bounds.xMin,
+        y: (matrix.rotateSkew1 * x + matrix.scaleY * y) / 20 + matrix.translateY - bounds.yMin
+    };
+}
+
+function distanceBetween(left: { x: number; y: number }, right: { x: number; y: number }): number {
+    return Math.hypot(right.x - left.x, right.y - left.y);
+}
+
+async function loadCanvasOntoSprite(sprite: Sprite, canvas: HTMLCanvasElement): Promise<void> {
+    const texture = createTextureFromSource(canvas, canvas.width, canvas.height);
     if (texture) {
         (sprite as any).texture = texture;
+        rawSwfRendererAssetMetrics().directCanvasUploads += 1;
+        return;
+    }
+    (sprite as any).__rawSwfCanvasSource = canvas;
+}
+
+async function loadImageCharacterOntoSprite(sprite: Sprite, image: any): Promise<void> {
+    const surface = await imageCharacterToSurface(image);
+    const texture = createTextureFromSource(surface.source, surface.width, surface.height, surface.pixels);
+    if (texture) {
+        (sprite as any).texture = texture;
+        if (surface.pixels) {
+            rawSwfRendererAssetMetrics().directPixelUploads += 1;
+        }
+        else {
+            rawSwfRendererAssetMetrics().directImageUploads += 1;
+        }
+        return;
+    }
+    (sprite as any).__rawSwfImageSource = surface.source;
+}
+
+function createTextureFromSource(sourceImage: CanvasImageSource, width: number, height: number, pixels?: ImageData): any | null {
+    const Laya = (globalThis as any).Laya;
+    if (!Laya?.Texture || !Laya?.Texture2D || !Laya?.TextureFormat) {
+        return null;
+    }
+    try {
+        const source = new Laya.Texture2D(width, height, Laya.TextureFormat.R8G8B8A8, false, false, true, false);
+        rawSwfRendererAssetMetrics().directSrgbTextureUploads += 1;
+        if (pixels && typeof source.setPixelsData === "function") {
+            source.setPixelsData(pixels.data, false, false);
+        }
+        else {
+            source.setImageData(sourceImage as HTMLCanvasElement | HTMLImageElement | ImageBitmap, false, false);
+        }
+        return new Laya.Texture(source);
+    }
+    catch (_error) {
+        return null;
     }
 }
 
-function imageCharacterToObjectUrl(image: any): Promise<string> {
-    const cached = imageUrlCache.get(image);
+function rawSwfRendererAssetMetrics(): {
+    directCanvasUploads: number;
+    directImageUploads: number;
+    directPixelUploads: number;
+    canvasBlobFallbacks: number;
+    imageDecoderDecodes: number;
+    losslessDecodes: number;
+    deflateInflates: number;
+    unsupportedImageDecodes: number;
+    scale9SourceUploads: number;
+    scale9Draw9GridInstalls: number;
+    directSrgbTextureUploads: number;
+    premultipliedTextureUploads: number;
+} {
+    const global = globalThis as any;
+    global.__rawSwfRendererAssetMetrics ??= {
+        directCanvasUploads: 0,
+        directImageUploads: 0,
+        directPixelUploads: 0,
+        canvasBlobFallbacks: 0,
+        imageDecoderDecodes: 0,
+        losslessDecodes: 0,
+        deflateInflates: 0,
+        unsupportedImageDecodes: 0,
+        scale9SourceUploads: 0,
+        scale9Draw9GridInstalls: 0,
+        directSrgbTextureUploads: 0,
+        premultipliedTextureUploads: 0
+    };
+    return global.__rawSwfRendererAssetMetrics;
+}
+
+function imageCharacterToSurface(image: any): Promise<DecodedSwfImage> {
+    const cached = imageSurfaceCache.get(image);
     if (cached) {
         return cached;
     }
     const pending = image.zlibBitmapData
-        ? losslessBitmapToObjectUrl(image)
+        ? losslessBitmapToSurface(image)
         : image.alphaData
-        ? composeJpeg3Alpha(image.imageData, image.alphaData)
-        : Promise.resolve(URL.createObjectURL(new Blob([jpegBytesForImage(image)], { type: "image/jpeg" })));
-    imageUrlCache.set(image, pending);
+        ? composeJpeg3AlphaSurface(jpegBytesForImage(image), image.alphaData)
+        : compressedImageToSurface(jpegBytesForImage(image), "image/jpeg");
+    imageSurfaceCache.set(image, pending);
     return pending;
 }
 
@@ -923,7 +2274,7 @@ function stripLeadingJpegSoi(bytes: Uint8Array): Uint8Array {
     return bytes;
 }
 
-async function losslessBitmapToObjectUrl(image: SwfDefineBitsLossless): Promise<string> {
+async function losslessBitmapToSurface(image: SwfDefineBitsLossless): Promise<DecodedSwfImage> {
     const decoded = await inflateDeflate(image.zlibBitmapData);
     const canvas = document.createElement("canvas");
     canvas.width = image.width;
@@ -947,7 +2298,13 @@ async function losslessBitmapToObjectUrl(image: SwfDefineBitsLossless): Promise<
             throw new Error(`Unsupported SWF lossless bitmap format ${image.bitmapFormat}.`);
     }
     context.putImageData(pixels, 0, 0);
-    return canvasToObjectUrl(canvas);
+    rawSwfRendererAssetMetrics().losslessDecodes += 1;
+    return {
+        source: canvas,
+        width: canvas.width,
+        height: canvas.height,
+        pixels
+    };
 }
 
 function decodeLossless8(decoded: Uint8Array, image: SwfDefineBitsLossless, output: Uint8ClampedArray): void {
@@ -1013,30 +2370,29 @@ function expand5(value: number): number {
     return (value << 3) | (value >> 2);
 }
 
-async function composeJpeg3Alpha(imageData: Uint8Array, alphaData: Uint8Array): Promise<string> {
-    const imageUrl = URL.createObjectURL(new Blob([imageData], { type: "image/jpeg" }));
-    try {
-        const image = await loadDomImage(imageUrl);
-        const alpha = await inflateDeflate(alphaData);
-        const canvas = document.createElement("canvas");
-        canvas.width = image.naturalWidth || image.width;
-        canvas.height = image.naturalHeight || image.height;
-        const context = canvas.getContext("2d");
-        if (!context || canvas.width <= 0 || canvas.height <= 0) {
-            return imageUrl;
-        }
-        context.drawImage(image, 0, 0);
-        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-        const pixelCount = Math.min(alpha.byteLength, canvas.width * canvas.height);
-        for (let index = 0; index < pixelCount; index++) {
-            pixels.data[index * 4 + 3] = alpha[index];
-        }
-        context.putImageData(pixels, 0, 0);
-        return await canvasToObjectUrl(canvas);
+async function composeJpeg3AlphaSurface(imageData: Uint8Array, alphaData: Uint8Array): Promise<DecodedSwfImage> {
+    const image = await compressedImageToSurface(imageData, "image/jpeg");
+    const alpha = await inflateDeflate(alphaData);
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    if (!context || canvas.width <= 0 || canvas.height <= 0) {
+        throw new Error("Invalid SWF JPEG alpha bitmap dimensions.");
     }
-    finally {
-        URL.revokeObjectURL(imageUrl);
+    context.drawImage(image.source, 0, 0);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixelCount = Math.min(alpha.byteLength, canvas.width * canvas.height);
+    for (let index = 0; index < pixelCount; index++) {
+        pixels.data[index * 4 + 3] = alpha[index];
     }
+    context.putImageData(pixels, 0, 0);
+    return {
+        source: canvas,
+        width: canvas.width,
+        height: canvas.height,
+        pixels
+    };
 }
 
 async function inflateDeflate(bytes: Uint8Array): Promise<Uint8Array> {
@@ -1044,29 +2400,57 @@ async function inflateDeflate(bytes: Uint8Array): Promise<Uint8Array> {
     if (typeof DecompressionStreamCtor !== "function") {
         return bytes;
     }
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStreamCtor("deflate"));
+    const body = new Response(bytes).body;
+    if (body == null) {
+        throw new Error("SWF deflate decode could not create a byte stream.");
+    }
+    rawSwfRendererAssetMetrics().deflateInflates += 1;
+    const stream = body.pipeThrough(new DecompressionStreamCtor("deflate"));
     return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-function loadDomImage(url: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error(`Failed to decode SWF JPEG image ${url}`));
-        image.src = url;
-    });
+async function compressedImageToSurface(bytes: Uint8Array, type: string): Promise<DecodedSwfImage> {
+    const ImageDecoderCtor = (globalThis as any).ImageDecoder;
+    if (typeof ImageDecoderCtor !== "function") {
+        rawSwfRendererAssetMetrics().unsupportedImageDecodes += 1;
+        throw new Error(`SWF direct image decode requires ImageDecoder support for ${type}.`);
+    }
+    const decoder = new ImageDecoderCtor({ data: bytes, type });
+    try {
+        const result = await decoder.decode();
+        const image = result.image as CanvasImageSource;
+        rawSwfRendererAssetMetrics().imageDecoderDecodes += 1;
+        return {
+            source: image,
+            width: sourceWidth(image),
+            height: sourceHeight(image)
+        };
+    }
+    finally {
+        decoder.close?.();
+    }
 }
 
-function canvasToObjectUrl(canvas: HTMLCanvasElement): Promise<string> {
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(blob => {
-            if (!blob) {
-                reject(new Error("Failed to encode SWF rasterized shape."));
-                return;
-            }
-            resolve(URL.createObjectURL(blob));
-        }, "image/png");
-    });
+function sourceWidth(source: CanvasImageSource): number {
+    return Number(
+        (source as any).naturalWidth
+        ?? (source as any).videoWidth
+        ?? (source as any).displayWidth
+        ?? (source as any).codedWidth
+        ?? (source as any).width
+        ?? 1
+    ) || 1;
+}
+
+function sourceHeight(source: CanvasImageSource): number {
+    return Number(
+        (source as any).naturalHeight
+        ?? (source as any).videoHeight
+        ?? (source as any).displayHeight
+        ?? (source as any).codedHeight
+        ?? (source as any).height
+        ?? 1
+    ) || 1;
 }
 
 function boundsForPath(path: SwfShapePath): SwfRect {
@@ -1433,6 +2817,367 @@ function flashLineJoinToLaya(joinStyle: number | undefined): string {
 
 function comparePlacementDepth(left: SwfPlaceObject, right: SwfPlaceObject): number {
     return left.depth - right.depth;
+}
+
+export class SwfTimelineInstance {
+    readonly root: Sprite;
+    readonly namedInstances = new Map<string, Sprite | Text>();
+    readonly totalFrames: number;
+    readonly frameRate: number;
+    readonly ready: Promise<void>;
+
+    private currentFrameIndex: number;
+    private readonly runtimeByDepth = new Map<number, SwfRuntimePlacementNode>();
+    private timerHandle: number | ReturnType<typeof globalThis.setInterval> | null = null;
+    private playing = false;
+    private destroyed = false;
+    private initActionsExecuted = false;
+    private renderPromise: Promise<void> = Promise.resolve();
+
+    constructor(
+        private readonly movie: SwfMovie,
+        readonly sprite: SwfDefineSprite,
+        options: SwfTimelineInstanceOptions = {}
+    ) {
+        this.root = new Sprite();
+        this.totalFrames = Math.max(1, sprite.frames.length || sprite.frameCount || 1);
+        this.frameRate = Math.max(1, Math.round(movie.header.frameRate || 1));
+        this.currentFrameIndex = normalizeTimelineFrameIndex(options.frameIndex ?? 0, this.totalFrames);
+        this.installFlashApiBridge();
+        this.ready = this.renderFrame(this.currentFrameIndex).then(() => {
+            if (options.autoPlay !== false) {
+                this.play();
+            }
+        });
+    }
+
+    get currentFrame(): number {
+        return this.currentFrameIndex + 1;
+    }
+
+    async play(): Promise<void> {
+        if (this.destroyed || this.playing || this.totalFrames <= 1) {
+            return;
+        }
+        await this.ready;
+        if (this.destroyed || this.playing) {
+            return;
+        }
+        this.playing = true;
+        const delay = Math.max(1, Math.round(1000 / this.frameRate));
+        const timer = (globalThis as any).Laya?.timer;
+        if (timer?.loop) {
+            timer.loop(delay, this, this.advanceFrameBridge);
+            this.timerHandle = -1;
+            return;
+        }
+        this.timerHandle = globalThis.setInterval(this.advanceFrameBridge, delay);
+    }
+
+    stop(): void {
+        this.playing = false;
+        const timer = (globalThis as any).Laya?.timer;
+        if (this.timerHandle === -1 && timer?.clear) {
+            timer.clear(this, this.advanceFrameBridge);
+        } else if (this.timerHandle != null) {
+            globalThis.clearInterval(this.timerHandle);
+        }
+        this.timerHandle = null;
+    }
+
+    async gotoAndPlay(frame: number | string): Promise<void> {
+        await this.gotoAndStop(frame);
+        await this.play();
+    }
+
+    async gotoAndStop(frame: number | string): Promise<void> {
+        const targetIndex = resolveTimelineFrameInput(frame, this.totalFrames, this.sprite);
+        this.stop();
+        await this.renderFrame(targetIndex);
+    }
+
+    destroy(): void {
+        if (this.destroyed) {
+            return;
+        }
+        this.stop();
+        this.destroyed = true;
+        for (const runtime of this.runtimeByDepth.values()) {
+            runtime.timeline?.destroy();
+        }
+        this.runtimeByDepth.clear();
+        this.namedInstances.clear();
+        this.root.removeChildren();
+    }
+
+    private readonly advanceFrameBridge = (): void => {
+        if (!this.playing || this.destroyed) {
+            return;
+        }
+        void this.renderFrame(this.currentFrameIndex + 1);
+    };
+
+    private installFlashApiBridge(): void {
+        const raw = this.root as any;
+        raw.__rawSwfTimelineInstance = this;
+        raw.play = (): Promise<void> => this.play();
+        raw.stop = (): void => this.stop();
+        raw.gotoAndStop = (frame: number | string): Promise<void> => this.gotoAndStop(frame);
+        raw.gotoAndPlay = (frame: number | string): Promise<void> => this.gotoAndPlay(frame);
+        raw.destroy = (): void => this.destroy();
+        Object.defineProperty(raw, "currentFrame", {
+            configurable: true,
+            enumerable: false,
+            get: () => this.currentFrame
+        });
+        Object.defineProperty(raw, "currentLabel", {
+            configurable: true,
+            enumerable: false,
+            get: () => frameLabelNameAt(this.sprite, this.currentFrameIndex)
+        });
+        Object.defineProperty(raw, "currentLabels", {
+            configurable: true,
+            enumerable: false,
+            get: () => frameLabelNamesAt(this.sprite, this.currentFrameIndex)
+        });
+        Object.defineProperty(raw, "totalFrames", {
+            configurable: true,
+            enumerable: false,
+            get: () => this.totalFrames
+        });
+    }
+
+    private async renderFrame(frameIndex: number): Promise<void> {
+        const targetIndex = normalizeTimelineFrameIndex(frameIndex, this.totalFrames);
+        this.renderPromise = this.renderPromise.then(async () => {
+            if (this.destroyed) {
+                return;
+            }
+            await this.renderFrameNow(targetIndex);
+            this.currentFrameIndex = targetIndex;
+        });
+        return this.renderPromise;
+    }
+
+    private async renderFrameNow(frameIndex: number): Promise<void> {
+        const placements = framePlacements(this.sprite, frameIndex);
+        const nextRuntimes = new Map<number, SwfRuntimePlacementNode>();
+        const frameNodes: { placement: SwfPlaceObject; runtime: SwfRuntimePlacementNode; character: any }[] = [];
+        let renderedShapeCount = 0;
+        for (const placement of placements) {
+            if (placement.characterId == null) {
+                continue;
+            }
+            const runtime = await this.resolveFrameRuntime(placement);
+            const character = this.movie.getCharacter(placement.characterId);
+            runtime.node.name = placement.name ?? "";
+            applyPlacement(runtime.node, placement, character);
+            nextRuntimes.set(placement.depth, runtime);
+            frameNodes.push({ placement, runtime, character });
+            renderedShapeCount += renderedShapeCountFor(runtime.node);
+        }
+
+        if (this.destroyed) {
+            for (const [depth, runtime] of nextRuntimes) {
+                if (this.runtimeByDepth.get(depth) !== runtime) {
+                    runtime.timeline?.destroy();
+                }
+            }
+            return;
+        }
+
+        const staleRuntimes = new Set<SwfRuntimePlacementNode>();
+        for (const [depth, runtime] of this.runtimeByDepth) {
+            if (nextRuntimes.get(depth) !== runtime) {
+                staleRuntimes.add(runtime);
+            }
+        }
+
+        this.namedInstances.clear();
+        this.root.removeChildren();
+        const maskStack: { clipDepth: number; group: Sprite }[] = [];
+        for (const { placement, runtime } of frameNodes) {
+            while (maskStack.length && placement.depth > maskStack[maskStack.length - 1].clipDepth) {
+                maskStack.pop();
+            }
+            if (placement.name) {
+                this.namedInstances.set(placement.name, runtime.node);
+            }
+            if (placement.clipDepth != null) {
+                const group = new Sprite();
+                group.mask = runtime.node as Sprite;
+                currentMaskContainer(this.root, maskStack).addChild(group);
+                maskStack.push({ clipDepth: placement.clipDepth, group });
+                continue;
+            }
+            currentMaskContainer(this.root, maskStack).addChild(runtime.node);
+        }
+
+        this.runtimeByDepth.clear();
+        for (const [depth, runtime] of nextRuntimes) {
+            this.runtimeByDepth.set(depth, runtime);
+        }
+        for (const runtime of staleRuntimes) {
+            runtime.timeline?.destroy();
+        }
+        (this.root as any).__rawSwfRenderedShapeCount = renderedShapeCount;
+        (this.root as any).__rawSwfBitmapFillCount = childrenDebugCount(this.root, "__rawSwfBitmapFillCount");
+        this.currentFrameIndex = frameIndex;
+        if (!this.initActionsExecuted) {
+            this.initActionsExecuted = true;
+            executeInitAvm1Actions(this.root, this.sprite);
+        }
+        executeFrameAvm1Actions(this.root, this.sprite.frames[frameIndex], this);
+    }
+
+    private async resolveFrameRuntime(placement: SwfPlaceObject): Promise<SwfRuntimePlacementNode> {
+        const existing = this.runtimeByDepth.get(placement.depth);
+        const character = this.movie.getCharacter(placement.characterId!);
+        const ratio = isMorphShapeCharacter(character) ? placement.ratio ?? 0 : undefined;
+        if (existing?.characterId === placement.characterId && existing.ratio === ratio) {
+            return existing;
+        }
+        const runtime = await createTimelineRuntimeNode(this.movie, character, ratio);
+        return {
+            characterId: placement.characterId!,
+            ratio,
+            ...runtime
+        };
+    }
+}
+
+function normalizeTimelineFrameIndex(frameIndex: number, totalFrames: number): number {
+    if (!Number.isFinite(frameIndex)) {
+        return 0;
+    }
+    if (totalFrames <= 0) {
+        return 0;
+    }
+    const normalized = Math.trunc(frameIndex);
+    return ((normalized % totalFrames) + totalFrames) % totalFrames;
+}
+
+function resolveTimelineFrameInput(frame: number | string, totalFrames: number, sprite?: SwfDefineSprite): number {
+    if (typeof frame === "number") {
+        return normalizeTimelineFrameIndex(frame - 1, totalFrames);
+    }
+    const parsed = Number(frame);
+    if (Number.isFinite(parsed)) {
+        return normalizeTimelineFrameIndex(parsed - 1, totalFrames);
+    }
+    const label = sprite?.frameLabelsByName?.get(frame) ?? sprite?.frameLabels?.find(candidate => candidate.name === frame);
+    if (label) {
+        return normalizeTimelineFrameIndex(label.frameIndex, totalFrames);
+    }
+    throw new Error(`Frame label '${frame}' was not found on the raw-SWF timeline.`);
+}
+
+function frameLabelNamesAt(sprite: SwfDefineSprite, frameIndex: number): string[] {
+    const normalized = normalizeTimelineFrameIndex(frameIndex, Math.max(1, sprite.frames.length || sprite.frameCount || 1));
+    return (sprite.frames[normalized]?.labels ?? []).map(label => label.name);
+}
+
+function frameLabelNameAt(sprite: SwfDefineSprite, frameIndex: number): string | null {
+    return frameLabelNamesAt(sprite, frameIndex)[0] ?? null;
+}
+
+async function createTimelineRuntimeNode(
+    movie: SwfMovie,
+    character: any,
+    ratio: number = 0
+): Promise<{ node: Sprite | Text; timeline?: SwfTimelineInstance }> {
+    if (isSpriteCharacter(character)) {
+        const timeline = new SwfTimelineInstance(movie, character, {
+            frameIndex: 0,
+            autoPlay: true
+        });
+        await timeline.ready;
+        return {
+            node: timeline.root,
+            timeline
+        };
+    }
+    if (isButtonCharacter(character)) {
+        return { node: await createButtonNode(movie, character, new Map()) };
+    }
+    if (isMorphShapeCharacter(character)) {
+        return { node: await renderMorphShapeNode(movie, character, ratio) };
+    }
+    if (character?.variableName !== undefined || character?.initialText !== undefined) {
+        return { node: createTextNode(movie, character) };
+    }
+    if (character?.records) {
+        return { node: await createStaticTextNode(movie, character) };
+    }
+    if (character?.zlibBitmapData) {
+        return { node: await createBitmapNode(character) };
+    }
+    if (character?.shapeBounds) {
+        return { node: await renderShapeNode(movie, character) };
+    }
+    const sprite = new Sprite();
+    if (character?.bounds) {
+        sprite.size(character.bounds.width, character.bounds.height);
+    }
+    return { node: sprite };
+}
+
+function morphRatioToUnit(ratio: number): number {
+    return Math.max(0, Math.min(1, ratio / 65535));
+}
+
+function interpolateNumber(start: number | undefined, end: number | undefined, ratio: number): number {
+    const from = start ?? end ?? 0;
+    const to = end ?? start ?? 0;
+    return from + (to - from) * ratio;
+}
+
+function interpolateRgba(start: SwfRgba | undefined, end: SwfRgba | undefined, ratio: number): SwfRgba {
+    const from = start ?? end ?? { red: 0, green: 0, blue: 0, alpha: 255 };
+    const to = end ?? start ?? from;
+    return {
+        red: Math.round(interpolateNumber(from.red, to.red, ratio)),
+        green: Math.round(interpolateNumber(from.green, to.green, ratio)),
+        blue: Math.round(interpolateNumber(from.blue, to.blue, ratio)),
+        alpha: Math.round(interpolateNumber(from.alpha, to.alpha, ratio))
+    };
+}
+
+function interpolateRect(start: SwfRect, end: SwfRect, ratio: number): SwfRect {
+    const xMinTwips = Math.round(interpolateNumber(start.xMinTwips, end.xMinTwips, ratio));
+    const xMaxTwips = Math.round(interpolateNumber(start.xMaxTwips, end.xMaxTwips, ratio));
+    const yMinTwips = Math.round(interpolateNumber(start.yMinTwips, end.yMinTwips, ratio));
+    const yMaxTwips = Math.round(interpolateNumber(start.yMaxTwips, end.yMaxTwips, ratio));
+    return {
+        xMinTwips,
+        xMaxTwips,
+        yMinTwips,
+        yMaxTwips,
+        xMin: xMinTwips / 20,
+        xMax: xMaxTwips / 20,
+        yMin: yMinTwips / 20,
+        yMax: yMaxTwips / 20,
+        width: (xMaxTwips - xMinTwips) / 20,
+        height: (yMaxTwips - yMinTwips) / 20
+    };
+}
+
+function interpolateMatrix(start: SwfMatrix | undefined, end: SwfMatrix | undefined, ratio: number): SwfMatrix | undefined {
+    if (!start && !end) {
+        return undefined;
+    }
+    const from = start ?? end!;
+    const to = end ?? start!;
+    return {
+        scaleX: interpolateNumber(from.scaleX, to.scaleX, ratio),
+        scaleY: interpolateNumber(from.scaleY, to.scaleY, ratio),
+        rotateSkew0: interpolateNumber(from.rotateSkew0, to.rotateSkew0, ratio),
+        rotateSkew1: interpolateNumber(from.rotateSkew1, to.rotateSkew1, ratio),
+        translateXTwips: Math.round(interpolateNumber(from.translateXTwips, to.translateXTwips, ratio)),
+        translateYTwips: Math.round(interpolateNumber(from.translateYTwips, to.translateYTwips, ratio)),
+        translateX: interpolateNumber(from.translateX, to.translateX, ratio),
+        translateY: interpolateNumber(from.translateY, to.translateY, ratio)
+    };
 }
 
 function rgbaToCss(color: SwfRgba | undefined): string | null {
