@@ -2,6 +2,12 @@ import {
     SwfCharacter,
     SwfAvm1ActionRecord,
     SwfAvm1ActionValue,
+    SwfAbcFile,
+    SwfAbcInstruction,
+    SwfAbcMetadata,
+    SwfAbcMethodBody,
+    SwfAbcMultiname,
+    SwfAbcTrait,
     SwfButtonAction,
     SwfButtonRecord,
     SwfButtonStateName,
@@ -813,16 +819,23 @@ function parseDefineMorphShape(reader: SwfDataReader, tagCode: number): SwfDefin
     const lineStyles = parseMorphLineStyleArray(reader, tagCode);
     const edgeStart = reader.pos;
     const edgeCandidates = [
-        offsetPosition + offset,
-        offsetPosition + 4 + offset
+        offsetPosition + 4 + offset,
+        offsetPosition + offset
     ].filter(candidate => candidate > edgeStart && candidate <= reader.length);
     let parsedEdges: { startPaths: SwfShapePath[]; endPaths: SwfShapePath[] } | null = null;
+    let fallbackEdges: { startPaths: SwfShapePath[]; endPaths: SwfShapePath[] } | null = null;
     for (const endEdgesOffset of edgeCandidates) {
-        parsedEdges = tryParseMorphEdges(reader.bytes, edgeStart, endEdgesOffset, reader.length, tagCode, fillStyles, lineStyles);
-        if (parsedEdges) {
+        const candidate = tryParseMorphEdges(reader.bytes, edgeStart, endEdgesOffset, reader.length, tagCode, fillStyles, lineStyles);
+        if (!candidate) {
+            continue;
+        }
+        fallbackEdges ??= candidate;
+        if (candidate.endPaths.length > 0 || candidate.startPaths.length === 0) {
+            parsedEdges = candidate;
             break;
         }
     }
+    parsedEdges ??= fallbackEdges;
     if (!parsedEdges) {
         throw new Error(`Invalid DefineMorphShape ${characterId}: could not split start/end edge records.`);
     }
@@ -856,9 +869,15 @@ function tryParseMorphEdges(
     try {
         const startShapeReader = new SwfDataReader(bytes.subarray(startOffset, endEdgesOffset));
         const endShapeReader = new SwfDataReader(bytes.subarray(endEdgesOffset, endOffset));
+        const startPaths = parseShapeRecords(startShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 0), morphLineStylesAtRatio(lineStyles, 0), false);
+        const endInitialStyles = startPaths.find(path => path.fillStyle0Index || path.fillStyle1Index || path.lineStyleIndex);
         return {
-            startPaths: parseShapeRecords(startShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 0), morphLineStylesAtRatio(lineStyles, 0), false),
-            endPaths: parseShapeRecords(endShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 65535), morphLineStylesAtRatio(lineStyles, 65535), false)
+            startPaths,
+            endPaths: parseShapeRecords(endShapeReader, tagCode, morphFillStylesAtRatio(fillStyles, 65535), morphLineStylesAtRatio(lineStyles, 65535), false, endInitialStyles ? {
+                fillStyle0: endInitialStyles.fillStyle0Index,
+                fillStyle1: endInitialStyles.fillStyle1Index,
+                lineStyle: endInitialStyles.lineStyleIndex
+            } : undefined)
         };
     }
     catch (_error) {
@@ -1039,16 +1058,17 @@ function parseShapeRecords(
     tagCode: number,
     fillStyles: SwfFillStyle[],
     lineStyles: SwfLineStyle[],
-    allowNewStyles: boolean
+    allowNewStyles: boolean,
+    initialStyles?: { fillStyle0?: number; fillStyle1?: number; lineStyle?: number }
 ): SwfShapePath[] {
     const bits = new SwfBitReader(reader.bytes, reader.pos);
     let fillBits = bits.readUB(4);
     let lineBits = bits.readUB(4);
     let xTwips = 0;
     let yTwips = 0;
-    let fillStyle0 = 0;
-    let fillStyle1 = 0;
-    let lineStyle = 0;
+    let fillStyle0 = initialStyles?.fillStyle0 ?? 0;
+    let fillStyle1 = initialStyles?.fillStyle1 ?? 0;
+    let lineStyle = initialStyles?.lineStyle ?? 0;
     let currentPath: SwfShapePath | null = null;
     const paths: SwfShapePath[] = [];
 
@@ -1796,12 +1816,644 @@ function avm1ActionName(opcode: number): string {
     }
 }
 
-function parseDoAbc(reader: SwfDataReader): { flags: number; name: string; abcData: Uint8Array } {
+function parseDoAbc(reader: SwfDataReader): { flags: number; name: string; abcData: Uint8Array; abc: SwfAbcFile; abcParseError?: string } {
+    const flags = reader.readUI32();
+    const name = reader.readString();
+    const abcData = reader.readRemaining();
+    let abc: SwfAbcFile;
+    let abcParseError: string | undefined;
+    try {
+        abc = parseAbcFile(abcData);
+    } catch (error) {
+        abc = createEmptyAbcFile();
+        abcParseError = error instanceof Error ? error.message : String(error);
+    }
     return {
-        flags: reader.readUI32(),
-        name: reader.readString(),
-        abcData: reader.readRemaining()
+        flags,
+        name,
+        abcData,
+        abc,
+        abcParseError
     };
+}
+
+function createEmptyAbcFile(): SwfAbcFile {
+    return {
+        minorVersion: 0,
+        majorVersion: 0,
+        constantPool: {
+            integers: [0],
+            unsignedIntegers: [0],
+            doubles: [Number.NaN],
+            strings: [""],
+            namespaces: [{ kind: 0, nameIndex: 0, name: "" }],
+            namespaceSets: [[]],
+            multinames: [{ kind: 0, name: "" }]
+        },
+        methods: [],
+        metadata: [],
+        instances: [],
+        classes: [],
+        scripts: [],
+        methodBodies: [],
+        methodBodiesByMethod: new Map()
+    };
+}
+
+function parseAbcFile(bytes: Uint8Array): SwfAbcFile {
+    const reader = new SwfDataReader(bytes);
+    const minorVersion = reader.readUI16();
+    const majorVersion = reader.readUI16();
+    const constantPool = parseAbcConstantPool(reader);
+    const methods = parseAbcMethods(reader, constantPool.strings);
+    const metadata = parseAbcMetadata(reader, constantPool.strings);
+    const classCount = reader.readEncodedU32();
+    const instances = [];
+    for (let index = 0; index < classCount; index++) {
+        const nameIndex = reader.readEncodedU32();
+        const superNameIndex = reader.readEncodedU32();
+        const flags = reader.readUI8();
+        const protectedNamespaceIndex = (flags & 0x08) !== 0 ? reader.readEncodedU32() : undefined;
+        const interfaceCount = reader.readEncodedU32();
+        const interfaceIndexes = [];
+        for (let interfaceIndex = 0; interfaceIndex < interfaceCount; interfaceIndex++) {
+            interfaceIndexes.push(reader.readEncodedU32());
+        }
+        instances.push({
+            nameIndex,
+            name: abcMultinameName(constantPool.multinames, nameIndex),
+            superNameIndex,
+            superName: abcMultinameName(constantPool.multinames, superNameIndex),
+            flags,
+            protectedNamespaceIndex,
+            interfaceIndexes,
+            initMethodIndex: reader.readEncodedU32(),
+            traits: parseAbcTraits(reader, constantPool, metadata)
+        });
+    }
+    const classes = [];
+    for (let index = 0; index < classCount; index++) {
+        classes.push({
+            initMethodIndex: reader.readEncodedU32(),
+            traits: parseAbcTraits(reader, constantPool, metadata)
+        });
+    }
+    const scriptCount = reader.readEncodedU32();
+    const scripts = [];
+    for (let index = 0; index < scriptCount; index++) {
+        scripts.push({
+            initMethodIndex: reader.readEncodedU32(),
+            traits: parseAbcTraits(reader, constantPool, metadata)
+        });
+    }
+    const methodBodyCount = reader.readEncodedU32();
+    const methodBodies: SwfAbcMethodBody[] = [];
+    const methodBodiesByMethod = new Map<number, SwfAbcMethodBody>();
+    for (let index = 0; index < methodBodyCount; index++) {
+        const body = parseAbcMethodBody(reader, constantPool, metadata);
+        methodBodies.push(body);
+        methodBodiesByMethod.set(body.methodIndex, body);
+    }
+    return {
+        minorVersion,
+        majorVersion,
+        constantPool,
+        methods,
+        metadata,
+        instances,
+        classes,
+        scripts,
+        methodBodies,
+        methodBodiesByMethod
+    };
+}
+
+function parseAbcConstantPool(reader: SwfDataReader): SwfAbcFile["constantPool"] {
+    const integers = [0];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        integers.push(reader.readEncodedS32());
+    }
+    const unsignedIntegers = [0];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        unsignedIntegers.push(reader.readEncodedU32());
+    }
+    const doubles = [Number.NaN];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        doubles.push(reader.readFloat64());
+    }
+    const strings = [""];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        strings.push(decodeString(reader.readBytes(reader.readEncodedU32())));
+    }
+    const namespaces = [{ kind: 0, nameIndex: 0, name: "" }];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        const kind = reader.readUI8();
+        const nameIndex = reader.readEncodedU32();
+        namespaces.push({ kind, nameIndex, name: strings[nameIndex] ?? "" });
+    }
+    const namespaceSets = [[] as number[]];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        const setCount = reader.readEncodedU32();
+        const set = [];
+        for (let setIndex = 0; setIndex < setCount; setIndex++) {
+            set.push(reader.readEncodedU32());
+        }
+        namespaceSets.push(set);
+    }
+    const multinames: SwfAbcMultiname[] = [{ kind: 0, name: "" }];
+    for (let index = 1, count = reader.readEncodedU32(); index < count; index++) {
+        const kind = reader.readUI8();
+        const multiname: SwfAbcMultiname = { kind, name: "" };
+        switch (kind) {
+            case 0x07:
+            case 0x0d:
+                multiname.namespaceIndex = reader.readEncodedU32();
+                multiname.name = strings[reader.readEncodedU32()] ?? "";
+                break;
+            case 0x0f:
+            case 0x10:
+                multiname.name = strings[reader.readEncodedU32()] ?? "";
+                break;
+            case 0x11:
+            case 0x12:
+                break;
+            case 0x09:
+            case 0x0e:
+                multiname.name = strings[reader.readEncodedU32()] ?? "";
+                multiname.namespaceSetIndex = reader.readEncodedU32();
+                break;
+            case 0x1b:
+            case 0x1c:
+                multiname.namespaceSetIndex = reader.readEncodedU32();
+                break;
+            case 0x1d: {
+                multiname.qualifiedNameIndex = reader.readEncodedU32();
+                const parameterCount = reader.readEncodedU32();
+                multiname.parameterIndexes = [];
+                for (let parameterIndex = 0; parameterIndex < parameterCount; parameterIndex++) {
+                    multiname.parameterIndexes.push(reader.readEncodedU32());
+                }
+                multiname.name = abcMultinameName(multinames, multiname.qualifiedNameIndex);
+                break;
+            }
+            default:
+                throw new Error(`Unsupported ABC multiname kind 0x${kind.toString(16)}.`);
+        }
+        multinames.push(multiname);
+    }
+    return { integers, unsignedIntegers, doubles, strings, namespaces, namespaceSets, multinames };
+}
+
+function parseAbcMethods(reader: SwfDataReader, strings: string[]): SwfAbcFile["methods"] {
+    const methods = [];
+    for (let index = 0, count = reader.readEncodedU32(); index < count; index++) {
+        const paramCount = reader.readEncodedU32();
+        const returnType = reader.readEncodedU32();
+        const paramTypes = [];
+        for (let paramIndex = 0; paramIndex < paramCount; paramIndex++) {
+            paramTypes.push(reader.readEncodedU32());
+        }
+        const nameIndex = reader.readEncodedU32();
+        const flags = reader.readUI8();
+        const method: SwfAbcFile["methods"][number] = {
+            returnType,
+            paramTypes,
+            nameIndex,
+            name: strings[nameIndex] ?? "",
+            flags
+        };
+        if (flags & 0x08) {
+            const optionCount = reader.readEncodedU32();
+            method.options = [];
+            for (let optionIndex = 0; optionIndex < optionCount; optionIndex++) {
+                method.options.push({ valueIndex: reader.readEncodedU32(), kind: reader.readUI8() });
+            }
+        }
+        if (flags & 0x80) {
+            method.paramNames = [];
+            for (let paramIndex = 0; paramIndex < paramCount; paramIndex++) {
+                method.paramNames.push(strings[reader.readEncodedU32()] ?? "");
+            }
+        }
+        methods.push(method);
+    }
+    return methods;
+}
+
+function parseAbcMetadata(reader: SwfDataReader, strings: string[]): SwfAbcMetadata[] {
+    const metadata = [];
+    for (let index = 0, count = reader.readEncodedU32(); index < count; index++) {
+        const nameIndex = reader.readEncodedU32();
+        const itemCount = reader.readEncodedU32();
+        const keys: number[] = [];
+        const values: number[] = [];
+        for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+            keys.push(reader.readEncodedU32());
+        }
+        for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+            values.push(reader.readEncodedU32());
+        }
+        metadata.push({
+            nameIndex,
+            name: strings[nameIndex] ?? "",
+            items: keys.map((keyIndex, itemIndex) => ({
+                keyIndex,
+                key: strings[keyIndex] ?? "",
+                valueIndex: values[itemIndex] ?? 0,
+                value: strings[values[itemIndex] ?? 0] ?? ""
+            }))
+        });
+    }
+    return metadata;
+}
+
+function parseAbcTraits(reader: SwfDataReader, constantPool: SwfAbcFile["constantPool"], metadata: SwfAbcMetadata[]): SwfAbcTrait[] {
+    const traits: SwfAbcTrait[] = [];
+    for (let index = 0, count = reader.readEncodedU32(); index < count; index++) {
+        const nameIndex = reader.readEncodedU32();
+        const kindAndAttributes = reader.readUI8();
+        const kind = kindAndAttributes & 0x0f;
+        const trait: SwfAbcTrait = {
+            nameIndex,
+            name: abcMultinameName(constantPool.multinames, nameIndex),
+            kind,
+            attributes: kindAndAttributes >> 4
+        };
+        if (kind === 0 || kind === 6) {
+            trait.slotId = reader.readEncodedU32();
+            trait.typeNameIndex = reader.readEncodedU32();
+            trait.valueIndex = reader.readEncodedU32();
+            if (trait.valueIndex !== 0) {
+                trait.valueKind = reader.readUI8();
+            }
+        } else if (kind === 4) {
+            trait.slotId = reader.readEncodedU32();
+            trait.classIndex = reader.readEncodedU32();
+        } else if (kind === 5) {
+            trait.slotId = reader.readEncodedU32();
+            trait.functionIndex = reader.readEncodedU32();
+        } else if (kind === 1 || kind === 2 || kind === 3) {
+            trait.slotId = reader.readEncodedU32();
+            trait.methodIndex = reader.readEncodedU32();
+        } else {
+            throw new Error(`Unsupported ABC trait kind ${kind}.`);
+        }
+        if (trait.attributes & 0x04) {
+            const metadataCount = reader.readEncodedU32();
+            trait.metadataIndexes = [];
+            for (let metadataIndex = 0; metadataIndex < metadataCount; metadataIndex++) {
+                const indexValue = reader.readEncodedU32();
+                if (metadata[indexValue]) {
+                    trait.metadataIndexes.push(indexValue);
+                }
+            }
+        }
+        traits.push(trait);
+    }
+    return traits;
+}
+
+function parseAbcMethodBody(reader: SwfDataReader, constantPool: SwfAbcFile["constantPool"], metadata: SwfAbcMetadata[]): SwfAbcMethodBody {
+    const methodIndex = reader.readEncodedU32();
+    const maxStack = reader.readEncodedU32();
+    const localCount = reader.readEncodedU32();
+    const initScopeDepth = reader.readEncodedU32();
+    const maxScopeDepth = reader.readEncodedU32();
+    const code = reader.readBytes(reader.readEncodedU32());
+    const exceptionCount = reader.readEncodedU32();
+    const exceptions = [];
+    for (let index = 0; index < exceptionCount; index++) {
+        exceptions.push({
+            from: reader.readEncodedU32(),
+            to: reader.readEncodedU32(),
+            target: reader.readEncodedU32(),
+            exceptionTypeIndex: reader.readEncodedU32(),
+            variableNameIndex: reader.readEncodedU32()
+        });
+    }
+    return {
+        methodIndex,
+        maxStack,
+        localCount,
+        initScopeDepth,
+        maxScopeDepth,
+        code,
+        instructions: decodeAbcInstructions(code),
+        exceptions,
+        traits: parseAbcTraits(reader, constantPool, metadata)
+    };
+}
+
+function decodeAbcInstructions(code: Uint8Array): SwfAbcInstruction[] {
+    const reader = new SwfDataReader(code);
+    const instructions: SwfAbcInstruction[] = [];
+    while (reader.pos < reader.length) {
+        const offset = reader.pos;
+        const opcode = reader.readUI8();
+        const operands = readAbcInstructionOperands(reader, opcode);
+        instructions.push({
+            opcode,
+            name: avm2OpcodeName(opcode),
+            offset,
+            size: reader.pos - offset,
+            operands
+        });
+    }
+    return instructions;
+}
+
+function readAbcInstructionOperands(reader: SwfDataReader, opcode: number): number[] {
+    switch (opcode) {
+        case 0x09:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+        case 0x1d:
+        case 0x1e:
+        case 0x1f:
+        case 0x1c:
+        case 0x20:
+        case 0x21:
+        case 0x23:
+        case 0x26:
+        case 0x27:
+        case 0x28:
+        case 0x29:
+        case 0x2a:
+        case 0x2b:
+        case 0x30:
+        case 0x47:
+        case 0x48:
+        case 0x57:
+        case 0x64:
+        case 0x73:
+        case 0x74:
+        case 0x75:
+        case 0x76:
+        case 0x78:
+        case 0x82:
+        case 0x85:
+        case 0x87:
+        case 0x90:
+        case 0x91:
+        case 0x93:
+        case 0x95:
+        case 0x96:
+        case 0x97:
+        case 0xa0:
+        case 0xa1:
+        case 0xa2:
+        case 0xa3:
+        case 0xa4:
+        case 0xa5:
+        case 0xa6:
+        case 0xa7:
+        case 0xa8:
+        case 0xa9:
+        case 0xaa:
+        case 0xab:
+        case 0xac:
+        case 0xad:
+        case 0xae:
+        case 0xaf:
+        case 0xb0:
+        case 0xb1:
+        case 0xb3:
+        case 0xb4:
+        case 0xc0:
+        case 0xc1:
+        case 0xd0:
+        case 0xd1:
+        case 0xd2:
+        case 0xd3:
+        case 0xd4:
+        case 0xd5:
+        case 0xd6:
+        case 0xd7:
+        case 0xf7:
+            return [];
+        case 0x10:
+        case 0x11:
+        case 0x12:
+        case 0x0c:
+        case 0x0d:
+        case 0x0e:
+        case 0x0f:
+        case 0x13:
+        case 0x14:
+        case 0x15:
+        case 0x16:
+        case 0x17:
+        case 0x18:
+        case 0x19:
+        case 0x1a:
+            return [reader.readSI24()];
+        case 0x1b: {
+            const defaultOffset = reader.readSI24();
+            const caseCount = reader.readEncodedU32();
+            const operands = [defaultOffset, caseCount];
+            for (let index = 0; index <= caseCount; index++) {
+                operands.push(reader.readSI24());
+            }
+            return operands;
+        }
+        case 0x25:
+            return [reader.readEncodedS32()];
+        case 0x24:
+            return [reader.readSI8()];
+        case 0x65:
+            return [reader.readUI8()];
+        case 0x08:
+        case 0x04:
+        case 0x05:
+        case 0x2c:
+        case 0x2d:
+        case 0x2e:
+        case 0x2f:
+        case 0x31:
+        case 0x40:
+        case 0x41:
+        case 0x42:
+        case 0x49:
+        case 0x53:
+        case 0x56:
+        case 0x58:
+        case 0x59:
+        case 0x5a:
+        case 0x5d:
+        case 0x5e:
+        case 0x5f:
+        case 0x60:
+        case 0x61:
+        case 0x62:
+        case 0x63:
+        case 0x66:
+        case 0x68:
+        case 0x6a:
+        case 0x6c:
+        case 0x6d:
+        case 0x6e:
+        case 0x80:
+        case 0x86:
+        case 0x92:
+        case 0x94:
+        case 0xb2:
+        case 0xc2:
+        case 0xc3:
+            return [reader.readEncodedU32()];
+        case 0x32:
+        case 0x45:
+        case 0x46:
+        case 0x4a:
+        case 0x4c:
+        case 0x4e:
+        case 0x4f:
+        case 0x55:
+            return [reader.readEncodedU32(), reader.readEncodedU32()];
+        default:
+            throw new Error(`Unsupported ABC opcode 0x${opcode.toString(16)} at ${reader.pos - 1}.`);
+    }
+}
+
+function avm2OpcodeName(opcode: number): string {
+    switch (opcode) {
+        case 0x08: return "OP_kill";
+        case 0x01: return "OP_bkpt";
+        case 0x02: return "OP_nop";
+        case 0x03: return "OP_throw";
+        case 0x04: return "OP_getsuper";
+        case 0x05: return "OP_setsuper";
+        case 0x09: return "OP_label";
+        case 0x0c: return "OP_ifnlt";
+        case 0x0d: return "OP_ifnle";
+        case 0x0e: return "OP_ifngt";
+        case 0x0f: return "OP_ifnge";
+        case 0x10: return "OP_jump";
+        case 0x11: return "OP_iftrue";
+        case 0x12: return "OP_iffalse";
+        case 0x13: return "OP_ifeq";
+        case 0x14: return "OP_ifne";
+        case 0x15: return "OP_iflt";
+        case 0x16: return "OP_ifle";
+        case 0x17: return "OP_ifgt";
+        case 0x18: return "OP_ifge";
+        case 0x19: return "OP_ifstricteq";
+        case 0x1a: return "OP_ifstrictne";
+        case 0x1b: return "OP_lookupswitch";
+        case 0x1c: return "OP_pushwith";
+        case 0x1d: return "OP_popscope";
+        case 0x20: return "OP_pushnull";
+        case 0x21: return "OP_pushundefined";
+        case 0x23: return "OP_nextvalue";
+        case 0x24: return "OP_pushbyte";
+        case 0x25: return "OP_pushshort";
+        case 0x26: return "OP_pushtrue";
+        case 0x27: return "OP_pushfalse";
+        case 0x28: return "OP_pushnan";
+        case 0x29: return "OP_pop";
+        case 0x2a: return "OP_dup";
+        case 0x2b: return "OP_swap";
+        case 0x2c: return "OP_pushstring";
+        case 0x2d: return "OP_pushint";
+        case 0x2e: return "OP_pushuint";
+        case 0x2f: return "OP_pushdouble";
+        case 0x30: return "OP_pushscope";
+        case 0x32: return "OP_hasnext2";
+        case 0x40: return "OP_newfunction";
+        case 0x41: return "OP_call";
+        case 0x42: return "OP_construct";
+        case 0x45: return "OP_callmethod";
+        case 0x46: return "OP_callproperty";
+        case 0x47: return "OP_returnvoid";
+        case 0x48: return "OP_returnvalue";
+        case 0x49: return "OP_constructsuper";
+        case 0x4a: return "OP_constructprop";
+        case 0x4c: return "OP_callproplex";
+        case 0x4f: return "OP_callpropvoid";
+        case 0x53: return "OP_applytype";
+        case 0x55: return "OP_newobject";
+        case 0x56: return "OP_newarray";
+        case 0x57: return "OP_newactivation";
+        case 0x58: return "OP_newclass";
+        case 0x59: return "OP_getdescendants";
+        case 0x5a: return "OP_newcatch";
+        case 0x5d: return "OP_findpropstrict";
+        case 0x5e: return "OP_findproperty";
+        case 0x5f: return "OP_finddef";
+        case 0x60: return "OP_getlex";
+        case 0x61: return "OP_setproperty";
+        case 0x62: return "OP_getlocal";
+        case 0x63: return "OP_setlocal";
+        case 0x64: return "OP_getglobalscope";
+        case 0x65: return "OP_getscopeobject";
+        case 0x66: return "OP_getproperty";
+        case 0x68: return "OP_initproperty";
+        case 0x6a: return "OP_deleteproperty";
+        case 0x6c: return "OP_getslot";
+        case 0x6d: return "OP_setslot";
+        case 0x70: return "OP_convert_s";
+        case 0x73: return "OP_convert_i";
+        case 0x74: return "OP_convert_u";
+        case 0x75: return "OP_convert_d";
+        case 0x76: return "OP_convert_b";
+        case 0x78: return "OP_checkfilter";
+        case 0x80: return "OP_coerce";
+        case 0x82: return "OP_coerce_a";
+        case 0x85: return "OP_coerce_s";
+        case 0x86: return "OP_astype";
+        case 0x87: return "OP_astypelate";
+        case 0x90: return "OP_negate";
+        case 0x91: return "OP_increment";
+        case 0x92: return "OP_inclocal";
+        case 0x93: return "OP_decrement";
+        case 0x94: return "OP_declocal";
+        case 0x95: return "OP_typeof";
+        case 0x96: return "OP_not";
+        case 0x97: return "OP_bitnot";
+        case 0xa0: return "OP_add";
+        case 0xa1: return "OP_subtract";
+        case 0xa2: return "OP_multiply";
+        case 0xa3: return "OP_divide";
+        case 0xa4: return "OP_modulo";
+        case 0xa5: return "OP_lshift";
+        case 0xa6: return "OP_rshift";
+        case 0xa7: return "OP_urshift";
+        case 0xa8: return "OP_bitand";
+        case 0xa9: return "OP_bitor";
+        case 0xaa: return "OP_bitxor";
+        case 0xab: return "OP_equals";
+        case 0xac: return "OP_strictequals";
+        case 0xad: return "OP_lessthan";
+        case 0xae: return "OP_lessequals";
+        case 0xaf: return "OP_greaterthan";
+        case 0xb0: return "OP_greaterequals";
+        case 0xb1: return "OP_instanceof";
+        case 0xb2: return "OP_istype";
+        case 0xb3: return "OP_istypelate";
+        case 0xb4: return "OP_in";
+        case 0xc0: return "OP_increment_i";
+        case 0xc1: return "OP_decrement_i";
+        case 0xc2: return "OP_inclocal_i";
+        case 0xc3: return "OP_declocal_i";
+        case 0xd0: return "OP_getlocal0";
+        case 0xd1: return "OP_getlocal1";
+        case 0xd2: return "OP_getlocal2";
+        case 0xd3: return "OP_getlocal3";
+        case 0xd4: return "OP_setlocal0";
+        case 0xd5: return "OP_setlocal1";
+        case 0xd6: return "OP_setlocal2";
+        case 0xd7: return "OP_setlocal3";
+        case 0xf7: return "OP_timestamp";
+        default: return `OP_0x${opcode.toString(16).padStart(2, "0")}`;
+    }
+}
+
+function abcMultinameName(multinames: SwfAbcMultiname[], index: number | undefined): string {
+    if (!index) {
+        return "";
+    }
+    const multiname = multinames[index];
+    return multiname?.name ?? "";
 }
 
 function parseDoAction(reader: SwfDataReader): SwfDoAction {
@@ -2282,6 +2934,11 @@ class SwfDataReader {
         return this.bytes[this.pos++];
     }
 
+    readSI8(): number {
+        const value = this.readUI8();
+        return value & 0x80 ? value - 0x100 : value;
+    }
+
     readUI16(): number {
         this.require(2);
         const value = this.bytes[this.pos] | (this.bytes[this.pos + 1] << 8);
@@ -2324,6 +2981,10 @@ class SwfDataReader {
         return result >>> 0;
     }
 
+    readEncodedS32(): number {
+        return this.readEncodedU32() | 0;
+    }
+
     readSI32(): number {
         this.require(4);
         const value = (this.bytes[this.pos]
@@ -2334,11 +2995,31 @@ class SwfDataReader {
         return value;
     }
 
+    readSI24(): number {
+        this.require(3);
+        let value = this.bytes[this.pos]
+            | (this.bytes[this.pos + 1] << 8)
+            | (this.bytes[this.pos + 2] << 16);
+        this.pos += 3;
+        if (value & 0x800000) {
+            value -= 0x1000000;
+        }
+        return value;
+    }
+
     readFloat32(): number {
         this.require(4);
         const view = new DataView(this.bytes.buffer, this.bytes.byteOffset + this.pos, 4);
         const value = view.getFloat32(0, true);
         this.pos += 4;
+        return value;
+    }
+
+    readFloat64(): number {
+        this.require(8);
+        const view = new DataView(this.bytes.buffer, this.bytes.byteOffset + this.pos, 8);
+        const value = view.getFloat64(0, true);
+        this.pos += 8;
         return value;
     }
 

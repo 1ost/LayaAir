@@ -4,6 +4,7 @@ import { Text } from "../../display/Text";
 import { BevelFilter } from "../../filters/BevelFilter";
 import { BlurFilter } from "../../filters/BlurFilter";
 import { ColorFilter } from "../../filters/ColorFilter";
+import { DropShadowFilter } from "../../filters/DropShadowFilter";
 import { GlowFilter } from "../../filters/GlowFilter";
 import { GradientBevelFilter } from "../../filters/GradientBevelFilter";
 import { GradientGlowFilter } from "../../filters/GradientGlowFilter";
@@ -17,7 +18,9 @@ import type {
     SwfDefineShape,
     SwfDefineSprite,
     SwfDefineText,
+    SwfDoAbc,
     SwfDoAction,
+    SwfAbcInstruction,
     SwfAvm1ActionRecord,
     SwfAvm1ActionValue,
     SwfFillStyle,
@@ -28,7 +31,8 @@ import type {
     SwfPlaceObject,
     SwfRect,
     SwfRgba,
-    SwfShapePath
+    SwfShapePath,
+    SwfShapeSegment
 } from "./SwfTypes";
 
 export interface SwfRenderResult {
@@ -58,6 +62,7 @@ const imageSurfaceCache = new WeakMap<object, Promise<DecodedSwfImage>>();
 const fillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | null>>();
 const staticTextOutlineCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement>>();
 const scale9TextureCache = new WeakMap<object, Promise<any | null>>();
+const avm2ExecutionCache = new WeakMap<SwfMovie, Avm2MovieExecution[]>();
 
 interface DecodedSwfImage {
     source: CanvasImageSource;
@@ -69,6 +74,23 @@ interface DecodedSwfImage {
 interface OrientedShapePath {
     path: SwfShapePath;
     reverse: boolean;
+}
+
+interface Avm2MovieExecution {
+    abcName: string;
+    flags: number;
+    parsed: boolean;
+    scripts: Avm2ScriptExecution[];
+    unsupportedOpcodes: string[];
+    definedClasses: string[];
+}
+
+interface Avm2ScriptExecution {
+    initMethodIndex: number;
+    executed: string[];
+    initializedProperties: string[];
+    callPropVoid: { name: string; argc: number }[];
+    unsupportedOpcodes: string[];
 }
 
 interface SwfRuntimePlacementNode {
@@ -163,6 +185,7 @@ async function instantiateSprite(
     frameIndex: number
 ): Promise<Sprite> {
     const root = new Sprite();
+    installAvm2Runtime(movie, root);
     let renderedShapeCount = 0;
     const placements = framePlacements(sprite, frameIndex);
     const maskStack: { clipDepth: number; group: Sprite }[] = [];
@@ -222,6 +245,7 @@ function instantiateSpriteShellNode(
     frameIndex: number
 ): Sprite {
     const root = new Sprite();
+    installAvm2Runtime(movie, root);
     (root as any).__rawSwfLinkedCharacterId = sprite.characterId;
     (root as any).__rawSwfTimelineShell = true;
     (root as any).currentFrame = normalizeTimelineFrameIndex(frameIndex, Math.max(1, sprite.frames.length || sprite.frameCount || 1)) + 1;
@@ -409,6 +433,7 @@ async function createButtonNode(
         stateRoots.set(state, await createButtonStateNode(movie, button, state, false));
     }
     const root = new Sprite();
+    installAvm2Runtime(movie, root);
     installButtonBridge(root, movie, button, stateRoots);
     setButtonState(root, button, stateRoots, "up");
     return root;
@@ -424,6 +449,7 @@ function createButtonShellNode(
         stateRoots.set(state, createButtonStateShellNode(movie, button, state));
     }
     const root = new Sprite();
+    installAvm2Runtime(movie, root);
     installButtonBridge(root, movie, button, stateRoots);
     (root as any).__rawSwfButtonShell = true;
     setButtonState(root, button, stateRoots, "up");
@@ -827,6 +853,370 @@ function avm1Trace(value: SwfAvm1ActionValue): void {
     const global = globalThis as any;
     global.__rawSwfAvm1Trace ??= [];
     global.__rawSwfAvm1Trace.push(value);
+}
+
+function installAvm2Runtime(movie: SwfMovie, root: Sprite): void {
+    const raw = root as any;
+    const doAbcTags = movie.tags
+        .filter(tag => tag.code === 82 && tag.parsed)
+        .map(tag => tag.parsed as SwfDoAbc);
+    raw.__rawSwfDoAbc = doAbcTags;
+    raw.__rawSwfDoAbcCount = doAbcTags.length;
+    if (!doAbcTags.length) {
+        return;
+    }
+    let executions = avm2ExecutionCache.get(movie);
+    if (!executions) {
+        const domain = {
+            global: {} as Record<string, any>,
+            classes: {} as Record<string, any>
+        };
+        executions = doAbcTags.map(doAbc => executeAvm2DoAbc(doAbc, domain));
+        avm2ExecutionCache.set(movie, executions);
+        const global = globalThis as any;
+        global.__rawSwfAvm2Executions ??= [];
+        global.__rawSwfAvm2Executions.push(...executions);
+    }
+    raw.__rawSwfAvm2Executions = executions;
+    raw.__rawSwfAvm2DefinedClasses = executions.flatMap(execution => execution.definedClasses);
+    raw.__rawSwfAvm2UnsupportedOpcodes = executions.flatMap(execution => execution.unsupportedOpcodes);
+}
+
+function executeAvm2DoAbc(doAbc: SwfDoAbc, domain: { global: Record<string, any>; classes: Record<string, any> }): Avm2MovieExecution {
+    const execution: Avm2MovieExecution = {
+        abcName: doAbc.name,
+        flags: doAbc.flags,
+        parsed: !doAbc.abcParseError,
+        scripts: [],
+        unsupportedOpcodes: [],
+        definedClasses: []
+    };
+    if (doAbc.abcParseError) {
+        execution.unsupportedOpcodes.push(`ABC_PARSE_ERROR:${doAbc.abcParseError}`);
+        return execution;
+    }
+    for (const script of doAbc.abc.scripts) {
+        const body = doAbc.abc.methodBodiesByMethod.get(script.initMethodIndex);
+        if (!body) {
+            continue;
+        }
+        const scriptExecution = executeAvm2Instructions(doAbc, body.instructions, domain);
+        scriptExecution.initMethodIndex = script.initMethodIndex;
+        execution.scripts.push(scriptExecution);
+        execution.unsupportedOpcodes.push(...scriptExecution.unsupportedOpcodes);
+    }
+    execution.definedClasses = Object.keys(domain.classes);
+    return execution;
+}
+
+function executeAvm2Instructions(
+    doAbc: SwfDoAbc,
+    instructions: SwfAbcInstruction[],
+    domain: { global: Record<string, any>; classes: Record<string, any> }
+): Avm2ScriptExecution {
+    const execution: Avm2ScriptExecution = {
+        initMethodIndex: -1,
+        executed: [],
+        initializedProperties: [],
+        callPropVoid: [],
+        unsupportedOpcodes: []
+    };
+    const stack: any[] = [];
+    const scopeStack: any[] = [domain.global];
+    const locals: any[] = [domain.global];
+    const instructionIndexesByOffset = new Map(instructions.map((instruction, index) => [instruction.offset, index]));
+    for (let pc = 0; pc < instructions.length; pc++) {
+        const instruction = instructions[pc];
+        execution.executed.push(instruction.name);
+        switch (instruction.opcode) {
+            case 0x09:
+            case 0x01:
+            case 0x02:
+            case 0xf7:
+                break;
+            case 0x03:
+                stack.pop();
+                execution.unsupportedOpcodes.push(instruction.name);
+                return execution;
+            case 0x10: {
+                const targetPc = avm2BranchTargetPc(instructions, instructionIndexesByOffset, pc, instruction.operands[0] ?? 0);
+                if (targetPc >= 0) {
+                    pc = targetPc - 1;
+                }
+                break;
+            }
+            case 0x11:
+            case 0x12: {
+                const value = stack.pop();
+                if (avm2BranchCondition(instruction.opcode, undefined, value)) {
+                    const targetPc = avm2BranchTargetPc(instructions, instructionIndexesByOffset, pc, instruction.operands[0] ?? 0);
+                    if (targetPc >= 0) {
+                        pc = targetPc - 1;
+                    }
+                }
+                break;
+            }
+            case 0x0c:
+            case 0x0d:
+            case 0x0e:
+            case 0x0f:
+            case 0x13:
+            case 0x14:
+            case 0x15:
+            case 0x16:
+            case 0x17:
+            case 0x18:
+            case 0x19:
+            case 0x1a: {
+                const right = stack.pop();
+                const left = stack.pop();
+                if (avm2BranchCondition(instruction.opcode, left, right)) {
+                    const targetPc = avm2BranchTargetPc(instructions, instructionIndexesByOffset, pc, instruction.operands[0] ?? 0);
+                    if (targetPc >= 0) {
+                        pc = targetPc - 1;
+                    }
+                }
+                break;
+            }
+            case 0x32:
+                stack.push(false);
+                break;
+            case 0xd0:
+                stack.push(locals[0]);
+                break;
+            case 0xd1:
+                stack.push(locals[1]);
+                break;
+            case 0xd2:
+                stack.push(locals[2]);
+                break;
+            case 0xd3:
+                stack.push(locals[3]);
+                break;
+            case 0x62:
+                stack.push(locals[instruction.operands[0]] ?? undefined);
+                break;
+            case 0x63:
+                locals[instruction.operands[0]] = stack.pop();
+                break;
+            case 0x30:
+            case 0x1c:
+                scopeStack.push(stack.pop());
+                break;
+            case 0x1d:
+                scopeStack.pop();
+                break;
+            case 0x65:
+                stack.push(scopeStack[instruction.operands[0]] ?? domain.global);
+                break;
+            case 0x24:
+            case 0x25:
+            case 0x2d:
+            case 0x2e:
+                stack.push(instruction.operands[0] ?? 0);
+                break;
+            case 0x2c:
+                stack.push(doAbc.abc.constantPool.strings[instruction.operands[0]] ?? "");
+                break;
+            case 0x20:
+                stack.push(null);
+                break;
+            case 0x21:
+                stack.push(undefined);
+                break;
+            case 0x23:
+                stack.pop();
+                stack.pop();
+                stack.push(undefined);
+                break;
+            case 0x26:
+                stack.push(true);
+                break;
+            case 0x27:
+                stack.push(false);
+                break;
+            case 0x28:
+                stack.push(Number.NaN);
+                break;
+            case 0x29:
+                stack.pop();
+                break;
+            case 0x2a:
+                stack.push(stack[stack.length - 1]);
+                break;
+            case 0x2b: {
+                const right = stack.pop();
+                const left = stack.pop();
+                stack.push(right, left);
+                break;
+            }
+            case 0x76:
+                stack.push(Boolean(stack.pop()));
+                break;
+            case 0x74:
+                stack.push(Number(stack.pop() ?? 0) >>> 0);
+                break;
+            case 0x90:
+                stack.push(-Number(stack.pop() ?? 0));
+                break;
+            case 0x92:
+                locals[instruction.operands[0]] = Number(locals[instruction.operands[0]] ?? 0) + 1;
+                break;
+            case 0x94:
+                locals[instruction.operands[0]] = Number(locals[instruction.operands[0]] ?? 0) - 1;
+                break;
+            case 0xa8: {
+                const right = Number(stack.pop() ?? 0);
+                const left = Number(stack.pop() ?? 0);
+                stack.push(left & right);
+                break;
+            }
+            case 0xa9: {
+                const right = Number(stack.pop() ?? 0);
+                const left = Number(stack.pop() ?? 0);
+                stack.push(left | right);
+                break;
+            }
+            case 0xaa: {
+                const right = Number(stack.pop() ?? 0);
+                const left = Number(stack.pop() ?? 0);
+                stack.push(left ^ right);
+                break;
+            }
+            case 0x5d:
+            case 0x5e:
+            case 0x60: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                stack.push(resolveAvm2Name(domain, name));
+                break;
+            }
+            case 0x04: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const receiver = stack.pop();
+                stack.push(receiver?.[name]);
+                break;
+            }
+            case 0x05: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const value = stack.pop();
+                const receiver = stack.pop();
+                if (receiver && name) {
+                    receiver[name] = value;
+                }
+                break;
+            }
+            case 0x66: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const receiver = stack.pop();
+                stack.push(receiver?.[name]);
+                break;
+            }
+            case 0x68:
+            case 0x61: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const value = stack.pop();
+                const receiver = stack.pop() ?? domain.global;
+                receiver[name] = value;
+                if (value?.__rawSwfAvm2ClassName) {
+                    domain.classes[value.__rawSwfAvm2ClassName] = value;
+                }
+                execution.initializedProperties.push(name);
+                break;
+            }
+            case 0x58: {
+                const classIndex = instruction.operands[0] ?? 0;
+                const instanceName = doAbc.abc.instances[classIndex]?.name || `class${classIndex}`;
+                stack.pop();
+                stack.push({ __rawSwfAvm2ClassName: instanceName, classIndex });
+                break;
+            }
+            case 0x5a:
+                stack.push({ __rawSwfAvm2CatchIndex: instruction.operands[0] ?? 0 });
+                break;
+            case 0x57:
+                stack.push({});
+                break;
+            case 0x49: {
+                const argc = instruction.operands[0] ?? 0;
+                for (let index = 0; index < argc; index++) {
+                    stack.pop();
+                }
+                stack.pop();
+                break;
+            }
+            case 0x4a: {
+                const argc = instruction.operands[1] ?? 0;
+                for (let index = 0; index < argc; index++) {
+                    stack.pop();
+                }
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                stack.pop();
+                stack.push({ __rawSwfAvm2Constructed: name });
+                break;
+            }
+            case 0x4f: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const argc = instruction.operands[1] ?? 0;
+                for (let index = 0; index < argc; index++) {
+                    stack.pop();
+                }
+                stack.pop();
+                execution.callPropVoid.push({ name, argc });
+                break;
+            }
+            case 0x47:
+            case 0x48:
+                return execution;
+            default:
+                execution.unsupportedOpcodes.push(instruction.name);
+                break;
+        }
+    }
+    return execution;
+}
+
+function avm2BranchTargetPc(
+    instructions: SwfAbcInstruction[],
+    instructionIndexesByOffset: Map<number, number>,
+    pc: number,
+    relativeOffset: number
+): number {
+    const nextOffset = instructions[pc].offset + instructions[pc].size;
+    return instructionIndexesByOffset.get(nextOffset + relativeOffset) ?? -1;
+}
+
+function avm2BranchCondition(opcode: number, left: any, right: any): boolean {
+    switch (opcode) {
+        case 0x0c: return !(left < right);
+        case 0x0d: return !(left <= right);
+        case 0x0e: return !(left > right);
+        case 0x0f: return !(left >= right);
+        case 0x11: return Boolean(right);
+        case 0x12: return !Boolean(right);
+        case 0x13: return left == right;
+        case 0x14: return left != right;
+        case 0x15: return left < right;
+        case 0x16: return left <= right;
+        case 0x17: return left > right;
+        case 0x18: return left >= right;
+        case 0x19: return left === right;
+        case 0x1a: return left !== right;
+        default: return false;
+    }
+}
+
+function avm2Multiname(doAbc: SwfDoAbc, index: number | undefined): string {
+    if (!index) {
+        return "";
+    }
+    return doAbc.abc.constantPool.multinames[index]?.name ?? "";
+}
+
+function resolveAvm2Name(domain: { global: Record<string, any>; classes: Record<string, any> }, name: string): any {
+    if (!name) {
+        return domain.global;
+    }
+    return domain.classes[name] ?? domain.global[name] ?? { __rawSwfAvm2Reference: name };
 }
 
 function buttonHitTestLocal(movie: SwfMovie, button: SwfDefineButton, x: number, y: number): boolean {
@@ -1284,9 +1674,6 @@ function interpolateShapePath(startPath: SwfShapePath, endPath: SwfShapePath, ra
     }
     const segments = startPath.segments.map((startSegment, index) => {
         const endSegment = endPath.segments[index];
-        if (startSegment.type !== endSegment.type) {
-            return ratio < 0.5 ? startSegment : endSegment;
-        }
         if (startSegment.type === "line" && endSegment.type === "line") {
             return {
                 type: "line" as const,
@@ -1302,6 +1689,16 @@ function interpolateShapePath(startPath: SwfShapePath, endPath: SwfShapePath, ra
                 end: interpolateShapePoint(startSegment.end, endSegment.end, ratio)
             };
         }
+        const startCurve = morphSegmentAsCurve(startSegment);
+        const endCurve = morphSegmentAsCurve(endSegment);
+        if (startCurve && endCurve) {
+            return {
+                type: "curve" as const,
+                start: interpolateShapePoint(startCurve.start, endCurve.start, ratio),
+                control: interpolateShapePoint(startCurve.control, endCurve.control, ratio),
+                end: interpolateShapePoint(startCurve.end, endCurve.end, ratio)
+            };
+        }
         return ratio < 0.5 ? startSegment : endSegment;
     });
     return {
@@ -1311,6 +1708,31 @@ function interpolateShapePath(startPath: SwfShapePath, endPath: SwfShapePath, ra
         lineStyleIndex: startPath.lineStyleIndex || endPath.lineStyleIndex,
         points: segments.length > 0 ? [segments[0].start, ...segments.map(segment => segment.end)] : startPath.points,
         segments
+    };
+}
+
+function morphSegmentAsCurve(segment: SwfShapeSegment): { start: any; control: any; end: any } | null {
+    if (segment.type === "curve") {
+        return segment;
+    }
+    if (segment.type === "line") {
+        return {
+            start: segment.start,
+            control: midpointShapePoint(segment.start, segment.end),
+            end: segment.end
+        };
+    }
+    return null;
+}
+
+function midpointShapePoint(start: any, end: any): any {
+    const xTwips = Math.round(((start?.xTwips ?? 0) + (end?.xTwips ?? 0)) / 2);
+    const yTwips = Math.round(((start?.yTwips ?? 0) + (end?.yTwips ?? 0)) / 2);
+    return {
+        xTwips,
+        yTwips,
+        x: xTwips / 20,
+        y: yTwips / 20
     };
 }
 
@@ -1763,14 +2185,14 @@ function applyPlacementDisplayState(node: Sprite | Text, placement: SwfPlaceObje
         node.visible = false;
     }
     const displayFilters: any[] = [];
+    const flashFilters = createFlashFilters(placement.filters);
+    displayFilters.push(...flashFilters);
     const colorFilter = applyColorTransform(node, placement.colorTransform);
     const renderSurfaceReasons = placementRenderSurfaceReasons(placement);
     if (colorFilter) {
         displayFilters.push(colorFilter);
         (node as any).__rawSwfColorTransformMatrix = colorTransformMatrix(placement.colorTransform);
     }
-    const flashFilters = createFlashFilters(placement.filters);
-    displayFilters.push(...flashFilters);
     (node as any).filters = displayFilters.length > 0 ? displayFilters : null;
     (node as any).__rawSwfFilterOrder = displayFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
     (node as any).__rawSwfFlashFilterOrder = flashFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
@@ -1859,17 +2281,27 @@ function createFlashFilters(filters: SwfFilter[] | undefined): any[] {
 }
 
 function flashFilterToLaya(filter: SwfFilter): any {
+    let layaFilter: any = null;
     switch (filter.id) {
         case 0: {
             const offset = offsetFromPolar(filter.angle ?? 0, filter.distance ?? 0);
-            return new GlowFilter(rgbaToCss(filter.color) ?? "#000000", averageBlur(filter), offset.x, offset.y);
+            layaFilter = new DropShadowFilter(
+                rgbaToCss(filter.color) ?? "#000000",
+                averageBlur(filter),
+                offset.x,
+                offset.y,
+                filter.strength ?? 1
+            );
+            break;
         }
         case 1:
-            return new BlurFilter(averageBlur(filter));
+            layaFilter = new BlurFilter(averageBlur(filter));
+            break;
         case 2:
-            return new GlowFilter(rgbaToCss(filter.color) ?? "#000000", averageBlur(filter), 0, 0);
+            layaFilter = new GlowFilter(rgbaToCss(filter.color) ?? "#000000", averageBlur(filter), 0, 0);
+            break;
         case 3:
-            return new BevelFilter(
+            layaFilter = new BevelFilter(
                 rgbaToCss(filter.highlightColor) ?? "#ffffff",
                 rgbaToCss(filter.shadowColor) ?? "#000000",
                 filter.blurX ?? averageBlur(filter),
@@ -1882,8 +2314,9 @@ function flashFilterToLaya(filter: SwfFilter): any {
                 filter.onTop ?? false,
                 filter.compositeSource ?? true
             );
+            break;
         case 4:
-            return new GradientGlowFilter(
+            layaFilter = new GradientGlowFilter(
                 (filter.colors ?? []).map(color => rgbaToCss(color) ?? "#000000"),
                 filter.ratios ?? [],
                 filter.blurX ?? averageBlur(filter),
@@ -1896,10 +2329,15 @@ function flashFilterToLaya(filter: SwfFilter): any {
                 filter.onTop ?? false,
                 filter.compositeSource ?? true
             );
+            break;
+        case 5:
+            rawSwfRendererAssetMetrics().unsupportedConvolutionFilters += 1;
+            break;
         case 6:
-            return filter.matrix?.length === 20 ? new ColorFilter(filter.matrix) : null;
+            layaFilter = filter.matrix?.length === 20 ? new ColorFilter(filter.matrix) : null;
+            break;
         case 7:
-            return new GradientBevelFilter(
+            layaFilter = new GradientBevelFilter(
                 (filter.colors ?? []).map(color => rgbaToCss(color) ?? "#000000"),
                 filter.ratios ?? [],
                 filter.blurX ?? averageBlur(filter),
@@ -1912,9 +2350,56 @@ function flashFilterToLaya(filter: SwfFilter): any {
                 filter.onTop ?? false,
                 filter.compositeSource ?? true
             );
+            break;
         default:
-            return null;
+            break;
     }
+    if (layaFilter) {
+        recordFilterKernelMetrics(filter);
+        annotateLayaFilterWithFlashKernel(layaFilter, filter);
+    }
+    return layaFilter;
+}
+
+function recordFilterKernelMetrics(filter: SwfFilter): void {
+    const metrics = rawSwfRendererAssetMetrics();
+    if ((filter.blurX ?? 0) !== (filter.blurY ?? 0)) {
+        metrics.anisotropicFilterKernels += 1;
+    }
+    if ((filter.passes ?? 1) > 1) {
+        metrics.multiPassFilterKernels += 1;
+    }
+}
+
+function annotateLayaFilterWithFlashKernel(layaFilter: any, filter: SwfFilter): void {
+    layaFilter.__rawSwfFlashFilter = {
+        id: filter.id,
+        name: filter.name,
+        blurX: filter.blurX ?? 0,
+        blurY: filter.blurY ?? 0,
+        passes: filter.passes ?? 1,
+        strength: filter.strength ?? 1,
+        angle: filter.angle ?? 0,
+        distance: filter.distance ?? 0,
+        inner: filter.inner ?? false,
+        knockout: filter.knockout ?? false,
+        compositeSource: filter.compositeSource ?? true,
+        matrixX: filter.matrixX ?? 0,
+        matrixY: filter.matrixY ?? 0,
+        divisor: filter.divisor ?? 1,
+        bias: filter.bias ?? 0,
+        clamp: filter.clamp ?? true,
+        preserveAlpha: filter.preserveAlpha ?? true,
+        colors: (filter.colors ?? []).map(color => ({
+            red: color.red,
+            green: color.green,
+            blue: color.blue,
+            alpha: color.alpha,
+            alphaFloat: color.alpha / 255
+        })),
+        ratios: filter.ratios ? [...filter.ratios] : [],
+        onTop: filter.onTop ?? false
+    };
 }
 
 function averageBlur(filter: SwfFilter): number {
@@ -2215,6 +2700,9 @@ function rawSwfRendererAssetMetrics(): {
     scale9Draw9GridInstalls: number;
     directSrgbTextureUploads: number;
     premultipliedTextureUploads: number;
+    unsupportedConvolutionFilters: number;
+    anisotropicFilterKernels: number;
+    multiPassFilterKernels: number;
 } {
     const global = globalThis as any;
     global.__rawSwfRendererAssetMetrics ??= {
@@ -2229,7 +2717,10 @@ function rawSwfRendererAssetMetrics(): {
         scale9SourceUploads: 0,
         scale9Draw9GridInstalls: 0,
         directSrgbTextureUploads: 0,
-        premultipliedTextureUploads: 0
+        premultipliedTextureUploads: 0,
+        unsupportedConvolutionFilters: 0,
+        anisotropicFilterKernels: 0,
+        multiPassFilterKernels: 0
     };
     return global.__rawSwfRendererAssetMetrics;
 }
@@ -2840,6 +3331,7 @@ export class SwfTimelineInstance {
         options: SwfTimelineInstanceOptions = {}
     ) {
         this.root = new Sprite();
+        installAvm2Runtime(movie, this.root);
         this.totalFrames = Math.max(1, sprite.frames.length || sprite.frameCount || 1);
         this.frameRate = Math.max(1, Math.round(movie.header.frameRate || 1));
         this.currentFrameIndex = normalizeTimelineFrameIndex(options.frameIndex ?? 0, this.totalFrames);

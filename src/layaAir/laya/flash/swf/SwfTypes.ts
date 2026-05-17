@@ -547,6 +547,8 @@ export interface SwfDoAbc {
     flags: number;
     name: string;
     abcData: Uint8Array;
+    abc: SwfAbcFile;
+    abcParseError?: string;
 }
 
 export interface SwfDoAction {
@@ -580,6 +582,130 @@ export interface SwfAvm1ActionRecord {
     url?: string;
     target?: string;
     branchOffset?: number;
+}
+
+export interface SwfAbcFile {
+    minorVersion: number;
+    majorVersion: number;
+    constantPool: SwfAbcConstantPool;
+    methods: SwfAbcMethod[];
+    metadata: SwfAbcMetadata[];
+    instances: SwfAbcInstance[];
+    classes: SwfAbcClass[];
+    scripts: SwfAbcScript[];
+    methodBodies: SwfAbcMethodBody[];
+    methodBodiesByMethod: Map<number, SwfAbcMethodBody>;
+}
+
+export interface SwfAbcConstantPool {
+    integers: number[];
+    unsignedIntegers: number[];
+    doubles: number[];
+    strings: string[];
+    namespaces: SwfAbcNamespace[];
+    namespaceSets: number[][];
+    multinames: SwfAbcMultiname[];
+}
+
+export interface SwfAbcNamespace {
+    kind: number;
+    nameIndex: number;
+    name: string;
+}
+
+export interface SwfAbcMultiname {
+    kind: number;
+    name: string;
+    namespaceIndex?: number;
+    namespaceSetIndex?: number;
+    qualifiedNameIndex?: number;
+    parameterIndexes?: number[];
+}
+
+export interface SwfAbcMethod {
+    returnType: number;
+    paramTypes: number[];
+    nameIndex: number;
+    name: string;
+    flags: number;
+    options?: SwfAbcMethodOption[];
+    paramNames?: string[];
+}
+
+export interface SwfAbcMethodOption {
+    valueIndex: number;
+    kind: number;
+}
+
+export interface SwfAbcMetadata {
+    nameIndex: number;
+    name: string;
+    items: { keyIndex: number; key: string; valueIndex: number; value: string }[];
+}
+
+export interface SwfAbcTrait {
+    nameIndex: number;
+    name: string;
+    kind: number;
+    attributes: number;
+    slotId?: number;
+    typeNameIndex?: number;
+    valueIndex?: number;
+    valueKind?: number;
+    classIndex?: number;
+    functionIndex?: number;
+    methodIndex?: number;
+    metadataIndexes?: number[];
+}
+
+export interface SwfAbcInstance {
+    nameIndex: number;
+    name: string;
+    superNameIndex: number;
+    superName: string;
+    flags: number;
+    protectedNamespaceIndex?: number;
+    interfaceIndexes: number[];
+    initMethodIndex: number;
+    traits: SwfAbcTrait[];
+}
+
+export interface SwfAbcClass {
+    initMethodIndex: number;
+    traits: SwfAbcTrait[];
+}
+
+export interface SwfAbcScript {
+    initMethodIndex: number;
+    traits: SwfAbcTrait[];
+}
+
+export interface SwfAbcMethodBody {
+    methodIndex: number;
+    maxStack: number;
+    localCount: number;
+    initScopeDepth: number;
+    maxScopeDepth: number;
+    code: Uint8Array;
+    instructions: SwfAbcInstruction[];
+    exceptions: SwfAbcException[];
+    traits: SwfAbcTrait[];
+}
+
+export interface SwfAbcInstruction {
+    opcode: number;
+    name: string;
+    offset: number;
+    size: number;
+    operands: number[];
+}
+
+export interface SwfAbcException {
+    from: number;
+    to: number;
+    target: number;
+    exceptionTypeIndex: number;
+    variableNameIndex: number;
 }
 
 export interface SwfMetadata {
