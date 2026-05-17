@@ -128,6 +128,45 @@ export interface SwfTag {
     parsed?: SwfParsedTag;
 }
 
+export interface SwfUnsupportedFeature {
+    source: string;
+    kind: string;
+    message: string;
+    tagCode?: number;
+    tagName?: string;
+    offset?: number;
+    length?: number;
+    characterId?: number;
+    detail?: unknown;
+}
+
+export function reportSwfUnsupportedFeature(feature: SwfUnsupportedFeature): void {
+    const global = globalThis as any;
+    const normalized: SwfUnsupportedFeature = {
+        ...feature,
+        source: feature.source || "unknown-swf",
+    };
+    const key = [
+        normalized.source,
+        normalized.kind,
+        normalized.tagCode ?? "",
+        normalized.offset ?? "",
+        normalized.characterId ?? "",
+        normalized.message,
+    ].join("|");
+    global.__rawSwfUnsupportedFeatureKeys ??= {};
+    if (global.__rawSwfUnsupportedFeatureKeys[key]) {
+        return;
+    }
+    global.__rawSwfUnsupportedFeatureKeys[key] = true;
+    global.__rawSwfUnsupportedFeatures ??= [];
+    global.__rawSwfUnsupportedFeatures.push(normalized);
+    const consoleObject = global.console;
+    if (consoleObject && typeof consoleObject.warn === "function") {
+        consoleObject.warn("[RawSWF unsupported]", normalized);
+    }
+}
+
 export interface SwfFileAttributes {
     useDirectBlit: boolean;
     useGPU: boolean;
@@ -779,17 +818,29 @@ export class SwfMovie {
     readonly characters: Map<number, SwfCharacter>;
     readonly exports: SwfExportAsset[];
     readonly symbolClasses: SwfSymbolClass[];
+    readonly sourceUrl?: string;
+    readonly unsupportedFeatures: SwfUnsupportedFeature[];
     readonly exportsByName: Map<string, SwfExportAsset>;
     readonly exportsByCharacterId: Map<number, SwfExportAsset[]>;
     readonly symbolClassesByName: Map<string, SwfSymbolClass>;
     readonly symbolClassesByCharacterId: Map<number, SwfSymbolClass[]>;
 
-    constructor(header: SwfHeader, tags: SwfTag[], characters: Map<number, SwfCharacter>, exports: SwfExportAsset[], symbolClasses: SwfSymbolClass[] = []) {
+    constructor(
+        header: SwfHeader,
+        tags: SwfTag[],
+        characters: Map<number, SwfCharacter>,
+        exports: SwfExportAsset[],
+        symbolClasses: SwfSymbolClass[] = [],
+        unsupportedFeatures: SwfUnsupportedFeature[] = [],
+        sourceUrl?: string
+    ) {
         this.header = header;
         this.tags = tags;
         this.characters = characters;
         this.exports = exports;
         this.symbolClasses = symbolClasses;
+        this.unsupportedFeatures = unsupportedFeatures;
+        this.sourceUrl = sourceUrl;
         this.exportsByName = new Map();
         this.exportsByCharacterId = new Map();
         this.symbolClassesByName = new Map();

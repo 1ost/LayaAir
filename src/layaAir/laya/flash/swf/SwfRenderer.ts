@@ -34,6 +34,7 @@ import type {
     SwfShapePath,
     SwfShapeSegment
 } from "./SwfTypes";
+import { reportSwfUnsupportedFeature } from "./SwfTypes";
 
 export interface SwfRenderResult {
     root: Sprite;
@@ -98,6 +99,13 @@ interface SwfRuntimePlacementNode {
     ratio?: number;
     node: Sprite | Text;
     timeline?: SwfTimelineInstance;
+}
+
+interface Avm2FrameScriptBinding {
+    className: string;
+    frameIndex: number;
+    methodName: string;
+    actions: string[];
 }
 
 function isSpriteCharacter(character: any): character is SwfDefineSprite {
@@ -780,6 +788,17 @@ function executeAvm1Actions(target: any, actions: SwfAvm1ActionRecord[] | undefi
             default:
                 raw.__rawSwfAvm1UnsupportedActions ??= [];
                 raw.__rawSwfAvm1UnsupportedActions.push(record);
+                reportSwfUnsupportedFeature({
+                    source: raw.__rawSwfMovie?.sourceUrl ?? "unknown-swf",
+                    kind: "unsupported-avm1-action",
+                    message: `Unsupported AVM1 action ${record.name} (0x${record.opcode.toString(16)}) was skipped.`,
+                    detail: {
+                        source: context.source,
+                        trigger: context.trigger,
+                        frameIndex: context.frameIndex,
+                        offset: record.offset
+                    }
+                });
                 break;
         }
     }
@@ -880,6 +899,14 @@ function installAvm2Runtime(movie: SwfMovie, root: Sprite): void {
     raw.__rawSwfAvm2Executions = executions;
     raw.__rawSwfAvm2DefinedClasses = executions.flatMap(execution => execution.definedClasses);
     raw.__rawSwfAvm2UnsupportedOpcodes = executions.flatMap(execution => execution.unsupportedOpcodes);
+    for (const opcode of raw.__rawSwfAvm2UnsupportedOpcodes) {
+        reportSwfUnsupportedFeature({
+            source: movie.sourceUrl ?? "unknown-swf",
+            kind: "unsupported-avm2-opcode",
+            message: `Unsupported AVM2 script initializer opcode ${opcode} was skipped.`,
+            detail: { opcode }
+        });
+    }
 }
 
 function executeAvm2DoAbc(doAbc: SwfDoAbc, domain: { global: Record<string, any>; classes: Record<string, any> }): Avm2MovieExecution {
@@ -1226,6 +1253,10 @@ function buttonHitTestLocal(movie: SwfMovie, button: SwfDefineButton, x: number,
     return placements.some(placement => placementHitTestLocal(movie, placement, x, y));
 }
 
+function spriteFrameHitTestLocal(movie: SwfMovie, sprite: SwfDefineSprite, frameIndex: number, x: number, y: number): boolean {
+    return framePlacements(sprite, frameIndex).some(placement => placementHitTestLocal(movie, placement, x, y));
+}
+
 function placementHitTestLocal(movie: SwfMovie, placement: SwfPlaceObject, x: number, y: number): boolean {
     if (placement.characterId == null) {
         return false;
@@ -1237,8 +1268,7 @@ function placementHitTestLocal(movie: SwfMovie, placement: SwfPlaceObject, x: nu
 
 function characterHitTestLocal(movie: SwfMovie, character: any, x: number, y: number): boolean {
     if (isSpriteCharacter(character)) {
-        const placements = framePlacements(character, 0);
-        return placements.some(placement => placementHitTestLocal(movie, placement, x, y));
+        return spriteFrameHitTestLocal(movie, character, 0, x, y);
     }
     if (isButtonCharacter(character)) {
         return buttonHitTestLocal(movie, character, x, y);
@@ -2181,9 +2211,8 @@ async function drawStaticTextToCanvas(context: CanvasRenderingContext2D, charact
 }
 
 function applyPlacementDisplayState(node: Sprite | Text, placement: SwfPlaceObject): void {
-    if (placement.visible === false) {
-        node.visible = false;
-    }
+    node.visible = placement.visible !== false;
+    node.alpha = alphaFromColorTransform(placement.colorTransform) ?? 1;
     const displayFilters: any[] = [];
     const flashFilters = createFlashFilters(placement.filters);
     displayFilters.push(...flashFilters);
@@ -2197,12 +2226,13 @@ function applyPlacementDisplayState(node: Sprite | Text, placement: SwfPlaceObje
     (node as any).__rawSwfFilterOrder = displayFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
     (node as any).__rawSwfFlashFilterOrder = flashFilters.map(filter => filter?.constructor?.name ?? "UnknownFilter");
     const blendMode = flashBlendModeToLaya(placement.blendMode);
-    if (blendMode) {
-        (node as any).blendMode = blendMode;
-    }
+    (node as any).blendMode = blendMode ?? "normal";
     if (placement.cacheAsBitmap || renderSurfaceReasons.length > 0) {
         (node as any).cacheAs = "bitmap";
         (node as any).__rawSwfRenderSurfaceReasons = renderSurfaceReasons;
+    } else {
+        (node as any).cacheAs = "none";
+        (node as any).__rawSwfRenderSurfaceReasons = [];
     }
 }
 
@@ -2226,11 +2256,7 @@ function applyColorTransform(node: Sprite | Text, transform: SwfPlaceObject["col
         return null;
     }
     if (needsColorFilter(transform)) {
-        return new ColorFilter(colorTransformMatrix(transform));
-    }
-    const alpha = alphaFromColorTransform(transform);
-    if (alpha != null) {
-        node.alpha = alpha;
+        return new ColorFilter(rgbColorTransformMatrix(transform));
     }
     return null;
 }
@@ -2239,13 +2265,12 @@ function needsColorFilter(transform: SwfPlaceObject["colorTransform"]): boolean 
     if (!transform) {
         return false;
     }
-    return transform.redMultiplier != null
-        || transform.greenMultiplier != null
-        || transform.blueMultiplier != null
-        || transform.redAdd != null
-        || transform.greenAdd != null
-        || transform.blueAdd != null
-        || transform.alphaAdd != null;
+    return colorTransformMultiplier(transform.redMultiplier) !== 1
+        || colorTransformMultiplier(transform.greenMultiplier) !== 1
+        || colorTransformMultiplier(transform.blueMultiplier) !== 1
+        || (transform.redAdd ?? 0) !== 0
+        || (transform.greenAdd ?? 0) !== 0
+        || (transform.blueAdd ?? 0) !== 0;
 }
 
 function colorTransformMatrix(transform: SwfPlaceObject["colorTransform"]): number[] {
@@ -2259,6 +2284,22 @@ function colorTransformMatrix(transform: SwfPlaceObject["colorTransform"]): numb
         0, 0, blueMultiplier, 0, transform?.blueAdd ?? 0,
         0, 0, 0, alphaMultiplier, transform?.alphaAdd ?? 0
     ];
+}
+
+function rgbColorTransformMatrix(transform: SwfPlaceObject["colorTransform"]): number[] {
+    const redMultiplier = colorTransformMultiplier(transform?.redMultiplier);
+    const greenMultiplier = colorTransformMultiplier(transform?.greenMultiplier);
+    const blueMultiplier = colorTransformMultiplier(transform?.blueMultiplier);
+    return [
+        redMultiplier, 0, 0, 0, transform?.redAdd ?? 0,
+        0, greenMultiplier, 0, 0, transform?.greenAdd ?? 0,
+        0, 0, blueMultiplier, 0, transform?.blueAdd ?? 0,
+        0, 0, 0, 1, 0
+    ];
+}
+
+function colorTransformMultiplier(value: number | undefined): number {
+    return (value ?? 256) / 256;
 }
 
 function applyFlashFilters(node: Sprite | Text, filters: SwfFilter[] | undefined): void {
@@ -2332,6 +2373,21 @@ function flashFilterToLaya(filter: SwfFilter): any {
             break;
         case 5:
             rawSwfRendererAssetMetrics().unsupportedConvolutionFilters += 1;
+            reportSwfUnsupportedFeature({
+                source: (filter as any).__rawSwfMovie?.sourceUrl ?? "unknown-swf",
+                kind: "unsupported-filter",
+                message: "Unsupported SWF ConvolutionFilter was skipped.",
+                detail: {
+                    filterId: filter.id,
+                    matrixX: filter.matrixX,
+                    matrixY: filter.matrixY,
+                    divisor: filter.divisor,
+                    bias: filter.bias,
+                    defaultColor: filter.defaultColor,
+                    clamp: filter.clamp,
+                    preserveAlpha: filter.preserveAlpha
+                }
+            });
             break;
         case 6:
             layaFilter = filter.matrix?.length === 20 ? new ColorFilter(filter.matrix) : null;
@@ -2786,6 +2842,13 @@ async function losslessBitmapToSurface(image: SwfDefineBitsLossless): Promise<De
             decodeLossless32(decoded, image, pixels.data);
             break;
         default:
+            reportSwfUnsupportedFeature({
+                source: (image as any).__rawSwfMovie?.sourceUrl ?? "unknown-swf",
+                kind: "unsupported-lossless-bitmap",
+                message: `Unsupported SWF lossless bitmap format ${image.bitmapFormat}.`,
+                characterId: image.characterId,
+                detail: { bitmapFormat: image.bitmapFormat, width: image.width, height: image.height }
+            });
             throw new Error(`Unsupported SWF lossless bitmap format ${image.bitmapFormat}.`);
     }
     context.putImageData(pixels, 0, 0);
@@ -2904,6 +2967,12 @@ async function compressedImageToSurface(bytes: Uint8Array, type: string): Promis
     const ImageDecoderCtor = (globalThis as any).ImageDecoder;
     if (typeof ImageDecoderCtor !== "function") {
         rawSwfRendererAssetMetrics().unsupportedImageDecodes += 1;
+        reportSwfUnsupportedFeature({
+            source: "unknown-swf",
+            kind: "unsupported-image-decode",
+            message: `SWF direct image decode requires ImageDecoder support for ${type}.`,
+            detail: { type }
+        });
         throw new Error(`SWF direct image decode requires ImageDecoder support for ${type}.`);
     }
     const decoder = new ImageDecoderCtor({ data: bytes, type });
@@ -3324,6 +3393,7 @@ export class SwfTimelineInstance {
     private destroyed = false;
     private initActionsExecuted = false;
     private renderPromise: Promise<void> = Promise.resolve();
+    private readonly avm2FrameScriptsByFrame: Map<number, Avm2FrameScriptBinding[]>;
 
     constructor(
         private readonly movie: SwfMovie,
@@ -3335,6 +3405,7 @@ export class SwfTimelineInstance {
         this.totalFrames = Math.max(1, sprite.frames.length || sprite.frameCount || 1);
         this.frameRate = Math.max(1, Math.round(movie.header.frameRate || 1));
         this.currentFrameIndex = normalizeTimelineFrameIndex(options.frameIndex ?? 0, this.totalFrames);
+        this.avm2FrameScriptsByFrame = extractAvm2FrameScriptsForSprite(movie, sprite);
         this.installFlashApiBridge();
         this.ready = this.renderFrame(this.currentFrameIndex).then(() => {
             if (options.autoPlay !== false) {
@@ -3412,6 +3483,14 @@ export class SwfTimelineInstance {
     private installFlashApiBridge(): void {
         const raw = this.root as any;
         raw.__rawSwfTimelineInstance = this;
+        raw.__rawSwfAvm2FrameScripts = [...this.avm2FrameScriptsByFrame.values()].flat();
+        raw._flashHitTestLocalPoint = (x: number, y: number): boolean => spriteFrameHitTestLocal(
+            this.movie,
+            this.sprite,
+            this.currentFrameIndex,
+            x,
+            y
+        );
         raw.play = (): Promise<void> => this.play();
         raw.stop = (): void => this.stop();
         raw.gotoAndStop = (frame: number | string): Promise<void> => this.gotoAndStop(frame);
@@ -3520,6 +3599,7 @@ export class SwfTimelineInstance {
             executeInitAvm1Actions(this.root, this.sprite);
         }
         executeFrameAvm1Actions(this.root, this.sprite.frames[frameIndex], this);
+        this.executeAvm2FrameScripts(frameIndex);
     }
 
     private async resolveFrameRuntime(placement: SwfPlaceObject): Promise<SwfRuntimePlacementNode> {
@@ -3536,6 +3616,182 @@ export class SwfTimelineInstance {
             ...runtime
         };
     }
+
+    private executeAvm2FrameScripts(frameIndex: number): void {
+        const scripts = this.avm2FrameScriptsByFrame.get(frameIndex) ?? [];
+        if (!scripts.length) {
+            return;
+        }
+        const raw = this.root as any;
+        raw.__rawSwfAvm2FrameScriptExecutions ??= [];
+        for (const script of scripts) {
+            raw.__rawSwfAvm2FrameScriptExecutions.push({
+                frameIndex,
+                className: script.className,
+                methodName: script.methodName,
+                actions: script.actions
+            });
+            for (const action of script.actions) {
+                if (action === "stop") {
+                    this.stop();
+                } else if (action === "play") {
+                    void this.play();
+                } else {
+                    reportSwfUnsupportedFeature({
+                        source: this.movie.sourceUrl ?? "unknown-swf",
+                        kind: "unsupported-avm2-frame-script",
+                        message: `Unsupported AVM2 frame-script action '${action}' was skipped.`,
+                        detail: {
+                            className: script.className,
+                            methodName: script.methodName,
+                            frameIndex
+                        }
+                    });
+                }
+            }
+        }
+    }
+}
+
+function extractAvm2FrameScriptsForSprite(movie: SwfMovie, sprite: SwfDefineSprite): Map<number, Avm2FrameScriptBinding[]> {
+    const symbolNames = (movie.symbolClassesByCharacterId.get(sprite.characterId) ?? []).map(symbol => symbol.name);
+    if (!symbolNames.length) {
+        return new Map();
+    }
+    const bindings = new Map<number, Avm2FrameScriptBinding[]>();
+    const doAbcTags = movie.tags
+        .filter(tag => tag.code === 82 && tag.parsed)
+        .map(tag => tag.parsed as SwfDoAbc)
+        .filter(doAbc => !doAbc.abcParseError);
+    for (const doAbc of doAbcTags) {
+        for (const instance of doAbc.abc.instances) {
+            if (!symbolNames.some(symbolName => avm2ClassNamesMatch(instance.name, symbolName))) {
+                continue;
+            }
+            const methodTraits = new Map<string, number>();
+            for (const trait of instance.traits) {
+                if (trait.methodIndex != null && trait.name) {
+                    methodTraits.set(trait.name, trait.methodIndex);
+                }
+            }
+            const constructorBody = doAbc.abc.methodBodiesByMethod.get(instance.initMethodIndex);
+            if (!constructorBody) {
+                continue;
+            }
+            const registrations = extractAvm2AddFrameScriptRegistrations(doAbc, constructorBody.instructions, methodTraits);
+            for (const registration of registrations) {
+                const methodIndex = methodTraits.get(registration.methodName);
+                const actions = extractAvm2MethodTimelineActions(doAbc, methodIndex);
+                const binding: Avm2FrameScriptBinding = {
+                    className: instance.name,
+                    frameIndex: registration.frameIndex,
+                    methodName: registration.methodName,
+                    actions
+                };
+                const frameBindings = bindings.get(binding.frameIndex) ?? [];
+                frameBindings.push(binding);
+                bindings.set(binding.frameIndex, frameBindings);
+            }
+        }
+    }
+    return bindings;
+}
+
+function avm2ClassNamesMatch(instanceName: string, symbolName: string): boolean {
+    return instanceName === symbolName
+        || avm2ClassNameLeaf(instanceName) === avm2ClassNameLeaf(symbolName);
+}
+
+function avm2ClassNameLeaf(name: string): string {
+    return name.split(/[.:]/).filter(Boolean).pop() ?? name;
+}
+
+function extractAvm2AddFrameScriptRegistrations(
+    doAbc: SwfDoAbc,
+    instructions: SwfAbcInstruction[],
+    methodTraits: Map<string, number>
+): { frameIndex: number; methodName: string }[] {
+    const stack: any[] = [];
+    const registrations: { frameIndex: number; methodName: string }[] = [];
+    for (const instruction of instructions) {
+        switch (instruction.opcode) {
+            case 0xd0:
+                stack.push({ kind: "this" });
+                break;
+            case 0x24:
+            case 0x25:
+            case 0x2d:
+            case 0x2e:
+                stack.push(instruction.operands[0] ?? 0);
+                break;
+            case 0x5d:
+                stack.push({ kind: "scopeProperty", name: avm2Multiname(doAbc, instruction.operands[0]) });
+                break;
+            case 0x66: {
+                stack.pop();
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                stack.push({
+                    kind: "method",
+                    name,
+                    methodIndex: methodTraits.get(name)
+                });
+                break;
+            }
+            case 0x49:
+                for (let index = 0; index < (instruction.operands[0] ?? 0); index++) {
+                    stack.pop();
+                }
+                stack.pop();
+                break;
+            case 0x4f: {
+                const name = avm2Multiname(doAbc, instruction.operands[0]);
+                const argc = instruction.operands[1] ?? 0;
+                const args = stack.splice(Math.max(0, stack.length - argc), argc);
+                stack.pop();
+                if (name === "addFrameScript") {
+                    for (let index = 0; index + 1 < args.length; index += 2) {
+                        const frameIndex = Number(args[index]);
+                        const methodName = args[index + 1]?.name;
+                        if (Number.isInteger(frameIndex) && methodName && methodTraits.has(methodName)) {
+                            registrations.push({ frameIndex, methodName });
+                        }
+                    }
+                }
+                break;
+            }
+            case 0x30:
+            case 0x47:
+            case 0x48:
+            case 0x71:
+                break;
+            default:
+                break;
+        }
+    }
+    return registrations;
+}
+
+function extractAvm2MethodTimelineActions(doAbc: SwfDoAbc, methodIndex: number | undefined): string[] {
+    if (methodIndex == null) {
+        return [];
+    }
+    const body = doAbc.abc.methodBodiesByMethod.get(methodIndex);
+    if (!body) {
+        return [];
+    }
+    const actions: string[] = [];
+    for (const instruction of body.instructions) {
+        if (instruction.opcode !== 0x4f) {
+            continue;
+        }
+        const name = avm2Multiname(doAbc, instruction.operands[0]);
+        if (name === "stop" || name === "play") {
+            actions.push(name);
+        } else {
+            actions.push(`call:${name}`);
+        }
+    }
+    return actions;
 }
 
 function normalizeTimelineFrameIndex(frameIndex: number, totalFrames: number): number {

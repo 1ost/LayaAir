@@ -57,11 +57,15 @@ import {
     SwfSoundInfo,
     SwfSymbolClass,
     SwfTag,
-    SwfTagNames
+    SwfTagNames,
+    SwfUnsupportedFeature,
+    reportSwfUnsupportedFeature
 } from "./SwfTypes";
 
 export interface SwfParserOptions {
     inflateCws?: (compressedBody: Uint8Array, expectedLength: number) => Promise<Uint8Array>;
+    sourceUrl?: string;
+    logUnsupported?: boolean;
 }
 
 export class SwfParser {
@@ -106,9 +110,23 @@ export class SwfParser {
             frameCount
         };
 
-        const parser = new SwfTagParser();
+        const parser = new SwfTagParser(options.sourceUrl ?? "unknown-swf");
         const tags = parser.parseTags(reader, body.length);
-        return new SwfMovie(header, tags, parser.characters, parser.exports, parser.symbolClasses);
+        const movie = new SwfMovie(
+            header,
+            tags,
+            parser.characters,
+            parser.exports,
+            parser.symbolClasses,
+            parser.unsupportedFeatures,
+            options.sourceUrl
+        );
+        if (options.logUnsupported !== false) {
+            for (const feature of parser.unsupportedFeatures) {
+                reportSwfUnsupportedFeature(feature);
+            }
+        }
+        return movie;
     }
 
     private static async inflateCwsWithPlatform(compressedBody: Uint8Array, _expectedLength: number): Promise<Uint8Array> {
@@ -130,7 +148,11 @@ class SwfTagParser {
     readonly characters: Map<number, SwfCharacter> = new Map();
     readonly exports: SwfExportAsset[] = [];
     readonly symbolClasses: SwfSymbolClass[] = [];
+    readonly unsupportedFeatures: SwfUnsupportedFeature[] = [];
     jpegTables?: Uint8Array;
+
+    constructor(private readonly sourceUrl: string) {
+    }
 
     parseTags(reader: SwfDataReader, end: number): SwfTag[] {
         const tags: SwfTag[] = [];
@@ -156,7 +178,33 @@ class SwfTagParser {
                 dataOffset,
                 data
             };
-            tag.parsed = this.parseTag(tag);
+            try {
+                tag.parsed = this.parseTag(tag);
+            }
+            catch (error) {
+                this.unsupportedFeatures.push({
+                    source: this.sourceUrl,
+                    kind: "tag-parse-error",
+                    message: `Failed to parse SWF tag ${tag.name} (${tag.code}): ${String(error)}`,
+                    tagCode: tag.code,
+                    tagName: tag.name,
+                    offset: tag.offset,
+                    length: tag.length,
+                    detail: error instanceof Error ? { stack: error.stack } : undefined
+                });
+                throw error;
+            }
+            if (tag.parsed == null && !isKnownUnparsedControlTag(tag.code)) {
+                this.unsupportedFeatures.push({
+                    source: this.sourceUrl,
+                    kind: "unsupported-tag",
+                    message: `Unsupported SWF tag ${tag.name} (${tag.code}) was skipped.`,
+                    tagCode: tag.code,
+                    tagName: tag.name,
+                    offset: tag.offset,
+                    length: tag.length
+                });
+            }
             tags.push(tag);
             reader.pos = tagEnd;
             if (code === 0) {
@@ -446,6 +494,23 @@ class SwfTagParser {
             font.fontCopyright = fontCopyright;
         }
         return { fontId, fontName, fontCopyright };
+    }
+}
+
+function isKnownUnparsedControlTag(code: number): boolean {
+    switch (code) {
+        case 0: // End
+        case 1: // ShowFrame
+        case 24: // Protect
+        case 58: // EnableDebugger
+        case 64: // EnableDebugger2
+        case 65: // ScriptLimits
+        case 66: // SetTabIndex
+        case 71: // ImportAssets2; linkage is not needed by the observed local corpus.
+        case 93: // EnableTelemetry
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -1069,6 +1134,8 @@ function parseShapeRecords(
     let fillStyle0 = initialStyles?.fillStyle0 ?? 0;
     let fillStyle1 = initialStyles?.fillStyle1 ?? 0;
     let lineStyle = initialStyles?.lineStyle ?? 0;
+    let fillStyleOffset = 0;
+    let lineStyleOffset = 0;
     let currentPath: SwfShapePath | null = null;
     const paths: SwfShapePath[] = [];
 
@@ -1174,13 +1241,16 @@ function parseShapeRecords(
             moved = true;
         }
         if (flags & 0x02) {
-            fillStyle0 = bits.readUB(fillBits);
+            const styleIndex = bits.readUB(fillBits);
+            fillStyle0 = styleIndex === 0 ? 0 : fillStyleOffset + styleIndex;
         }
         if (flags & 0x04) {
-            fillStyle1 = bits.readUB(fillBits);
+            const styleIndex = bits.readUB(fillBits);
+            fillStyle1 = styleIndex === 0 ? 0 : fillStyleOffset + styleIndex;
         }
         if (flags & 0x08) {
-            lineStyle = bits.readUB(lineBits);
+            const styleIndex = bits.readUB(lineBits);
+            lineStyle = styleIndex === 0 ? 0 : lineStyleOffset + styleIndex;
         }
         if (flags & 0x10) {
             if (!allowNewStyles) {
@@ -1188,8 +1258,10 @@ function parseShapeRecords(
             }
             bits.align();
             reader.pos = bits.bytePos;
-            fillStyles.push(...parseFillStyleArray(reader, tagCode));
-            lineStyles.push(...parseLineStyleArray(reader, tagCode, lineStyles.length));
+            fillStyleOffset = fillStyles.length;
+            lineStyleOffset = lineStyles.length;
+            fillStyles.push(...parseFillStyleArray(reader, tagCode, fillStyleOffset));
+            lineStyles.push(...parseLineStyleArray(reader, tagCode, lineStyleOffset));
             bits.bytePos = reader.pos;
             fillBits = bits.readUB(4);
             lineBits = bits.readUB(4);
@@ -1205,11 +1277,11 @@ function parseShapeRecords(
     return paths;
 }
 
-function parseFillStyleArray(reader: SwfDataReader, tagCode: number): SwfFillStyle[] {
+function parseFillStyleArray(reader: SwfDataReader, tagCode: number, indexOffset: number = 0): SwfFillStyle[] {
     const count = readExtendedCount(reader, tagCode);
     const fillStyles: SwfFillStyle[] = [];
-    for (let index = 1; index <= count; index++) {
-        fillStyles.push(parseFillStyle(reader, tagCode, index));
+    for (let index = 0; index < count; index++) {
+        fillStyles.push(parseFillStyle(reader, tagCode, indexOffset + index + 1));
     }
     return fillStyles;
 }

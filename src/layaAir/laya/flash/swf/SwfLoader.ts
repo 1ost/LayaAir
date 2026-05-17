@@ -7,7 +7,7 @@ export class SwfLoader implements IResourceLoader {
             if (!data) {
                 return null;
             }
-            return SwfParser.parse(data);
+            return SwfParser.parse(data, { sourceUrl: task.url });
         });
     }
 }
