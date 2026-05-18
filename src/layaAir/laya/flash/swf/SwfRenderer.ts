@@ -32,6 +32,7 @@ import type {
     SwfRect,
     SwfRgba,
     SwfShapePath,
+    SwfShapePoint,
     SwfShapeSegment
 } from "./SwfTypes";
 import { reportSwfUnsupportedFeature } from "./SwfTypes";
@@ -61,9 +62,12 @@ export interface SwfDisplayObjectShell {
 
 const imageSurfaceCache = new WeakMap<object, Promise<DecodedSwfImage>>();
 const fillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | null>>();
+const shapeFillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | null>>();
 const staticTextOutlineCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement>>();
 const scale9TextureCache = new WeakMap<object, Promise<any | null>>();
 const avm2ExecutionCache = new WeakMap<SwfMovie, Avm2MovieExecution[]>();
+const TEXTURE_FILTER_POINT = 0;
+const TEXTURE_FILTER_BILINEAR = 1;
 
 interface DecodedSwfImage {
     source: CanvasImageSource;
@@ -1263,10 +1267,10 @@ function placementHitTestLocal(movie: SwfMovie, placement: SwfPlaceObject, x: nu
     }
     const point = inversePlacementPoint(placement, x, y);
     const character = movie.getCharacter(placement.characterId);
-    return characterHitTestLocal(movie, character, point.x, point.y);
+    return characterHitTestLocal(movie, character, point.x, point.y, placement.ratio ?? 0);
 }
 
-function characterHitTestLocal(movie: SwfMovie, character: any, x: number, y: number): boolean {
+function characterHitTestLocal(movie: SwfMovie, character: any, x: number, y: number, morphRatio: number = 0): boolean {
     if (isSpriteCharacter(character)) {
         return spriteFrameHitTestLocal(movie, character, 0, x, y);
     }
@@ -1274,7 +1278,7 @@ function characterHitTestLocal(movie: SwfMovie, character: any, x: number, y: nu
         return buttonHitTestLocal(movie, character, x, y);
     }
     if (isMorphShapeCharacter(character)) {
-        return pointInShape(morphShapeAtRatio(character, 0), x, y);
+        return pointInShape(morphShapeAtRatio(character, morphRatio), x, y);
     }
     if (character?.shapeBounds) {
         return pointInShape(character, x, y);
@@ -1311,14 +1315,20 @@ function inversePlacementPoint(placement: SwfPlaceObject, x: number, y: number):
 }
 
 function pointInShape(shape: SwfDefineShape, x: number, y: number): boolean {
+    const fillRule = fillRuleForShape(shape);
     for (const fill of shape.fillStyles ?? []) {
         const paths = orientedFillPathsForStyle(shape.paths ?? [], fill.index);
-        if (paths.length > 0 && windingForPaths(paths, x, y) !== 0) {
+        if (paths.length > 0 && pointInFillPaths(paths, x, y, fillRule)) {
             return true;
         }
     }
     const bounds = shape.shapeBounds;
     return !!bounds && x >= bounds.xMin && x <= bounds.xMax && y >= bounds.yMin && y <= bounds.yMax;
+}
+
+function pointInFillPaths(paths: OrientedShapePath[], x: number, y: number, fillRule: CanvasFillRule): boolean {
+    const winding = windingForPaths(paths, x, y);
+    return fillRule === "nonzero" ? winding !== 0 : Math.abs(winding) % 2 === 1;
 }
 
 function windingForPaths(paths: OrientedShapePath[], x: number, y: number): number {
@@ -1398,15 +1408,18 @@ async function createStaticTextNode(movie: SwfMovie, character: SwfDefineText): 
 async function createStaticTextOutlineNode(movie: SwfMovie, character: SwfDefineText): Promise<Sprite | null> {
     const root = new Sprite();
     root.size(Math.max(1, character.bounds.width), Math.max(1, character.bounds.height));
+    root.pos(character.bounds.xMin, character.bounds.yMin);
     let renderedGlyphs = 0;
     let quadraticCommandCount = 0;
     let compoundMoveToCount = 0;
     let compoundClosePathCount = 0;
     const canvas = typeof document === "undefined" ? null : document.createElement("canvas");
     const context = canvas?.getContext("2d") ?? null;
+    const canvasDx = -character.bounds.xMin;
+    const canvasDy = -character.bounds.yMin;
     if (canvas && context) {
-        canvas.width = Math.max(1, Math.ceil(character.bounds.xMax));
-        canvas.height = Math.max(1, Math.ceil(character.bounds.yMax));
+        canvas.width = Math.max(1, Math.ceil(character.bounds.width));
+        canvas.height = Math.max(1, Math.ceil(character.bounds.height));
     }
     for (const record of character.records) {
         if (record.fontId == null) {
@@ -1430,12 +1443,12 @@ async function createStaticTextOutlineNode(movie: SwfMovie, character: SwfDefine
             if (orientedGlyphPaths.length > 0) {
                 if (context) {
                     context.fillStyle = fillStyle;
-                    buildCanvasTextGlyphPath(context, orientedGlyphPaths, character, xCursor, yOffset, glyphScale);
+                    buildCanvasTextGlyphPath(context, orientedGlyphPaths, character, xCursor, yOffset, glyphScale, canvasDx, canvasDy);
                     context.fill("nonzero");
                     applyFlashTypeThickness(context, character, fillStyle);
                 }
                 else {
-                    drawTransformedCompoundVectorPaths(root, orientedGlyphPaths, character, xCursor, yOffset, glyphScale, fillStyle);
+                    drawTransformedCompoundVectorPaths(root, orientedGlyphPaths, character, xCursor, yOffset, glyphScale, fillStyle, canvasDx, canvasDy);
                 }
                 for (const orientedPath of orientedGlyphPaths) {
                     const commands = transformedDrawPathCommands(orientedPath.path, character, xCursor, yOffset, glyphScale, orientedPath.reverse);
@@ -1464,6 +1477,8 @@ async function createStaticTextOutlineNode(movie: SwfMovie, character: SwfDefine
         (root as any).__rawSwfTextGridFitApplied = character.csmTextSettings.gridFit > 0;
         (root as any).__rawSwfTextFlashTypeThicknessApplied = character.csmTextSettings.thickness > 0;
     }
+    (root as any).__rawSwfTextBounds = character.bounds;
+    (root as any).__rawSwfTextBoundsOffsetApplied = character.bounds.xMin !== 0 || character.bounds.yMin !== 0;
     if ((character as any).scalingGrid) {
         (root as any).__rawSwfScalingGrid = (character as any).scalingGrid;
     }
@@ -1478,7 +1493,9 @@ function buildCanvasTextGlyphPath(
     text: SwfDefineText,
     xOffset: number,
     yOffset: number,
-    glyphScale: number
+    glyphScale: number,
+    dx: number = 0,
+    dy: number = 0
 ): void {
     context.beginPath();
     for (const orientedPath of paths) {
@@ -1486,13 +1503,13 @@ function buildCanvasTextGlyphPath(
         for (const command of commands) {
             switch (command[0]) {
                 case "moveTo":
-                    context.moveTo(command[1], command[2]);
+                    context.moveTo(command[1] + dx, command[2] + dy);
                     break;
                 case "lineTo":
-                    context.lineTo(command[1], command[2]);
+                    context.lineTo(command[1] + dx, command[2] + dy);
                     break;
                 case "quadraticCurveTo":
-                    context.quadraticCurveTo(command[1], command[2], command[3], command[4]);
+                    context.quadraticCurveTo(command[1] + dx, command[2] + dy, command[3] + dx, command[4] + dy);
                     break;
                 case "closePath":
                     context.closePath();
@@ -1635,6 +1652,7 @@ function morphShapeAtRatio(morph: SwfDefineMorphShape, ratio: number): SwfDefine
     const normalized = morphRatioToUnit(ratio);
     return {
         characterId: morph.characterId,
+        tagCode: morph.tagCode,
         shapeBounds: interpolatedMorphBounds(morph, ratio),
         edgeBounds: morph.startEdgeBounds && morph.endEdgeBounds
             ? interpolateRect(morph.startEdgeBounds, morph.endEdgeBounds, normalized)
@@ -1788,16 +1806,22 @@ async function renderShapeNode(movie: SwfMovie, shape: SwfDefineShape): Promise<
     const paths = shape.paths?.filter(path => (path.fillStyleIndex > 0 || path.lineStyleIndex > 0) && path.points.length >= 2) ?? [];
     let renderedShapeCount = 0;
 
-    for (const fill of shape.fillStyles ?? []) {
-        const fillPaths = orientedFillPathsForStyle(paths, fill.index);
-        if (fillPaths.length > 0 && await renderFillPaths(fillLayer, movie, fillPaths, fill)) {
-            renderedShapeCount++;
+    const renderedFillCount = await renderShapeFillLayer(fillLayer, movie, shape, paths);
+    if (renderedFillCount != null) {
+        renderedShapeCount += renderedFillCount;
+    }
+    else {
+        for (const fill of shape.fillStyles ?? []) {
+            const fillPaths = orientedFillPathsForStyle(paths, fill.index);
+            if (fillPaths.length > 0 && await renderFillPaths(fillLayer, movie, fillPaths, fill, fillRuleForShape(shape))) {
+                renderedShapeCount++;
+            }
         }
     }
 
     for (const path of paths) {
         const line = shape.lineStyles?.find(candidate => candidate.index === path.lineStyleIndex);
-        if (renderStrokePath(strokeLayer, path, line)) {
+        if (await renderStrokePath(strokeLayer, movie, shape, path, line)) {
             renderedShapeCount++;
         }
     }
@@ -1808,20 +1832,59 @@ async function renderShapeNode(movie: SwfMovie, shape: SwfDefineShape): Promise<
     return root;
 }
 
-async function renderFillPaths(root: Sprite, movie: SwfMovie, paths: OrientedShapePath[], fill: SwfFillStyle): Promise<boolean> {
+async function renderShapeFillLayer(root: Sprite, movie: SwfMovie, shape: SwfDefineShape, paths: SwfShapePath[]): Promise<number | null> {
+    const entries = (shape.fillStyles ?? [])
+        .map(fill => ({ fill, paths: orientedFillPathsForStyle(paths, fill.index) }))
+        .filter(entry => entry.paths.length > 0);
+    if (entries.length === 0) {
+        return 0;
+    }
+    const canvas = await cachedShapeFillRasterCanvas(movie, shape, entries);
+    if (!canvas) {
+        return null;
+    }
+    const child = new Sprite();
+    const bounds = shape.shapeBounds;
+    child.pos(bounds.xMin, bounds.yMin);
+    child.size(Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height)));
+    await loadCanvasOntoSprite(child, canvas, { filterMode: textureFilterModeForFillEntries(entries) });
+    const bitmapFillCount = entries.filter(entry => entry.fill.bitmapId != null).length;
+    if (bitmapFillCount > 0) {
+        (child as any).__rawSwfBitmapFillCount = bitmapFillCount;
+        (child as any).__rawSwfBitmapFillSmoothingModes = bitmapFillSmoothingModes(entries.map(entry => entry.fill));
+        (child as any).__rawSwfBitmapFillRepeatModes = bitmapFillRepeatModes(entries.map(entry => entry.fill));
+        (child as any).__rawSwfBitmapFillMatrixCategories = bitmapFillMatrixCategories(entries.map(entry => entry.fill));
+    }
+    (child as any).__rawSwfShapeFillCanvas = true;
+    (child as any).__rawSwfShapeFillCount = entries.length;
+    (child as any).__rawSwfShapeFillRule = fillRuleForShape(shape);
+    root.addChild(child);
+    return entries.length;
+}
+
+async function renderFillPaths(
+    root: Sprite,
+    movie: SwfMovie,
+    paths: OrientedShapePath[],
+    fill: SwfFillStyle,
+    fillRule: CanvasFillRule = "evenodd"
+): Promise<boolean> {
     const pathBounds = boundsForPaths(paths);
-    if (fill?.bitmapId != null || fill?.gradientRecords?.length || fill?.color) {
+    if (fill?.bitmapId != null || fill?.gradientRecords?.length || isSolidColorFill(fill)) {
         const image = fill?.bitmapId == null ? null : movie.getCharacter(fill.bitmapId) as any;
-        const rasterCanvas = await cachedFillRasterCanvas(paths, pathBounds, fill, image);
+        const rasterCanvas = await cachedFillRasterCanvas(paths, pathBounds, fill, image, fillRule);
         if (rasterCanvas) {
             const child = new Sprite();
             child.pos(pathBounds.xMin, pathBounds.yMin);
             child.size(Math.max(1, Math.ceil(pathBounds.width)), Math.max(1, Math.ceil(pathBounds.height)));
-            await loadCanvasOntoSprite(child, rasterCanvas);
+            await loadCanvasOntoSprite(child, rasterCanvas, { filterMode: textureFilterModeForFill(fill) });
             if (fill?.bitmapId != null) {
                 (child as any).__rawSwfBitmapFillCount = 1;
                 (child as any).__rawSwfBitmapFillType = fill.type;
                 (child as any).__rawSwfBitmapFillMatrix = fill.bitmapMatrix;
+                (child as any).__rawSwfBitmapFillSmoothingModes = bitmapFillSmoothingModes([fill]);
+                (child as any).__rawSwfBitmapFillRepeatModes = bitmapFillRepeatModes([fill]);
+                (child as any).__rawSwfBitmapFillMatrixCategories = bitmapFillMatrixCategories([fill]);
             }
             if (fill?.gradientRecords?.length) {
                 (child as any).__rawSwfGradientFillType = fill.type;
@@ -1863,14 +1926,42 @@ async function renderFillPaths(root: Sprite, movie: SwfMovie, paths: OrientedSha
     return false;
 }
 
-function cachedFillRasterCanvas(paths: OrientedShapePath[], bounds: SwfRect, fill: SwfFillStyle, image: any): Promise<HTMLCanvasElement | null> {
+function isSolidColorFill(fill: SwfFillStyle | undefined): fill is SwfFillStyle & { color: SwfRgba } {
+    return !!fill?.color && fill.bitmapId == null && !fill.gradientRecords?.length;
+}
+
+function cachedFillRasterCanvas(
+    paths: OrientedShapePath[],
+    bounds: SwfRect,
+    fill: SwfFillStyle,
+    image: any,
+    fillRule: CanvasFillRule = "evenodd"
+): Promise<HTMLCanvasElement | null> {
     const cacheKey = fill as object;
     let cached = fillRasterCanvasCache.get(cacheKey);
     if (!cached) {
-        cached = rasterizeCompoundFill(paths, bounds, fill, image);
+        cached = rasterizeCompoundFill(paths, bounds, fill, image, fillRule);
         fillRasterCanvasCache.set(cacheKey, cached);
     }
     return cached;
+}
+
+function cachedShapeFillRasterCanvas(
+    movie: SwfMovie,
+    shape: SwfDefineShape,
+    entries: { fill: SwfFillStyle; paths: OrientedShapePath[] }[]
+): Promise<HTMLCanvasElement | null> {
+    const cacheKey = shape as object;
+    let cached = shapeFillRasterCanvasCache.get(cacheKey);
+    if (!cached) {
+        cached = rasterizeShapeFillLayer(movie, shape.shapeBounds, entries, fillRuleForShape(shape));
+        shapeFillRasterCanvasCache.set(cacheKey, cached);
+    }
+    return cached;
+}
+
+function fillRuleForShape(shape: SwfDefineShape): CanvasFillRule {
+    return shape.tagCode === 83 && shape.usesFillWindingRule ? "nonzero" : "evenodd";
 }
 
 function cachedStaticTextOutlineCanvas(character: SwfDefineText, canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
@@ -1883,13 +1974,82 @@ function cachedStaticTextOutlineCanvas(character: SwfDefineText, canvas: HTMLCan
     return cached;
 }
 
-function renderStrokePath(root: Sprite, path: SwfShapePath, line: SwfLineStyle | undefined): boolean {
+async function renderStrokePath(
+    root: Sprite,
+    movie: SwfMovie,
+    shape: SwfDefineShape,
+    path: SwfShapePath,
+    line: SwfLineStyle | undefined
+): Promise<boolean> {
+    if (line?.fillStyle && await renderFilledStrokePath(root, movie, shape, path, line)) {
+        return true;
+    }
     const lineColor = colorForLineStyle(line);
+    if (lineColor && await renderSolidStrokePath(root, path, line!, lineColor)) {
+        return true;
+    }
     if (lineColor && root.graphics?.drawPath) {
         drawVectorPath(root, path, null, penForLineStyle(line, lineColor), false);
         return true;
     }
     return false;
+}
+
+async function renderFilledStrokePath(
+    root: Sprite,
+    movie: SwfMovie,
+    shape: SwfDefineShape,
+    path: SwfShapePath,
+    line: SwfLineStyle
+): Promise<boolean> {
+    if (!line.fillStyle || typeof document === "undefined") {
+        return false;
+    }
+    const bounds = expandRect(boundsForPath(path), Math.max(1, line.width) / 2 + 2);
+    const canvas = await rasterizeFilledStrokePath(movie, shape, path, line, bounds);
+    if (!canvas) {
+        return false;
+    }
+    const child = new Sprite();
+    child.pos(bounds.xMin, bounds.yMin);
+    child.size(Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height)));
+    await loadCanvasOntoSprite(child, canvas, { filterMode: textureFilterModeForFill(line.fillStyle) });
+    if (line.fillStyle.bitmapId != null) {
+        (child as any).__rawSwfBitmapFillCount = 1;
+        (child as any).__rawSwfBitmapStrokeFill = true;
+        (child as any).__rawSwfBitmapFillSmoothingModes = bitmapFillSmoothingModes([line.fillStyle]);
+        (child as any).__rawSwfBitmapFillRepeatModes = bitmapFillRepeatModes([line.fillStyle]);
+        (child as any).__rawSwfBitmapFillMatrixCategories = bitmapFillMatrixCategories([line.fillStyle]);
+    }
+    if (line.fillStyle.gradientRecords?.length) {
+        (child as any).__rawSwfGradientStrokeFill = true;
+    }
+    root.addChild(child);
+    return true;
+}
+
+async function renderSolidStrokePath(
+    root: Sprite,
+    path: SwfShapePath,
+    line: SwfLineStyle,
+    strokeStyle: string
+): Promise<boolean> {
+    if (typeof document === "undefined") {
+        return false;
+    }
+    const bounds = expandRect(boundsForPath(path), Math.max(1, line.width) / 2 + 2);
+    const canvas = rasterizeSolidStrokePath(path, line, strokeStyle, bounds);
+    if (!canvas) {
+        return false;
+    }
+    const child = new Sprite();
+    child.pos(bounds.xMin, bounds.yMin);
+    child.size(Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height)));
+    await loadCanvasOntoSprite(child, canvas);
+    (child as any).__rawSwfStrokeCanvas = true;
+    (child as any).__rawSwfStrokeWidthTwips = line.widthTwips;
+    root.addChild(child);
+    return true;
 }
 
 function drawLinearGradientApproximation(root: Sprite, bounds: SwfRect, records: any[]): void {
@@ -2090,7 +2250,7 @@ function scale9SizeGridForCharacter(character: any, bounds: SwfRect): number[] {
     ];
 }
 
-async function drawCharacterToCanvas(context: CanvasRenderingContext2D, character: any): Promise<void> {
+async function drawCharacterToCanvas(context: CanvasRenderingContext2D, character: any, morphRatio: number = 0): Promise<void> {
     if (isSpriteCharacter(character)) {
         for (const placement of framePlacements(character, 0)) {
             if (placement.characterId == null) {
@@ -2102,13 +2262,13 @@ async function drawCharacterToCanvas(context: CanvasRenderingContext2D, characte
             }
             context.save();
             applyPlacementMatrixToCanvas(context, placement.matrix);
-            await drawCharacterToCanvas(context, child);
+            await drawCharacterToCanvas(context, child, placement.ratio ?? 0);
             context.restore();
         }
         return;
     }
     if (isMorphShapeCharacter(character)) {
-        await drawShapeToCanvas(context, morphShapeAtRatio(character, 0));
+        await drawShapeToCanvas(context, morphShapeAtRatio(character, morphRatio));
         return;
     }
     if (character?.shapeBounds) {
@@ -2141,46 +2301,67 @@ function applyPlacementMatrixToCanvas(context: CanvasRenderingContext2D, matrix:
 
 async function drawShapeToCanvas(context: CanvasRenderingContext2D, shape: SwfDefineShape): Promise<void> {
     const paths = shape.paths?.filter(path => (path.fillStyleIndex > 0 || path.lineStyleIndex > 0) && path.points.length >= 2) ?? [];
-    for (const fill of shape.fillStyles ?? []) {
-        const fillPaths = orientedFillPathsForStyle(paths, fill.index);
-        if (fillPaths.length === 0) {
+    const fillRule = fillRuleForShape(shape);
+    const movie = (shape as any).__rawSwfMovie as SwfMovie | undefined;
+    const fillEntries = (shape.fillStyles ?? [])
+        .map(fill => ({ fill, paths: orientedFillPathsForStyle(paths, fill.index) }))
+        .filter(entry => entry.paths.length > 0);
+    if (movie && fillEntries.length > 0) {
+        const raster = await rasterizeShapeFillLayer(movie, shape.shapeBounds, fillEntries, fillRule);
+        if (raster) {
+            context.drawImage(raster, shape.shapeBounds.xMin, shape.shapeBounds.yMin);
+        }
+        else {
+            await drawShapeFillsIndividuallyToCanvas(context, shape, fillEntries, fillRule);
+        }
+    }
+    else {
+        await drawShapeFillsIndividuallyToCanvas(context, shape, fillEntries, fillRule);
+    }
+    for (const path of paths) {
+        const line = shape.lineStyles?.find(candidate => candidate.index === path.lineStyleIndex);
+        if (line?.fillStyle && movie) {
+            const strokeBounds = expandRect(boundsForPath(path), Math.max(1, line.width) / 2 + 2);
+            const strokeRaster = await rasterizeFilledStrokePath(movie, shape, path, line, strokeBounds);
+            if (strokeRaster) {
+                context.drawImage(strokeRaster, strokeBounds.xMin, strokeBounds.yMin);
+                continue;
+            }
+        }
+        const lineColor = colorForLineStyle(line);
+        if (!lineColor) {
             continue;
         }
-        const pathBounds = boundsForPaths(fillPaths);
-        const image = fill.bitmapId == null ? null : (shape as any).__rawSwfMovie?.getCharacter?.(fill.bitmapId);
-        const raster = await rasterizeCompoundFill(fillPaths, pathBounds, fill, image);
+        buildCanvasPath(context, path, 0, 0, !line?.noClose && isClosedPath(path));
+        context.strokeStyle = lineColor;
+        context.lineWidth = Math.max(1, line?.width ?? 1);
+        context.lineCap = flashCanvasLineCap(line?.startCapStyle);
+        context.lineJoin = flashCanvasLineJoin(line?.joinStyle);
+        context.miterLimit = line?.miterLimitFactor ?? 3;
+        context.stroke();
+    }
+}
+
+async function drawShapeFillsIndividuallyToCanvas(
+    context: CanvasRenderingContext2D,
+    shape: SwfDefineShape,
+    entries: { fill: SwfFillStyle; paths: OrientedShapePath[] }[],
+    fillRule: CanvasFillRule
+): Promise<void> {
+    const movie = (shape as any).__rawSwfMovie as SwfMovie | undefined;
+    for (const { fill, paths } of entries) {
+        const pathBounds = boundsForPaths(paths);
+        const image = fill.bitmapId == null ? null : movie?.getCharacter?.(fill.bitmapId);
+        const raster = await rasterizeCompoundFill(paths, pathBounds, fill, image, fillRule);
         if (raster) {
             context.drawImage(raster, pathBounds.xMin, pathBounds.yMin);
             continue;
         }
         if (fill.color) {
-            buildCanvasCompoundPath(context, fillPaths, 0, 0);
+            buildCanvasCompoundPath(context, paths, 0, 0);
             context.fillStyle = rgbaToCss(fill.color) ?? "#000000";
-            context.fill("nonzero");
+            context.fill(fillRule);
         }
-    }
-    for (const path of paths) {
-        const line = shape.lineStyles?.find(candidate => candidate.index === path.lineStyleIndex);
-        const lineColor = colorForLineStyle(line);
-        if (!lineColor) {
-            continue;
-        }
-        const commands = drawPathCommands(path, false);
-        context.beginPath();
-        for (const command of commands) {
-            if (command[0] === "moveTo") {
-                context.moveTo(command[1], command[2]);
-            }
-            else if (command[0] === "lineTo") {
-                context.lineTo(command[1], command[2]);
-            }
-            else if (command[0] === "quadraticCurveTo") {
-                context.quadraticCurveTo(command[1], command[2], command[3], command[4]);
-            }
-        }
-        context.strokeStyle = lineColor;
-        context.lineWidth = Math.max(1, line?.width ?? 1);
-        context.stroke();
     }
 }
 
@@ -2501,26 +2682,33 @@ async function rasterizeCompoundFill(
     paths: OrientedShapePath[],
     bounds: SwfRect,
     fill: SwfFillStyle,
-    image: any
+    image: any,
+    fillRule: CanvasFillRule = "evenodd"
 ): Promise<HTMLCanvasElement | null> {
     if (typeof document === "undefined") {
         return null;
     }
+    const rasterScale = fill.bitmapId == null ? 2 : 1;
     const width = Math.max(1, Math.ceil(bounds.width));
     const height = Math.max(1, Math.ceil(bounds.height));
+    const rasterWidth = Math.max(1, Math.ceil(width * rasterScale));
+    const rasterHeight = Math.max(1, Math.ceil(height * rasterScale));
     if (!Number.isFinite(width) || !Number.isFinite(height)) {
         return null;
     }
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = rasterWidth;
+    canvas.height = rasterHeight;
     const context = canvas.getContext("2d");
     if (!context) {
         return null;
     }
+    if (rasterScale !== 1) {
+        context.scale(rasterScale, rasterScale);
+    }
     buildCanvasCompoundPath(context, paths, -bounds.xMin, -bounds.yMin);
     context.save();
-    context.clip("nonzero");
+    context.clip(fillRule);
     if (fill.bitmapId != null) {
         if (!image?.imageData && !image?.zlibBitmapData) {
             context.restore();
@@ -2530,8 +2718,7 @@ async function rasterizeCompoundFill(
         drawBitmapFill(context, bitmap.source, bounds, fill);
     }
     else if (fill.gradientRecords?.length) {
-        context.fillStyle = canvasGradientForFill(context, bounds, fill);
-        context.fillRect(0, 0, width, height);
+        drawGradientFill(context, bounds, fill, width, height);
     }
     else if (fill.color) {
         context.fillStyle = rgbaToCss(fill.color) ?? "#000000";
@@ -2542,7 +2729,444 @@ async function rasterizeCompoundFill(
         return null;
     }
     context.restore();
-    return canvas;
+    if (rasterScale === 1) {
+        return canvas;
+    }
+    const downsampled = document.createElement("canvas");
+    downsampled.width = width;
+    downsampled.height = height;
+    const downsampleContext = downsampled.getContext("2d");
+    if (!downsampleContext) {
+        return canvas;
+    }
+    downsampleContext.imageSmoothingEnabled = true;
+    downsampleContext.imageSmoothingQuality = "high";
+    downsampleContext.drawImage(canvas, 0, 0, width, height);
+    return downsampled;
+}
+
+async function rasterizeShapeFillLayer(
+    movie: SwfMovie,
+    bounds: SwfRect,
+    entries: { fill: SwfFillStyle; paths: OrientedShapePath[] }[],
+    fillRule: CanvasFillRule
+): Promise<HTMLCanvasElement | null> {
+    if (typeof document === "undefined") {
+        return null;
+    }
+    const rasterScale = entries.some(entry => entry.fill.bitmapId != null) ? 1 : 2;
+    const width = Math.max(1, Math.ceil(bounds.width));
+    const height = Math.max(1, Math.ceil(bounds.height));
+    const rasterWidth = Math.max(1, Math.ceil(width * rasterScale));
+    const rasterHeight = Math.max(1, Math.ceil(height * rasterScale));
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        return null;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = rasterWidth;
+    canvas.height = rasterHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return null;
+    }
+    if (rasterScale !== 1) {
+        context.scale(rasterScale, rasterScale);
+    }
+    for (const entry of entries) {
+        const fill = entry.fill;
+        buildCanvasCompoundPath(context, entry.paths, -bounds.xMin, -bounds.yMin);
+        context.save();
+        context.clip(fillRule);
+        if (fill.bitmapId != null) {
+            const image = movie.getCharacter(fill.bitmapId) as any;
+            if (!image?.imageData && !image?.zlibBitmapData) {
+                context.restore();
+                continue;
+            }
+            const bitmap = await imageCharacterToSurface(image);
+            drawBitmapFill(context, bitmap.source, bounds, fill);
+        }
+        else if (fill.gradientRecords?.length) {
+            drawGradientFill(context, bounds, fill, width, height);
+        }
+        else if (fill.color) {
+            context.fillStyle = rgbaToCss(fill.color) ?? "#000000";
+            context.fillRect(0, 0, width, height);
+        }
+        context.restore();
+    }
+    if (rasterScale === 1) {
+        return canvas;
+    }
+    const downsampled = document.createElement("canvas");
+    downsampled.width = width;
+    downsampled.height = height;
+    const downsampleContext = downsampled.getContext("2d");
+    if (!downsampleContext) {
+        return canvas;
+    }
+    downsampleContext.imageSmoothingEnabled = true;
+    downsampleContext.imageSmoothingQuality = "high";
+    downsampleContext.drawImage(canvas, 0, 0, width, height);
+    return downsampled;
+}
+
+async function rasterizeFilledStrokePath(
+    movie: SwfMovie,
+    shape: SwfDefineShape,
+    path: SwfShapePath,
+    line: SwfLineStyle,
+    bounds: SwfRect
+): Promise<HTMLCanvasElement | null> {
+    if (!line.fillStyle || typeof document === "undefined") {
+        return null;
+    }
+    const rasterScale = line.fillStyle.bitmapId == null ? 2 : 1;
+    const width = Math.max(1, Math.ceil(bounds.width));
+    const height = Math.max(1, Math.ceil(bounds.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(width * rasterScale));
+    canvas.height = Math.max(1, Math.ceil(height * rasterScale));
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return null;
+    }
+    if (rasterScale !== 1) {
+        context.scale(rasterScale, rasterScale);
+    }
+    const strokeStyle = await canvasStrokeStyleForLineFill(context, movie, shape, line.fillStyle, bounds);
+    if (!strokeStyle) {
+        return null;
+    }
+    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path));
+    context.lineWidth = Math.max(1, line.width);
+    context.lineCap = flashCanvasLineCap(line.startCapStyle);
+    context.lineJoin = flashCanvasLineJoin(line.joinStyle);
+    context.miterLimit = line.miterLimitFactor ?? 3;
+    context.strokeStyle = strokeStyle;
+    context.stroke();
+    if (rasterScale === 1) {
+        return canvas;
+    }
+    const downsampled = document.createElement("canvas");
+    downsampled.width = width;
+    downsampled.height = height;
+    const downsampleContext = downsampled.getContext("2d");
+    if (!downsampleContext) {
+        return canvas;
+    }
+    downsampleContext.imageSmoothingEnabled = true;
+    downsampleContext.imageSmoothingQuality = "high";
+    downsampleContext.drawImage(canvas, 0, 0, width, height);
+    return downsampled;
+}
+
+function rasterizeSolidStrokePath(
+    path: SwfShapePath,
+    line: SwfLineStyle,
+    strokeStyle: string,
+    bounds: SwfRect
+): HTMLCanvasElement | null {
+    if (typeof document === "undefined") {
+        return null;
+    }
+    const rasterScale = 2;
+    const width = Math.max(1, Math.ceil(bounds.width));
+    const height = Math.max(1, Math.ceil(bounds.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(width * rasterScale));
+    canvas.height = Math.max(1, Math.ceil(height * rasterScale));
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return null;
+    }
+    context.scale(rasterScale, rasterScale);
+    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path));
+    context.lineWidth = Math.max(1, line.width);
+    context.lineCap = flashCanvasLineCap(line.startCapStyle);
+    context.lineJoin = flashCanvasLineJoin(line.joinStyle);
+    context.miterLimit = line.miterLimitFactor ?? 3;
+    context.strokeStyle = strokeStyle;
+    context.stroke();
+    const downsampled = document.createElement("canvas");
+    downsampled.width = width;
+    downsampled.height = height;
+    const downsampleContext = downsampled.getContext("2d");
+    if (!downsampleContext) {
+        return canvas;
+    }
+    downsampleContext.imageSmoothingEnabled = true;
+    downsampleContext.imageSmoothingQuality = "high";
+    downsampleContext.drawImage(canvas, 0, 0, width, height);
+    return downsampled;
+}
+
+async function canvasStrokeStyleForLineFill(
+    context: CanvasRenderingContext2D,
+    movie: SwfMovie,
+    shape: SwfDefineShape,
+    fill: SwfFillStyle,
+    bounds: SwfRect
+): Promise<string | CanvasGradient | CanvasPattern | null> {
+    if (fill.color) {
+        return rgbaToCss(fill.color) ?? "#000000";
+    }
+    if (fill.gradientRecords?.length) {
+        return canvasGradientForStrokeFill(context, shape.shapeBounds, fill, bounds);
+    }
+    if (fill.bitmapId != null) {
+        const image = movie.getCharacter(fill.bitmapId) as any;
+        if (!image?.imageData && !image?.zlibBitmapData) {
+            return null;
+        }
+        const bitmap = await imageCharacterToSurface(image);
+        const repeat = isBitmapFillRepeating(fill) ? "repeat" : "no-repeat";
+        const pattern = context.createPattern(bitmap.source, repeat);
+        if (!pattern) {
+            return null;
+        }
+        const matrix = bitmapFillCanvasMatrix(fill, bounds);
+        if (typeof (pattern as any).setTransform === "function" && typeof DOMMatrix !== "undefined") {
+            (pattern as any).setTransform(new DOMMatrix([matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty]));
+        }
+        context.imageSmoothingEnabled = isBitmapFillSmoothed(fill);
+        return pattern;
+    }
+    return null;
+}
+
+function canvasGradientForStrokeFill(
+    context: CanvasRenderingContext2D,
+    shapeBounds: SwfRect,
+    fill: SwfFillStyle,
+    strokeBounds: SwfRect
+): CanvasGradient {
+    const center = transformGradientPoint(fill.gradientMatrix, shapeBounds, 0, 0);
+    const axisX = transformGradientPoint(fill.gradientMatrix, shapeBounds, 16384, 0);
+    const axisY = transformGradientPoint(fill.gradientMatrix, shapeBounds, 0, 16384);
+    center.x -= strokeBounds.xMin;
+    center.y -= strokeBounds.yMin;
+    axisX.x -= strokeBounds.xMin;
+    axisX.y -= strokeBounds.yMin;
+    axisY.x -= strokeBounds.xMin;
+    axisY.y -= strokeBounds.yMin;
+    const gradient = fill.type === 0x12 || fill.type === 0x13
+        ? context.createRadialGradient(
+            center.x + (fill.type === 0x13 ? flashFocalPoint(fill) / 16384 * (axisX.x - center.x) : 0),
+            center.y + (fill.type === 0x13 ? flashFocalPoint(fill) / 16384 * (axisX.y - center.y) : 0),
+            0,
+            center.x,
+            center.y,
+            Math.max(1, distanceBetween(center, axisX), distanceBetween(center, axisY))
+        )
+        : context.createLinearGradient(
+            center.x - (axisX.x - center.x),
+            center.y - (axisX.y - center.y),
+            axisX.x,
+            axisX.y
+        );
+    const sorted = [...(fill.gradientRecords ?? [])].sort((left, right) => left.ratio - right.ratio);
+    if (sorted.length === 0) {
+        gradient.addColorStop(0, "#000000");
+        gradient.addColorStop(1, "#000000");
+        return gradient;
+    }
+    for (const record of sorted) {
+        gradient.addColorStop(Math.max(0, Math.min(1, record.ratio / 255)), rgbaToCss(record.color) ?? "#000000");
+    }
+    return gradient;
+}
+
+function buildCanvasPath(
+    context: CanvasRenderingContext2D,
+    path: SwfShapePath,
+    dx: number,
+    dy: number,
+    close: boolean
+): void {
+    context.beginPath();
+    for (const command of drawPathCommands(path, close)) {
+        switch (command[0]) {
+            case "moveTo":
+                context.moveTo(command[1] + dx, command[2] + dy);
+                break;
+            case "lineTo":
+                context.lineTo(command[1] + dx, command[2] + dy);
+                break;
+            case "quadraticCurveTo":
+                context.quadraticCurveTo(command[1] + dx, command[2] + dy, command[3] + dx, command[4] + dy);
+                break;
+            case "closePath":
+                context.closePath();
+                break;
+        }
+    }
+}
+
+function isClosedPath(path: SwfShapePath): boolean {
+    const first = path.segments?.length ? segmentStart(path.segments[0]) : path.points[0];
+    const last = path.segments?.length ? segmentEnd(path.segments[path.segments.length - 1]) : path.points[path.points.length - 1];
+    return !!first && !!last && sameShapePoint(first, last);
+}
+
+function flashCanvasLineCap(capStyle: number | undefined): CanvasLineCap {
+    switch (capStyle) {
+        case 1: return "butt";
+        case 2: return "square";
+        case 0:
+        default: return "round";
+    }
+}
+
+function flashCanvasLineJoin(joinStyle: number | undefined): CanvasLineJoin {
+    switch (joinStyle) {
+        case 1: return "bevel";
+        case 2: return "miter";
+        case 0:
+        default: return "round";
+    }
+}
+
+function drawGradientFill(
+    context: CanvasRenderingContext2D,
+    bounds: SwfRect,
+    fill: SwfFillStyle,
+    width: number,
+    height: number
+): void {
+    const matrix = flashGradientMatrixToCanvas(bounds, fill.gradientMatrix);
+    const inverse = inverseBitmapMatrix(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
+    const corners = [
+        transformPoint(inverse, 0, 0),
+        transformPoint(inverse, width, 0),
+        transformPoint(inverse, 0, height),
+        transformPoint(inverse, width, height)
+    ];
+    const minX = Math.floor(Math.min(...corners.map(point => point.x), -16384)) - 64;
+    const maxX = Math.ceil(Math.max(...corners.map(point => point.x), 16384)) + 64;
+    const minY = Math.floor(Math.min(...corners.map(point => point.y), -16384)) - 64;
+    const maxY = Math.ceil(Math.max(...corners.map(point => point.y), 16384)) + 64;
+    context.save();
+    context.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
+    context.fillStyle = flashCanvasGradient(context, fill);
+    context.fillRect(minX, minY, Math.max(1, maxX - minX), Math.max(1, maxY - minY));
+    context.restore();
+}
+
+function flashGradientMatrixToCanvas(bounds: SwfRect, matrix: SwfMatrix | undefined): { a: number; b: number; c: number; d: number; tx: number; ty: number } {
+    if (!matrix) {
+        return {
+            a: bounds.width / 32768,
+            b: 0,
+            c: 0,
+            d: bounds.height / 32768,
+            tx: bounds.width / 2,
+            ty: bounds.height / 2
+        };
+    }
+    return {
+        a: matrix.scaleX / 20,
+        b: matrix.rotateSkew1 / 20,
+        c: matrix.rotateSkew0 / 20,
+        d: matrix.scaleY / 20,
+        tx: matrix.translateX - bounds.xMin,
+        ty: matrix.translateY - bounds.yMin
+    };
+}
+
+function flashCanvasGradient(context: CanvasRenderingContext2D, fill: SwfFillStyle): CanvasGradient {
+    const sorted = [...(fill.gradientRecords ?? [])].sort((left, right) => left.ratio - right.ratio);
+    const gradient = fill.type === 0x12 || fill.type === 0x13
+        ? context.createRadialGradient(flashFocalPoint(fill), 0, 0, 0, 0, 16384)
+        : context.createLinearGradient(-16384, 0, 16384, 0);
+    if (sorted.length === 0) {
+        gradient.addColorStop(0, "#000000");
+        gradient.addColorStop(1, "#000000");
+        return gradient;
+    }
+    for (const record of sorted) {
+        gradient.addColorStop(Math.max(0, Math.min(1, record.ratio / 255)), rgbaToCss(record.color) ?? "#000000");
+    }
+    return gradient;
+}
+
+function flashFocalPoint(fill: SwfFillStyle): number {
+    if (fill.type !== 0x13) {
+        return 0;
+    }
+    return Math.max(-1, Math.min(1, fill.focalPoint ?? 0)) * 16384;
+}
+
+function textureFilterModeForFillEntries(entries: { fill: SwfFillStyle }[]): number {
+    const fills = entries.map(entry => entry.fill);
+    const bitmapFills = fills.filter(fill => fill.bitmapId != null);
+    if (bitmapFills.length === 0) {
+        return TEXTURE_FILTER_BILINEAR;
+    }
+    const hasVectorFill = fills.some(fill => fill.bitmapId == null);
+    const hasSmoothedBitmap = bitmapFills.some(isBitmapFillSmoothed);
+    const hasNonsmoothedBitmap = bitmapFills.some(fill => !isBitmapFillSmoothed(fill));
+    return hasNonsmoothedBitmap && !hasSmoothedBitmap && !hasVectorFill
+        ? TEXTURE_FILTER_POINT
+        : TEXTURE_FILTER_BILINEAR;
+}
+
+function textureFilterModeForFill(fill: SwfFillStyle | undefined): number {
+    return fill?.bitmapId != null && !isBitmapFillSmoothed(fill)
+        ? TEXTURE_FILTER_POINT
+        : TEXTURE_FILTER_BILINEAR;
+}
+
+function isBitmapFillSmoothed(fill: SwfFillStyle): boolean {
+    return fill.type === 0x40 || fill.type === 0x41;
+}
+
+function isBitmapFillRepeating(fill: SwfFillStyle): boolean {
+    return fill.type === 0x40 || fill.type === 0x42;
+}
+
+function bitmapFillSmoothingModes(fills: SwfFillStyle[]): string[] {
+    return [...new Set(fills
+        .filter(fill => fill.bitmapId != null)
+        .map(fill => isBitmapFillSmoothed(fill) ? "smoothed" : "nonsmoothed"))];
+}
+
+function bitmapFillRepeatModes(fills: SwfFillStyle[]): string[] {
+    return [...new Set(fills
+        .filter(fill => fill.bitmapId != null)
+        .map(fill => isBitmapFillRepeating(fill) ? "repeating" : "clipped"))];
+}
+
+function bitmapFillMatrixCategories(fills: SwfFillStyle[]): string[] {
+    return [...new Set(fills
+        .filter(fill => fill.bitmapId != null)
+        .map(fill => bitmapFillMatrixCategory(fill.bitmapMatrix)))];
+}
+
+function bitmapFillMatrixCategory(matrix: SwfMatrix | undefined): string {
+    if (!matrix) {
+        return "identityOrTranslate";
+    }
+    const scaleX = matrix.scaleX ?? 20;
+    const scaleY = matrix.scaleY ?? 20;
+    const skew0 = matrix.rotateSkew0 ?? 0;
+    const skew1 = matrix.rotateSkew1 ?? 0;
+    if (skew0 !== 0 || skew1 !== 0) {
+        return "rotatedOrSkewed";
+    }
+    if (scaleX < 0 || scaleY < 0) {
+        return "negativeScale";
+    }
+    if (Math.abs(scaleX) > 200 || Math.abs(scaleY) > 200) {
+        return "largeScale";
+    }
+    if (Math.abs(scaleX) < 5 || Math.abs(scaleY) < 5) {
+        return "smallScale";
+    }
+    if ((matrix.translateXTwips ?? 0) % 20 !== 0 || (matrix.translateYTwips ?? 0) % 20 !== 0) {
+        return "fractionalTranslate";
+    }
+    return "identityOrTranslate";
 }
 
 function buildCanvasCompoundPath(
@@ -2584,19 +3208,23 @@ function drawBitmapFill(
     bounds: SwfRect,
     fill: SwfFillStyle
 ): void {
-    const matrix = fill.bitmapMatrix;
-    const a = (matrix?.scaleX ?? 20) / 20;
-    const b = (matrix?.rotateSkew1 ?? 0) / 20;
-    const c = (matrix?.rotateSkew0 ?? 0) / 20;
-    const d = (matrix?.scaleY ?? 20) / 20;
-    const tx = (matrix?.translateX ?? 0) - bounds.xMin;
-    const ty = (matrix?.translateY ?? 0) - bounds.yMin;
-    const repeat = fill.type === 0x40 || fill.type === 0x42;
-    context.imageSmoothingEnabled = fill.type === 0x40 || fill.type === 0x41;
+    const matrix = bitmapFillCanvasMatrix(fill, bounds);
+    const repeat = isBitmapFillRepeating(fill);
+    context.imageSmoothingEnabled = isBitmapFillSmoothed(fill);
+    const repetition = repeat ? "repeat" : "no-repeat";
+    const pattern = typeof context.createPattern === "function"
+        ? context.createPattern(bitmap, repetition)
+        : null;
+    if (pattern && typeof (pattern as any).setTransform === "function" && typeof DOMMatrix !== "undefined") {
+        (pattern as any).setTransform(new DOMMatrix([matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty]));
+        context.fillStyle = pattern;
+        context.fillRect(0, 0, Math.max(1, bounds.width), Math.max(1, bounds.height));
+        return;
+    }
     context.save();
-    context.transform(a, b, c, d, tx, ty);
+    context.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
     if (repeat) {
-        const inverse = inverseBitmapMatrix(a, b, c, d, tx, ty);
+        const inverse = inverseBitmapMatrix(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
         const corners = [
             transformPoint(inverse, 0, 0),
             transformPoint(inverse, bounds.width, 0),
@@ -2619,6 +3247,18 @@ function drawBitmapFill(
         context.drawImage(bitmap, 0, 0);
     }
     context.restore();
+}
+
+function bitmapFillCanvasMatrix(fill: SwfFillStyle, bounds: SwfRect): { a: number; b: number; c: number; d: number; tx: number; ty: number } {
+    const matrix = fill.bitmapMatrix;
+    return {
+        a: (matrix?.scaleX ?? 20) / 20,
+        b: (matrix?.rotateSkew1 ?? 0) / 20,
+        c: (matrix?.rotateSkew0 ?? 0) / 20,
+        d: (matrix?.scaleY ?? 20) / 20,
+        tx: (matrix?.translateX ?? 0) - bounds.xMin,
+        ty: (matrix?.translateY ?? 0) - bounds.yMin
+    };
 }
 
 function inverseBitmapMatrix(a: number, b: number, c: number, d: number, tx: number, ty: number): { a: number; b: number; c: number; d: number; tx: number; ty: number } {
@@ -2696,10 +3336,17 @@ function distanceBetween(left: { x: number; y: number }, right: { x: number; y: 
     return Math.hypot(right.x - left.x, right.y - left.y);
 }
 
-async function loadCanvasOntoSprite(sprite: Sprite, canvas: HTMLCanvasElement): Promise<void> {
-    const texture = createTextureFromSource(canvas, canvas.width, canvas.height);
+interface TextureUploadOptions {
+    filterMode?: number;
+}
+
+async function loadCanvasOntoSprite(sprite: Sprite, canvas: HTMLCanvasElement, options: TextureUploadOptions = {}): Promise<void> {
+    const texture = createTextureFromSource(canvas, canvas.width, canvas.height, undefined, options);
     if (texture) {
         (sprite as any).texture = texture;
+        if (options.filterMode != null) {
+            (sprite as any).__rawSwfTextureFilterMode = options.filterMode;
+        }
         rawSwfRendererAssetMetrics().directCanvasUploads += 1;
         return;
     }
@@ -2722,7 +3369,13 @@ async function loadImageCharacterOntoSprite(sprite: Sprite, image: any): Promise
     (sprite as any).__rawSwfImageSource = surface.source;
 }
 
-function createTextureFromSource(sourceImage: CanvasImageSource, width: number, height: number, pixels?: ImageData): any | null {
+function createTextureFromSource(
+    sourceImage: CanvasImageSource,
+    width: number,
+    height: number,
+    pixels?: ImageData,
+    options: TextureUploadOptions = {}
+): any | null {
     const Laya = (globalThis as any).Laya;
     if (!Laya?.Texture || !Laya?.Texture2D || !Laya?.TextureFormat) {
         return null;
@@ -2735,6 +3388,15 @@ function createTextureFromSource(sourceImage: CanvasImageSource, width: number, 
         }
         else {
             source.setImageData(sourceImage as HTMLCanvasElement | HTMLImageElement | ImageBitmap, false, false);
+        }
+        if (options.filterMode != null && "filterMode" in source) {
+            source.filterMode = options.filterMode;
+            if (options.filterMode === TEXTURE_FILTER_POINT) {
+                rawSwfRendererAssetMetrics().pointTextureUploads += 1;
+            }
+            else if (options.filterMode === TEXTURE_FILTER_BILINEAR) {
+                rawSwfRendererAssetMetrics().bilinearTextureUploads += 1;
+            }
         }
         return new Laya.Texture(source);
     }
@@ -2755,6 +3417,8 @@ function rawSwfRendererAssetMetrics(): {
     scale9SourceUploads: number;
     scale9Draw9GridInstalls: number;
     directSrgbTextureUploads: number;
+    pointTextureUploads: number;
+    bilinearTextureUploads: number;
     premultipliedTextureUploads: number;
     unsupportedConvolutionFilters: number;
     anisotropicFilterKernels: number;
@@ -2773,11 +3437,15 @@ function rawSwfRendererAssetMetrics(): {
         scale9SourceUploads: 0,
         scale9Draw9GridInstalls: 0,
         directSrgbTextureUploads: 0,
+        pointTextureUploads: 0,
+        bilinearTextureUploads: 0,
         premultipliedTextureUploads: 0,
         unsupportedConvolutionFilters: 0,
         anisotropicFilterKernels: 0,
         multiPassFilterKernels: 0
     };
+    global.__rawSwfRendererAssetMetrics.pointTextureUploads ??= 0;
+    global.__rawSwfRendererAssetMetrics.bilinearTextureUploads ??= 0;
     return global.__rawSwfRendererAssetMetrics;
 }
 
@@ -3058,6 +3726,22 @@ function boundsForPath(path: SwfShapePath): SwfRect {
     };
 }
 
+function expandRect(rect: SwfRect, amount: number): SwfRect {
+    const expandTwips = Math.ceil(amount * 20);
+    return {
+        xMinTwips: rect.xMinTwips - expandTwips,
+        xMaxTwips: rect.xMaxTwips + expandTwips,
+        yMinTwips: rect.yMinTwips - expandTwips,
+        yMaxTwips: rect.yMaxTwips + expandTwips,
+        xMin: rect.xMin - amount,
+        xMax: rect.xMax + amount,
+        yMin: rect.yMin - amount,
+        yMax: rect.yMax + amount,
+        width: rect.width + amount * 2,
+        height: rect.height + amount * 2
+    };
+}
+
 function boundsForPaths(paths: OrientedShapePath[]): SwfRect {
     let xMin = Infinity;
     let xMax = -Infinity;
@@ -3093,16 +3777,127 @@ function boundsForPaths(paths: OrientedShapePath[]): SwfRect {
 }
 
 function orientedFillPathsForStyle(paths: SwfShapePath[], fillStyleIndex: number): OrientedShapePath[] {
-    const oriented: OrientedShapePath[] = [];
+    const orientedChains: SwfShapeSegment[][] = [];
     for (const path of paths) {
-        if ((path.fillStyle1Index ?? 0) === fillStyleIndex) {
-            oriented.push({ path, reverse: false });
-        }
         if ((path.fillStyle0Index ?? 0) === fillStyleIndex) {
-            oriented.push({ path, reverse: true });
+            const segments = orientedSegmentsForPath(path, true);
+            if (segments.length > 0) {
+                orientedChains.push(segments);
+            }
+        }
+        if ((path.fillStyle1Index ?? 0) === fillStyleIndex) {
+            const segments = orientedSegmentsForPath(path, false);
+            if (segments.length > 0) {
+                orientedChains.push(segments);
+            }
         }
     }
-    return oriented.filter(candidate => candidate.path.points.length >= 2 || candidate.path.segments.length > 0);
+    return stitchOrientedFillChains(orientedChains, fillStyleIndex);
+}
+
+function orientedSegmentsForPath(path: SwfShapePath, reverse: boolean): SwfShapeSegment[] {
+    if (path.segments?.length) {
+        return reverse ? reversedSegments(path) : path.segments.slice();
+    }
+    const points = reverse ? path.points.slice().reverse() : path.points;
+    const segments: SwfShapeSegment[] = [];
+    for (let index = 0; index + 1 < points.length; index++) {
+        segments.push({
+            type: "line",
+            start: points[index],
+            end: points[index + 1]
+        });
+    }
+    return segments;
+}
+
+function stitchOrientedFillChains(chains: SwfShapeSegment[][], fillStyleIndex: number): OrientedShapePath[] {
+    const pending = chains.map(chain => chain.slice()).filter(chain => chain.length > 0);
+    const stitched: OrientedShapePath[] = [];
+    while (pending.length > 0) {
+        const segments = pending.shift()!;
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (let index = 0; index < pending.length; index++) {
+                const candidate = pending[index];
+                const candidateReversed = reverseSegmentChain(candidate);
+                const currentStart = segmentStart(segments[0]);
+                const currentEnd = segmentEnd(segments[segments.length - 1]);
+                const candidateStart = segmentStart(candidate[0]);
+                const candidateEnd = segmentEnd(candidate[candidate.length - 1]);
+                const reversedStart = segmentStart(candidateReversed[0]);
+                const reversedEnd = segmentEnd(candidateReversed[candidateReversed.length - 1]);
+                if (sameShapePoint(currentEnd, candidateStart)) {
+                    segments.push(...candidate);
+                }
+                else if (sameShapePoint(currentEnd, reversedStart)) {
+                    segments.push(...candidateReversed);
+                }
+                else if (sameShapePoint(candidateEnd, currentStart)) {
+                    segments.unshift(...candidate);
+                }
+                else if (sameShapePoint(reversedEnd, currentStart)) {
+                    segments.unshift(...candidateReversed);
+                }
+                else {
+                    continue;
+                }
+                pending.splice(index, 1);
+                changed = true;
+                break;
+            }
+        }
+        stitched.push({
+            path: shapePathFromSegments(segments, fillStyleIndex),
+            reverse: false
+        });
+    }
+    return stitched.filter(candidate => candidate.path.segments.length > 0);
+}
+
+function shapePathFromSegments(segments: SwfShapeSegment[], fillStyleIndex: number): SwfShapePath {
+    const points = [segmentStart(segments[0]), ...segments.map(segment => segmentEnd(segment))];
+    return {
+        fillStyleIndex,
+        fillStyle1Index: fillStyleIndex,
+        fillStyle0Index: 0,
+        lineStyleIndex: 0,
+        points,
+        segments
+    };
+}
+
+function reverseSegmentChain(segments: SwfShapeSegment[]): SwfShapeSegment[] {
+    return segments.slice().reverse().map(reverseSegment);
+}
+
+function reverseSegment(segment: SwfShapeSegment): SwfShapeSegment {
+    if (segment.type === "line") {
+        return {
+            type: "line",
+            start: segment.end,
+            end: segment.start
+        };
+    }
+    return {
+        type: "curve",
+        start: segment.end,
+        control: segment.control,
+        end: segment.start
+    };
+}
+
+function segmentStart(segment: SwfShapeSegment): SwfShapePoint {
+    return segment.start;
+}
+
+function segmentEnd(segment: SwfShapeSegment): SwfShapePoint {
+    return segment.end;
+}
+
+function sameShapePoint(left: SwfShapePoint, right: SwfShapePoint): boolean {
+    return left.xTwips === right.xTwips && left.yTwips === right.yTwips;
 }
 
 function flattenPathForLaya(path: SwfShapePath): number[] {
@@ -3148,14 +3943,16 @@ function drawTransformedCompoundVectorPaths(
     xOffset: number,
     yOffset: number,
     glyphScale: number,
-    fillStyle: string
+    fillStyle: string,
+    dx: number = 0,
+    dy: number = 0
 ): void {
     if (!root.graphics?.drawPath) {
         return;
     }
     const commands: any[] = [];
     for (const orientedPath of paths) {
-        commands.push(...transformedDrawPathCommands(orientedPath.path, text, xOffset, yOffset, glyphScale, orientedPath.reverse));
+        commands.push(...transformedDrawPathCommands(orientedPath.path, text, xOffset, yOffset, glyphScale, orientedPath.reverse, dx, dy));
     }
     root.graphics.drawPath(0, 0, commands, { fillStyle }, null);
 }
@@ -3166,21 +3963,23 @@ function transformedDrawPathCommands(
     xOffset: number,
     yOffset: number,
     glyphScale: number,
-    reverse: boolean = false
+    reverse: boolean = false,
+    dx: number = 0,
+    dy: number = 0
 ): any[] {
     if (path.segments?.length) {
         const segments = reverse ? reversedSegments(path) : path.segments;
         const first = transformTextPoint(segments[0].start.x, segments[0].start.y, text, xOffset, yOffset, glyphScale);
-        const commands: any[] = [["moveTo", first.x, first.y]];
+        const commands: any[] = [["moveTo", first.x + dx, first.y + dy]];
         for (const segment of segments) {
             if (segment.type === "line") {
                 const end = transformTextPoint(segment.end.x, segment.end.y, text, xOffset, yOffset, glyphScale);
-                commands.push(["lineTo", end.x, end.y]);
+                commands.push(["lineTo", end.x + dx, end.y + dy]);
                 continue;
             }
             const control = transformTextPoint(segment.control.x, segment.control.y, text, xOffset, yOffset, glyphScale);
             const end = transformTextPoint(segment.end.x, segment.end.y, text, xOffset, yOffset, glyphScale);
-            commands.push(["quadraticCurveTo", control.x, control.y, end.x, end.y]);
+            commands.push(["quadraticCurveTo", control.x + dx, control.y + dy, end.x + dx, end.y + dy]);
         }
         commands.push(["closePath"]);
         return commands;
@@ -3190,10 +3989,10 @@ function transformedDrawPathCommands(
         return [];
     }
     const first = transformTextPoint(points[0], points[1], text, xOffset, yOffset, glyphScale);
-    const commands: any[] = [["moveTo", first.x, first.y]];
+    const commands: any[] = [["moveTo", first.x + dx, first.y + dy]];
     for (let index = 2; index + 1 < points.length; index += 2) {
         const point = transformTextPoint(points[index], points[index + 1], text, xOffset, yOffset, glyphScale);
-        commands.push(["lineTo", point.x, point.y]);
+        commands.push(["lineTo", point.x + dx, point.y + dy]);
     }
     commands.push(["closePath"]);
     return commands;
@@ -3228,10 +4027,140 @@ function drawPathCommands(path: SwfShapePath, close: boolean): any[] {
 
 function compoundDrawPathCommands(paths: OrientedShapePath[], close: boolean): any[] {
     const commands: any[] = [];
-    for (const path of paths) {
+    const orientedPaths = close ? orientCompoundPathsForNonZeroFill(paths) : paths;
+    for (const path of orientedPaths) {
         commands.push(...orientedDrawPathCommands(path, close));
     }
     return commands;
+}
+
+function orientCompoundPathsForNonZeroFill(paths: OrientedShapePath[]): OrientedShapePath[] {
+    if (paths.length < 2) {
+        return paths;
+    }
+    const infos = paths.map(path => {
+        const points = orientedPathFlatPoints(path);
+        return {
+            path,
+            points,
+            area: polygonSignedArea(points),
+            sample: polygonCentroid(points),
+            bounds: flatPointBounds(points)
+        };
+    });
+    return infos.map((info, index) => {
+        const depth = infos.reduce((count, other, otherIndex) => {
+            if (index === otherIndex || !boundsContainPoint(other.bounds, info.sample.x, info.sample.y)) {
+                return count;
+            }
+            return pointInFlatPolygon(other.points, info.sample.x, info.sample.y) ? count + 1 : count;
+        }, 0);
+        const wantsPositiveArea = depth % 2 === 0;
+        const hasPositiveArea = info.area >= 0;
+        return wantsPositiveArea === hasPositiveArea
+            ? info.path
+            : { path: info.path.path, reverse: !info.path.reverse };
+    });
+}
+
+function orientedPathFlatPoints(orientedPath: OrientedShapePath): number[] {
+    const path = orientedPath.path;
+    if (path.segments?.length) {
+        const segments = orientedPath.reverse ? reversedSegments(path) : path.segments;
+        const points: number[] = [];
+        points.push(segments[0].start.x, segments[0].start.y);
+        for (const segment of segments) {
+            if (segment.type === "line") {
+                points.push(segment.end.x, segment.end.y);
+                continue;
+            }
+            for (let step = 1; step <= 12; step++) {
+                const t = step / 12;
+                const inv = 1 - t;
+                points.push(
+                    inv * inv * segment.start.x + 2 * inv * t * segment.control.x + t * t * segment.end.x,
+                    inv * inv * segment.start.y + 2 * inv * t * segment.control.y + t * t * segment.end.y
+                );
+            }
+        }
+        return points;
+    }
+    return orientedPath.reverse ? reversedFlatPoints(path) : flattenPathForLaya(path);
+}
+
+function polygonSignedArea(points: number[]): number {
+    let area = 0;
+    for (let index = 0; index + 3 < points.length; index += 2) {
+        area += points[index] * points[index + 3] - points[index + 2] * points[index + 1];
+    }
+    if (points.length >= 4) {
+        const last = points.length - 2;
+        area += points[last] * points[1] - points[0] * points[last + 1];
+    }
+    return area / 2;
+}
+
+function polygonCentroid(points: number[]): { x: number; y: number } {
+    let areaTimesSix = 0;
+    let x = 0;
+    let y = 0;
+    for (let index = 0; index + 3 < points.length; index += 2) {
+        const cross = points[index] * points[index + 3] - points[index + 2] * points[index + 1];
+        areaTimesSix += cross;
+        x += (points[index] + points[index + 2]) * cross;
+        y += (points[index + 1] + points[index + 3]) * cross;
+    }
+    if (points.length >= 4) {
+        const last = points.length - 2;
+        const cross = points[last] * points[1] - points[0] * points[last + 1];
+        areaTimesSix += cross;
+        x += (points[last] + points[0]) * cross;
+        y += (points[last + 1] + points[1]) * cross;
+    }
+    if (Math.abs(areaTimesSix) > 0.000001) {
+        return { x: x / (3 * areaTimesSix), y: y / (3 * areaTimesSix) };
+    }
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let index = 0; index + 1 < points.length; index += 2) {
+        sumX += points[index];
+        sumY += points[index + 1];
+        count++;
+    }
+    return { x: count > 0 ? sumX / count : 0, y: count > 0 ? sumY / count : 0 };
+}
+
+function flatPointBounds(points: number[]): { xMin: number; xMax: number; yMin: number; yMax: number } {
+    let xMin = Infinity;
+    let xMax = -Infinity;
+    let yMin = Infinity;
+    let yMax = -Infinity;
+    for (let index = 0; index + 1 < points.length; index += 2) {
+        xMin = Math.min(xMin, points[index]);
+        xMax = Math.max(xMax, points[index]);
+        yMin = Math.min(yMin, points[index + 1]);
+        yMax = Math.max(yMax, points[index + 1]);
+    }
+    return { xMin, xMax, yMin, yMax };
+}
+
+function boundsContainPoint(bounds: { xMin: number; xMax: number; yMin: number; yMax: number }, x: number, y: number): boolean {
+    return x >= bounds.xMin && x <= bounds.xMax && y >= bounds.yMin && y <= bounds.yMax;
+}
+
+function pointInFlatPolygon(points: number[], x: number, y: number): boolean {
+    let inside = false;
+    for (let index = 0, previous = points.length - 2; index + 1 < points.length; previous = index, index += 2) {
+        const xi = points[index];
+        const yi = points[index + 1];
+        const xj = points[previous];
+        const yj = points[previous + 1];
+        if (((yi > y) !== (yj > y)) && x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi) {
+            inside = !inside;
+        }
+    }
+    return inside;
 }
 
 function orientedDrawPathCommands(orientedPath: OrientedShapePath, close: boolean): any[] {

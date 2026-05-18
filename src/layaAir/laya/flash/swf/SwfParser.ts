@@ -838,6 +838,7 @@ function parseDefineShape(reader: SwfDataReader, tagCode: number): SwfDefineShap
         const shape = parseShapeWithStyle(reader, tagCode);
         return {
             characterId,
+            tagCode,
             shapeBounds,
             fillStyles: shape.fillStyles,
             lineStyles: shape.lineStyles,
@@ -852,6 +853,7 @@ function parseDefineShape(reader: SwfDataReader, tagCode: number): SwfDefineShap
     const shape = parseShapeWithStyle(reader, tagCode);
     return {
         characterId,
+        tagCode,
         shapeBounds,
         edgeBounds,
         usesFillWindingRule,
@@ -1028,7 +1030,7 @@ function parseMorphLineStyle(reader: SwfDataReader, tagCode: number, index: numb
         const flags = reader.readUI16();
         lineStyle.startCapStyle = (flags >> 14) & 0x03;
         lineStyle.joinStyle = (flags >> 12) & 0x03;
-        const hasFill = !!(flags & 0x0008);
+        const hasFill = !!(flags & 0x0800);
         lineStyle.hasFill = hasFill;
         lineStyle.noHScale = !!(flags & 0x0400);
         lineStyle.noVScale = !!(flags & 0x0200);
@@ -1354,7 +1356,7 @@ function parseLineStyle(reader: SwfDataReader, tagCode: number, index: number): 
         const flags = reader.readUI16();
         lineStyle.startCapStyle = (flags >> 14) & 0x03;
         lineStyle.joinStyle = (flags >> 12) & 0x03;
-        const hasFill = !!(flags & 0x0008);
+        const hasFill = !!(flags & 0x0800);
         lineStyle.hasFill = hasFill;
         lineStyle.noHScale = !!(flags & 0x0400);
         lineStyle.noVScale = !!(flags & 0x0200);

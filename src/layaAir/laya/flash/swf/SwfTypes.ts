@@ -515,6 +515,7 @@ export interface SwfTextRecord {
 
 export interface SwfDefineShape {
     characterId: number;
+    tagCode: number;
     shapeBounds: SwfRect;
     edgeBounds?: SwfRect;
     usesFillWindingRule?: boolean;
