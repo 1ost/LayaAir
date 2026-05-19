@@ -65,6 +65,7 @@ const fillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | nu
 const shapeFillRasterCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement | null>>();
 const staticTextOutlineCanvasCache = new WeakMap<object, Promise<HTMLCanvasElement>>();
 const scale9TextureCache = new WeakMap<object, Promise<any | null>>();
+const shapeFeatureDiagnosticsReported = new WeakSet<object>();
 const avm2ExecutionCache = new WeakMap<SwfMovie, Avm2MovieExecution[]>();
 const TEXTURE_FILTER_POINT = 0;
 const TEXTURE_FILTER_BILINEAR = 1;
@@ -1799,12 +1800,15 @@ async function renderShapeNode(movie: SwfMovie, shape: SwfDefineShape): Promise<
     const root = new Sprite();
     const bounds = shape.shapeBounds;
     root.size(Math.max(1, bounds.width), Math.max(1, bounds.height));
+    (root as any).__rawSwfShapeCharacter = shape;
+    (root as any).__rawSwfShapeMovie = movie;
     const fillLayer = new Sprite();
     const strokeLayer = new Sprite();
     root.addChild(fillLayer);
     root.addChild(strokeLayer);
     const paths = shape.paths?.filter(path => (path.fillStyleIndex > 0 || path.lineStyleIndex > 0) && path.points.length >= 2) ?? [];
     let renderedShapeCount = 0;
+    recordShapeFeatureDiagnostics(shape, root);
 
     const renderedFillCount = await renderShapeFillLayer(fillLayer, movie, shape, paths);
     if (renderedFillCount != null) {
@@ -1855,6 +1859,12 @@ async function renderShapeFillLayer(root: Sprite, movie: SwfMovie, shape: SwfDef
         (child as any).__rawSwfBitmapFillRepeatModes = bitmapFillRepeatModes(entries.map(entry => entry.fill));
         (child as any).__rawSwfBitmapFillMatrixCategories = bitmapFillMatrixCategories(entries.map(entry => entry.fill));
     }
+    const gradientFills = entries.map(entry => entry.fill).filter(fill => fill.gradientRecords?.length);
+    if (gradientFills.length > 0) {
+        (child as any).__rawSwfGradientFillCount = gradientFills.length;
+        (child as any).__rawSwfGradientSpreadModes = uniqueNumberList(gradientFills.map(fill => fill.spreadMode ?? 0));
+        (child as any).__rawSwfGradientInterpolationModes = uniqueNumberList(gradientFills.map(fill => fill.interpolationMode ?? 0));
+    }
     (child as any).__rawSwfShapeFillCanvas = true;
     (child as any).__rawSwfShapeFillCount = entries.length;
     (child as any).__rawSwfShapeFillRule = fillRuleForShape(shape);
@@ -1888,6 +1898,8 @@ async function renderFillPaths(
             }
             if (fill?.gradientRecords?.length) {
                 (child as any).__rawSwfGradientFillType = fill.type;
+                (child as any).__rawSwfGradientSpreadModes = [fill.spreadMode ?? 0];
+                (child as any).__rawSwfGradientInterpolationModes = [fill.interpolationMode ?? 0];
             }
             root.addChild(child);
             return true;
@@ -2014,6 +2026,7 @@ async function renderFilledStrokePath(
     child.pos(bounds.xMin, bounds.yMin);
     child.size(Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height)));
     await loadCanvasOntoSprite(child, canvas, { filterMode: textureFilterModeForFill(line.fillStyle) });
+    annotateStrokeNode(child, line);
     if (line.fillStyle.bitmapId != null) {
         (child as any).__rawSwfBitmapFillCount = 1;
         (child as any).__rawSwfBitmapStrokeFill = true;
@@ -2046,10 +2059,19 @@ async function renderSolidStrokePath(
     child.pos(bounds.xMin, bounds.yMin);
     child.size(Math.max(1, Math.ceil(bounds.width)), Math.max(1, Math.ceil(bounds.height)));
     await loadCanvasOntoSprite(child, canvas);
+    annotateStrokeNode(child, line);
     (child as any).__rawSwfStrokeCanvas = true;
     (child as any).__rawSwfStrokeWidthTwips = line.widthTwips;
     root.addChild(child);
     return true;
+}
+
+function annotateStrokeNode(node: Sprite, line: SwfLineStyle): void {
+    (node as any).__rawSwfStrokeLineStyleIndex = line.index;
+    (node as any).__rawSwfStrokeNoHScale = !!line.noHScale;
+    (node as any).__rawSwfStrokeNoVScale = !!line.noVScale;
+    (node as any).__rawSwfStrokePixelHinting = !!line.pixelHinting;
+    (node as any).__rawSwfPlacementAwareStrokeSource = !!(line.noHScale && line.noVScale);
 }
 
 function drawLinearGradientApproximation(root: Sprite, bounds: SwfRect, records: any[]): void {
@@ -2088,6 +2110,7 @@ function applyPlacement(node: Sprite | Text, placement: SwfPlaceObject, characte
         node.pos(tx, ty);
         node.scale(a, d);
         applyScalingGridPlacementMetadata(node, character, a, d);
+        installPlacementAwareShapeStrokeOverlay(node, character, a, d);
         applyPlacementDisplayState(node, placement);
         return;
     }
@@ -2103,6 +2126,66 @@ function applyPlacement(node: Sprite | Text, placement: SwfPlaceObject, characte
     node.scaleY = d;
     applyScalingGridPlacementMetadata(node, character, a, d);
     applyPlacementDisplayState(node, placement);
+}
+
+function installPlacementAwareShapeStrokeOverlay(node: Sprite | Text, character: any, scaleX: number, scaleY: number): void {
+    const shape = (node as any).__rawSwfShapeCharacter ?? character;
+    if (!shape?.shapeBounds || !shapeHasFullNonScalingStrokes(shape) || !(node instanceof Sprite)) {
+        return;
+    }
+    if (scaleX === 0 || scaleY === 0) {
+        (node as any).__rawSwfPlacementAwareStrokeError = "zero-placement-scale";
+        return;
+    }
+    const existing = (node as any).__rawSwfPlacementAwareStrokeOverlay as Sprite | undefined;
+    if (existing?.parent === node) {
+        existing.removeSelf();
+    }
+    hidePlacementAwareStrokeSources(node);
+    (node as any).__rawSwfPlacementAwareStrokeReady = false;
+    (node as any).__rawSwfPlacementAwareStrokeScale = { x: scaleX, y: scaleY };
+    const movie = ((node as any).__rawSwfShapeMovie ?? (shape as any).__rawSwfMovie) as SwfMovie | undefined;
+    const promise = rasterizePlacementAwareShapeStrokes(movie, shape, scaleX, scaleY).then(async result => {
+        if (!result) {
+            (node as any).__rawSwfPlacementAwareStrokeError = "rasterize-failed";
+            return false;
+        }
+        const overlay = new Sprite();
+        overlay.pos(result.bounds.xMin / scaleX, result.bounds.yMin / scaleY);
+        overlay.scale(1 / scaleX, 1 / scaleY);
+        overlay.size(Math.max(1, Math.ceil(result.bounds.width)), Math.max(1, Math.ceil(result.bounds.height)));
+        await loadCanvasOntoSprite(overlay, result.canvas);
+        (overlay as any).__rawSwfPlacementAwareStrokeOverlay = true;
+        (overlay as any).__rawSwfLineNoScaleCount = result.lineCount;
+        (overlay as any).__rawSwfStrokeWidthTwips = result.widthsTwips;
+        (overlay as any).__rawSwfPlacementAwareStrokeScale = { x: scaleX, y: scaleY };
+        node.addChild(overlay);
+        (node as any).__rawSwfPlacementAwareStrokeOverlay = overlay;
+        (node as any).__rawSwfPlacementAwareStrokeReady = true;
+        rawSwfRendererAssetMetrics().placementAwareNonScalingStrokes += result.lineCount;
+        return true;
+    });
+    (node as any).__rawSwfPlacementAwareStrokePromise = promise;
+}
+
+function shapeHasFullNonScalingStrokes(shape: SwfDefineShape): boolean {
+    return (shape.lineStyles ?? []).some(line => line.noHScale && line.noVScale);
+}
+
+function hidePlacementAwareStrokeSources(root: Sprite): void {
+    const childCount = Number((root as any).numChildren ?? 0);
+    for (let index = 0; index < childCount; index++) {
+        const child = (root as any).getChildAt?.(index);
+        if (!child) {
+            continue;
+        }
+        if (child.__rawSwfPlacementAwareStrokeSource) {
+            child.visible = false;
+        }
+        if (child instanceof Sprite) {
+            hidePlacementAwareStrokeSources(child);
+        }
+    }
 }
 
 function applyScalingGridPlacementMetadata(node: Sprite | Text, character: any, scaleX: number, scaleY: number): void {
@@ -2303,6 +2386,7 @@ async function drawShapeToCanvas(context: CanvasRenderingContext2D, shape: SwfDe
     const paths = shape.paths?.filter(path => (path.fillStyleIndex > 0 || path.lineStyleIndex > 0) && path.points.length >= 2) ?? [];
     const fillRule = fillRuleForShape(shape);
     const movie = (shape as any).__rawSwfMovie as SwfMovie | undefined;
+    recordShapeFeatureDiagnostics(shape);
     const fillEntries = (shape.fillStyles ?? [])
         .map(fill => ({ fill, paths: orientedFillPathsForStyle(paths, fill.index) }))
         .filter(entry => entry.paths.length > 0);
@@ -2332,7 +2416,7 @@ async function drawShapeToCanvas(context: CanvasRenderingContext2D, shape: SwfDe
         if (!lineColor) {
             continue;
         }
-        buildCanvasPath(context, path, 0, 0, !line?.noClose && isClosedPath(path));
+        buildCanvasPath(context, path, 0, 0, !line?.noClose && isClosedPath(path), line);
         context.strokeStyle = lineColor;
         context.lineWidth = Math.max(1, line?.width ?? 1);
         context.lineCap = flashCanvasLineCap(line?.startCapStyle);
@@ -2378,16 +2462,85 @@ async function drawStaticTextToCanvas(context: CanvasRenderingContext2D, charact
         const glyphScale = textHeightTwips / fontGlyphCoordinateDivisor(font);
         let xCursor = (record.xOffsetTwips ?? 0) / 20;
         const yOffset = (record.yOffsetTwips ?? 0) / 20;
-        context.fillStyle = rgbaToCss(record.textColor) ?? "#ffffff";
+        const fillStyle = rgbaToCss(record.textColor) ?? "#ffffff";
+        context.fillStyle = fillStyle;
         for (const entry of record.glyphs) {
             const glyph = font.glyphs[entry.glyphIndex];
             const paths = glyph ? orientedFillPathsForStyle(glyph.paths, 1) : [];
             if (paths.length) {
                 buildCanvasTextGlyphPath(context, paths, character, xCursor, yOffset, glyphScale);
                 context.fill("nonzero");
+                applyFlashTypeThickness(context, character, fillStyle);
             }
             xCursor += entry.advanceTwips * glyphScale / 20;
         }
+    }
+}
+
+function recordShapeFeatureDiagnostics(shape: SwfDefineShape, node?: Sprite): void {
+    const lineStyles = shape.lineStyles ?? [];
+    const nonScalingLines = lineStyles.filter(line => line.noHScale || line.noVScale);
+    const pixelHintingLines = lineStyles.filter(line => line.pixelHinting);
+    const unsupportedNonScalingLines = nonScalingLines.filter(line => !(line.noHScale && line.noVScale));
+    const spreadGradientFills = (shape.fillStyles ?? []).filter(fill => fill.gradientRecords?.length && (fill.spreadMode ?? 0) > 2);
+    const interpolationGradientFills = (shape.fillStyles ?? []).filter(fill => fill.gradientRecords?.length && (fill.interpolationMode ?? 0) > 1);
+    if (node) {
+        (node as any).__rawSwfShapeUsesNonScalingStrokes = !!shape.usesNonScalingStrokes || nonScalingLines.length > 0;
+        (node as any).__rawSwfShapeUsesScalingStrokes = !!shape.usesScalingStrokes;
+        (node as any).__rawSwfLineNoScaleCount = nonScalingLines.length;
+        (node as any).__rawSwfLinePixelHintingCount = pixelHintingLines.length;
+        (node as any).__rawSwfGradientSpreadModeCount = spreadGradientFills.length;
+        (node as any).__rawSwfGradientInterpolationModeCount = interpolationGradientFills.length;
+    }
+    if (shapeFeatureDiagnosticsReported.has(shape as object)) {
+        return;
+    }
+    shapeFeatureDiagnosticsReported.add(shape as object);
+    const source = ((shape as any).__rawSwfMovie as SwfMovie | undefined)?.sourceUrl ?? "unknown-swf";
+    const detail = { source, characterId: shape.characterId, tagCode: shape.tagCode };
+    if (unsupportedNonScalingLines.length > 0) {
+        rawSwfRendererAssetMetrics().unsupportedNonScalingStrokes += 1;
+        reportSwfUnsupportedFeature({
+            source,
+            kind: "unsupported-shape-non-scaling-stroke",
+            message: "SWF Shape4 partial-axis non-scaling stroke semantics are parsed but still render through the scaling stroke path.",
+            detail: {
+                ...detail,
+                usesNonScalingStrokes: !!shape.usesNonScalingStrokes,
+                noScaleLineStyles: unsupportedNonScalingLines.map(line => ({
+                    index: line.index,
+                    noHScale: !!line.noHScale,
+                    noVScale: !!line.noVScale
+                }))
+            }
+        });
+    }
+    if (pixelHintingLines.length > 0) {
+        rawSwfRendererAssetMetrics().pixelHintedStrokes += pixelHintingLines.length;
+    }
+    if (spreadGradientFills.length > 0) {
+        rawSwfRendererAssetMetrics().unsupportedGradientSpreadModes += 1;
+        reportSwfUnsupportedFeature({
+            source,
+            kind: "unsupported-gradient-spread-mode",
+            message: "SWF reserved gradient spread mode 3 is parsed but currently renders through pad behavior.",
+            detail: {
+                ...detail,
+                fillStyles: spreadGradientFills.map(fill => ({ index: fill.index, type: fill.type, spreadMode: fill.spreadMode ?? 0 }))
+            }
+        });
+    }
+    if (interpolationGradientFills.length > 0) {
+        rawSwfRendererAssetMetrics().unsupportedGradientInterpolationModes += 1;
+        reportSwfUnsupportedFeature({
+            source,
+            kind: "unsupported-gradient-interpolation-mode",
+            message: "SWF reserved gradient interpolation modes above linear RGB are parsed but currently render through normal interpolation.",
+            detail: {
+                ...detail,
+                fillStyles: interpolationGradientFills.map(fill => ({ index: fill.index, type: fill.type, interpolationMode: fill.interpolationMode ?? 0 }))
+            }
+        });
     }
 }
 
@@ -2838,7 +2991,7 @@ async function rasterizeFilledStrokePath(
     if (!strokeStyle) {
         return null;
     }
-    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path));
+    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path), line);
     context.lineWidth = Math.max(1, line.width);
     context.lineCap = flashCanvasLineCap(line.startCapStyle);
     context.lineJoin = flashCanvasLineJoin(line.joinStyle);
@@ -2881,7 +3034,7 @@ function rasterizeSolidStrokePath(
         return null;
     }
     context.scale(rasterScale, rasterScale);
-    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path));
+    buildCanvasPath(context, path, -bounds.xMin, -bounds.yMin, !line.noClose && isClosedPath(path), line);
     context.lineWidth = Math.max(1, line.width);
     context.lineCap = flashCanvasLineCap(line.startCapStyle);
     context.lineJoin = flashCanvasLineJoin(line.joinStyle);
@@ -2899,6 +3052,156 @@ function rasterizeSolidStrokePath(
     downsampleContext.imageSmoothingQuality = "high";
     downsampleContext.drawImage(canvas, 0, 0, width, height);
     return downsampled;
+}
+
+async function rasterizePlacementAwareShapeStrokes(
+    _movie: SwfMovie | undefined,
+    shape: SwfDefineShape,
+    scaleX: number,
+    scaleY: number
+): Promise<{ canvas: HTMLCanvasElement; bounds: SwfRect; lineCount: number; widthsTwips: number[] } | null> {
+    if (typeof document === "undefined") {
+        return null;
+    }
+    const entries = (shape.paths ?? [])
+        .map(path => ({
+            path,
+            line: shape.lineStyles?.find(candidate => candidate.index === path.lineStyleIndex)
+        }))
+        .filter((entry): entry is { path: SwfShapePath; line: SwfLineStyle } =>
+            !!entry.line && !!entry.line.noHScale && !!entry.line.noVScale && entry.path.points.length >= 2
+        );
+    if (entries.length === 0) {
+        return null;
+    }
+    const bounds = boundsForTransformedStrokeEntries(entries, scaleX, scaleY);
+    const width = Math.max(1, Math.ceil(bounds.width));
+    const height = Math.max(1, Math.ceil(bounds.height));
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        return null;
+    }
+    const rasterScale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(width * rasterScale));
+    canvas.height = Math.max(1, Math.ceil(height * rasterScale));
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return null;
+    }
+    context.scale(rasterScale, rasterScale);
+    const widthsTwips: number[] = [];
+    for (const { path, line } of entries) {
+        const strokeStyle = colorForLineStyle(line);
+        if (!strokeStyle) {
+            continue;
+        }
+        buildTransformedCanvasPath(context, path, scaleX, scaleY, bounds, !line.noClose && isClosedPath(path), line);
+        context.lineWidth = Math.max(1, line.width);
+        context.lineCap = flashCanvasLineCap(line.startCapStyle);
+        context.lineJoin = flashCanvasLineJoin(line.joinStyle);
+        context.miterLimit = line.miterLimitFactor ?? 3;
+        context.strokeStyle = strokeStyle;
+        context.stroke();
+        widthsTwips.push(line.widthTwips);
+    }
+    if (widthsTwips.length === 0) {
+        return null;
+    }
+    const downsampled = document.createElement("canvas");
+    downsampled.width = width;
+    downsampled.height = height;
+    const downsampleContext = downsampled.getContext("2d");
+    if (!downsampleContext) {
+        return { canvas, bounds, lineCount: widthsTwips.length, widthsTwips };
+    }
+    downsampleContext.imageSmoothingEnabled = true;
+    downsampleContext.imageSmoothingQuality = "high";
+    downsampleContext.drawImage(canvas, 0, 0, width, height);
+    return { canvas: downsampled, bounds, lineCount: widthsTwips.length, widthsTwips };
+}
+
+function buildTransformedCanvasPath(
+    context: CanvasRenderingContext2D,
+    path: SwfShapePath,
+    scaleX: number,
+    scaleY: number,
+    bounds: SwfRect,
+    close: boolean,
+    line: SwfLineStyle
+): void {
+    context.beginPath();
+    const strokeWidth = Math.max(1, line.width);
+    const transformX = (value: number): number =>
+        pixelHintStrokeCoordinate(value * scaleX - bounds.xMin, strokeWidth, !!line.pixelHinting);
+    const transformY = (value: number): number =>
+        pixelHintStrokeCoordinate(value * scaleY - bounds.yMin, strokeWidth, !!line.pixelHinting);
+    for (const command of drawPathCommands(path, close)) {
+        switch (command[0]) {
+            case "moveTo":
+                context.moveTo(transformX(command[1]), transformY(command[2]));
+                break;
+            case "lineTo":
+                context.lineTo(transformX(command[1]), transformY(command[2]));
+                break;
+            case "quadraticCurveTo":
+                context.quadraticCurveTo(
+                    transformX(command[1]),
+                    transformY(command[2]),
+                    transformX(command[3]),
+                    transformY(command[4])
+                );
+                break;
+            case "closePath":
+                context.closePath();
+                break;
+        }
+    }
+}
+
+function boundsForTransformedStrokeEntries(
+    entries: { path: SwfShapePath; line: SwfLineStyle }[],
+    scaleX: number,
+    scaleY: number
+): SwfRect {
+    let xMin = Infinity;
+    let xMax = -Infinity;
+    let yMin = Infinity;
+    let yMax = -Infinity;
+    for (const { path } of entries) {
+        for (const point of transformedPathControlPoints(path, scaleX, scaleY)) {
+            xMin = Math.min(xMin, point.x);
+            xMax = Math.max(xMax, point.x);
+            yMin = Math.min(yMin, point.y);
+            yMax = Math.max(yMax, point.y);
+        }
+    }
+    const expand = Math.max(...entries.map(entry => Math.max(1, entry.line.width) / 2 + 2));
+    return rectFromPixels(xMin - expand, yMin - expand, xMax + expand, yMax + expand);
+}
+
+function transformedPathControlPoints(path: SwfShapePath, scaleX: number, scaleY: number): { x: number; y: number }[] {
+    const points = path.points.map(point => ({ x: point.x * scaleX, y: point.y * scaleY }));
+    for (const segment of path.segments ?? []) {
+        if (segment.type === "curve") {
+            points.push({ x: segment.control.x * scaleX, y: segment.control.y * scaleY });
+        }
+    }
+    return points;
+}
+
+function rectFromPixels(xMin: number, yMin: number, xMax: number, yMax: number): SwfRect {
+    return {
+        xMinTwips: Math.round(xMin * 20),
+        xMaxTwips: Math.round(xMax * 20),
+        yMinTwips: Math.round(yMin * 20),
+        yMaxTwips: Math.round(yMax * 20),
+        xMin,
+        xMax,
+        yMin,
+        yMax,
+        width: xMax - xMin,
+        height: yMax - yMin
+    };
 }
 
 async function canvasStrokeStyleForLineFill(
@@ -2982,25 +3285,46 @@ function buildCanvasPath(
     path: SwfShapePath,
     dx: number,
     dy: number,
-    close: boolean
+    close: boolean,
+    line?: SwfLineStyle
 ): void {
     context.beginPath();
+    const strokeWidth = Math.max(1, line?.width ?? 1);
     for (const command of drawPathCommands(path, close)) {
         switch (command[0]) {
             case "moveTo":
-                context.moveTo(command[1] + dx, command[2] + dy);
+                context.moveTo(
+                    pixelHintStrokeCoordinate(command[1] + dx, strokeWidth, !!line?.pixelHinting),
+                    pixelHintStrokeCoordinate(command[2] + dy, strokeWidth, !!line?.pixelHinting)
+                );
                 break;
             case "lineTo":
-                context.lineTo(command[1] + dx, command[2] + dy);
+                context.lineTo(
+                    pixelHintStrokeCoordinate(command[1] + dx, strokeWidth, !!line?.pixelHinting),
+                    pixelHintStrokeCoordinate(command[2] + dy, strokeWidth, !!line?.pixelHinting)
+                );
                 break;
             case "quadraticCurveTo":
-                context.quadraticCurveTo(command[1] + dx, command[2] + dy, command[3] + dx, command[4] + dy);
+                context.quadraticCurveTo(
+                    pixelHintStrokeCoordinate(command[1] + dx, strokeWidth, !!line?.pixelHinting),
+                    pixelHintStrokeCoordinate(command[2] + dy, strokeWidth, !!line?.pixelHinting),
+                    pixelHintStrokeCoordinate(command[3] + dx, strokeWidth, !!line?.pixelHinting),
+                    pixelHintStrokeCoordinate(command[4] + dy, strokeWidth, !!line?.pixelHinting)
+                );
                 break;
             case "closePath":
                 context.closePath();
                 break;
         }
     }
+}
+
+function pixelHintStrokeCoordinate(value: number, lineWidth: number, enabled: boolean): number {
+    if (!enabled) {
+        return value;
+    }
+    const roundedWidth = Math.max(1, Math.round(lineWidth));
+    return Math.round(value) + (roundedWidth % 2 === 1 ? 0.5 : 0);
 }
 
 function isClosedPath(path: SwfShapePath): boolean {
@@ -3034,6 +3358,9 @@ function drawGradientFill(
     width: number,
     height: number
 ): void {
+    if (drawProceduralGradientFill(context, bounds, fill, width, height)) {
+        return;
+    }
     const matrix = flashGradientMatrixToCanvas(bounds, fill.gradientMatrix);
     const inverse = inverseBitmapMatrix(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
     const corners = [
@@ -3051,6 +3378,54 @@ function drawGradientFill(
     context.fillStyle = flashCanvasGradient(context, fill);
     context.fillRect(minX, minY, Math.max(1, maxX - minX), Math.max(1, maxY - minY));
     context.restore();
+}
+
+function drawProceduralGradientFill(
+    context: CanvasRenderingContext2D,
+    bounds: SwfRect,
+    fill: SwfFillStyle,
+    width: number,
+    height: number
+): boolean {
+    const spreadMode = fill.spreadMode ?? 0;
+    const interpolationMode = fill.interpolationMode ?? 0;
+    if (spreadMode === 0 && interpolationMode === 0) {
+        return false;
+    }
+    if (spreadMode > 2 || interpolationMode > 1 || !fill.gradientRecords?.length || typeof document === "undefined") {
+        return false;
+    }
+    const gradientCanvas = document.createElement("canvas");
+    gradientCanvas.width = Math.max(1, Math.ceil(width));
+    gradientCanvas.height = Math.max(1, Math.ceil(height));
+    const gradientContext = gradientCanvas.getContext("2d");
+    if (!gradientContext) {
+        return false;
+    }
+    const imageData = gradientContext.createImageData(gradientCanvas.width, gradientCanvas.height);
+    const matrix = flashGradientMatrixToCanvas(bounds, fill.gradientMatrix);
+    const inverse = inverseBitmapMatrix(matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty);
+    const records = normalizedGradientRecords(fill.gradientRecords);
+    const isRadial = fill.type === 0x12 || fill.type === 0x13;
+    const focal = fill.type === 0x13 ? flashFocalPoint(fill) : 0;
+    let offset = 0;
+    for (let y = 0; y < gradientCanvas.height; y++) {
+        for (let x = 0; x < gradientCanvas.width; x++) {
+            const point = transformPoint(inverse, x + 0.5, y + 0.5);
+            const ratio = isRadial
+                ? radialGradientRatio(point.x, point.y, focal)
+                : (point.x + 16384) / 32768;
+            const color = sampleGradientColor(records, applyGradientSpread(ratio, spreadMode), interpolationMode);
+            imageData.data[offset++] = color.red;
+            imageData.data[offset++] = color.green;
+            imageData.data[offset++] = color.blue;
+            imageData.data[offset++] = color.alpha;
+        }
+    }
+    gradientContext.putImageData(imageData, 0, 0);
+    context.drawImage(gradientCanvas, 0, 0, width, height);
+    rawSwfRendererAssetMetrics().proceduralGradientFills += 1;
+    return true;
 }
 
 function flashGradientMatrixToCanvas(bounds: SwfRect, matrix: SwfMatrix | undefined): { a: number; b: number; c: number; d: number; tx: number; ty: number } {
@@ -3088,6 +3463,107 @@ function flashCanvasGradient(context: CanvasRenderingContext2D, fill: SwfFillSty
         gradient.addColorStop(Math.max(0, Math.min(1, record.ratio / 255)), rgbaToCss(record.color) ?? "#000000");
     }
     return gradient;
+}
+
+function normalizedGradientRecords(records: SwfFillStyle["gradientRecords"]): { ratio: number; color: SwfRgba }[] {
+    const sorted = [...(records ?? [])].sort((left, right) => left.ratio - right.ratio);
+    if (sorted.length === 0) {
+        return [{ ratio: 0, color: { red: 0, green: 0, blue: 0, alpha: 255 } }];
+    }
+    return sorted.map(record => ({
+        ratio: Math.max(0, Math.min(1, record.ratio / 255)),
+        color: record.color
+    }));
+}
+
+function applyGradientSpread(ratio: number, spreadMode: number): number {
+    if (!Number.isFinite(ratio)) {
+        return 0;
+    }
+    if (spreadMode === 2) {
+        return ratio - Math.floor(ratio);
+    }
+    if (spreadMode === 1) {
+        const reflected = ratio - Math.floor(ratio / 2) * 2;
+        return reflected <= 1 ? reflected : 2 - reflected;
+    }
+    return Math.max(0, Math.min(1, ratio));
+}
+
+function sampleGradientColor(
+    records: { ratio: number; color: SwfRgba }[],
+    ratio: number,
+    interpolationMode: number
+): SwfRgba {
+    if (records.length === 1 || ratio <= records[0].ratio) {
+        return records[0].color;
+    }
+    const last = records[records.length - 1];
+    if (ratio >= last.ratio) {
+        return last.color;
+    }
+    for (let index = 0; index < records.length - 1; index++) {
+        const left = records[index];
+        const right = records[index + 1];
+        if (ratio < left.ratio || ratio > right.ratio) {
+            continue;
+        }
+        const span = right.ratio - left.ratio;
+        const local = span === 0 ? 0 : (ratio - left.ratio) / span;
+        return interpolateGradientColor(left.color, right.color, local, interpolationMode);
+    }
+    return last.color;
+}
+
+function interpolateGradientColor(from: SwfRgba, to: SwfRgba, ratio: number, interpolationMode: number): SwfRgba {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    if (interpolationMode === 1) {
+        return {
+            red: linearRgbChannel(from.red, to.red, clamped),
+            green: linearRgbChannel(from.green, to.green, clamped),
+            blue: linearRgbChannel(from.blue, to.blue, clamped),
+            alpha: Math.round(interpolateNumber(from.alpha, to.alpha, clamped))
+        };
+    }
+    return {
+        red: Math.round(interpolateNumber(from.red, to.red, clamped)),
+        green: Math.round(interpolateNumber(from.green, to.green, clamped)),
+        blue: Math.round(interpolateNumber(from.blue, to.blue, clamped)),
+        alpha: Math.round(interpolateNumber(from.alpha, to.alpha, clamped))
+    };
+}
+
+function linearRgbChannel(from: number, to: number, ratio: number): number {
+    return Math.round(srgbFromLinear(interpolateNumber(linearFromSrgb(from), linearFromSrgb(to), ratio)) * 255);
+}
+
+function linearFromSrgb(value: number): number {
+    const normalized = Math.max(0, Math.min(1, value / 255));
+    return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+function srgbFromLinear(value: number): number {
+    const clamped = Math.max(0, Math.min(1, value));
+    return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+}
+
+function radialGradientRatio(x: number, y: number, focalX: number): number {
+    const radius = 16384;
+    if (focalX === 0) {
+        return Math.sqrt(x * x + y * y) / radius;
+    }
+    const dx = x - focalX;
+    const dy = y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    if (length === 0) {
+        return 0;
+    }
+    const a = dx * dx + dy * dy;
+    const b = 2 * focalX * dx;
+    const c = focalX * focalX - radius * radius;
+    const discriminant = Math.max(0, b * b - 4 * a * c);
+    const positive = (-b + Math.sqrt(discriminant)) / (2 * a);
+    return positive > 0 ? 1 / positive : length / radius;
 }
 
 function flashFocalPoint(fill: SwfFillStyle): number {
@@ -3141,6 +3617,10 @@ function bitmapFillMatrixCategories(fills: SwfFillStyle[]): string[] {
     return [...new Set(fills
         .filter(fill => fill.bitmapId != null)
         .map(fill => bitmapFillMatrixCategory(fill.bitmapMatrix)))];
+}
+
+function uniqueNumberList(values: number[]): number[] {
+    return [...new Set(values.map(value => Number(value) || 0))];
 }
 
 function bitmapFillMatrixCategory(matrix: SwfMatrix | undefined): string {
@@ -3421,6 +3901,13 @@ function rawSwfRendererAssetMetrics(): {
     bilinearTextureUploads: number;
     premultipliedTextureUploads: number;
     unsupportedConvolutionFilters: number;
+    unsupportedNonScalingStrokes: number;
+    unsupportedPixelHintingStrokes: number;
+    unsupportedGradientSpreadModes: number;
+    unsupportedGradientInterpolationModes: number;
+    proceduralGradientFills: number;
+    placementAwareNonScalingStrokes: number;
+    pixelHintedStrokes: number;
     anisotropicFilterKernels: number;
     multiPassFilterKernels: number;
 } {
@@ -3441,11 +3928,25 @@ function rawSwfRendererAssetMetrics(): {
         bilinearTextureUploads: 0,
         premultipliedTextureUploads: 0,
         unsupportedConvolutionFilters: 0,
+        unsupportedNonScalingStrokes: 0,
+        unsupportedPixelHintingStrokes: 0,
+        unsupportedGradientSpreadModes: 0,
+        unsupportedGradientInterpolationModes: 0,
+        proceduralGradientFills: 0,
+        placementAwareNonScalingStrokes: 0,
+        pixelHintedStrokes: 0,
         anisotropicFilterKernels: 0,
         multiPassFilterKernels: 0
     };
     global.__rawSwfRendererAssetMetrics.pointTextureUploads ??= 0;
     global.__rawSwfRendererAssetMetrics.bilinearTextureUploads ??= 0;
+    global.__rawSwfRendererAssetMetrics.unsupportedNonScalingStrokes ??= 0;
+    global.__rawSwfRendererAssetMetrics.unsupportedPixelHintingStrokes ??= 0;
+    global.__rawSwfRendererAssetMetrics.unsupportedGradientSpreadModes ??= 0;
+    global.__rawSwfRendererAssetMetrics.unsupportedGradientInterpolationModes ??= 0;
+    global.__rawSwfRendererAssetMetrics.proceduralGradientFills ??= 0;
+    global.__rawSwfRendererAssetMetrics.placementAwareNonScalingStrokes ??= 0;
+    global.__rawSwfRendererAssetMetrics.pixelHintedStrokes ??= 0;
     return global.__rawSwfRendererAssetMetrics;
 }
 
