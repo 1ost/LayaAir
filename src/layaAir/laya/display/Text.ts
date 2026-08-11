@@ -24,6 +24,21 @@ import { IGraphicsCmd } from "./IGraphics";
 import { FillTextCmd } from "./cmd/FillTextCmd";
 import { Render2DProcessor } from "./Render2DProcessor";
 
+/** @blueprintIgnore */
+export interface TextFontMetrics {
+    ascent: number;
+    descent: number;
+}
+
+/** @blueprintIgnore */
+export type TextFontMetricsProvider = (font: string, fontSize: number, bold: boolean, italic: boolean) => TextFontMetrics | null;
+
+/** @blueprintIgnore */
+export type TextFontFamilyResolver = (font: string, bold: boolean, italic: boolean) => string;
+
+/** @blueprintIgnore */
+export type TextAdvanceProvider = (text: string, font: string, fontSize: number, bold: boolean, italic: boolean, kerning: boolean) => readonly number[] | null;
+
 /**
  * @en The Text class is used to create display objects to show text.
  * Note: If the runtime system cannot find the specified font, it will render the text with the system default font, which may cause display anomalies. (Usually, it displays normally on computers, but may display abnormally on some mobile devices due to the lack of the set font.)
@@ -92,6 +107,32 @@ export class Text extends Sprite {
      * @zh 标记此文本是否忽略语言包。
      */
     ignoreLang: boolean;
+
+    /**
+     * @en Optional authored font metrics used for baseline-accurate layout.
+     * Return values are pixels at the requested size. Returning null keeps the
+     * platform-measured Laya layout for that run.
+     * @zh 可选的创作字体度量，用于精确基线布局。返回值使用请求字号下的像素；返回 null 时保留 Laya 的平台测量布局。
+     * @blueprintIgnore
+     */
+    fontMetricsProvider: TextFontMetricsProvider;
+
+    /**
+     * @en Optional mapping from an authored family name to the runtime family
+     * registered with the platform. This lets imported documents isolate an
+     * embedded font from an installed font with the same public name.
+     * @zh 可选的创作字体名到运行时注册字体名的映射，可避免导入文档的嵌入字体与系统同名字体冲突。
+     * @blueprintIgnore
+     */
+    fontFamilyResolver: TextFontFamilyResolver;
+
+    /**
+     * @en Optional authored per-glyph advances. The values exclude letter
+     * spacing and are used for wrapping, alignment, and glyph placement.
+     * @zh 可选的创作逐字形前进量，不包含字间距，用于换行、对齐和字形定位。
+     * @blueprintIgnore
+     */
+    textAdvanceProvider: TextAdvanceProvider;
 
     /**
      * @en Represents the text content string.
@@ -1184,7 +1225,6 @@ export class Text extends Sprite {
         let wordWrap = this._wordWrap || this._overflow == Text.ELLIPSIS;
         let noBreakWord = this._wordWrap;
         let padding = this._padding;
-        let spacing = this._textStyle.letterSpacing;
         let rectWidth: number;
         if (this._isWidthSet)
             rectWidth = this._width - padding[3] - padding[1];
@@ -1204,26 +1244,44 @@ export class Text extends Sprite {
         let lastCmd: ITextCmd;
         let charWidth: number, charHeight: number;
         let fontSize: number;
+        let charBaseline: number | null;
         let bfont = this._bitmapFont;
         let ctxFont: string;
         let textRender = Render2DProcessor.runner._textRender;
 
-        let getTextWidth = (text: string) => {
+        const authoredFontFor = (style: TextStyle): string =>
+            !style.font || style.font === this._textStyle.font ? this._realFont : style.font;
+        const getAuthoredAdvances = (text: string, style: TextStyle, size: number): readonly number[] | null =>
+            this.textAdvanceProvider?.(text, authoredFontFor(style), size, style.bold, style.italic, style.kerning) ?? null;
+        const authoredWidth = (advances: readonly number[], spacing: number): number =>
+            advances.reduce((total, advance) => total + advance, 0) + spacing * advances.length;
+
+        let getTextWidth = (text: string, style: TextStyle) => {
+            const spacing = style.letterSpacing;
             if (bfont)
                 return bfont.getTextWidth(text, fontSize) + spacing * text.length;
-            else
-                return Browser.context.measureText(text).width + spacing * text.length;
+            const advances = getAuthoredAdvances(text, style, fontSize);
+            if (advances)
+                return authoredWidth(advances, spacing);
+            return Browser.context.measureText(text).width + spacing * text.length;
         };
 
-        let getTextWidth2 = (text: string, font: string, fontSize: number) => {
+        let getTextWidth2 = (text: string, font: string, fontSize: number, style: TextStyle) => {
+            const spacing = style.letterSpacing;
             if (bfont) {
                 return bfont.getTextWidth(text, fontSize) + spacing * text.length;
             }
             else {
+                const advances = getAuthoredAdvances(text, style, fontSize);
+                if (advances)
+                    return authoredWidth(advances, spacing);
                 let t = Browser.context.font;
+                const previousKerning = (<any>Browser.context).fontKerning;
                 Browser.context.font = font;
+                (<any>Browser.context).fontKerning = style.kerning ? "normal" : "none";
                 let ret = Browser.context.measureText(text).width + spacing * text.length;
                 Browser.context.font = t;
+                (<any>Browser.context).fontKerning = previousKerning;
                 return ret;
             }
         };
@@ -1236,10 +1294,22 @@ export class Text extends Sprite {
             if (bfont) {
                 charWidth = bfont.getMaxWidth(fontSize);
                 charHeight = bfont.getMaxHeight(fontSize);
+                charBaseline = null;
             } else {
-                Browser.context.font = ctxFont = (style.bold ? "bold " : "") + fontSize + "px " + this._realFont;
+                const authoredFont = !style.font || style.font === this._textStyle.font ? this._realFont : style.font;
+                const realFont = this.fontFamilyResolver?.(authoredFont, style.bold, style.italic) ?? authoredFont;
+                Browser.context.font = ctxFont = (style.italic ? "italic " : "") + (style.bold ? "bold " : "") + fontSize + "px " + realFont;
+                (<any>Browser.context).fontKerning = style.kerning ? "normal" : "none";
                 charWidth = fontSize;
-                charHeight = textRender.getFontHeight(this._realFont, fontSize, style.bold);
+                const metrics = this.fontMetricsProvider?.(authoredFont, fontSize, style.bold, style.italic);
+                if (metrics && metrics.ascent >= 0 && metrics.descent >= 0) {
+                    charBaseline = metrics.ascent;
+                    charHeight = metrics.ascent + metrics.descent;
+                }
+                else {
+                    charBaseline = null;
+                    charHeight = textRender.getFontHeight(realFont, fontSize, style.bold);
+                }
             }
 
             let lines = text.split("\n");
@@ -1271,17 +1341,21 @@ export class Text extends Sprite {
             cmd.y = lineY;
             if (typeof (target) === "string") {
                 if (!width)
-                    width = getTextWidth(target);
+                    width = getTextWidth(target, style);
                 cmd.text = target;
                 cmd.ctxFont = ctxFont;
                 cmd.fontSize = fontSize;
                 cmd.width = width;
                 cmd.height = charHeight;
+                cmd.baseline = charBaseline;
+                cmd.glyphAdvances = getAuthoredAdvances(target, style, fontSize);
             }
             else {
                 cmd.obj = target;
                 cmd.width = target.width;
                 cmd.height = target.height;
+                cmd.baseline = null;
+                cmd.glyphAdvances = null;
                 if (target.width > 0) {
                     cmd.x++;
                     cmd.width += 2;
@@ -1292,6 +1366,9 @@ export class Text extends Sprite {
             cmd.next = null;
             cmd.prev = lastCmd;
             lineX += Math.round(cmd.width);
+
+            if (!lastCmd)
+                curLine.align = style.align || this._textStyle.align;
 
             if (lastCmd)
                 lastCmd.next = cmd;
@@ -1335,15 +1412,18 @@ export class Text extends Sprite {
             let str = cmd.text.substring(pos);
 
             cmd.text = cmd.text.substring(0, pos);
-            cmd.width = getTextWidth2(cmd.text, cmd.ctxFont, cmd.fontSize);
+            cmd.width = getTextWidth2(cmd.text, cmd.ctxFont, cmd.fontSize, cmd.style);
+            cmd.glyphAdvances = getAuthoredAdvances(cmd.text, cmd.style, cmd.fontSize);
 
             let cmd2: ITextCmd = cmdPool.length > 0 ? cmdPool.pop() : <any>{};
             cmd2.text = str;
             cmd2.style = cmd.style;
             cmd2.ctxFont = cmd.ctxFont;
             cmd2.fontSize = cmd.fontSize;
-            cmd2.width = getTextWidth2(str, cmd.ctxFont, cmd.fontSize);
+            cmd2.width = getTextWidth2(str, cmd.ctxFont, cmd.fontSize, cmd.style);
             cmd2.height = cmd.height;
+            cmd2.baseline = cmd.baseline;
+            cmd2.glyphAdvances = getAuthoredAdvances(str, cmd.style, cmd.fontSize);
 
             cmd2.next = cmd.next;
             cmd2.prev = cmd;
@@ -1358,10 +1438,12 @@ export class Text extends Sprite {
                 //计算行高
                 let lineHeight = 0;
                 let lineWidth = 0;
+                let authoredMetrics = false;
                 let cmd = curLine.cmd;
                 while (cmd) {
                     if (cmd.height > lineHeight) lineHeight = cmd.height;
                     lineWidth += cmd.width;
+                    authoredMetrics = authoredMetrics || cmd.baseline != null;
                     cmd = cmd.next;
                 }
 
@@ -1381,10 +1463,14 @@ export class Text extends Sprite {
                     lineHeight = charHeight;
                 lineHeight++; //预留一个像素用来放下划线
 
+                if (authoredMetrics)
+                    lineHeight--;
                 curLine.height = lineHeight;
                 curLine.width = Math.round(lineWidth);
 
-                lineY += curLine.height + Math.floor(this._textStyle.leading * this._fontSizeScale);
+                const leading = curLine.cmd?.style.leading ?? this._textStyle.leading;
+                curLine.leading = leading;
+                lineY += curLine.height + Math.floor(leading * this._fontSizeScale);
             }
 
             if (last)
@@ -1393,6 +1479,8 @@ export class Text extends Sprite {
             curLine = linePool.length > 0 ? linePool.pop() : <any>{};
             curLine.x = 0;
             curLine.y = lineY;
+            curLine.align = this._textStyle.align;
+            curLine.leading = this._textStyle.leading;
             this._lines.push(curLine);
             lastCmd = null;
 
@@ -1402,7 +1490,7 @@ export class Text extends Sprite {
         let wrapText = (text: string, style: TextStyle) => {
             let remainWidth = Math.max(0, rectWidth - lineX);
 
-            let tw = getTextWidth(text);
+            let tw = getTextWidth(text, style);
             //优化1，如果一行小于宽度，则直接跳过遍历
             if (tw <= remainWidth) {
                 addCmd(text, style, tw);
@@ -1420,7 +1508,7 @@ export class Text extends Sprite {
                 //优化2，预算第几个字符会超出，减少遍历及字符宽度度量
                 maybeIndex = Math.floor(remainWidth / charWidth);
                 if (maybeIndex != 0)
-                    wordWidth = getTextWidth(text.substring(0, maybeIndex));
+                    wordWidth = getTextWidth(text.substring(0, maybeIndex), style);
             }
 
             let len = text.length;
@@ -1431,7 +1519,7 @@ export class Text extends Sprite {
                 if (isEmoji && isHighSurrogate(ccode) && j + 1 < len)
                     cc += text.charAt(j + 1);
 
-                tw = getTextWidth(cc);
+                tw = getTextWidth(cc, style);
                 wordWidth += tw;
 
                 if (wordWidth <= remainWidth || j === startIndex && lineX === 0) { //一行如果连一个字符都放不下，强制放一个
@@ -1544,7 +1632,7 @@ export class Text extends Sprite {
                     j++;
 
                 if (wordWidth == null && j < len - 1)
-                    wordWidth = getTextWidth(text.substring(startIndex, j + 1));
+                    wordWidth = getTextWidth(text.substring(startIndex, j + 1), style);
             }
 
             addCmd(text.substring(startIndex, len), style);
@@ -1696,12 +1784,16 @@ export class Text extends Sprite {
                             cmd.ctxFont = textCmd.ctxFont;
                             cmd.fontSize = textCmd.fontSize;
                             cmd.height = textCmd.height;
+                            cmd.baseline = textCmd.baseline;
+                            cmd.glyphAdvances = textCmd.glyphAdvances;
                             cmd.style = textCmd.style;
                         }
                         else {
                             cmd.ctxFont = ctxFont;
                             cmd.fontSize = fontSize;
                             cmd.height = charHeight;
+                            cmd.baseline = charBaseline;
+                            cmd.glyphAdvances = null;
                             cmd.style = this._textStyle;
                         }
                     }
@@ -1718,7 +1810,8 @@ export class Text extends Sprite {
                         }
                         cmd.text = cmd.text.substring(0, i) + ellipsisStr;
                     }
-                    cmd.width = getTextWidth2(cmd.text, cmd.ctxFont, cmd.fontSize);
+                    cmd.width = getTextWidth2(cmd.text, cmd.ctxFont, cmd.fontSize, cmd.style);
+                    cmd.glyphAdvances = getAuthoredAdvances(cmd.text, cmd.style, cmd.fontSize);
                     cmd.next = null;
                     done = true;
                     addLine(true);//重新计算最后一行行高
@@ -1735,10 +1828,12 @@ export class Text extends Sprite {
             this._onPostLayout();
 
         //处理水平对齐
-        let align = this._textStyle.align == "center" ? 1 : (this._textStyle.align == "right" ? 2 : 0);
-        if (align != 0 && this._isWidthSet) {
+        if (this._isWidthSet) {
             let rectWidth = this._width - padding[3] - padding[1];
             for (let line of this._lines) {
+                let align = line.align == "center" ? 1 : (line.align == "right" ? 2 : 0);
+                if (align == 0)
+                    continue;
                 let offsetX = 0;
                 if (align == 1)
                     offsetX = Math.floor((rectWidth - line.width) * 0.5);
@@ -1818,7 +1913,6 @@ export class Text extends Sprite {
         let rectHeight = this._isHeightSet ? this._height : this._textHeight;
         let bottom = rectHeight - padding[2];
         let clipped = this._overflow == Text.HIDDEN || this._overflow == Text.SCROLL;
-        let letterSpacing = this._textStyle.letterSpacing;
         let shadow = this._textStyle.shadowOffsetX !== 0 || this._textStyle.shadowOffsetY !== 0;
 
         let contentWidth = Math.max(0, rectWidth - padding[1]);
@@ -1868,16 +1962,22 @@ export class Text extends Sprite {
                             if (g) {
                                 if (g.texture)
                                     graphics.drawImage(g.texture, x + cmd.x + tx + g.x * scale, y + cmd.y + g.y * scale, g.width * scale, g.height * scale, color);
-                                tx += Math.round(g.advance * scale) + letterSpacing;
+                                tx += Math.round(g.advance * scale) + cmd.style.letterSpacing;
                             }
                         }
                     } else {
-                        let gcmd = FillTextCmd.create(cmd.text, x + cmd.x, y + cmd.y, null, cmd.style.color, null, cmd.style.stroke, cmd.style.strokeColor);
-                        gcmd.fontFamily = this._realFont;
+                        const drawY = y + cmd.y + (cmd.baseline ?? 0);
+                        let gcmd = FillTextCmd.create(cmd.text, x + cmd.x, drawY, null, cmd.style.color, null, cmd.style.stroke, cmd.style.strokeColor);
+                        const authoredFont = !cmd.style.font || cmd.style.font === this._textStyle.font ? this._realFont : cmd.style.font;
+                        gcmd.fontFamily = this.fontFamilyResolver?.(authoredFont, cmd.style.bold, cmd.style.italic) ?? authoredFont;
                         gcmd.fontSize = cmd.fontSize;
                         gcmd.bold = cmd.style.bold;
                         gcmd.italic = cmd.style.italic;
-                        gcmd.letterSpacing = letterSpacing;
+                        gcmd.letterSpacing = cmd.style.letterSpacing;
+                        gcmd.kerning = cmd.style.kerning;
+                        gcmd.glyphAdvances = cmd.glyphAdvances;
+                        if (cmd.baseline != null)
+                            gcmd.textBaseline = "alphabetic";
                         if (shadow) {
                             gcmd.shadowOffsetX = this._textStyle.shadowOffsetX;
                             gcmd.shadowOffsetY = this._textStyle.shadowOffsetY;
@@ -1979,6 +2079,8 @@ export interface ITextCmd {
     style: TextStyle;
     ctxFont: string;
     fontSize: number;
+    baseline: number | null;
+    glyphAdvances: readonly number[] | null;
     text: string;
     obj: IHtmlObject;
     linkEnd: boolean;
@@ -1992,6 +2094,8 @@ export interface ITextLine {
     y: number;
     height: number;
     width: number;
+    align: string;
+    leading: number;
     cmd: ITextCmd;
 }
 

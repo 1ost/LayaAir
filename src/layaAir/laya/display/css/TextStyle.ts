@@ -84,6 +84,12 @@ export class TextStyle {
     letterSpacing = 0;
 
     /**
+     * @en Whether the font's kerning pairs are applied.
+     * @zh 是否应用字体的字偶距调整。
+     */
+    kerning = true;
+
+    /**
      * @en Stroke width (in pixels). Default is 0, meaning no stroke
      * @zh 描边宽度（以像素为单位）。默认值0，表示不描边
      */

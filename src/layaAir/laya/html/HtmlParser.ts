@@ -144,6 +144,11 @@ export class HtmlParser {
                         this.pushStyle();
 
                         this._style.fontSize = XMLUtils.getInt(XMLIterator.attributes, "size", this._style.fontSize);
+                        let face: string = XMLIterator.getAttribute("face");
+                        if (face != null && face.length > 0)
+                            this._style.font = face;
+                        this._style.letterSpacing = XMLUtils.getFloat(XMLIterator.attributes, "letterSpacing", this._style.letterSpacing);
+                        this._style.kerning = XMLUtils.getBool(XMLIterator.attributes, "kerning", this._style.kerning);
                         let color: string = XMLIterator.getAttribute("color");
                         if (color != null) {
                             this._style.color = color;
@@ -155,6 +160,15 @@ export class HtmlParser {
                         let strokeColor: string = XMLIterator.getAttribute("strokecolor");
                         if (strokeColor != null)
                             this._style.strokeColor = strokeColor;
+                    }
+                    else if (XMLIterator.tagType == XMLTagType.End)
+                        this.popStyle();
+                    break;
+
+                case "textformat":
+                    if (XMLIterator.tagType == XMLTagType.Start) {
+                        this.pushStyle();
+                        this._style.leading = XMLUtils.getFloat(XMLIterator.attributes, "leading", this._style.leading);
                     }
                     else if (XMLIterator.tagType == XMLTagType.End)
                         this.popStyle();

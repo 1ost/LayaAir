@@ -52,7 +52,8 @@ export class TextRender {
         font: string, fontSize: number, bold: boolean, italic: boolean,
         color: string, stroke: number, strokeColor: string, letterSpacing: number,
         shadowOffsetX: number, shadowOffsetY: number, shadowBlur: number, shadowColor: string,
-        charMode: boolean, preMeasuredWidth: number, renderInfo?: ITextRenderInfo[]): ITextRenderInfo[] {
+        charMode: boolean, preMeasuredWidth: number, renderInfo?: ITextRenderInfo[], kerning = true,
+        textBaseline: "top" | "alphabetic" = "top", glyphAdvances: readonly number[] = null): ITextRenderInfo[] {
 
         let hasEmoji = emojiTest.test(text);
         let curFont = this.getFont(font);
@@ -65,8 +66,12 @@ export class TextRender {
         fontScale = TextRenderConfig.fontScale;
         let italicDeg = italic ? ITALIC_ANGLE : 0;
         let cacheKey = (curFont.id * 10000) + fontSize + (bold ? "b" : "") + (italic ? "i" : "") + "_";
+        if (!kerning)
+            cacheKey += "k0_";
+        if (textBaseline === "alphabetic")
+            cacheKey += "ba_";
         let colorNum = ColorUtils.create(color).numColor;
-        if (letterSpacing > 0) //有字间距时，强制字符模式
+        if (letterSpacing !== 0 || glyphAdvances) //有字间距时，强制字符模式
             charMode = true;
         let shadow = shadowOffsetX !== 0 || shadowOffsetY !== 0;
         //let tint = stroke > 0 || !charMode && hasEmoji || shadow; //染色的条件： 有描边 或 非字符模式下且包含emoji
@@ -80,8 +85,9 @@ export class TextRender {
 
         let ctx = this.ctx;
         ctx.font = (bold ? "bold " : "") + fontSize + "px " + font;
+        (<any>ctx).fontKerning = kerning ? "normal" : "none";
         ctx.setTransform(fontScale, 0, 0, fontScale, 0, 0);
-        ctx.textBaseline = "middle";
+        ctx.textBaseline = textBaseline === "alphabetic" ? "alphabetic" : "middle";
         ctx.fillStyle = tint ? color : 'white';
         if (stroke > 0) {
             //设置文本描边为圆角模式，默认值miter会导致在某些字体的转角字符出现尖刺现象。
@@ -104,11 +110,11 @@ export class TextRender {
         if (!renderInfo)
             renderInfo = [];
         let drawColor = tint ? 0xffffffff : colorNum;
-
         if ((charMode || TextRenderConfig.forceSplitRender) && !TextRenderConfig.forceWholeRender) {
             let mat = this.owner._curMat;
             renderInfo.length > 0 && this.freeRenderInfo(renderInfo);
 
+            let glyphIndex = 0;
             for (let i = 0, len = text.length; i < len; i++) {
                 let cc = text.charAt(i);
                 let ccode = cc.charCodeAt(0);
@@ -120,7 +126,7 @@ export class TextRender {
                 let ri = this.charMap.get(key);
                 if (!ri) {
                     let width = ctx.measureText(cc).width;
-                    ri = this.drawOffscreen(ctx, cc, width, fontSize, stroke, italic, true);
+                    ri = this.drawOffscreen(ctx, cc, width, fontSize, stroke, italic, true, textBaseline);
                     ri.key = key;
                     ri.isChar = true;
                     this.charMap.set(key, ri);
@@ -134,7 +140,8 @@ export class TextRender {
                     cc.length > 1 ? 0xffffffff : drawColor, //emoji总是用白色绘制
                     italicDeg, true);
 
-                x += ri.advance + stroke + letterSpacing;
+                const authoredAdvance = glyphAdvances?.[glyphIndex++];
+                x += (authoredAdvance ?? ri.advance + stroke) + letterSpacing;
             }
         }
         else {
@@ -147,7 +154,7 @@ export class TextRender {
             if (!ri) {
                 if (preMeasuredWidth == null)
                     preMeasuredWidth = ctx.measureText(text).width;
-                ri = this.drawOffscreen(ctx, text, preMeasuredWidth, fontSize, stroke, italic, false);
+                ri = this.drawOffscreen(ctx, text, preMeasuredWidth, fontSize, stroke, italic, false, textBaseline);
                 ri.key = key;
                 ri.ref = 1;
                 this.textMap.set(key, ri);
@@ -166,7 +173,7 @@ export class TextRender {
         return renderInfo;
     }
 
-    private drawOffscreen(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number, italic: boolean, charMode: boolean): ITextRenderInfo {
+    private drawOffscreen(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number, italic: boolean, charMode: boolean, textBaseline: "top" | "alphabetic"): ITextRenderInfo {
         let offsetLeft = 0, offsetTop = 0, offsetRight = 0, offsetBottom = 0;
         if (ctx.shadowOffsetX > 0)
             offsetRight = ctx.shadowOffsetX;
@@ -176,6 +183,8 @@ export class TextRender {
             offsetBottom = ctx.shadowOffsetY;
         else if (ctx.shadowOffsetY < 0)
             offsetTop = -ctx.shadowOffsetY;
+        if (textBaseline === "alphabetic")
+            return this.drawOffscreenAtAlphabeticBaseline(ctx, text, width, height, lineWidth, offsetLeft, offsetTop, offsetRight, offsetBottom, charMode, italic);
         let margin = height / 3 | 0 + lineWidth + Math.max(offsetLeft, offsetTop);
         let rectX = ((margin - fontSizeOffX - lineWidth - offsetLeft) * fontScale | 0) - blockGap;
         let rectY = ((margin - fontSizeOffY - lineWidth - offsetTop) * fontScale | 0) - blockGap;
@@ -235,6 +244,74 @@ export class TextRender {
         return ri;
     }
 
+    private drawOffscreenAtAlphabeticBaseline(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number,
+        offsetLeft: number, offsetTop: number, offsetRight: number, offsetBottom: number, charMode: boolean, italic: boolean): ITextRenderInfo {
+        const metrics = ctx.measureText(text);
+        const boundsLeft = Math.max(0, metrics.actualBoundingBoxLeft || 0);
+        const boundsRight = Math.max(width, metrics.actualBoundingBoxRight || width);
+        const boundsTop = Math.max(0, metrics.actualBoundingBoxAscent || height * 0.8);
+        const boundsBottom = Math.max(0, metrics.actualBoundingBoxDescent || height * 0.2);
+        // Two CSS pixels retain antialiased edge coverage and leave room for
+        // platform font rasterizers whose reported ink bounds round inward.
+        const edgePadding = 2;
+        const blurPadding = ctx.shadowBlur;
+        const leftPadding = lineWidth + offsetLeft + edgePadding + blurPadding;
+        const topPadding = lineWidth + offsetTop + edgePadding + blurPadding;
+        const rightPadding = lineWidth + offsetRight + edgePadding + blurPadding + (italic ? height * ITALIC_SKEW_RATIO : 0);
+        const bottomPadding = lineWidth + offsetBottom + edgePadding + blurPadding;
+        const margin = Math.ceil(height + Math.max(leftPadding, topPadding));
+        const drawX = margin + leftPadding + boundsLeft;
+        const drawY = margin + topPadding + boundsTop;
+        const rectX = Math.floor(margin * fontScale) - blockGap;
+        const rectY = Math.floor(margin * fontScale) - blockGap;
+        const rectW = Math.ceil((leftPadding + boundsLeft + boundsRight + rightPadding) * fontScale) + blockGap * 2;
+        const rectH = Math.ceil((topPadding + boundsTop + boundsBottom + bottomPadding) * fontScale) + blockGap * 2;
+        const needCanvW = Math.min(rectX + rectW + blockGap, TextRenderConfig.maxCanvasWidth);
+        const needCanvH = Math.min(rectY + rectH + blockGap, TextRenderConfig.maxCanvasWidth);
+        if (needCanvW > this.canvas.width || needCanvH > this.canvas.height)
+            this.resizeCanvas(ctx, needCanvW, needCanvH);
+
+        ctx.clearRect(0, 0, Math.ceil(needCanvW / fontScale), Math.ceil(needCanvH / fontScale));
+        lineWidth > 0 && ctx.strokeText(text, drawX, drawY);
+        ctx.fillText(text, drawX, drawY);
+        const imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
+
+        if (TextRenderConfig.premultiplyAlpha) {
+            const data = imgdt.data;
+            for (let pos = 0; pos < data.length; pos += 4) {
+                const alpha = data[pos + 3] / 255;
+                if (alpha > 0) {
+                    data[pos] *= alpha;
+                    data[pos + 1] *= alpha;
+                    data[pos + 2] *= alpha;
+                }
+            }
+        }
+
+        const ri: ITextRenderInfo = {
+            x: -leftPadding - boundsLeft,
+            y: -topPadding - boundsTop,
+            w: (imgdt.width - blockGap * 2) / fontScale,
+            h: (imgdt.height - blockGap * 2) / fontScale,
+            advance: width,
+            uv: new Array(8),
+            tex: null,
+            region: null,
+            ref: 0
+        };
+        if (imgdt.width > TextRenderConfig.atlasWidth || imgdt.height > TextRenderConfig.atlasWidth
+            || !charMode && TextRenderConfig.noAtlas) {
+            ri.tex = this.createIsoTexture(imgdt.width, imgdt.height);
+            this.setPixelsToTexture(imgdt, ri.tex, 0, 0, ri.uv);
+        }
+        else {
+            ri.region = this.addToAtlas(imgdt.width, imgdt.height);
+            ri.tex = ri.region.owner.tex;
+            this.setPixelsToTexture(imgdt, ri.tex, ri.region.x, ri.region.y, ri.uv);
+        }
+        return ri;
+    }
+
     private resizeCanvas(ctx: CanvasRenderingContext2D, newWidth: number, newHeight: number): void {
         newWidth = 512 * Math.ceil(newWidth / 512); //以512为步长增长
         newHeight = 512 * Math.ceil(newHeight / 512);
@@ -248,13 +325,16 @@ export class TextRender {
         let shadowOffsetY = ctx.shadowOffsetY;
         let shadowBlur = ctx.shadowBlur;
         let shadowColor = ctx.shadowColor;
+        let textBaseline = ctx.textBaseline;
+        let fontKerning = (<any>ctx).fontKerning;
 
         this.canvas.width = newWidth;
         this.canvas.height = newHeight;
 
         ctx.setTransform(fontScale, 0, 0, fontScale, 0, 0);
         ctx.font = fontStr;
-        ctx.textBaseline = "middle";
+        ctx.textBaseline = textBaseline;
+        (<any>ctx).fontKerning = fontKerning;
         ctx.lineJoin = "round";
         ctx.fillStyle = fillStyle;
         ctx.strokeStyle = strokeStyle;

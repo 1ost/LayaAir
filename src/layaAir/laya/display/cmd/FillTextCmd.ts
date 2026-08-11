@@ -87,6 +87,19 @@ export class FillTextCmd implements IGraphicsCmd {
      * @zh 字间距
      */
     letterSpacing: number = 0;
+    /**
+     * @en Whether the font's kerning pairs are applied.
+     * @zh 是否应用字体的字偶距调整。
+     */
+    kerning: boolean = true;
+    /**
+     * @en Coordinate interpretation for `y`. `top` preserves the historical
+     * Laya layout anchor; `alphabetic` treats `y` as a font baseline.
+     * @zh y 坐标的解释方式。top 保留 Laya 原有布局锚点，alphabetic 将 y 视为字体基线。
+     */
+    textBaseline: "top" | "alphabetic" = "top";
+    /** @internal Exact per-glyph advances supplied by an imported layout. */
+    glyphAdvances: readonly number[] = null;
     /** 
      * @en Shadow offset in the x direction
      * @zh 阴影在x方向的偏移量
@@ -154,6 +167,9 @@ export class FillTextCmd implements IGraphicsCmd {
         cmd.singleCharRender = false;
         cmd._preMeasuredWidth = null;
         cmd.letterSpacing = 0;
+        cmd.kerning = true;
+        cmd.textBaseline = "top";
+        cmd.glyphAdvances = null;
         cmd.shadowOffsetX = 0;
         cmd.shadowOffsetY = 0;
         cmd.shadowBlur = 0;
@@ -186,7 +202,7 @@ export class FillTextCmd implements IGraphicsCmd {
         if (l < 2) {
             if (l == 1) {
                 if (words[0].indexOf('px') > 0) {
-                    this.fontSize = parseInt(words[0]);
+                    this.fontSize = parseFloat(words[0]);
                 }
             }
             this.fontFamily = null;
@@ -197,7 +213,7 @@ export class FillTextCmd implements IGraphicsCmd {
         for (let i = 0; i < l; i++) {
             if (words[i].indexOf('px') > 0 || words[i].indexOf('pt') > 0) {
                 szpos = i;
-                this.fontSize = parseInt(words[i]);
+                this.fontSize = parseFloat(words[i]);
                 if (this.fontSize <= 0) {
                     console.debug('font parse error:' + value);
                     this.fontSize = 20;
@@ -269,7 +285,7 @@ export class FillTextCmd implements IGraphicsCmd {
             this.fontSize, this.bold, this.italic,
             this.color, this.stroke, this.strokeColor,
             this.letterSpacing, this.shadowOffsetX, this.shadowOffsetY, this.shadowBlur, this.shadowColor,
-            this.singleCharRender, tw, this._renderInfo
+            this.singleCharRender, tw, this._renderInfo, this.kerning, this.textBaseline, this.glyphAdvances
         );
     }
 
@@ -279,7 +295,11 @@ export class FillTextCmd implements IGraphicsCmd {
 
         let ctx = Browser.context;
         ctx.font = this.font;
-        return ctx.measureText(this.text).width;
+        const previousKerning = (<any>ctx).fontKerning;
+        (<any>ctx).fontKerning = this.kerning ? "normal" : "none";
+        const width = ctx.measureText(this.text).width;
+        (<any>ctx).fontKerning = previousKerning;
+        return width;
     }
 
     /**
