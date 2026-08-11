@@ -4,6 +4,13 @@ import { AssetDb } from "../resource/AssetDb";
 import { Handler } from "../utils/Handler"
 import { SoundManager } from "./SoundManager";
 
+/** A per-channel gain keyframe measured from the start of the audio asset. */
+export interface StereoGainPoint {
+    time: number;
+    left: number;
+    right: number;
+}
+
 /**
  * @en The `SoundChannel` class is used to control sounds in the program. Each sound is assigned to a channel, and an application can have multiple channels mixed together.
  * The `SoundChannel` class contains methods for controlling sound playback, pause, stop, volume, as well as methods for getting information about the sound's playback status, total time, current playback time, total loop count, and playback address.
@@ -45,7 +52,10 @@ export class SoundChannel extends EventDispatcher {
     protected _volumeSet: number = 1;
     protected _volume: number = 1;
     protected _muted: boolean = false;
+    protected _pan: number = 0;
+    protected _stereoGainEnvelope: StereoGainPoint[] = [];
     protected _startTime: number = 0;
+    protected _endTime: number = 0;
     protected _pauseTime: number = 0;
 
     /** @internal */
@@ -92,6 +102,50 @@ export class SoundChannel extends EventDispatcher {
         this._muted = value;
         if (this._loaded)
             this.onMuted();
+    }
+
+    /**
+     * Stereo pan in the range -1 (left) to 1 (right). Backends which cannot
+     * control channels independently retain the value but report
+     * stereoGainSupported=false.
+     */
+    get pan(): number {
+        return this._pan;
+    }
+
+    set pan(value: number) {
+        value = Math.max(-1, Math.min(1, Number(value) || 0));
+        if (value === this._pan) return;
+        this._pan = value;
+        if (this._loaded) this.onStereoGainChanged();
+    }
+
+    get stereoGainSupported(): boolean {
+        return false;
+    }
+
+    get stereoGainEnvelope(): readonly StereoGainPoint[] {
+        return this._stereoGainEnvelope;
+    }
+
+    /**
+     * Sets piecewise-linear left/right gain automation. Times are seconds on
+     * the decoded audio timeline and gains are non-negative linear factors.
+     */
+    setStereoGainEnvelope(points: readonly StereoGainPoint[] | null): void {
+        let previous = -Infinity;
+        this._stereoGainEnvelope = (points || []).map(point => {
+            const time = Number(point.time);
+            const left = Number(point.left);
+            const right = Number(point.right);
+            if (!Number.isFinite(time) || time < 0 || time < previous)
+                throw new RangeError("Stereo gain envelope times must be finite, non-negative, and sorted");
+            if (!Number.isFinite(left) || left < 0 || !Number.isFinite(right) || right < 0)
+                throw new RangeError("Stereo gain envelope values must be finite and non-negative");
+            previous = time;
+            return { time, left, right };
+        });
+        if (this._loaded) this.onStereoGainChanged();
     }
 
     /**
@@ -225,6 +279,28 @@ export class SoundChannel extends EventDispatcher {
     }
 
     protected onMuted(): void {
+    }
+
+    /**
+     * Optional exclusive playback-window end in seconds on the decoded asset.
+     * Zero plays to the asset's natural end. Looping repeats startTime..endTime.
+     */
+    get endTime(): number {
+        return this._endTime;
+    }
+
+    set endTime(value: number) {
+        value = Number(value) || 0;
+        if (value < 0) throw new RangeError("SoundChannel.endTime cannot be negative");
+        if (value === this._endTime) return;
+        this._endTime = value;
+        if (this._loaded) this.onPlaybackWindowChanged();
+    }
+
+    protected onStereoGainChanged(): void {
+    }
+
+    protected onPlaybackWindowChanged(): void {
     }
 
     protected onPlayEnd() {

@@ -37,10 +37,14 @@ export class HTMLAudioChannel extends SoundChannel {
             this.stop();
         };
         ele.onended = () => this.onPlayEnd();
+        ele.ontimeupdate = () => {
+            if (this._endTime > this.startTime && ele.currentTime >= this._endTime)
+                this.onPlayEnd();
+        };
         ele.src = URL.postFormatURL(URL.formatURL(url));
         ele.playbackRate = this.playbackRate;
         ele.currentTime = this.startTime;
-        ele.loop = this.loops === 0;
+        ele.loop = this.loops === 0 && this._endTime <= this.startTime;
         ele.volume = this._volume;
         ele.muted = this._muted;
         if (!this._paused) {
@@ -84,6 +88,10 @@ export class HTMLAudioChannel extends SoundChannel {
     protected onMuted(): void {
         this._ele.muted = this._muted;
     }
+
+    protected onPlaybackWindowChanged(): void {
+        if (this._ele) this._ele.loop = this.loops === 0 && this._endTime <= this.startTime;
+    }
 }
 
 //pool support
@@ -99,4 +107,5 @@ function resetAudioElement(ele: HTMLAudioElement) {
     ele.onerror = null;
     ele.oncanplay = null;
     ele.oncanplaythrough = null;
+    ele.ontimeupdate = null;
 }

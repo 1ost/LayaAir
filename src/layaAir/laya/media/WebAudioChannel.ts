@@ -8,6 +8,10 @@ import { IPool, Pool } from "../utils/Pool";
  */
 export class WebAudioChannel extends SoundChannel {
     private _gainNode: GainNode;
+    private _leftGainNode: GainNode;
+    private _rightGainNode: GainNode;
+    private _splitterNode: ChannelSplitterNode;
+    private _mergerNode: ChannelMergerNode;
     private _sourceNode: AudioBufferSourceNode;
     private _buffer: AudioBuffer;
 
@@ -18,6 +22,10 @@ export class WebAudioChannel extends SoundChannel {
             return this._buffer.duration;
         else
             return 0;
+    }
+
+    get stereoGainSupported(): boolean {
+        return true;
     }
 
     protected onPlay(url: string): void {
@@ -55,6 +63,17 @@ export class WebAudioChannel extends SoundChannel {
 
     protected onMuted(): void {
         this.onVolumeChanged();
+    }
+
+    protected onStereoGainChanged(): void {
+        this.applyStereoGain(this.position);
+    }
+
+    protected onPlaybackWindowChanged(): void {
+        if (!this._sourceNode) return;
+        const end = this.validEndTime();
+        this._sourceNode.loopEnd = end;
+        this._sourceNode.loop = this.loops === 0 && this._stereoGainEnvelope.length === 0;
     }
 
     private onLoaded(buffer: AudioBuffer): void {
@@ -97,7 +116,16 @@ export class WebAudioChannel extends SoundChannel {
 
         let sourceNode = this._sourceNode = ctx.createBufferSource();
         sourceNode.buffer = this._buffer;
-        sourceNode.connect(this._gainNode);
+        this._splitterNode = ctx.createChannelSplitter(2);
+        this._mergerNode = ctx.createChannelMerger(2);
+        this._leftGainNode = ctx.createGain();
+        this._rightGainNode = ctx.createGain();
+        sourceNode.connect(this._splitterNode);
+        this._splitterNode.connect(this._leftGainNode, 0);
+        this._splitterNode.connect(this._rightGainNode, 1);
+        this._leftGainNode.connect(this._mergerNode, 0, 0);
+        this._rightGainNode.connect(this._mergerNode, 0, 1);
+        this._mergerNode.connect(this._gainNode);
         sourceNode.onended = () => this.onPlayEnd();
         if (sourceNode.playbackRate) { //douyin真机这个为空
             if (sourceNode.playbackRate.setTargetAtTime)
@@ -105,12 +133,68 @@ export class WebAudioChannel extends SoundChannel {
             else
                 sourceNode.playbackRate.value = this.playbackRate;
         }
-        sourceNode.loop = this.loops === 0;
+        // An automated envelope must be rescheduled at each loop boundary.
+        sourceNode.loop = this.loops === 0 && this._stereoGainEnvelope.length === 0;
         sourceNode.loopStart = this.startTime;
-        sourceNode.loopEnd = this._buffer.duration;
+        sourceNode.loopEnd = this.validEndTime();
         this._gainNode.gain.value = this._muted ? 0 : this._volume;
-        sourceNode.start(0, isResuming ? this._pauseTime : this.startTime);
+        const offset = isResuming ? this._pauseTime : this.startTime;
+        this.applyStereoGain(offset);
+        const end = this.validEndTime();
+        if (!sourceNode.loop && end > offset && end < this._buffer.duration)
+            sourceNode.start(0, offset, end - offset);
+        else
+            sourceNode.start(0, offset);
         this._startTime = performance.now();
+    }
+
+    private applyStereoGain(offset: number): void {
+        if (!this._leftGainNode || !this._rightGainNode) return;
+        const ctx = PAL.media.audioCtx;
+        const now = ctx.currentTime;
+        const leftParam = this._leftGainNode.gain;
+        const rightParam = this._rightGainNode.gain;
+        leftParam.cancelScheduledValues(now);
+        rightParam.cancelScheduledValues(now);
+        const panLeft = this._pan > 0 ? 1 - this._pan : 1;
+        const panRight = this._pan < 0 ? 1 + this._pan : 1;
+        const points = this._stereoGainEnvelope;
+        if (!points.length) {
+            leftParam.setValueAtTime(panLeft, now);
+            rightParam.setValueAtTime(panRight, now);
+            return;
+        }
+        let left = points[0].left;
+        let right = points[0].right;
+        for (let index = 1; index < points.length; index++) {
+            const before = points[index - 1];
+            const after = points[index];
+            if (offset >= after.time) {
+                left = after.left;
+                right = after.right;
+                continue;
+            }
+            if (offset > before.time) {
+                const ratio = (offset - before.time) / Math.max(0.000001, after.time - before.time);
+                left = before.left + (after.left - before.left) * ratio;
+                right = before.right + (after.right - before.right) * ratio;
+            }
+            break;
+        }
+        leftParam.setValueAtTime(left * panLeft, now);
+        rightParam.setValueAtTime(right * panRight, now);
+        for (const point of points) {
+            if (point.time <= offset) continue;
+            const when = now + (point.time - offset) / Math.max(0.000001, this.playbackRate);
+            leftParam.linearRampToValueAtTime(point.left * panLeft, when);
+            rightParam.linearRampToValueAtTime(point.right * panRight, when);
+        }
+    }
+
+    private validEndTime(): number {
+        if (!this._buffer || this._endTime <= this.startTime || this._endTime > this._buffer.duration)
+            return this._buffer?.duration ?? 0;
+        return this._endTime;
     }
 
     private reset(): void {
@@ -125,6 +209,15 @@ export class WebAudioChannel extends SoundChannel {
         sourceNode.disconnect();
         sourceNode.onended = null;
         this._sourceNode = null;
+
+        this._splitterNode?.disconnect();
+        this._splitterNode = null;
+        this._leftGainNode?.disconnect();
+        this._leftGainNode = null;
+        this._rightGainNode?.disconnect();
+        this._rightGainNode = null;
+        this._mergerNode?.disconnect();
+        this._mergerNode = null;
 
         WebAudioChannel.gainNodePool.recover(this._gainNode);
         this._gainNode = null;
