@@ -1,5 +1,6 @@
 import { LayaGL } from "../../../layagl/LayaGL";
 import { Texture2D } from "../../../resource/Texture2D";
+import { Texture2DArray } from "../../../resource/Texture2DArray";
 import { TextureCube } from "../../../resource/TextureCube";
 import { ShaderData } from "../../DriverDesign/RenderDevice/ShaderData";
 import { WebBaseRenderNode } from "../../RenderModuleData/WebModuleData/3D/WebBaseRenderNode";
@@ -212,8 +213,8 @@ export class WebGPUBindGroupCache {
         });
 
         if (addition) {
-            addition.forEach((data: ShaderData, mapName: string) => {
-                func2(mapName, data as WebGPUShaderData);
+            Array.from(addition.keys()).sort().forEach((mapName: string) => {
+                func2(mapName, addition.get(mapName) as WebGPUShaderData);
             });
         }
 
@@ -368,6 +369,7 @@ function getDefaultTexture(layout: GPUTextureBindingLayout) {
         case "2d":
             return Texture2D.whiteTexture._texture as WebGPUInternalTex;
         case "2d-array":
+            return Texture2DArray.defaultTexture?._texture as WebGPUInternalTex;
         case "cube":
             return TextureCube.whiteTexture._texture as WebGPUInternalTex;
         case "cube-array":

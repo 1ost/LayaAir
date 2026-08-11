@@ -33,14 +33,14 @@ export class WebGPUSetRendertarget2DCMD extends SetRendertarget2DCMD {
 }
 
 export class WebGPUDraw2DElementCMD extends Draw2DElementCMD {
-    private _elements: WebGPURenderElement2D[];
+    private _elements: IRenderElement2D[];
 
     constructor() {
         super();
         this.type = RenderCMDType.DrawElement;
     }
 
-    setRenderelements(value: WebGPURenderElement2D[]): void {
+    setRenderelements(value: IRenderElement2D[]): void {
         this._elements = value;
     }
 
@@ -86,10 +86,11 @@ export class WebGPUBlit2DQuadCMD extends Blit2DQuadCMD {
             this._sourceTexelSize.setValue(1 / this._source.width, 1 / this._source.height, this._source.width, this._source.height);
     }
 
-    apply(context: WebGPURenderContext2D): void {
+    apply(context: IRenderContext2D): void {
         this.element.materialShaderData._setInternalTexture(WebGPUBlit2DQuadCMD.SCREENTEXTURE_ID, this._source);
         this.element.materialShaderData.setVector(WebGPUBlit2DQuadCMD.SCREENTEXTUREOFFSETSCALE_ID, this._offsetScale);
         this.element.materialShaderData.setVector(WebGPUBlit2DQuadCMD.MAINTEXTURE_TEXELSIZE_ID, this._sourceTexelSize);
-        context.drawRenderElementOne(this.element as WebGPURenderElement2D);
+        context.setRenderTarget(this._dest, false, Color.BLACK);
+        context.drawRenderElementOne(this.element);
     }
 }

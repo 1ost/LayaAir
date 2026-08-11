@@ -26,7 +26,7 @@ export class WebGPURenderPassHelper {
             }
 
             desc.depthStencilAttachment = {
-                view: tex.getTextureView(),
+                view: tex.getTextureView(true),
                 depthClearValue: isClearDepth ? clearDepthValue : 1,
                 depthLoadOp: isClearDepth ? 'clear' : 'load',
                 depthStoreOp: 'store'
@@ -41,14 +41,17 @@ export class WebGPURenderPassHelper {
         else {
             for (let index = 0; index < rt._textures.length; index++) {
                 let tex = rt._textures[index];
+                const view = tex.dimension === 3 && rt._arrayLayerIndex >= 0
+                    ? tex.getTextureViewForArrayLayer(rt._arrayLayerIndex)
+                    : tex.getTextureView(true);
 
                 let attachment: GPURenderPassColorAttachment = {
-                    view: tex.getTextureView(),
+                    view,
                     loadOp: isClearColor ? 'clear' : 'load',
                     storeOp: 'store'
                 };
                 if (tex.multiSamplers > 1) {
-                    attachment.resolveTarget = rt._texturesResolve[index].getTextureView();
+                    attachment.resolveTarget = rt._texturesResolve[index].getTextureView(true);
                 }
 
                 if (isClearColor) {
@@ -65,7 +68,7 @@ export class WebGPURenderPassHelper {
 
             if (rt._depthTexture) {
                 desc.depthStencilAttachment = {
-                    view: rt._depthTexture.getTextureView(),
+                    view: rt._depthTexture.getTextureView(true),
                     depthClearValue: isClearDepth ? clearDepthValue : 1,
                     depthLoadOp: isClearDepth ? 'clear' : 'load',
                     depthStoreOp: 'store'

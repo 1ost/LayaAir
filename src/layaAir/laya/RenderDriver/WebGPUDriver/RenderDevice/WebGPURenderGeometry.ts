@@ -1,7 +1,8 @@
 import { DrawType } from "../../../RenderEngine/RenderEnum/DrawType";
 import { IndexFormat } from "../../../RenderEngine/RenderEnum/IndexFormat";
 import { MeshTopology } from "../../../RenderEngine/RenderEnum/RenderPologyMode";
-import { GPUEngineStatisticsInfo } from "../../../RenderEngine/RenderEnum/RenderStatInfo";
+import { LayaGL } from "../../../layagl/LayaGL";
+import { StatElement } from "../../../layagl/StatisticsContext";
 import { FastSinglelist } from "../../../utils/SingletonList";
 import { IRenderGeometryElement } from "../../DriverDesign/RenderDevice/IRenderGeometryElement";
 import { WebGPUDeviceBuffer } from "./compute/WebGPUStorageBuffer";
@@ -66,6 +67,12 @@ export class WebGPURenderGeometry implements IRenderGeometryElement {
     _drawIndirectInfo: WebGPUDrawIndirectInfo[];
 
     private _drawType: DrawType;
+    private _drawParams: FastSinglelist<number> = new FastSinglelist<number>();
+
+    get drawParams(): FastSinglelist<number> {
+        this.getDrawDataParams(this._drawParams);
+        return this._drawParams;
+    }
     set drawType(v:DrawType){
         this._drawType = v;
     }
@@ -304,7 +311,7 @@ export class WebGPURenderGeometry implements IRenderGeometryElement {
                         start = info.start;
                         triangles += (count - 2) * instanceCount;
                         enc.draw(count, instanceCount, start, 0);
-                        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                        LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     }
                 }
                 break;
@@ -317,7 +324,7 @@ export class WebGPURenderGeometry implements IRenderGeometryElement {
                         start = _drawElementInfo[i].elementStart;
                         triangles += count / 3 * instanceCount;
                         enc.drawIndexed(count, instanceCount, start / indexByte, 0);
-                        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                        LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     }
                 }
                 break;
@@ -327,7 +334,7 @@ export class WebGPURenderGeometry implements IRenderGeometryElement {
                     for (let i = _drawIndirectInfo.length - 1; i > -1; i--) {
                         enc.drawIndirect(_drawIndirectInfo[i].buffer.getNativeBuffer()._source, _drawIndirectInfo[i].offset);
                     }
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, _drawIndirectInfo.length);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, _drawIndirectInfo.length);
                 }
                 break;
             case DrawType.DrawElementIndirect:
@@ -336,11 +343,11 @@ export class WebGPURenderGeometry implements IRenderGeometryElement {
                     for (let i = _drawIndirectInfo.length - 1; i > -1; i--) {
                         enc.drawIndexedIndirect(_drawIndirectInfo[i].buffer.getNativeBuffer()._source, _drawIndirectInfo[i].offset);
                     }
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, _drawIndirectInfo.length);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, _drawIndirectInfo.length);
                 }
                 break;
         }
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_TriangleCount, triangles);
+        LayaGL.statAgent.recordCTData(StatElement.CT_Triangle, triangles);
         return triangles;
     }
 

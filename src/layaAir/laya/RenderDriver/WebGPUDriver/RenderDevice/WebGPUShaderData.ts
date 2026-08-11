@@ -11,6 +11,7 @@ import { Material } from "../../../resource/Material";
 import { Resource } from "../../../resource/Resource";
 import { Stat } from "../../../utils/Stat";
 import { UniformProperty } from "../../DriverDesign/RenderDevice/CommandUniformMap";
+import { IDeviceBuffer } from "../../DriverDesign/RenderDevice/IDeviceBuffer";
 import { isUboBufferShaderType, ShaderData } from "../../DriverDesign/RenderDevice/ShaderData";
 import { RenderState } from "../../RenderModuleData/Design/RenderState";
 import { ShaderDefine } from "../../RenderModuleData/Design/ShaderDefine";
@@ -837,15 +838,23 @@ export class WebGPUShaderData extends ShaderData {
         }
     }
 
-    setDeviceBuffer(index: number, value: WebGPUDeviceBuffer): void {
+    update(name: string) {
+        const uniformMap = LayaGL.renderDeviceFactory.createGlobalUniformMap(name) as WebGPUCommandUniformMap;
+        const uniformBuffer = this.createSubUniformBuffer(name, name, uniformMap._idata);
+        uniformBuffer.upload();
+        this.addBindGroupChangeLink(name, uniformMap._idata);
+    }
+
+    setDeviceBuffer(index: number, value: IDeviceBuffer): void {
+        const gpuValue = value as WebGPUDeviceBuffer;
         let lastBuffer = this._data[index] as WebGPUDeviceBuffer;
-        if (this._data[index] != value) {
+        if (this._data[index] != gpuValue) {
             if (lastBuffer) {
                 lastBuffer._removeCacheShaderData(this);
             }
-            this._data[index] = value;
-            if (value) {
-                value._addCacheShaderData(this, index);
+            this._data[index] = gpuValue;
+            if (gpuValue) {
+                gpuValue._addCacheShaderData(this, index);
             }
             let bindgroupMap = this._propertyLinkBindGroupMap[index];
             if (bindgroupMap && bindgroupMap.length > 0) {
@@ -873,7 +882,8 @@ export class WebGPUShaderData extends ShaderData {
      * 克隆（仅克隆数据）
      * @param dest 
      */
-    cloneTo(dest: WebGPUShaderData) {
+    cloneTo(destObject: ShaderData): void {
+        const dest = destObject as WebGPUShaderData;
         dest.clearData();
         var destData: { [key: string]: number | boolean | Vector2 | Vector3 | Vector4 | Matrix3x3 | Matrix4x4 | Resource } = dest._data;
 
@@ -926,7 +936,7 @@ export class WebGPUShaderData extends ShaderData {
     /**
      * 克隆（仅克隆数据）
      */
-    clone() {
+    clone(): WebGPUShaderData {
         const dest = new WebGPUShaderData();
         this.cloneTo(dest);
         return dest;

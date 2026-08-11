@@ -12,7 +12,7 @@ import { WebGPUCommandUniformMap } from "./WebGPUCommandUniformMap";
 import { WebGPURenderEngine } from "./WebGPURenderEngine";
 
 
-const uniformRegex = /\buniform\s+(?:(lowp|mediump|highp)\s+)?(\w+)\s+(\w+)(\s*\[\s*(\d+)\s*\])?\s*;/gm;
+const uniformRegex = /(?:layout\s*\([^)]*\)\s*)?\buniform\s+(?:(lowp|mediump|highp)\s+)?(?:(?:readonly|writeonly|coherent|volatile|restrict)\s+)*(\w+)\s+(\w+)(\s*\[\s*(\d+)\s*\])?\s*;/gm;
 const uniformBlockRegex = /(?:layout\s*\([^)]*\)\s*)?uniform\s+(\w+)\s*\{([\s\S]*?)\}\s*;/g;
 
 const glFragColorRegex = /gl_FragColor/g;
@@ -66,6 +66,7 @@ export class GLSLForVulkanGenerator {
 
         // todo 
         defMap["GRAPHICS_API_GLES3"] = true;
+        defMap["GRAPHICS_API_WEBGPU"] = true;
 
         // particle uniform 
         defMap["COLORKEYCOUNT_8"] = true;
@@ -113,6 +114,7 @@ ${vertexCode}
                 console.error("vertex shader preprocess error", resVS.info_log);
             }
             vertexCode = resVS.preprocessed_code;
+            vertexCode = renameMainFunction(vertexCode, "main_vs");
 
             let fs = `layout(std140, column_major) uniform;
 #define varying in
@@ -145,10 +147,15 @@ ${fragmentCode}
 
         const attributeStrs = attributeString(attributeMap[0], attributeMap[1]);
 
-        const varyings = executeVaryings(fragmentCode, vertexCode);
+        const { varyings, vsOnlyVaryings } = executeVaryings(fragmentCode, vertexCode);
 
         const vertexVaryingStrs = varyingString(varyings, "out");
         const fragmentVaryingStrs = varyingString(varyings, "in");
+
+        let vsOnlyGlobalStrs = "";
+        for (const varying of vsOnlyVaryings) {
+            vsOnlyGlobalStrs += `${varying}\n`;
+        }
 
         const fragmentOutStrs = fragmentOutString(fragmentCode);
 
@@ -308,6 +315,8 @@ ${attributeStrs}
 ${uniformStrs}
 
 ${vertexVaryingStrs}
+
+${vsOnlyGlobalStrs}
 
 ${vertexCode}
 `;
@@ -602,8 +611,9 @@ function executeVaryings(fsSource: string, vsSource: string) {
     let fragmentVaryings = findVaryings(fsSource, fragmentVaryingRegex);
 
     let varyings = vertexVaryings.filter(item => fragmentVaryings.includes(item));
+    let vsOnlyVaryings = vertexVaryings.filter(item => !fragmentVaryings.includes(item));
 
-    return varyings;
+    return { varyings, vsOnlyVaryings };
 
 }
 
@@ -793,4 +803,10 @@ function getShaderDataType(type: string) {
             return ShaderDataType.None;
     }
 
+}
+
+const mainFuncRegex = /\bvoid\s+main\s*\(\s*\)/;
+
+function renameMainFunction(source: string, newName: string) {
+    return source.replace(mainFuncRegex, `void ${newName}()`);
 }

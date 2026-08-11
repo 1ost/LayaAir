@@ -1,5 +1,6 @@
 import { IGPUBuffer } from '../../../DriverDesign/RenderDevice/ComputeShader/IComputeContext';
 import { EDeviceBufferUsage, IDeviceBuffer } from '../../../DriverDesign/RenderDevice/IDeviceBuffer';
+import { IVertexBuffer } from '../../../DriverDesign/RenderDevice/IVertexBuffer';
 import { WebGPUBuffer } from '../WebGPUBuffer';
 import { WebGPURenderEngine } from '../WebGPURenderEngine';
 import { WebGPUShaderData } from '../WebGPUShaderData';
@@ -83,13 +84,13 @@ export class WebGPUDeviceBuffer implements IDeviceBuffer, IGPUBuffer {
 
     }
 
-    copyToBuffer(buffer: WebGPUVertexBuffer | WebGPUDeviceBuffer, sourceOffset: number, destoffset: number, bytelength: number): void {
+    copyToBuffer(buffer: IVertexBuffer | IDeviceBuffer, sourceOffset: number, destoffset: number, bytelength: number): void {
         const device = WebGPURenderEngine._instance.getDevice();
         const encoder = device.createCommandEncoder();
         encoder.copyBufferToBuffer(
             this._buffer._source,
             sourceOffset,
-            (buffer as IGPUBuffer).getNativeBuffer(),
+            (buffer as WebGPUVertexBuffer | WebGPUDeviceBuffer).getNativeBuffer()._source,
             destoffset,
             bytelength
         );

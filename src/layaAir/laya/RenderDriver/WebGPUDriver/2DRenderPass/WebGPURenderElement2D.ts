@@ -11,7 +11,6 @@ import { IRenderStruct2D } from "../../RenderModuleData/Design/2D/IRenderStruct2
 import { RenderState } from "../../RenderModuleData/Design/RenderState";
 import { WebRenderStruct2D } from "../../RenderModuleData/WebModuleData/2D/WebRenderStruct2D";
 import { WebDefineDatas } from "../../RenderModuleData/WebModuleData/WebDefineDatas";
-import { WebGPURenderElement3D } from "../3DRenderPass/WebGPURenderElement3D";
 import { WebGPUBindGroup, WebGPUBindGroupCache } from "../RenderDevice/WebGPUBindGroupCache";
 import { WebGPURenderBundle } from "../RenderDevice/WebGPUBundle/WebGPURenderBundle";
 import { WebGPUCommandUniformMap } from "../RenderDevice/WebGPUCommandUniformMap";
@@ -29,8 +28,12 @@ import { WebGPURenderContext2D } from "./WebGPURenderContext2D";
 
 const zeroFlag = new Vector2(0, 0);
 export class WebGPURenderElement2D implements IRenderElement2D, IRenderPipelineInfo {
+    beforeRender?: IRenderElement2D["beforeRender"];
+    afterRender?: IRenderElement2D["afterRender"];
 
     static _compileDefine: WebDefineDatas = new WebDefineDatas();
+
+    static _matChangeFlagMap: Map<string, Map<number, Vector2[]>> = new Map();
 
     protected _nodeCommonMap: string[] = [];
 
@@ -85,7 +88,7 @@ export class WebGPURenderElement2D implements IRenderElement2D, IRenderPipelineI
     protected _cacheMatDepthStencilID: string;
     protected _cacheMatCullMode: CullMode;
 
-    protected _additionShaderData: Map<string, WebGPUShaderData> = new Map();;
+    protected _additionShaderData: Map<string, WebGPUShaderData> = new Map();
     protected _additinalArray: Set<string> = new Set();
 
     //get pipeline blend State
@@ -245,7 +248,7 @@ export class WebGPURenderElement2D implements IRenderElement2D, IRenderPipelineI
 
         let passData = context.passData;
         if (passData) {
-            comDef.addDefineDatas(passData.getDefineData());
+            comDef.addDefineDatas(passData.getDefineData() as WebDefineDatas);
         }
         return comDef;
     }
@@ -276,7 +279,7 @@ export class WebGPURenderElement2D implements IRenderElement2D, IRenderPipelineI
             pass.moduleData.attributeLocations = attributeLocations;
 
             let passData = pass.moduleData;
-            passData.additionShaderData = Array.from(this._additinalArray);;
+            passData.additionShaderData = Array.from(this._additinalArray).sort();
 
             //获取着色器实例，先查找缓存，如果没有则创建
             const shaderInstance = pass.withCompile(comDef, true) as WebGPUShaderInstance;
@@ -546,9 +549,9 @@ export class WebGPURenderElement2D implements IRenderElement2D, IRenderPipelineI
         this._drawPassInfo.matCacheFlag.setValue(Stat.loopCount, WebGPURenderEngine._instance._framePassCount);
         if (this._materialShaderData) {
             let shadername = this._subShader._owner.name;
-            if (!WebGPURenderElement3D._matChangeFlagMap.has(shadername))
-                WebGPURenderElement3D._matChangeFlagMap.set(shadername, new Map())
-            let shadermap = WebGPURenderElement3D._matChangeFlagMap.get(shadername);
+            if (!WebGPURenderElement2D._matChangeFlagMap.has(shadername))
+                WebGPURenderElement2D._matChangeFlagMap.set(shadername, new Map())
+            let shadermap = WebGPURenderElement2D._matChangeFlagMap.get(shadername);
             if (!shadermap.has(this._materialShaderData._id)) {
                 let flagArray = [new Vector2(Stat.loopCount, WebGPURenderEngine._instance._framePassCount), new Vector2(Stat.loopCount, WebGPURenderEngine._instance._framePassCount), new Vector2(Stat.loopCount, WebGPURenderEngine._instance._framePassCount)];
                 shadermap.set(this._materialShaderData._id, flagArray);

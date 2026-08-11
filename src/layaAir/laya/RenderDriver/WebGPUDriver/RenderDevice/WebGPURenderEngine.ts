@@ -1,7 +1,6 @@
 import { Laya } from "../../../../Laya";
 import { RenderCapable } from "../../../RenderEngine/RenderEnum/RenderCapable";
 import { RenderParams } from "../../../RenderEngine/RenderEnum/RenderParams";
-import { GPUEngineStatisticsInfo } from "../../../RenderEngine/RenderEnum/RenderStatInfo";
 import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
 import { EventDispatcher } from "../../../events/EventDispatcher";
 import { NotImplementedError } from "../../../utils/Error";
@@ -79,8 +78,6 @@ export class WebGPURenderEngine extends EventDispatcher implements IRenderEngine
     _lodTextureSample: boolean = false;
     _breakTextureSample: boolean = false;
 
-    _enableStatistics: boolean = false;
-
     _framePassCount: number = 0;
 
     //用于GPU时间戳
@@ -96,8 +93,6 @@ export class WebGPURenderEngine extends EventDispatcher implements IRenderEngine
 
     private _adapterSupportedExtensions: GPUFeatureName[];
     private _deviceEnabledExtensions: GPUFeatureName[];
-
-    private _GPUStatisticsInfo: Map<GPUEngineStatisticsInfo, number> = new Map();
 
     gpuBufferMgr: WebGPUBufferManager; //GPU大内存管理器
     timingManager: WebGPUTimingManager; //获取GPU执行时间
@@ -125,7 +120,6 @@ export class WebGPURenderEngine extends EventDispatcher implements IRenderEngine
 
         this.gpuBufferMgr = new WebGPUBufferManager(this, WebGPUGlobal.useBigBuffer);
 
-        this._initStatisticsInfo();
         this.globalId = WebGPUGlobal.getId(this);
         this.shaderCompiler = new WebGPUShaderCompiler();
     }
@@ -377,41 +371,6 @@ export class WebGPURenderEngine extends EventDispatcher implements IRenderEngine
 
     getTextureContext(): ITextureContext {
         return this._textureContext;
-    }
-
-    private _initStatisticsInfo() {
-        for (let i = 0; i < GPUEngineStatisticsInfo.Count; i++)
-            this._GPUStatisticsInfo.set(i, 0);
-    }
-
-    /**
-     * @internal
-     * @param info 
-     * @param value 
-     */
-    _addStatisticsInfo(info: GPUEngineStatisticsInfo, value: number) {
-        this._enableStatistics && this._GPUStatisticsInfo.set(info, this._GPUStatisticsInfo.get(info) + value);
-    }
-
-    /**
-     * 清除
-     * @internal
-     * @param info 
-     */
-    clearStatisticsInfo() {
-        if (this._enableStatistics) {
-            for (let i = 0; i < GPUEngineStatisticsInfo.FrameClearCount; i++) {
-                this._GPUStatisticsInfo.set(i, 0);
-            }
-        }
-    }
-
-    /**
-     * @internal
-     * @param info 
-     */
-    getStatisticsInfo(info: GPUEngineStatisticsInfo): number {
-        return this._GPUStatisticsInfo.get(info);
     }
 
     /**

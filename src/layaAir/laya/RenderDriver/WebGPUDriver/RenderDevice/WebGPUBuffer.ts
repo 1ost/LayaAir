@@ -1,4 +1,5 @@
-import { GPUEngineStatisticsInfo } from "../../../RenderEngine/RenderEnum/RenderStatInfo";
+import { LayaGL } from "../../../layagl/LayaGL";
+import { StatElement } from "../../../layagl/StatisticsContext";
 import { roundUp } from "../../DriverDesign/RenderDevice/UniformBufferManager/UniformBufferManager";
 import { WebGPURenderEngine } from "./WebGPURenderEngine";
 import { WebGPUGlobal } from "./WebGPUStatis/WebGPUGlobal";
@@ -23,8 +24,8 @@ export class WebGPUBuffer {
     }
 
     private _memorychange(bytelength: number) {
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.M_GPUMemory, bytelength);
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.M_GPUBuffer, bytelength);
+        LayaGL.statAgent.recordMemoryData(StatElement.M_GPUMemory, bytelength);
+        LayaGL.statAgent.recordMemoryData(StatElement.M_GPUBuffer, bytelength);
     }
 
     /**

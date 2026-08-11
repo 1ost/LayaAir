@@ -11,6 +11,7 @@ export class WebGPUInternalRT implements InternalRenderTarget {
     _generateMipmap: boolean;
     _textures: WebGPUInternalTex[];
     _texturesResolve: WebGPUInternalTex[]; //当启用多重采样时，用于解析的纹理
+    _arrayLayerIndex: number = -1;
     _depthTexture: WebGPUInternalTex;
     colorFormat: RenderTargetFormat;
     depthStencilFormat: RenderTargetFormat;

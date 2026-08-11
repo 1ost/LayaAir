@@ -1,8 +1,8 @@
 import { Laya } from "../../../../Laya";
 import { LayaGL } from "../../../layagl/LayaGL";
+import { StatElement } from "../../../layagl/StatisticsContext";
 import { FilterMode } from "../../../RenderEngine/RenderEnum/FilterMode";
 import { RenderCapable } from "../../../RenderEngine/RenderEnum/RenderCapable";
-import { GPUEngineStatisticsInfo } from "../../../RenderEngine/RenderEnum/RenderStatInfo";
 import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
 import { TextureCompareMode } from "../../../RenderEngine/RenderEnum/TextureCompareMode";
 import { TextureDimension } from "../../../RenderEngine/RenderEnum/TextureDimension";
@@ -22,8 +22,13 @@ export class WebGPUInternalTex implements InternalTexture {
         return this._resource;
     }
     public set resource(value: GPUTexture) {
+        if (!this._resource) {
+            LayaGL.statAgent.recordCountData(this._statistics_RC_TextureX, 1);
+            LayaGL.statAgent.recordCountData(StatElement.C_AllTexture, 1);
+        }
         this._resource = value;
-        this._gpuView = null;
+        this.samplerView = null;
+        this.attachmentView = null;
         this.getTextureView();
     }
     dimension: TextureDimension;
@@ -44,10 +49,10 @@ export class WebGPUInternalTex implements InternalTexture {
     _webGPUFormat: WebGPUTextureFormat;
 
     private _engine: WebGPURenderEngine;
-    private _statistics_M_TextureX: GPUEngineStatisticsInfo; //分类
-    private _statistics_M_TextureA: GPUEngineStatisticsInfo; //不分类
-    private _statistics_RC_TextureX: GPUEngineStatisticsInfo;
-    private _statistics_RC_TextureA: GPUEngineStatisticsInfo;
+    private _statistics_M_TextureX: StatElement; //分类
+    private _statistics_M_TextureA: StatElement; //不分类
+    private _statistics_RC_TextureX: StatElement;
+    private _statistics_RC_TextureA: StatElement;
 
     globalId: number;
     objectName: string = 'WebGPUInternalTex';
@@ -216,24 +221,24 @@ export class WebGPUInternalTex implements InternalTexture {
 
         switch (dimension) {
             case TextureDimension.Tex2D:
-                this._statistics_M_TextureX = GPUEngineStatisticsInfo.M_Texture2D;
-                this._statistics_RC_TextureX = GPUEngineStatisticsInfo.RC_Texture2D;
+                this._statistics_M_TextureX = StatElement.M_Texture2D;
+                this._statistics_RC_TextureX = StatElement.C_Texture2D;
                 break;
             case TextureDimension.Tex3D:
-                this._statistics_M_TextureX = GPUEngineStatisticsInfo.M_Texture3D;
-                this._statistics_RC_TextureX = GPUEngineStatisticsInfo.RC_Texture3D;
+                this._statistics_M_TextureX = StatElement.M_Texture3D;
+                this._statistics_RC_TextureX = StatElement.C_Texture3D;
                 break;
             case TextureDimension.Cube:
-                this._statistics_M_TextureX = GPUEngineStatisticsInfo.M_TextureCube;
-                this._statistics_RC_TextureX = GPUEngineStatisticsInfo.RC_TextureCube;
+                this._statistics_M_TextureX = StatElement.M_TextureCube;
+                this._statistics_RC_TextureX = StatElement.C_TextureCube;
                 break;
             case TextureDimension.Texture2DArray:
-                this._statistics_M_TextureX = GPUEngineStatisticsInfo.M_Texture2DArray;
-                this._statistics_RC_TextureX = GPUEngineStatisticsInfo.RC_Texture2DArray;
+                this._statistics_M_TextureX = StatElement.M_Texture2DArray;
+                this._statistics_RC_TextureX = StatElement.C_Texture2DArray;
                 break;
         }
-        this._statistics_M_TextureA = GPUEngineStatisticsInfo.M_ALLTexture;
-        this._statistics_RC_TextureA = GPUEngineStatisticsInfo.RC_ALLTexture;
+        this._statistics_M_TextureA = StatElement.M_AllTexture;
+        this._statistics_RC_TextureA = StatElement.C_AllTexture;
 
         this.globalId = WebGPUGlobal.getId(this);
         WebGPUStatis.addTexture(this);
@@ -309,14 +314,34 @@ export class WebGPUInternalTex implements InternalTexture {
     }
 
     statisAsRenderTexture() {
-        this._statistics_M_TextureA = GPUEngineStatisticsInfo.M_ALLRenderTexture;
-        this._statistics_RC_TextureA = GPUEngineStatisticsInfo.RC_ALLRenderTexture;
+        this._statistics_M_TextureA = StatElement.M_RenderTexture;
+        this._statistics_RC_TextureA = StatElement.C_RenderTexture;
     }
 
-    _gpuView: GPUTextureView;
-    getTextureView() {
-        if (this._gpuView) {
-            return this._gpuView;
+    samplerView: GPUTextureView;
+    attachmentView: GPUTextureView;
+
+    private getSamplerView(descriptor: GPUTextureViewDescriptor) {
+        if (this.format === RenderTargetFormat.DEPTHSTENCIL_24_8) {
+            descriptor.aspect = "depth-only";
+        }
+        this.samplerView = this.resource.createView(descriptor);
+        return this.samplerView;
+    }
+
+    private getAttachmentView(descriptor: GPUTextureViewDescriptor) {
+        descriptor.aspect = "all";
+        this.attachmentView = this.resource.createView(descriptor);
+        return this.attachmentView;
+    }
+
+    getTextureView(attachment: boolean = false) {
+        if (attachment) {
+            if (this.attachmentView) {
+                return this.attachmentView;
+            }
+        } else if (this.samplerView) {
+            return this.samplerView;
         }
         let dimension: GPUTextureViewDimension;
         switch (this.dimension) {
@@ -346,15 +371,29 @@ export class WebGPUInternalTex implements InternalTexture {
             baseMipLevel: this.baseMipmapLevel,
             mipLevelCount: this.maxMipmapLevel - this.baseMipmapLevel + 1,
         }
-        this._gpuView = this.resource.createView(descriptor);
-        return this._gpuView;
+        return attachment
+            ? this.getAttachmentView(descriptor)
+            : this.getSamplerView(descriptor);
+    }
+
+    getTextureViewForArrayLayer(layer: number, mipLevel: number = this.baseMipmapLevel): GPUTextureView {
+        return this.resource.createView({
+            format: this._webGPUFormat,
+            dimension: "2d",
+            baseMipLevel: mipLevel,
+            mipLevelCount: 1,
+            baseArrayLayer: layer,
+            arrayLayerCount: 1,
+        });
     }
 
     private _changeTexMemory(memory: number) {
-        this._engine._addStatisticsInfo(GPUEngineStatisticsInfo.M_GPUMemory, -this._gpuMemory + memory);
-        if (this._statistics_M_TextureA !== GPUEngineStatisticsInfo.M_ALLRenderTexture)
-            this._engine._addStatisticsInfo(this._statistics_M_TextureX, -this._gpuMemory + memory);
-        this._engine._addStatisticsInfo(this._statistics_M_TextureA, -this._gpuMemory + memory);
+        const delta = -this._gpuMemory + memory;
+        LayaGL.statAgent.recordMemoryData(StatElement.M_GPUMemory, delta);
+        LayaGL.statAgent.recordMemoryData(StatElement.M_AllTexture, delta);
+        if (this._statistics_M_TextureA === StatElement.M_RenderTexture)
+            LayaGL.statAgent.recordMemoryData(this._statistics_M_TextureA, delta);
+        LayaGL.statAgent.recordMemoryData(this._statistics_M_TextureX, delta);
     }
 
     dispose(): void {
@@ -362,5 +401,7 @@ export class WebGPUInternalTex implements InternalTexture {
         this.gpuMemory = 0;
         WebGPUGlobal.releaseId(this);
         this.resource.destroy(); //如果有报错，就需要采取延迟删除措施
+        LayaGL.statAgent.recordCountData(this._statistics_RC_TextureX, -1);
+        LayaGL.statAgent.recordCountData(StatElement.C_AllTexture, -1);
     }
 }

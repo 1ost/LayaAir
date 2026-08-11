@@ -1465,6 +1465,15 @@ export class WebGPUTextureContext implements ITextureContext {
         return internalRT;
     }
 
+    createRenderTargetFromArrayLayer(arrayTex: InternalTexture, layer: number, colorFormat: RenderTargetFormat, depthStencilFormat: RenderTargetFormat, sRGB: boolean): InternalRenderTarget {
+        const internalRT = new WebGPUInternalRT(colorFormat, depthStencilFormat, false, false, 1, sRGB);
+        internalRT._textures = [arrayTex as WebGPUInternalTex];
+        internalRT._texturesResolve = null;
+        internalRT._arrayLayerIndex = layer;
+        internalRT._getCacheInfo();
+        return internalRT;
+    }
+
     createRenderTargetDepthTexture(renderTarget: WebGPUInternalRT, dimension: TextureDimension, width: number, height: number): WebGPUInternalTex {
         return renderTarget._depthTexture;
     }
@@ -1494,7 +1503,11 @@ export class WebGPUTextureContext implements ITextureContext {
         throw new NotImplementedError();
     }
     async readRenderTargetPixelDataAsync(renderTarget: InternalRenderTarget, xOffset: number, yOffset: number, width: number, height: number, out: ArrayBufferView): Promise<ArrayBufferView> {
-        const texture = renderTarget._textures[0].resource as GPUTexture;
+        // Multisampled attachments cannot be copied to a buffer. Read the
+        // resolved single-sample texture, which is also the texture exposed to
+        // shaders by RenderTexture2D.
+        const readableTexture = renderTarget._texturesResolve?.[0] || renderTarget._textures[0];
+        const texture = readableTexture.resource as GPUTexture;
         const device = this._engine.getDevice();
 
         let bytesPerPixel = 4;

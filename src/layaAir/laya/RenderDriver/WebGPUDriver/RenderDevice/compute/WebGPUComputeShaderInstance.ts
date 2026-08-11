@@ -3,6 +3,7 @@ import { WebGPURenderEngine } from "../WebGPURenderEngine";
 import { ComputeShaderProcessInfo, IComputeShader } from "../../../DriverDesign/RenderDevice/ComputeShader/IComputeShader";
 import { WebGPUCommandUniformMap } from "../WebGPUCommandUniformMap";
 import { WebGPUBindGroupHelper, WebGPUUniformPropertyBindingInfo } from "../WebGPUBindGroupHelper";
+import { Shader3D } from "../../../../RenderEngine/RenderShader/Shader3D";
 
 
 
@@ -59,12 +60,20 @@ export class WebGPUComputeShaderInstance implements IComputeShader {
      * @param info 着色器编译信息
      */
     public compile(info: ComputeShaderProcessInfo): void {
-        let code = info.code;
-        //经过一系列的操作和变换  比如spriv  或者glsl转换wgsl
-        //分析字符串  得到uniformSetMap
-        //分析字符串  得到所有的entryPoints
-        //临时方案，后面换成自动方案
-        let other = info.other as WebGPUCommandUniformMap[];
+        const engine = WebGPURenderEngine._instance;
+        const defineNames: string[] = [];
+        Shader3D._getNamesByDefineData(info.defineData, defineNames);
+        const defineMap: Record<string, boolean> = {};
+        defineNames.forEach(name => defineMap[name] = true);
+
+        // The public 3.4 tree predates the IDE's dedicated compute GLSL
+        // generator. Preserve the current shader-node contract and use Naga's
+        // compute conversion directly for sources that carry their bindings.
+        let code = info.node.toscript(defineMap, []).join("\n");
+        if (!code.startsWith("#version")) code = `#version 450\n${code}`;
+        const wgsl = engine.shaderCompiler.naga.glsl_to_wgsl(code, "compute", false);
+
+        let other = info.uniformMaps as WebGPUCommandUniformMap[];
         for (let i = 0, n = other.length; i < n; i++) {
             this.uniformSetMap.set(i, WebGPUBindGroupHelper.createBindPropertyInfoArrayByCommandMap(i, [other[i]._stateName], true));
         }
@@ -72,7 +81,7 @@ export class WebGPUComputeShaderInstance implements IComputeShader {
 
         //创建BindGroupLayouts
         this._shaderModule = this._device.createShaderModule({
-            code: code
+            code: wgsl
         });
 
         this._shaderModule.getCompilationInfo().then((value: GPUCompilationInfo) => {
@@ -95,4 +104,4 @@ export class WebGPUComputeShaderInstance implements IComputeShader {
 
         return descriptor;
     };
-} 
+}

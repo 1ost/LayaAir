@@ -1,5 +1,4 @@
 import { Laya } from "../../../../../Laya";
-import { GPUEngineStatisticsInfo } from "../../../../RenderEngine/RenderEnum/RenderStatInfo";
 import { WebGPURenderContext3D } from "../../3DRenderPass/WebGPURenderContext3D";
 import { WebGPURenderElement3D } from "../../3DRenderPass/WebGPURenderElement3D";
 import { WebGPURenderEngine } from "../WebGPURenderEngine";

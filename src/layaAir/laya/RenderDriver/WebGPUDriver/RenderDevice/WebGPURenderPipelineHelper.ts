@@ -265,6 +265,11 @@ export class WebGPUDepthStencilState {
             case CompareFunction.Always:
                 stateDepthCompare = "always";
                 break;
+            case CompareFunction.Off:
+                // WebGPU has no dynamic "disable depth test" state when a
+                // depth attachment is present. `always` is the equivalent.
+                stateDepthCompare = "always";
+                break;
             default:
                 stateDepthCompare = "less";
                 break;

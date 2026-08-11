@@ -1,5 +1,6 @@
 import { DrawType } from "../../../RenderEngine/RenderEnum/DrawType";
-import { GPUEngineStatisticsInfo } from "../../../RenderEngine/RenderEnum/RenderStatInfo";
+import { LayaGL } from "../../../layagl/LayaGL";
+import { StatElement } from "../../../layagl/StatisticsContext";
 import { WebGPUBindGroup } from "./WebGPUBindGroupCache";
 import { WebGPURenderEngine } from "./WebGPURenderEngine";
 import { WebGPURenderGeometry } from "./WebGPURenderGeometry";
@@ -182,7 +183,7 @@ export abstract class WebGPURenderEncoder {
 
     applyGeometry(geometry: WebGPURenderGeometry) {
         let triangles1 = geometry.applyToEncoder(this.encoder)
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_TriangleCount, triangles1);
+        LayaGL.statAgent.recordCTData(StatElement.CT_Triangle, triangles1);
         return triangles1;
 
         //解构geometry中的属性，减少代码重复
@@ -258,7 +259,7 @@ export abstract class WebGPURenderEncoder {
                         start = info.start;
                         triangles += (count - 2) * instanceCount;
                         enc.draw(count, instanceCount, start, 0);
-                        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                        LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     }
                 }
                 break;
@@ -271,7 +272,7 @@ export abstract class WebGPURenderEncoder {
                         start = _drawElementInfo[i].elementStart;
                         triangles += count / 3 * instanceCount;
                         enc.drawIndexed(count, instanceCount, start / indexByte, 0);
-                        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                        LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     }
                 }
                 break;
@@ -281,7 +282,7 @@ export abstract class WebGPURenderEncoder {
                     for (let i = _drawIndirectInfo.length - 1; i > -1; i--) {
                         enc.drawIndirect(_drawIndirectInfo[i].buffer.getNativeBuffer()._source, _drawIndirectInfo[i].offset);
                     }
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, _drawIndirectInfo.length);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, _drawIndirectInfo.length);
                 }
                 break;
             case DrawType.DrawElementIndirect:
@@ -290,11 +291,11 @@ export abstract class WebGPURenderEncoder {
                     for (let i = _drawIndirectInfo.length - 1; i > -1; i--) {
                         enc.drawIndexedIndirect(_drawIndirectInfo[i].buffer.getNativeBuffer()._source, _drawIndirectInfo[i].offset);
                     }
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, _drawIndirectInfo.length);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, _drawIndirectInfo.length);
                 }
                 break;
         }
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_TriangleCount, triangles);
+        LayaGL.statAgent.recordCTData(StatElement.CT_Triangle, triangles);
         return triangles;
     }
 
@@ -343,7 +344,7 @@ export abstract class WebGPURenderEncoder {
                     start = info.start;
                     triangles += (count - 2) * instanceCount;
                     this.encoder.draw(count, instanceCount, start, 0);
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     break;
                 }
             case DrawType.DrawElementInstance:
@@ -353,25 +354,25 @@ export abstract class WebGPURenderEncoder {
                     start = info.elementStart;
                     triangles += count / 3 * instanceCount;
                     this.encoder.drawIndexed(count, instanceCount, start / indexByte, 0);
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_Instancing_DrawCall, 1);
                     break;
                 }
             case DrawType.DrawArrayIndirect:
                 {
                     let info = _drawIndirectInfo[index];
                     this.encoder.drawIndirect(info.buffer.getNativeBuffer()._source, info.offset);
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, 1);
                     break;
                 }
             case DrawType.DrawElementIndirect:
                 {
                     let info = _drawIndirectInfo[index];
                     this.encoder.drawIndexedIndirect(info.buffer.getNativeBuffer()._source, info.offset);
-                    WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_Instancing_DrawCallCount, 1);
+                    LayaGL.statAgent.recordCTData(StatElement.CT_IndirectDrawCall, 1);
                     break;
                 }
         }
-        WebGPURenderEngine._instance._addStatisticsInfo(GPUEngineStatisticsInfo.C_TriangleCount, triangles);
+        LayaGL.statAgent.recordCTData(StatElement.CT_Triangle, triangles);
         return triangles;
     }
 

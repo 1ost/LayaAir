@@ -1,3 +1,5 @@
+import { LayaGL } from "../../../../layagl/LayaGL";
+import { StatElement } from "../../../../layagl/StatisticsContext";
 import { UniformBufferManager } from "../../../DriverDesign/RenderDevice/UniformBufferManager/UniformBufferManager";
 import { WebGPURenderEngine } from "../WebGPURenderEngine";
 
@@ -40,6 +42,9 @@ export class WebGPUBufferManager extends UniformBufferManager {
      */
     writeBuffer(buffer: any, data: ArrayBuffer, offset: number, size: number) {
         WebGPURenderEngine._instance.getDevice().queue.writeBuffer(buffer, offset, data, offset, size);
+        LayaGL.statAgent.recordCTData(StatElement.CT_UBOBufferUploadCount, 1);
+        LayaGL.statAgent.recordCTData(StatElement.CT_UBOBufferUploadMemory, size / 1048576);
+        LayaGL.statAgent.recordCTData(StatElement.CT_BufferUploadCount, 1);
     }
 
     /**
@@ -51,13 +56,4 @@ export class WebGPUBufferManager extends UniformBufferManager {
 
     }
 
-    /**
-     * 统计上传次数
-     * @param count 上传次数
-     * @param bytes 上传字节
-     */
-    statisUpload(count: number, bytes: number) {
-        super.statisUpload(count, bytes);
-
-    }
 }

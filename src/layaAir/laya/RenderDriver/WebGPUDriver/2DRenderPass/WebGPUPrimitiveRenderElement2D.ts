@@ -7,6 +7,9 @@ import { WebGPURenderElement2D } from "./WebGPURenderElement2D";
 
 export class WebGPUPrimitiveRenderElement2D extends WebGPURenderElement2D implements IPrimitiveRenderElement2D {
 
+    typeKey: number = 0;
+    textureKey: number = 0;
+
     private _sprite2DGraphicUBOs: WebGPUUniformBufferBase;
     private _primitiveShaderData: WebGPUShaderData;
 

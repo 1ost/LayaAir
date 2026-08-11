@@ -14,6 +14,12 @@ const tscOutPath = "./bin/tsc/";
 const buildOutPath = "./build/libs/";
 
 const ignoreCircularDependencyWarnings = true;//process.argv.indexOf("-cd") == -1;
+const bundleArg = process.argv.find(arg => arg.startsWith("--bundles="));
+const requestedBundles = bundleArg
+    ? new Set(bundleArg.substring("--bundles=".length).split(",").map(name => name.trim()).filter(Boolean))
+    : null;
+const skipDeclarations = process.argv.includes("--skip-declarations");
+const strictDiagnostics = process.argv.includes("--strict-diagnostics");
 
 const webgpuSubmoduleReady = fs.existsSync("./src/layaAir/laya/RenderDriver/WebGPUDriver/RenderDevice/WebGPURenderEngine.ts");
 
@@ -23,7 +29,7 @@ if (!webgpuSubmoduleReady) {
     console.warn("[WARNING] Run: git submodule update --init src/layaAir/laya/RenderDriver/WebGPUDriver\x1b[0m");
 }
 
-buildBundles().then(buildDeclarations);
+buildBundles().then(() => skipDeclarations ? undefined : buildDeclarations());
 
 async function buildBundles() {
     console.log("compiling...");
@@ -39,8 +45,18 @@ async function buildBundles() {
 
     await proj.emit();
 
-    const diagnostics = proj.getPreEmitDiagnostics();
-    console.error(proj.formatDiagnosticsWithColorAndContext(diagnostics));
+    let diagnostics = proj.getPreEmitDiagnostics();
+    if (requestedBundles && !requestedBundles.has("webgpu_3D")) {
+        diagnostics = diagnostics.filter(diagnostic => {
+            const fileName = diagnostic.getSourceFile()?.getFilePath().replaceAll("\\", "/") ?? "";
+            return !fileName.includes("/WebGPUDriver/3DRenderPass/");
+        });
+    }
+    if (diagnostics.length > 0) {
+        console.error(proj.formatDiagnosticsWithColorAndContext(diagnostics));
+        if (strictDiagnostics)
+            throw new Error(`TypeScript reported ${diagnostics.length} relevant diagnostic(s).`);
+    }
 
     shellExec("npx", ["copyfiles", "-u", "1", "./src/**/*.{glsl,vs,fs,wgsl}", "./bin/tsc/"]);
 
@@ -88,9 +104,16 @@ async function buildBundles() {
         };
     }
 
-    const bundles = webgpuSubmoduleReady
+    let bundles = webgpuSubmoduleReady
         ? allBundles
         : allBundles.filter(b => b.name !== 'webgpu_2D' && b.name !== 'webgpu_3D');
+
+    if (requestedBundles) {
+        const unknown = [...requestedBundles].filter(name => !allBundles.some(bundle => bundle.name === name));
+        if (unknown.length > 0)
+            throw new Error(`Unknown bundle name(s): ${unknown.join(", ")}`);
+        bundles = bundles.filter(bundle => requestedBundles.has(bundle.name));
+    }
 
     for (let bundleDef of bundles) {
         let files = await glob(bundleDef.input.map(e => "./layaAir/" + e), { cwd: path.join(process.cwd(), "./src"), realpath: false });

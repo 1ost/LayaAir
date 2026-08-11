@@ -6,7 +6,8 @@ import { Vector2 } from '../../../../maths/Vector2';
 import { Vector3 } from '../../../../maths/Vector3';
 import { Vector4 } from '../../../../maths/Vector4';
 import { BaseTexture } from '../../../../resource/BaseTexture';
-import { CopyTextureInfo, IComputeCMD_Dispatch, IComputeContext, IGPUBuffer } from '../../../DriverDesign/RenderDevice/ComputeShader/IComputeContext';
+import { CopyTextureInfo, IComputeCMD_Dispatch, IComputeCMD_DispatchIndirect, IComputeContext, IGPUBuffer } from '../../../DriverDesign/RenderDevice/ComputeShader/IComputeContext';
+import { IDeviceBuffer } from '../../../DriverDesign/RenderDevice/IDeviceBuffer';
 import { ShaderData, ShaderDataType, ShaderDataItem } from '../../../DriverDesign/RenderDevice/ShaderData';
 import { WebGPUBindGroup } from '../WebGPUBindGroupCache';
 import { WebGPUInternalTex } from '../WebGPUInternalTex';
@@ -20,6 +21,7 @@ import { WebGPUDeviceBuffer } from './WebGPUStorageBuffer';
  */
 enum CommandType {
     Dispatch,
+    DispatchIndirect,
     SetShaderData,
     ClearBuffer,
     BufferToBuffer,
@@ -40,6 +42,10 @@ interface ICommand {
  */
 interface IDispatchCommand extends ICommand {
     cmd: IComputeCMD_Dispatch;
+}
+
+interface IDispatchIndirectCommand extends ICommand {
+    cmd: IComputeCMD_DispatchIndirect;
 }
 
 /**
@@ -132,6 +138,13 @@ export class WebGPUComputeContext implements IComputeContext {
             cmd
         }
         this.commands.push(cmdInfo);
+    }
+
+    addDispatchIndirectCommand(cmd: IComputeCMD_DispatchIndirect): void {
+        this.commands.push({
+            type: CommandType.DispatchIndirect,
+            cmd
+        } as IDispatchIndirectCommand);
     }
 
     /**
@@ -230,10 +243,10 @@ export class WebGPUComputeContext implements IComputeContext {
     * @param destoffset 位置
     * @param destCount 长度
     */
-    addClearBufferCommand(dest: WebGPUDeviceBuffer, destoffset: number, destCount: number): void {
+    addClearBufferCommand(dest: IDeviceBuffer, destoffset: number, destCount: number): void {
         let cmdInfo: IBufferClearCommand = {
             type: CommandType.ClearBuffer,
-            dest: dest,
+            dest: dest as WebGPUDeviceBuffer,
             destinationOffset: destoffset,
             size: destCount
         }
@@ -298,7 +311,7 @@ export class WebGPUComputeContext implements IComputeContext {
                     this._bindGroup(shader, dispatchInfo.shaderData as WebGPUShaderData[]);
 
                     if (this._cacheShader != shader) {
-                        let pipeline = WebGPURenderEngine._instance.pipelineCache.getComputePipeline(this.bindGroupMap, shader, dispatchInfo.Kernel);
+                        let pipeline = WebGPURenderEngine._instance.pipelineCache.getComputePipeline(this.bindGroupMap, shader, "main");
                         this._computeEncoder.setPipeline(pipeline);
                     }
 
@@ -309,6 +322,21 @@ export class WebGPUComputeContext implements IComputeContext {
                         dispatchParams.y || 1,
                         dispatchParams.z || 1
                     );
+                    break;
+                case CommandType.DispatchIndirect:
+                    const indirectInfo = (cmd as IDispatchIndirectCommand).cmd;
+                    this._startComputePass();
+
+                    const indirectShader = indirectInfo.shader as WebGPUComputeShaderInstance;
+                    this._bindGroup(indirectShader, indirectInfo.shaderData as WebGPUShaderData[]);
+
+                    if (this._cacheShader != indirectShader) {
+                        const pipeline = WebGPURenderEngine._instance.pipelineCache.getComputePipeline(this.bindGroupMap, indirectShader, "main");
+                        this._computeEncoder.setPipeline(pipeline);
+                        this._cacheShader = indirectShader;
+                    }
+
+                    this._computeEncoder.dispatchWorkgroupsIndirect(indirectInfo.indirectBuffer.getNativeBuffer()._source, indirectInfo.indirectOffset);
                     break;
                 case CommandType.SetShaderData:
                     const setDataCMD = cmd as ISetShaderDataCommand;

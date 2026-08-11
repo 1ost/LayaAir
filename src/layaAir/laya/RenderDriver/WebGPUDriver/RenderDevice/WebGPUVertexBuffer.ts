@@ -2,10 +2,11 @@ import { BufferTargetType, BufferUsage } from "../../../RenderEngine/RenderEnum/
 import { VertexDeclaration } from "../../../RenderEngine/VertexDeclaration";
 import { VertexElementFormat } from "../../../renders/VertexElementFormat";
 import { IGPUBuffer } from "../../DriverDesign/RenderDevice/ComputeShader/IComputeContext";
+import { EDeviceBufferUsage, IDeviceBuffer } from "../../DriverDesign/RenderDevice/IDeviceBuffer";
 import { IVertexBuffer } from "../../DriverDesign/RenderDevice/IVertexBuffer";
+import { WebGPUDeviceBuffer } from "./compute/WebGPUStorageBuffer";
 import { WebGPUBuffer } from "./WebGPUBuffer";
 import { WebGPUVertexStepMode } from "./WebGPUBufferState";
-import { WebGPUGlobal } from "./WebGPUStatis/WebGPUGlobal";
 
 export class WebGPUVertexBuffer implements IVertexBuffer, IGPUBuffer {
     private static _bufferLayoutConterMap: Map<string, number> = new Map();
@@ -14,6 +15,7 @@ export class WebGPUVertexBuffer implements IVertexBuffer, IGPUBuffer {
     private _vertexDeclaration: VertexDeclaration;
 
     source: WebGPUBuffer;
+    private _webGPUDeviceBuffer: WebGPUDeviceBuffer;
 
     private _instanceBuffer: boolean;
     public get instanceBuffer(): boolean {
@@ -24,6 +26,10 @@ export class WebGPUVertexBuffer implements IVertexBuffer, IGPUBuffer {
         if (this._vertexDeclaration) {
             this._getCacheInfo();
         }
+    }
+
+    getStorageBuffer(): IDeviceBuffer {
+        return this._webGPUDeviceBuffer;
     }
 
     buffer: ArrayBuffer;
@@ -37,9 +43,13 @@ export class WebGPUVertexBuffer implements IVertexBuffer, IGPUBuffer {
     constructor(targetType: BufferTargetType, bufferUsageType: BufferUsage) {
         let usage = GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC;
         if (targetType & BufferTargetType.TRANSFORM_FEEDBACK_BUFFER) {
-            usage |= GPUBufferUsage.STORAGE;
+            let deviceUsage = EDeviceBufferUsage.VERTEX | EDeviceBufferUsage.COPY_DST | EDeviceBufferUsage.COPY_SRC;
+            deviceUsage |= EDeviceBufferUsage.STORAGE;
+            this._webGPUDeviceBuffer = new WebGPUDeviceBuffer(deviceUsage);
+            this.source = this._webGPUDeviceBuffer.getNativeBuffer();
+        } else {
+            this.source = new WebGPUBuffer(usage, 0);
         }
-        this.source = new WebGPUBuffer(usage, 0);
     }
     getNativeBuffer() {
         return this.source;
@@ -126,12 +136,19 @@ export class WebGPUVertexBuffer implements IVertexBuffer, IGPUBuffer {
     }
 
     setDataLength(byteLength: number): void {
-        this.source.setDataLength(byteLength);
+        if (this._webGPUDeviceBuffer) {
+            this._webGPUDeviceBuffer.setDataLength(byteLength);
+        } else {
+            this.source.setDataLength(byteLength);
+        }
     }
 
     destroy(): void {
-        WebGPUGlobal.releaseId(this);
-        this.source.release();
+        if (this._webGPUDeviceBuffer) {
+            this._webGPUDeviceBuffer.destroy();
+        } else {
+            this.source.release();
+        }
         // todo remove cache
         this._vertexDeclaration = null;
     }
