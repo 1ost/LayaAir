@@ -1,6 +1,8 @@
 import { BufferTargetType, BufferUsage } from "../../../RenderEngine/RenderEnum/BufferTargetType";
 import { DrawType } from "../../../RenderEngine/RenderEnum/DrawType";
 import { MeshTopology } from "../../../RenderEngine/RenderEnum/RenderPologyMode";
+import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
+import { Config } from "../../../../Config";
 import { Shader3D, ShaderFeatureType } from "../../../RenderEngine/RenderShader/Shader3D";
 import { SubShader } from "../../../RenderEngine/RenderShader/SubShader";
 import { VertexDeclaration } from "../../../RenderEngine/VertexDeclaration";
@@ -13,6 +15,7 @@ import { VertexElementFormat } from "../../../renders/VertexElementFormat";
 import { FastSinglelist } from "../../../utils/SingletonList";
 import { IRenderContext2D } from "../../DriverDesign/2DRenderPass/IRenderContext2D";
 import { IRenderCMD } from "../../DriverDesign/RenderDevice/IRenderCMD";
+import { InternalTexture } from "../../DriverDesign/RenderDevice/InternalTexture";
 import { ShaderData, ShaderDataType } from "../../DriverDesign/RenderDevice/ShaderData";
 import { RenderState } from "../../RenderModuleData/Design/RenderState";
 import { GLESInternalRT } from "../RenderDevice/GLESInternalRT";
@@ -76,6 +79,13 @@ export class GLESRenderContext2D implements IRenderContext2D {
 
 
     drawRenderElementList(list: FastSinglelist<GLESRenderElement2D>): number {
+        for (let index = 0; index < list.length; index++) {
+            const element = list.elements[index];
+            if (element.beforeRender || element.afterRender) {
+                for (let cursor = 0; cursor < list.length; cursor++) this.drawRenderElementOne(list.elements[cursor]);
+                return list.length;
+            }
+        }
         this._tempList.length = 0;
         let listelement = list.elements;
         listelement.forEach((element) => {
@@ -93,6 +103,14 @@ export class GLESRenderContext2D implements IRenderContext2D {
         return this._dist;
     }
 
+    getCurrentTargetColorFormat(): RenderTargetFormat {
+        return this._dist?.colorFormat ?? (Config.isAlpha ? RenderTargetFormat.R8G8B8A8 : RenderTargetFormat.R8G8B8);
+    }
+
+    copyCurrentTargetToTexture(destination: InternalTexture, width: number, height: number, sourceX: number = 0, sourceY: number = 0, destinationX: number = 0, destinationY: number = 0): void {
+        LayaGL.renderEngine.copySubFrameBuffertoTex(destination, 0, destinationX, destinationY, sourceX, sourceY, width, height);
+    }
+
     setOffscreenView(width: number, height: number, x: number = 0, y: number = 0): void {
         this._offscreenWidth = width;
         this._offscreenHeight = height;
@@ -106,7 +124,9 @@ export class GLESRenderContext2D implements IRenderContext2D {
     }
 
     drawRenderElementOne(node: GLESRenderElement2D): void {
+        node.beforeRender?.(this);
         this._nativeObj.drawRenderElementOne(node._nativeObj);
+        node.afterRender?.(this);
     }
 
     runOneCMD(cmd: IRenderCMD): void {

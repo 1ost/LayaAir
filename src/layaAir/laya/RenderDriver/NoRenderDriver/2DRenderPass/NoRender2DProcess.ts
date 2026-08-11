@@ -1,6 +1,7 @@
 import { Laya } from "../../../../Laya";
 import { LayaGL } from "../../../layagl/LayaGL";
 import { SubShader } from "../../../RenderEngine/RenderShader/SubShader";
+import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
 import { Color } from "../../../maths/Color";
 import { Vector4 } from "../../../maths/Vector4";
 import { SingletonList } from "../../../utils/SingletonList";
@@ -14,6 +15,7 @@ import { IRenderGeometryElement } from "../../DriverDesign/RenderDevice/IRenderG
 import { IIndexBuffer } from "../../DriverDesign/RenderDevice/IIndexBuffer";
 import { IVertexBuffer } from "../../DriverDesign/RenderDevice/IVertexBuffer";
 import { InternalRenderTarget } from "../../DriverDesign/RenderDevice/InternalRenderTarget";
+import { InternalTexture } from "../../DriverDesign/RenderDevice/InternalTexture";
 import { ShaderData } from "../../DriverDesign/RenderDevice/ShaderData";
 import { NoRenderSetRenderData, NoRenderSetShaderDefine } from "../DriverDevice/NoRenderDeviceFactory";
 import { IRender2DDataHandle, I2DPrimitiveDataHandle, I2DBaseRenderDataHandle, IMesh2DRenderDataHandle, I2DGlobalRenderData, ISpineRenderDataHandle, I2DGraphicWholeBuffer, I2DGraphicIndexDataView, I2DGraphicVertexDataView, I2DGraphicBufferDataView, IGraphics2DBufferBlock, IGraphics2DVertexBlock } from "../../RenderModuleData/Design/2D/IRender2DDataHandle";
@@ -138,6 +140,9 @@ export class NoRenderContext2D implements IRenderContext2D {
     getRenderTarget(): InternalRenderTarget {
         return null;
     }
+    getCurrentTargetColorFormat(): RenderTargetFormat {
+        return RenderTargetFormat.R8G8B8A8;
+    }
 
     sceneData: ShaderData;
     invertY: boolean;
@@ -151,10 +156,14 @@ export class NoRenderContext2D implements IRenderContext2D {
     getOffscreenView(out: Vector4): void {
 
     }
+    copyCurrentTargetToTexture(destination: InternalTexture, width: number, height: number, sourceX?: number, sourceY?: number, destinationX?: number, destinationY?: number): void {
+    }
     drawRenderElementOne(node: IRenderElement2D): void {
-
+        node.beforeRender?.(this);
+        node.afterRender?.(this);
     }
     drawRenderElementList(list: SingletonList<IRenderElement2D>): number {
+        for (let index = 0; index < list.length; index++) this.drawRenderElementOne(list.elements[index]);
         return 0;
     }
     runOneCMD(cmd: IRenderCMD): void {

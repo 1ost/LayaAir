@@ -8,13 +8,14 @@ export class SpriteConst {
     static POSTPROCESS = 0x10;
     static MASK = 0x20;
     static CLIP = 0x40;
+    static COMPOSITOR = 0x80;
     //static = 0x80;
     static GRAPHICS = 0x100;
     //static = 0x400;
     static RENDERNODE2D = 0x800;
     //static = 0x1000;
-    static DRAW2RT = this.CANVAS | this.POSTPROCESS | this.MASK;
-    static UPDATETRANS = this.CANVAS | this.POSTPROCESS | this.MASK | this.CLIP | this.GRAPHICS | this.RENDERNODE2D;
+    static DRAW2RT = this.CANVAS | this.POSTPROCESS | this.MASK | this.COMPOSITOR;
+    static UPDATETRANS = this.CANVAS | this.POSTPROCESS | this.MASK | this.COMPOSITOR | this.CLIP | this.GRAPHICS | this.RENDERNODE2D;
 }
 
 export enum RepaintFlag {
@@ -57,6 +58,7 @@ export enum SubPassFlag {
     CacheAsBitmap = 0x2,
     Mask = 0x4,
     RenderTexture = 0x8,
+    Compositor = 0x10,
     
     /** @internal */
     UPDATE_POSTPROCESS = RenderTexture | PostProcess,

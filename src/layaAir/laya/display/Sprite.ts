@@ -33,6 +33,7 @@ import { GraphicsRenderer, SubStructRender } from "./Scene2DSpecial/GraphicsUtil
 import { PostProcess2D } from "./PostProcess2D";
 import { Render2DProcessor } from "./Render2DProcessor";
 import { Color } from "../maths/Color";
+import { ITextureCompositor2D } from "./ITextureCompositor2D";
 import { ShaderFeatureType } from "../RenderEngine/RenderShader/Shader3D";
 import { Config } from "../../Config";
 import { MathUtil } from "../maths/MathUtil";
@@ -225,6 +226,7 @@ export class Sprite extends Node {
     private _previousType: number = 0;
     private _sizeFlag: number = 0;
     private _filterArr: Filter[];
+    private _textureCompositor: ITextureCompositor2D;
     private _userBounds: Rectangle;
     private _ownGraphics: boolean;
     private _mask: Sprite;
@@ -298,6 +300,10 @@ export class Sprite extends Node {
      * @param destroyChild 是否删除子节点。默认为 true。
      */
     destroy(destroyChild: boolean = true): void {
+        this._filterArr?.forEach(filter => filter.off(Event.CHANGED, this, this._onFilterChanged));
+        this._filterArr = null;
+        this._textureCompositor?.destroy?.();
+        this._textureCompositor = null;
         super.destroy(destroyChild);
         if (this._texture) {
             this._texture._removeReference();
@@ -790,17 +796,43 @@ export class Sprite extends Node {
         if (value === this._filterArr) return;
         value && value.length === 0 && (value = null);
 
+        this._filterArr?.forEach(filter => filter.off(Event.CHANGED, this, this._onFilterChanged));
         this._filterArr = value;
+        this._filterArr?.forEach(filter => filter.on(Event.CHANGED, this, this._onFilterChanged));
+        this._onFilterChanged();
+    }
+
+    private _onFilterChanged(): void {
+        const value = this._filterArr;
         if (value) {
             let postProcess = this.getPostProcess(true);
             postProcess.clear();
-            for (let f of this._filterArr) {
+            for (let f of value) {
                 postProcess.addEffect(f.getEffect());
             }
         }
         else
             this.postProcess = null;
         this.repaint();
+    }
+
+    /**
+     * Material and render-position hooks used to composite this Sprite's
+     * off-screen texture into its parent pass.
+     */
+    get textureCompositor(): ITextureCompositor2D {
+        return this._textureCompositor;
+    }
+
+    set textureCompositor(value: ITextureCompositor2D) {
+        if (this._textureCompositor === value) return;
+        if (value && this._manualRender) this._setManualRender(false);
+        this._textureCompositor?.destroy?.();
+        this._textureCompositor = value;
+        if (value) this._renderType |= SpriteConst.COMPOSITOR;
+        else this._renderType &= ~SpriteConst.COMPOSITOR;
+        this.setSubpassFlag(SubPassFlag.Compositor);
+        this.repaint(RepaintFlag.Graphics);
     }
 
     protected getPostProcess(create: boolean = true): PostProcess2D {
@@ -971,7 +1003,23 @@ export class Sprite extends Node {
     /** @internal */
     _needUpdateSubpass(): boolean {
         let sprite = this._maskParent || this;
-        return sprite.displayedInStage && sprite._struct.enabled;
+        return (sprite.displayedInStage || this._isMaskTreeDisplayed()) && sprite._struct.enabled;
+    }
+
+    /**
+     * A detached Sprite can still be rendered as a mask. Its descendants are
+     * not marked DISPLAYED_INSTAGE because the mask root is linked through
+     * _maskParent rather than the normal display-list parent. Treat that tree
+     * as render-active so child graphics and child subpasses are prepared.
+     */
+    private _isMaskTreeDisplayed(): boolean {
+        let current: Sprite = this;
+        while (current) {
+            if (current._maskParent)
+                return current._maskParent.displayedInStage && current._maskParent._struct.enabled;
+            current = current._parent as Sprite;
+        }
+        return false;
     }
 
     /**
@@ -1797,7 +1845,7 @@ export class Sprite extends Node {
                                 }
                             }
 
-                            sprite._subStructRender._updateRenderTexture(sprite._drawOriRT, destrt);
+                            sprite._subStructRender._updateRenderTexture(sprite._drawOriRT, destrt, process?.enabled ? process._context.oriOffset : null);
                             sprite._subpassUpdateFlag = 0;
 
                         } else {
@@ -2171,7 +2219,7 @@ export class Sprite extends Node {
         return !this._destroyed
             && this._struct.enabled
             && this._renderType & SpriteConst.GRAPHICS
-            && !!(this.displayedInStage || this._maskParent);
+            && !!(this.displayedInStage || this._maskParent || this._isMaskTreeDisplayed());
     }
 
     /**

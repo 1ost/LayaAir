@@ -33,6 +33,13 @@ export class PostProcess2D extends EventDispatcher {
    /**@internal */
    _hasCleanRT: boolean = false;
 
+   /**
+    * Optional hook for supplying named textures (for example a previously
+    * captured backdrop, a depth mask, or a history buffer) before the effect
+    * stack is recorded. The provider owns those textures and their lifetime.
+    */
+   inputProvider: ((owner: Sprite, source: RenderTexture2D, context: PostProcessRenderContext2D) => void) | null = null;
+
 
    /**@internal */
    static init() {
@@ -126,6 +133,27 @@ export class PostProcess2D extends EventDispatcher {
       this._context.source = value;
    }
 
+   /**
+    * Associates a named, externally-owned texture with this post-process
+    * stack. Effects can retrieve it through PostProcessRenderContext2D.
+    */
+   setExternalTexture(name: string, value: RenderTexture2D | null): void {
+      if (!name) throw new Error("Post-process external texture name cannot be empty");
+      if (value) this._context.externalTextures.set(name, value);
+      else this._context.externalTextures.delete(name);
+      this._onChangeRender();
+   }
+
+   getExternalTexture(name: string): RenderTexture2D | null {
+      return this._context.externalTextures.get(name) || null;
+   }
+
+   clearExternalTextures(): void {
+      if (this._context.externalTextures.size === 0) return;
+      this._context.externalTextures.clear();
+      this._onChangeRender();
+   }
+
    getDestRT() {
       return this._context.destination;
    }
@@ -193,6 +221,9 @@ export class PostProcess2D extends EventDispatcher {
     */
    _render(): void {
       this._context.command.clear(true);
+      this._context.owner = this._owner;
+      this._context.oriOffset.setValue(0, 0);
+      this.inputProvider?.(this._owner, this._context.source, this._context);
       this._context.indirectTarget = this._context.source;
       this._context.destination = this._context.source;
       for (var i: number = 0, n: number = this._effects.length; i < n; i++) {
@@ -275,6 +306,8 @@ export class PostProcess2D extends EventDispatcher {
 
    destroy(): void {
       this.owner = null;
+      this.inputProvider = null;
+      this._context.externalTextures.clear();
       this._context.compositeShaderData.destroy();
       this._context.compositeShaderData = null;
       this._effects.forEach(effect => effect.destroy());
@@ -284,6 +317,8 @@ export class PostProcess2D extends EventDispatcher {
 
 /** @ignore @blueprintIgnore */
 export class PostProcessRenderContext2D {
+   /** The sprite whose off-screen texture is being processed. */
+   owner: Sprite;
    /**
     * @en The original RenderTexture that is rendered to initially. Do not modify this RT.
     * @zh 原始渲染 RenderTexture (RT)，禁止改变此 RT。
@@ -310,14 +345,44 @@ export class PostProcessRenderContext2D {
     */
    command: CommandBuffer2D;
    /**
+    * Named textures supplied by the application or renderer. These textures
+    * are not pooled or destroyed by the post-process context.
+    */
+   readonly externalTextures: Map<string, RenderTexture2D> = new Map();
+
+   getExternalTexture(name: string, required: boolean = false): RenderTexture2D | null {
+      const value = this.externalTextures.get(name) || null;
+      if (!value && required)
+         throw new Error(`Required post-process texture is unavailable: ${name}`);
+      return value;
+   }
+   /**
     * @en Temporary texture array. You can put created textures here or select an RT to use from here to save memory.
     * @zh 临时纹理数组。可以将创建的纹理放入此数组，也可以从这里选取要用的 RT 来节省显存。
     */
    deferredReleaseTextures: RenderTexture2D[] = [];
    /**
-    * 顶点偏移值，在后处理中扩张rt的时候会累加
+    * Offset, in render-target pixels, of the post-processed output's top-left
+    * corner relative to the original source. Effects that grow the output
+    * (blur, shadow, outline, and similar effects) accumulate negative left/top
+    * margins here so the final quad remains spatially aligned with its source.
     */
    oriOffset: Vector2 = new Vector2();
+
+   /**
+    * Records a symmetric output expansion and returns the expanded size.
+    * The effect remains responsible for allocating and rendering that texture.
+    */
+   expandOutput(horizontal: number, vertical: number): { width: number; height: number } {
+      horizontal = Math.max(0, Math.ceil(horizontal));
+      vertical = Math.max(0, Math.ceil(vertical));
+      this.oriOffset.x -= horizontal;
+      this.oriOffset.y -= vertical;
+      return {
+         width: this.indirectTarget.width + horizontal * 2,
+         height: this.indirectTarget.height + vertical * 2
+      };
+   }
 
    /**
      * @en Selects an RT from recycled RTs to save memory.

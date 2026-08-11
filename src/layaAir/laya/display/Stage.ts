@@ -842,7 +842,7 @@ export class Stage extends Sprite {
                 }
             }
 
-            sprite._subStructRender._updateRenderTexture(sprite._drawOriRT, destrt);
+            sprite._subStructRender._updateRenderTexture(sprite._drawOriRT, destrt, process?.enabled ? process._context.oriOffset : null);
             //Mask TODO
             sprite._subpassUpdateFlag = 0;
         }

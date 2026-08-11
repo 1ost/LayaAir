@@ -408,6 +408,9 @@ export class SubStructRender {
    _logicMatrix: Matrix;
 
    private _needUpdateVertexSize: boolean = true;
+   private _postProcessOffsetX: number = 0;
+   private _postProcessOffsetY: number = 0;
+   private _textureCompositor: unknown = null;
 
    private _renderElements: IPrimitiveRenderElement2D[] = [];
    private _scaleX: number = 1;
@@ -520,7 +523,7 @@ export class SubStructRender {
     * @param oriRT 
     * @param destRT 
     */
-   _updateRenderTexture(oriRT: RenderTexture2D, destRT: RenderTexture2D) {
+   _updateRenderTexture(oriRT: RenderTexture2D, destRT: RenderTexture2D, outputOffset?: { x: number, y: number }) {
       this._handle.mask = this._sprite.mask?._struct;
 
       if (this._submit._key.blendShader !== this._subStruct.blendMode) {
@@ -529,15 +532,37 @@ export class SubStructRender {
          BlendModeHandler.setShaderData(this._subStruct.blendMode, this._internalInfo.shaderData);
       }
 
-      if (this._internalInfo.textureHost == destRT && !this._needUpdateVertexSize)
+      const offsetX = outputOffset?.x || 0;
+      const offsetY = outputOffset?.y || 0;
+      const compositor = this._sprite.textureCompositor;
+      if (this._internalInfo.textureHost == destRT && !this._needUpdateVertexSize
+         && this._postProcessOffsetX === offsetX && this._postProcessOffsetY === offsetY
+         && this._textureCompositor === compositor)
          return;
 
       this._internalInfo.textureHost = destRT;
+      this._postProcessOffsetX = offsetX;
+      this._postProcessOffsetY = offsetY;
+      this._textureCompositor = compositor;
+
+      if (compositor) {
+         this._renderElement.materialShaderData = compositor.material.shaderData;
+         this._renderElement.subShader = compositor.material.shader.getSubShaderAt(0);
+         this._renderElement.renderStateIsBySprite = false;
+         this._renderElement.beforeRender = context => compositor.beforeComposite?.(context, destRT);
+         this._renderElement.afterRender = context => compositor.afterComposite?.(context, destRT);
+      } else {
+         this._renderElement.materialShaderData = null;
+         this._renderElement.subShader = Shader2D.graphicsShader.getSubShaderAt(0);
+         this._renderElement.renderStateIsBySprite = true;
+         this._renderElement.beforeRender = null;
+         this._renderElement.afterRender = null;
+      }
 
       let rtRect = this._rtRect;
       let vSize = Vector4.TEMP;
-      vSize.x = rtRect.x / this._scaleX;
-      vSize.y = rtRect.y / this._scaleY;
+      vSize.x = (rtRect.x + offsetX) / this._scaleX;
+      vSize.y = (rtRect.y + offsetY) / this._scaleY;
 
       let width = destRT.sourceWidth;
       let height = destRT.sourceHeight;
@@ -551,7 +576,9 @@ export class SubStructRender {
       this._internalInfo.vertexSize = vSize;
       this._needUpdateVertexSize = false;
       let defineBits = ShaderDefines2D.getPerElementDefineBits(this._internalInfo.shaderData);
-      this._renderElement.typeKey = this._subStruct.blendMode | defineBits;
+      this._renderElement.typeKey = this._subStruct.blendMode
+         | (compositor ? ShaderDefines2D.TYPEKEY_CUSTOM_MATERIAL : 0)
+         | defineBits;
       this._renderElement.textureKey = destRT ? destRT._id : 0;
    }
 

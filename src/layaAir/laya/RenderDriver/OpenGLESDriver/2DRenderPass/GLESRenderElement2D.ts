@@ -7,6 +7,8 @@ import { GLESRenderGeometryElement } from "../RenderDevice/GLESRenderGeometryEle
 import { GLESShaderData } from "../RenderDevice/GLESShaderData";
 
 export class GLESRenderElement2D implements IRenderElement2D {
+    beforeRender?: IRenderElement2D["beforeRender"];
+    afterRender?: IRenderElement2D["afterRender"];
     private _geometry: GLESRenderGeometryElement;
     private _materialShaderData: GLESShaderData;
     private _value2DShaderData: GLESShaderData;

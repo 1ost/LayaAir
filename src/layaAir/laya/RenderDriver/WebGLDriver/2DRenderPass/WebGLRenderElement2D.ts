@@ -35,6 +35,8 @@ export class WebGLRenderElement2D implements IRenderElement2D {
     owner: WebRenderStruct2D;
     nodeCommonMap: string[];
     renderStateIsBySprite: boolean = true;
+    beforeRender?: IRenderElement2D["beforeRender"];
+    afterRender?: IRenderElement2D["afterRender"];
 
     type: number = 0;
     /** @internal */

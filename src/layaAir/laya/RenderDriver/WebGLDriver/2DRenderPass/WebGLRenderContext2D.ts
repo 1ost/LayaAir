@@ -1,4 +1,6 @@
 import { RenderClearFlag } from "../../../RenderEngine/RenderEnum/RenderClearFlag";
+import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
+import { Config } from "../../../../Config";
 import { Shader3D } from "../../../RenderEngine/RenderShader/Shader3D";
 import { LayaGL } from "../../../layagl/LayaGL";
 import { StatElement } from "../../../layagl/StatisticsContext";
@@ -7,6 +9,7 @@ import { Vector4 } from "../../../maths/Vector4";
 import { FastSinglelist } from "../../../utils/SingletonList";
 import { IRenderContext2D } from "../../DriverDesign/2DRenderPass/IRenderContext2D";
 import { IRenderCMD } from "../../DriverDesign/RenderDevice/IRenderCMD";
+import { InternalTexture } from "../../DriverDesign/RenderDevice/InternalTexture";
 import { WebDefineDatas } from "../../RenderModuleData/WebModuleData/WebDefineDatas";
 import { WebGLShaderData } from "../../RenderModuleData/WebModuleData/WebGLShaderData";
 import { WebGLEngine } from "../RenderDevice/WebGLEngine";
@@ -49,14 +52,24 @@ export class WebglRenderContext2D implements IRenderContext2D {
         let time = performance.now();
         for (var i: number = 0, n: number = list.length; i < n; i++) {
             let element = list.elements[i];
-            element._prepare(this);//render
+            // A hook may change material uniforms or defines. Prepare hooked
+            // elements after that hook has run so their shader cache observes
+            // the final state used by the draw.
+            if (!element.beforeRender) element._prepare(this);//render
         }
         LayaGL.statAgent.recordTimeData(StatElement.T_2DContextPre, performance.now() - time);
         time = performance.now();
         this.resetFastState();
         for (var i: number = 0, n: number = list.length; i < n; i++) {
             const element = list.elements[i];
+            element.beforeRender?.(this);
+            if (element.beforeRender) {
+                this.resetFastState();
+                element._prepare(this);
+            }
             element._render(this);
+            element.afterRender?.(this);
+            if (element.afterRender) this.resetFastState();
             this._prevRenderType = element.owner ? element.owner.renderType : -1;
         }
         LayaGL.statAgent.recordCTData(StatElement.CT_2DDrawCall, list.length);
@@ -103,9 +116,20 @@ export class WebglRenderContext2D implements IRenderContext2D {
         return this._destRT;
     }
 
+    getCurrentTargetColorFormat(): RenderTargetFormat {
+        return this._destRT?.colorFormat ?? (Config.isAlpha ? RenderTargetFormat.R8G8B8A8 : RenderTargetFormat.R8G8B8);
+    }
+
+    copyCurrentTargetToTexture(destination: InternalTexture, width: number, height: number, sourceX: number = 0, sourceY: number = 0, destinationX: number = 0, destinationY: number = 0): void {
+        LayaGL.renderEngine.copySubFrameBuffertoTex(destination, 0, destinationX, destinationY, sourceX, sourceY, width, height);
+        this.resetFastState();
+    }
+
     drawRenderElementOne(node: WebGLRenderElement2D): void {
+        node.beforeRender?.(this);
         node._prepare(this);
         node._render(this);
+        node.afterRender?.(this);
         this._prevRenderType = node.owner ? node.owner.renderType : -1;
         LayaGL.statAgent.recordCTData(StatElement.CT_2DDrawCall, 1);
         LayaGL.renderEngine._framePassCount++;

@@ -2,6 +2,7 @@ import { SubShader } from "../../../RenderEngine/RenderShader/SubShader";
 import { IRenderStruct2D } from "../../RenderModuleData/Design/2D/IRenderStruct2D";
 import { IRenderGeometryElement } from "../RenderDevice/IRenderGeometryElement";
 import { ShaderData } from "../RenderDevice/ShaderData";
+import type { IRenderContext2D } from "./IRenderContext2D";
 
 /**
  * @blueprintIgnore @blueprintIgnoreSubclasses
@@ -16,6 +17,10 @@ export interface IRenderElement2D {
     renderStateIsBySprite: boolean;//渲染节点的renderState根据哪个ShaderData来
     nodeCommonMap: Array<string>;
     owner: IRenderStruct2D;
+    /** Runs immediately before this element is submitted. Render hooks break batching. */
+    beforeRender?: (context: IRenderContext2D) => void;
+    /** Runs immediately after this element is submitted. */
+    afterRender?: (context: IRenderContext2D) => void;
     destroy(): void;
 
     ///** @internal 在合批过程中需要收集 */

@@ -374,8 +374,26 @@ export class WebGLEngine extends EventDispatcher implements IRenderEngine {
     }
 
     copySubFrameBuffertoTex(texture: WebGLInternalTex, level: number, xoffset: number, yoffset: number, x: number, y: number, width: number, height: number) {
+        // copyTexSubImage2D cannot read a multisampled user framebuffer
+        // directly. Resolve the requested region into the render target's
+        // single-sample color texture, copy from that framebuffer, then resume
+        // rendering into the multisample framebuffer without changing Laya's
+        // tracked active target.
+        const activeRT = this._GLTextureContext.currentActiveRT;
+        const resolveMSAA = this._isWebGL2 && activeRT && activeRT._samples > 1;
+        if (resolveMSAA) {
+            const gl = this._context as WebGL2RenderingContext;
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, activeRT._msaaFramebuffer);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, activeRT._framebuffer);
+            gl.blitFramebuffer(x, y, x + width, y + height, x, y, x + width, y + height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, activeRT._framebuffer);
+        }
         this._bindTexture(texture.target, texture.resource);
         this._context.copyTexSubImage2D(texture.target, level, xoffset, yoffset, x, y, width, height);
+        if (resolveMSAA) {
+            const gl = this._context as WebGL2RenderingContext;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, activeRT._msaaFramebuffer);
+        }
     }
 
     colorMask(r: boolean, g: boolean, b: boolean, a: boolean): void {

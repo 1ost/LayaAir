@@ -180,6 +180,7 @@ abstract class BaseBatchContext {
 
     fillTexture: boolean = false;
     texRange: Vector4;
+    headHasRenderHook: boolean = false;
 
     /**
      * 从渲染元素初始化批次上下文
@@ -198,6 +199,7 @@ abstract class BaseBatchContext {
 class WebGLBatchContext extends BaseBatchContext {
 
     setHead(element: IPrimitiveRenderElement2D): void {
+        this.headHasRenderHook = !!(element.beforeRender || element.afterRender);
         this.primitiveShaderData = element.primitiveShaderData;
         this.materialShaderData = element.materialShaderData;
         this.subShader = element.subShader;
@@ -214,6 +216,8 @@ class WebGLBatchContext extends BaseBatchContext {
     }
 
     isCompatible(element: IPrimitiveRenderElement2D): boolean {
+        if (this.headHasRenderHook || element.beforeRender || element.afterRender)
+            return false;
         if (this.typeKey & ShaderDefines2D.DEFINE_BIT_MATERIALCLIP)
             return false;
 
@@ -264,6 +268,7 @@ class WebGLBatchContext extends BaseBatchContext {
 class WebGPUBatchContext extends BaseBatchContext {
 
     setHead(element: IPrimitiveRenderElement2D): void {
+        this.headHasRenderHook = !!(element.beforeRender || element.afterRender);
         //@ts-ignore
         this.primitiveShaderData = element._primitiveShaderData;
         //@ts-ignore
@@ -284,6 +289,8 @@ class WebGPUBatchContext extends BaseBatchContext {
     }
 
     isCompatible(element: IPrimitiveRenderElement2D): boolean {
+        if (this.headHasRenderHook || element.beforeRender || element.afterRender)
+            return false;
         if (this.typeKey & ShaderDefines2D.DEFINE_BIT_MATERIALCLIP)
             return false;
 
@@ -359,6 +366,8 @@ export class WebGraphicsBatch implements IBatch2DProvider {
             element.globalShaderData = null;
             element.typeKey = 0;
             element.textureKey = 0;
+            element.beforeRender = null;
+            element.afterRender = null;
         });
 
     constructor() {

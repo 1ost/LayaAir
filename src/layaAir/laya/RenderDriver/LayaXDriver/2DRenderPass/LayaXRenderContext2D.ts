@@ -7,6 +7,10 @@ import { IRenderElement2D } from "../../DriverDesign/2DRenderPass/IRenderElement
 import { InternalRenderTarget } from "../../DriverDesign/RenderDevice/InternalRenderTarget";
 import { IRenderCMD } from "../../DriverDesign/RenderDevice/IRenderCMD";
 import { ShaderData } from "../../DriverDesign/RenderDevice/ShaderData";
+import { InternalTexture } from "../../DriverDesign/RenderDevice/InternalTexture";
+import { LayaGL } from "../../../layagl/LayaGL";
+import { RenderTargetFormat } from "../../../RenderEngine/RenderEnum/RenderTargetFormat";
+import { Config } from "../../../../Config";
 
 export class LayaXRenderContext2D implements IRenderContext2D {
 
@@ -58,6 +62,10 @@ export class LayaXRenderContext2D implements IRenderContext2D {
         return this._dist;
     }
 
+    getCurrentTargetColorFormat(): RenderTargetFormat {
+        return this._dist?.colorFormat ?? (Config.isAlpha ? RenderTargetFormat.R8G8B8A8 : RenderTargetFormat.R8G8B8);
+    }
+
     // ---- setOffscreenView ----
     setOffscreenView(width: number, height: number, x: number = 0, y: number = 0): void {
         this._offscreenWidth = width;
@@ -69,6 +77,10 @@ export class LayaXRenderContext2D implements IRenderContext2D {
 
     getOffscreenView(out: Vector4): void {
         out.setValue(this._offscreenX, this._offscreenY, this._offscreenWidth, this._offscreenHeight);
+    }
+
+    copyCurrentTargetToTexture(destination: InternalTexture, width: number, height: number, sourceX: number = 0, sourceY: number = 0, destinationX: number = 0, destinationY: number = 0): void {
+        LayaGL.renderEngine.copySubFrameBuffertoTex(destination, 0, destinationX, destinationY, sourceX, sourceY, width, height);
     }
 
     // ---- draw ----
