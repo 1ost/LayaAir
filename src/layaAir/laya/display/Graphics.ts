@@ -908,7 +908,7 @@ export class Graphics {
      * @en Draw a path.
      * @param x X-axis position to start drawing
      * @param y Y-axis position to start drawing
-     * @param paths Collection of paths. Paths support the following format: [["moveTo",x,y],["lineTo",x,y],["arcTo",x1,y1,x2,y2,r],["closePath"]]
+     * @param paths Collection of paths. Paths support the following format: [["moveTo",x,y],["lineTo",x,y],["quadraticCurveTo",controlX,controlY,x,y],["arcTo",x1,y1,x2,y2,r],["closePath"]]
      * @param brush (Optional) Brush definition, supports the following settings: {fillStyle:"#FF0000"}
      * @param pen (Optional) Pen definition, supports the following settings: {strokeStyle,lineWidth,lineJoin:"bevel|round|miter",lineCap:"butt|round|square",miterLimit}
      * @zh 绘制路径。

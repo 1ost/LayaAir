@@ -51,6 +51,78 @@ const _drawTexToQuad_Index = new Uint16Array([0, 2, 1, 0, 3, 2]);
 const _tempBlockMesh : MeshBlockInfo = { mesh: null, vertexViews: [], vertexBlocks: [] };
 const _tempCache: MeshBlockInfo = { mesh: null, vertexViews: [], vertexBlocks: [] };
 
+type CompoundContour = {
+    path: number[];
+    area: number;
+    parent: CompoundContour | null;
+    depth: number;
+    winding: number;
+    group: CompoundPolygon | null;
+};
+
+type CompoundPolygon = {
+    outer: CompoundContour;
+    holes: CompoundContour[];
+};
+
+function contourArea(path: number[]): number {
+    let area = 0;
+    const count = path.length / 2;
+    for (let index = 0; index < count; index++) {
+        const next = (index + 1) % count;
+        area += path[index * 2] * path[next * 2 + 1] - path[next * 2] * path[index * 2 + 1];
+    }
+    return area / 2;
+}
+
+function contourContains(path: number[], x: number, y: number): boolean {
+    let inside = false;
+    const count = path.length / 2;
+    for (let index = 0, previous = count - 1; index < count; previous = index++) {
+        const xi = path[index * 2], yi = path[index * 2 + 1];
+        const xj = path[previous * 2], yj = path[previous * 2 + 1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+function compoundPolygons(paths: number[][], fillRule: "nonzero" | "evenodd"): CompoundPolygon[] {
+    const contours: CompoundContour[] = paths
+        .filter(path => path.length >= 6)
+        .map(path => ({ path, area: contourArea(path), parent: null, depth: 0, winding: 0, group: null }))
+        .sort((left, right) => Math.abs(right.area) - Math.abs(left.area));
+    const polygons: CompoundPolygon[] = [];
+    for (let index = 0; index < contours.length; index++) {
+        const contour = contours[index];
+        const x = contour.path[0], y = contour.path[1];
+        let parent: CompoundContour | null = null;
+        for (let candidateIndex = 0; candidateIndex < index; candidateIndex++) {
+            const candidate = contours[candidateIndex];
+            if (!contourContains(candidate.path, x, y)) continue;
+            if (!parent || Math.abs(candidate.area) < Math.abs(parent.area)) parent = candidate;
+        }
+        contour.parent = parent;
+        contour.depth = (parent?.depth ?? 0) + 1;
+        const direction = contour.area >= 0 ? 1 : -1;
+        const outsideWinding = parent?.winding ?? 0;
+        contour.winding = outsideWinding + direction;
+        const outsideFilled = fillRule === "evenodd" ? contour.depth % 2 === 0 : outsideWinding !== 0;
+        const insideFilled = fillRule === "evenodd" ? contour.depth % 2 === 1 : contour.winding !== 0;
+        if (!outsideFilled && insideFilled) {
+            const polygon: CompoundPolygon = { outer: contour, holes: [] };
+            contour.group = polygon;
+            polygons.push(polygon);
+        } else if (outsideFilled && !insideFilled) {
+            let owner = parent;
+            while (owner && !owner.group) owner = owner.parent;
+            owner?.group?.holes.push(contour);
+        } else {
+            contour.group = parent?.group ?? null;
+        }
+    }
+    return polygons;
+}
+
 /** @ignore @blueprintIgnore */
 export class GraphicsRunner {
     private _alpha = 1.0;
@@ -460,6 +532,9 @@ export class GraphicsRunner {
                 case "lineTo":
                     this.lineTo(x + path[1], y + path[2]);
                     break;
+                case "quadraticCurveTo":
+                    this.quadraticCurveTo(x + path[1], y + path[2], x + path[3], y + path[4]);
+                    break;
                 case "arcTo":
                     this.arcTo(x + path[1], y + path[2], x + path[3], y + path[4], path[5]);
                     break;
@@ -472,7 +547,7 @@ export class GraphicsRunner {
         //var brush:Object = args[3];
         if (brush != null) {
             this.fillStyle = brush.fillStyle;
-            this.fill();
+            this.fill(brush.fillRule);
         }
 
         //var pen:Object = args[4];
@@ -1402,7 +1477,7 @@ export class GraphicsRunner {
         this._getPath().push(points, convex);
     }
 
-    fill(): void {
+    fill(fillRule?: "nonzero" | "evenodd"): void {
         var m = this._curMat;
         var tPath = this._getPath();
         var submit = this._curSubmit;
@@ -1416,6 +1491,10 @@ export class GraphicsRunner {
         // && this._curSubmit.material == this._material;
 
         var rgba = this.mixRGBandAlpha(this._fillStyle._color.numColor);
+        if (fillRule) {
+            this._fillCompound(tPath.paths, m, rgba, fillRule);
+            return;
+        }
         var curEleNum = 0;
         var idx: any[];
 
@@ -1517,6 +1596,41 @@ export class GraphicsRunner {
             this._appendBlockInfo(vertexResult, positions);
         }
         // this._curSubmit._numEle += curEleNum;
+    }
+
+    private _fillCompound(sourcePaths: any[], matrix: Matrix, rgba: number, fillRule: "nonzero" | "evenodd"): void {
+        const paths: number[][] = [];
+        for (const source of sourcePaths) {
+            if (source.path.length < 6) continue;
+            const path = source.path.concat();
+            if (this._matrixChanged) {
+                for (let index = 0; index < path.length; index += 2) {
+                    const x = path[index], y = path[index + 1];
+                    if (matrix._bTransform) {
+                        path[index] = matrix.a * x + matrix.c * y + matrix.tx;
+                        path[index + 1] = matrix.b * x + matrix.d * y + matrix.ty;
+                    } else {
+                        path[index] = x + matrix.tx;
+                        path[index + 1] = y + matrix.ty;
+                    }
+                }
+            }
+            paths.push(path);
+        }
+        for (const polygon of compoundPolygons(paths, fillRule)) {
+            const vertices = polygon.outer.path.concat();
+            const holes: number[] = [];
+            for (const hole of polygon.holes) {
+                holes.push(vertices.length / 2);
+                vertices.push(...hole.path);
+            }
+            const indices = Earcut.earcut(vertices, holes.length ? holes : null, 2);
+            if (!indices.length) continue;
+            const vertexResult = this.acquire(vertices.length / 2);
+            const submit = this._curSubmit = this.addVGSubmit(vertexResult.mesh);
+            const positions = this.appendData(vertices, indices, vertexResult, submit, null, rgba, null, null, false);
+            this._appendBlockInfo(vertexResult, positions);
+        }
     }
 
     private addVGSubmit(mesh: GraphicsMesh): SubmitBase {
