@@ -12,6 +12,14 @@ import { ILaya } from "../../../ILaya";
 import { ColorUtils } from "../../utils/ColorUtils";
 import { Config } from "../../../Config";
 import { TextureArrayRegistry2D } from "../utils/TextureArrayRegistry2D";
+import {
+    gridFitTextPosition,
+    remapTextCoverage,
+    textAlignmentZoneCacheKey,
+    textRasterizationCacheKey,
+    type TextGlyphAlignmentZone,
+    type TextRasterizationSettings,
+} from "./TextRasterizationSettings";
 
 const ITALIC_ANGLE = 13;
 const ITALIC_SKEW_RATIO = 0.231; // Math.tan(13 * Math.PI / 180)
@@ -53,7 +61,8 @@ export class TextRender {
         color: string, stroke: number, strokeColor: string, letterSpacing: number,
         shadowOffsetX: number, shadowOffsetY: number, shadowBlur: number, shadowColor: string,
         charMode: boolean, preMeasuredWidth: number, renderInfo?: ITextRenderInfo[], kerning = true,
-        textBaseline: "top" | "alphabetic" = "top", glyphAdvances: readonly number[] = null): ITextRenderInfo[] {
+        textBaseline: "top" | "alphabetic" = "top", glyphAdvances: readonly number[] = null,
+        rasterization: TextRasterizationSettings = null): ITextRenderInfo[] {
 
         let hasEmoji = emojiTest.test(text);
         let curFont = this.getFont(font);
@@ -70,7 +79,10 @@ export class TextRender {
             cacheKey += "k0_";
         if (textBaseline === "alphabetic")
             cacheKey += "ba_";
+        cacheKey += textRasterizationCacheKey(rasterization);
         let colorNum = ColorUtils.create(color).numColor;
+        if (rasterization?.gridFit && rasterization.gridFit !== "none")
+            charMode = true;
         if (letterSpacing !== 0 || glyphAdvances) //有字间距时，强制字符模式
             charMode = true;
         let shadow = shadowOffsetX !== 0 || shadowOffsetY !== 0;
@@ -122,11 +134,13 @@ export class TextRender {
                 if (ccode >= 0xD800 && ccode <= 0xDBFF && i + 1 < len) //high surrogate
                     cc += text.charAt(++i);
 
-                let key = cacheKey + cc;
+                const codePoint = cc.codePointAt(0);
+                const alignmentZone = rasterization?.alignmentZones?.[String(codePoint)];
+                let key = cacheKey + textAlignmentZoneCacheKey(alignmentZone) + cc;
                 let ri = this.charMap.get(key);
                 if (!ri) {
                     let width = ctx.measureText(cc).width;
-                    ri = this.drawOffscreen(ctx, cc, width, fontSize, stroke, italic, true, textBaseline);
+                    ri = this.drawOffscreen(ctx, cc, width, fontSize, stroke, italic, true, textBaseline, rasterization);
                     ri.key = key;
                     ri.isChar = true;
                     this.charMap.set(key, ri);
@@ -134,14 +148,20 @@ export class TextRender {
                 ri.ref++;
                 renderInfo.push(ri);
 
+                const fitted = this.fitGlyphPosition(x, y, fontSize, rasterization, alignmentZone);
                 this.owner._inner_drawTexture(ri.tex, ri.tex.id,
-                    x + ri.x, y + ri.y, ri.w, ri.h,
+                    fitted.x + ri.x, fitted.y + ri.y, ri.w, ri.h,
                     mat, ri.uv, 1.0,
                     cc.length > 1 ? 0xffffffff : drawColor, //emoji总是用白色绘制
                     italicDeg, true);
 
                 const authoredAdvance = glyphAdvances?.[glyphIndex++];
                 x += (authoredAdvance ?? ri.advance + stroke) + letterSpacing;
+                const gridFit = rasterization?.gridFit ?? "none";
+                if (gridFit !== "none") {
+                    const divisions = gridFit === "subpixel" ? 3 : 1;
+                    x = Math.round(x * divisions) / divisions;
+                }
             }
         }
         else {
@@ -154,7 +174,7 @@ export class TextRender {
             if (!ri) {
                 if (preMeasuredWidth == null)
                     preMeasuredWidth = ctx.measureText(text).width;
-                ri = this.drawOffscreen(ctx, text, preMeasuredWidth, fontSize, stroke, italic, false, textBaseline);
+                ri = this.drawOffscreen(ctx, text, preMeasuredWidth, fontSize, stroke, italic, false, textBaseline, rasterization);
                 ri.key = key;
                 ri.ref = 1;
                 this.textMap.set(key, ri);
@@ -173,7 +193,7 @@ export class TextRender {
         return renderInfo;
     }
 
-    private drawOffscreen(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number, italic: boolean, charMode: boolean, textBaseline: "top" | "alphabetic"): ITextRenderInfo {
+    private drawOffscreen(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number, italic: boolean, charMode: boolean, textBaseline: "top" | "alphabetic", rasterization: TextRasterizationSettings): ITextRenderInfo {
         let offsetLeft = 0, offsetTop = 0, offsetRight = 0, offsetBottom = 0;
         if (ctx.shadowOffsetX > 0)
             offsetRight = ctx.shadowOffsetX;
@@ -184,7 +204,7 @@ export class TextRender {
         else if (ctx.shadowOffsetY < 0)
             offsetTop = -ctx.shadowOffsetY;
         if (textBaseline === "alphabetic")
-            return this.drawOffscreenAtAlphabeticBaseline(ctx, text, width, height, lineWidth, offsetLeft, offsetTop, offsetRight, offsetBottom, charMode, italic);
+            return this.drawOffscreenAtAlphabeticBaseline(ctx, text, width, height, lineWidth, offsetLeft, offsetTop, offsetRight, offsetBottom, charMode, italic, rasterization);
         let margin = height / 3 | 0 + lineWidth + Math.max(offsetLeft, offsetTop);
         let rectX = ((margin - fontSizeOffX - lineWidth - offsetLeft) * fontScale | 0) - blockGap;
         let rectY = ((margin - fontSizeOffY - lineWidth - offsetTop) * fontScale | 0) - blockGap;
@@ -203,6 +223,7 @@ export class TextRender {
         ctx.fillText(text, margin, margin + height / 2);
 
         let imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
+        remapTextCoverage(imgdt, rasterization);
 
         //预乘一下
         if (TextRenderConfig.premultiplyAlpha) {
@@ -245,7 +266,8 @@ export class TextRender {
     }
 
     private drawOffscreenAtAlphabeticBaseline(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, lineWidth: number,
-        offsetLeft: number, offsetTop: number, offsetRight: number, offsetBottom: number, charMode: boolean, italic: boolean): ITextRenderInfo {
+        offsetLeft: number, offsetTop: number, offsetRight: number, offsetBottom: number, charMode: boolean, italic: boolean,
+        rasterization: TextRasterizationSettings): ITextRenderInfo {
         const metrics = ctx.measureText(text);
         const boundsLeft = Math.max(0, metrics.actualBoundingBoxLeft || 0);
         const boundsRight = Math.max(width, metrics.actualBoundingBoxRight || width);
@@ -275,6 +297,7 @@ export class TextRender {
         lineWidth > 0 && ctx.strokeText(text, drawX, drawY);
         ctx.fillText(text, drawX, drawY);
         const imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
+        remapTextCoverage(imgdt, rasterization);
 
         if (TextRenderConfig.premultiplyAlpha) {
             const data = imgdt.data;
@@ -310,6 +333,18 @@ export class TextRender {
             this.setPixelsToTexture(imgdt, ri.tex, ri.region.x, ri.region.y, ri.uv);
         }
         return ri;
+    }
+
+    private fitGlyphPosition(x: number, y: number, fontSize: number, rasterization: TextRasterizationSettings,
+        zone: TextGlyphAlignmentZone): { x: number; y: number } {
+        const mode = rasterization?.gridFit ?? "none";
+        if (mode === "none")
+            return { x, y };
+        return {
+            x: gridFitTextPosition(x, zone?.x, mode, fontSize),
+            // LCD sub-pixel rendering only increases horizontal resolution.
+            y: gridFitTextPosition(y, zone?.y, "pixel", fontSize),
+        };
     }
 
     private resizeCanvas(ctx: CanvasRenderingContext2D, newWidth: number, newHeight: number): void {

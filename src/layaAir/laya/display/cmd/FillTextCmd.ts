@@ -6,6 +6,7 @@ import { IGraphicsBoundsAssembler, IGraphicsCmd } from "../IGraphics";
 import { Browser } from "../../utils/Browser";
 import { GraphicsRunner } from "../Scene2DSpecial/GraphicsRunner";
 import { Render2DProcessor } from "../Render2DProcessor";
+import { type TextRasterizationSettings } from "../../webgl/text/TextRasterizationSettings";
 
 const className = "FillTextCmd";
 const ITALIC_SKEW_RATIO = 0.231; // Math.tan(13 * Math.PI / 180)
@@ -100,6 +101,11 @@ export class FillTextCmd implements IGraphicsCmd {
     textBaseline: "top" | "alphabetic" = "top";
     /** @internal Exact per-glyph advances supplied by an imported layout. */
     glyphAdvances: readonly number[] = null;
+    /**
+     * @en Optional native glyph-coverage and grid-fitting controls.
+     * @zh å¯é€‰çš„åŽŸç”Ÿå­—å½¢è¦†ç›–çŽ‡ä¸Žç½‘æ ¼å¯¹é½æŽ§åˆ¶ã€‚
+     */
+    rasterizationSettings: TextRasterizationSettings = null;
     /** 
      * @en Shadow offset in the x direction
      * @zh 阴影在x方向的偏移量
@@ -170,6 +176,7 @@ export class FillTextCmd implements IGraphicsCmd {
         cmd.kerning = true;
         cmd.textBaseline = "top";
         cmd.glyphAdvances = null;
+        cmd.rasterizationSettings = null;
         cmd.shadowOffsetX = 0;
         cmd.shadowOffsetY = 0;
         cmd.shadowBlur = 0;
@@ -285,7 +292,8 @@ export class FillTextCmd implements IGraphicsCmd {
             this.fontSize, this.bold, this.italic,
             this.color, this.stroke, this.strokeColor,
             this.letterSpacing, this.shadowOffsetX, this.shadowOffsetY, this.shadowBlur, this.shadowColor,
-            this.singleCharRender, tw, this._renderInfo, this.kerning, this.textBaseline, this.glyphAdvances
+            this.singleCharRender, tw, this._renderInfo, this.kerning, this.textBaseline, this.glyphAdvances,
+            this.rasterizationSettings
         );
     }
 

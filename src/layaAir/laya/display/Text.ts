@@ -23,6 +23,7 @@ import { Node } from "./Node";
 import { IGraphicsCmd } from "./IGraphics";
 import { FillTextCmd } from "./cmd/FillTextCmd";
 import { Render2DProcessor } from "./Render2DProcessor";
+import { type TextRasterizationSettings } from "../webgl/text/TextRasterizationSettings";
 
 /** @blueprintIgnore */
 export interface TextFontMetrics {
@@ -151,6 +152,7 @@ export class Text extends Sprite {
      * @zh 拆分渲染。
      */
     protected _singleCharRender: boolean = false;
+    protected _rasterizationSettings: TextRasterizationSettings;
     protected _textStyle: TextStyle;
     protected _prompt: string = '';
 
@@ -909,6 +911,22 @@ export class Text extends Sprite {
     set singleCharRender(value: boolean) {
         if (this._singleCharRender !== value) {
             this._singleCharRender = value;
+            this.markChanged();
+        }
+    }
+
+    /**
+     * @en Optional native glyph-coverage and device-grid settings. The object
+     * is treated as immutable; assign a new value after changing it.
+     * @zh å¯é€‰çš„åŽŸç”Ÿå­—å½¢è¦†ç›–çŽ‡ä¸Žè®¾å¤‡ç½‘æ ¼è®¾ç½®ã€‚è¯¥å¯¹è±¡æŒ‰ä¸å¯å˜å¤„ç†ï¼Œä¿®æ”¹åŽè¯·é‡æ–°èµ‹å€¼ã€‚
+     */
+    get rasterizationSettings(): TextRasterizationSettings {
+        return this._rasterizationSettings;
+    }
+
+    set rasterizationSettings(value: TextRasterizationSettings) {
+        if (this._rasterizationSettings !== value) {
+            this._rasterizationSettings = value;
             this.markChanged();
         }
     }
@@ -1976,6 +1994,7 @@ export class Text extends Sprite {
                         gcmd.letterSpacing = cmd.style.letterSpacing;
                         gcmd.kerning = cmd.style.kerning;
                         gcmd.glyphAdvances = cmd.glyphAdvances;
+                        gcmd.rasterizationSettings = this._rasterizationSettings;
                         if (cmd.baseline != null)
                             gcmd.textBaseline = "alphabetic";
                         if (shadow) {
