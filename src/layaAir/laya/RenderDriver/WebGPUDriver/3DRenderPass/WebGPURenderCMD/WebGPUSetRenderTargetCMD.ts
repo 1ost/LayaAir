@@ -3,6 +3,7 @@ import { Color } from "../../../../maths/Color";
 import { Vector4 } from "../../../../maths/Vector4";
 import { Viewport } from "../../../../maths/Viewport";
 import { SetRenderTargetCMD } from "../../../DriverDesign/3DRenderPass/IRender3DCMD";
+import { IRenderContext3D } from "../../../DriverDesign/3DRenderPass/I3DRenderPass";
 import { RenderCMDType } from "../../../DriverDesign/RenderDevice/IRenderCMD";
 import { WebGPUInternalRT } from "../../RenderDevice/WebGPUInternalRT";
 import { WebGPURenderContext3D } from "../WebGPURenderContext3D";
@@ -63,7 +64,7 @@ export class WebGPUSetRenderTargetCMD extends SetRenderTargetCMD {
         this._clearColorValue = new Color();
     }
 
-    apply(context: WebGPURenderContext3D): void {
+    apply(context: IRenderContext3D): void {
         context.setRenderTarget(this.rt, RenderClearFlag.Nothing);
         context.setClearData(this.clearFlag, this.clearColorValue, this.clearDepthValue, this.clearStencilValue);
 

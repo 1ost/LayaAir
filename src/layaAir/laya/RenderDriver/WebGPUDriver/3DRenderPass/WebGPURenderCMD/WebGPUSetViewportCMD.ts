@@ -1,6 +1,7 @@
 import { Vector4 } from "../../../../maths/Vector4";
 import { Viewport } from "../../../../maths/Viewport";
 import { SetViewportCMD } from "../../../DriverDesign/3DRenderPass/IRender3DCMD";
+import { IRenderContext3D } from "../../../DriverDesign/3DRenderPass/I3DRenderPass";
 import { RenderCMDType } from "../../../DriverDesign/RenderDevice/IRenderCMD";
 import { WebGPURenderContext3D } from "../WebGPURenderContext3D";
 
@@ -32,7 +33,7 @@ export class WebGPUSetViewportCMD extends SetViewportCMD {
         this.viewport = new Viewport();
     }
 
-    apply(context: WebGPURenderContext3D): void {
+    apply(context: IRenderContext3D): void {
         context.setViewPort(this.viewport);
         context.setScissor(this.scissor);
     }

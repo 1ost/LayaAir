@@ -1,5 +1,6 @@
 import { SubShader } from "../../../../RenderEngine/RenderShader/SubShader";
 import { DrawNodeCMDData } from "../../../DriverDesign/3DRenderPass/IRender3DCMD";
+import { IRenderContext3D } from "../../../DriverDesign/3DRenderPass/I3DRenderPass";
 import { RenderCMDType } from "../../../DriverDesign/RenderDevice/IRenderCMD";
 import { WebBaseRenderNode } from "../../../RenderModuleData/WebModuleData/3D/WebBaseRenderNode";
 import { WebGPUShaderData } from "../../RenderDevice/WebGPUShaderData";
@@ -47,7 +48,7 @@ export class WebGPUDrawNodeCMDData extends DrawNodeCMDData {
         this.type = RenderCMDType.DrawNode;
     }
 
-    apply(context: WebGPURenderContext3D): void {
+    apply(context: IRenderContext3D): void {
         this.node._renderUpdatePre(context);
         if (this.subMeshIndex == -1) {
             this.node.renderelements.forEach(element => {

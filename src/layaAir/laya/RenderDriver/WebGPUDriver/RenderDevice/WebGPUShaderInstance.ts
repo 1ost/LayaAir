@@ -290,7 +290,7 @@ export class WebGPUShaderInstance implements IShaderInstance {
         //global
         let context = WebGPURenderContext3D._instance;
 
-        let preDrawUniforms = context._preDrawUniformMaps;
+        let preDrawUniforms = context.preDrawUniformMaps;
         let preDrawArray = Array.from(preDrawUniforms);
         this.uniformSetMap.set(0, WebGPUBindGroupHelper.createBindPropertyInfoArrayByCommandMap(0, preDrawArray));
         this.uniformResourcesCacheKey.set(0, preDrawArray);

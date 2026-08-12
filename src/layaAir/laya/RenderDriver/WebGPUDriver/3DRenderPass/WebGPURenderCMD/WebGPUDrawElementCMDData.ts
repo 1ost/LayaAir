@@ -1,5 +1,6 @@
 import { Laya3DRender } from "../../../../d3/RenderObjs/Laya3DRender";
 import { DrawElementCMDData } from "../../../DriverDesign/3DRenderPass/IRender3DCMD";
+import { IRenderContext3D } from "../../../DriverDesign/3DRenderPass/I3DRenderPass";
 import { RenderCMDType } from "../../../DriverDesign/RenderDevice/IRenderCMD";
 import { WebGPURenderContext3D } from "../WebGPURenderContext3D";
 import { WebGPURenderElement3D } from "../WebGPURenderElement3D";
@@ -17,7 +18,7 @@ export class WebGPUDrawElementCMDData extends DrawElementCMDData {
         this._elemets = value;
     }
 
-    apply(context: WebGPURenderContext3D): void {
+    apply(context: IRenderContext3D): void {
         if (this._elemets.length == 1) {
             context.drawRenderElementOne(this._elemets[0]);
         } else {

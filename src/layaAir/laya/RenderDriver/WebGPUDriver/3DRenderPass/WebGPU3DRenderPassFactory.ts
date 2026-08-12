@@ -1,20 +1,22 @@
 import { Laya } from "../../../../Laya";
 import { Laya3DRender } from "../../../d3/RenderObjs/Laya3DRender";
 import { LayaGL } from "../../../layagl/LayaGL";
-import { IInstanceRenderBatch, IRender3DProcess, IRenderContext3D, IRenderElement3D, ISkinRenderElement3D } from "../../DriverDesign/3DRenderPass/I3DRenderPass";
+import { DefaultStaticsContext } from "../../../layagl/StatisticsContext";
+import { IRender3DProcess, IRenderContext3D, IRenderElement3D, ISkinRenderElement3D } from "../../DriverDesign/3DRenderPass/I3DRenderPass";
 import { I3DRenderPassFactory } from "../../DriverDesign/3DRenderPass/I3DRenderPassFactory";
 import { BlitQuadCMDData, DrawElementCMDData, DrawNodeCMDData, SetRenderTargetCMD, SetViewportCMD } from "../../DriverDesign/3DRenderPass/IRender3DCMD";
 import { ISceneRenderManager } from "../../DriverDesign/3DRenderPass/ISceneRenderManager";
 import { ComputeCommandAppatchCMD, SetRenderDataCMD, SetShaderDefineCMD } from "../../DriverDesign/RenderDevice/IRenderCMD";
-import { IBaseRenderNode } from "../../RenderModuleData/Design/3D/I3DRenderModuleData";
 import { WebBaseRenderNode } from "../../RenderModuleData/WebModuleData/3D/WebBaseRenderNode";
+import { WebForwardAddClusterRP } from "../../RenderModuleData/WebModuleData/3D/WebForwardAddRP/WebForwardAddClusterRP";
+import { WebForwardAddRP } from "../../RenderModuleData/WebModuleData/3D/WebForwardAddRP/WebForwardAddRP";
+import { WebRender3DProcess } from "../../RenderModuleData/WebModuleData/3D/WebForwardAddRP/WebRender3DProcess";
 import { WebSceneRenderManager } from "../../RenderModuleData/WebModuleData/3D/WebScene3DRenderManager";
+import { WebBaseSpotRP } from "../../RenderModuleData/WebModuleData/3D/WebShadowRP/WebBaseSpotRP";
+import { WebDirCascadeShadowRP } from "../../RenderModuleData/WebModuleData/3D/WebShadowRP/WebDirCascadeShadowRP";
 import { WebGPUSetRenderData } from "../RenderDevice/WebGPUSetRenderData";
 import { WebGPUComputeCommandAppatchCMD, WebGPUSetShaderDefine } from "../RenderDevice/WebGPUSetShaderDefine";
-import { WebGPU3DRenderPass } from "./WebGPU3DRenderPass";
 import { WebGPUBaseRenderNode } from "./WebGPUBaseRenderNode";
-import { WebGPUInstanceRenderBatch } from "./WebGPUInstanceRenderBatch";
-import { WebGPUInstanceRenderElement3D } from "./WebGPUInstanceRenderElement3D";
 import { WebGPUBlitQuadCMDData } from "./WebGPURenderCMD/WebGPUBlitQuadCMDData";
 import { WebGPUDrawElementCMDData } from "./WebGPURenderCMD/WebGPUDrawElementCMDData";
 import { WebGPUDrawNodeCMDData } from "./WebGPURenderCMD/WebGPUDrawNodeCMDData";
@@ -28,24 +30,20 @@ WebBaseRenderNode.BaseRenderNodeClass = WebGPUBaseRenderNode;
  * WebGPU渲染工厂类
  */
 export class WebGPU3DRenderPassFactory implements I3DRenderPassFactory {
-
-
-
-    createInstanceBatch(): IInstanceRenderBatch {
-        return new WebGPUInstanceRenderBatch();
-    }
     createRender3DProcess(): IRender3DProcess {
-        return new WebGPU3DRenderPass();
+        const renderProcess = new WebRender3DProcess();
+        const forwardPass = new WebForwardAddRP();
+        renderProcess._renderPass = forwardPass;
+        forwardPass.mainRenderpass = new WebForwardAddClusterRP();
+        forwardPass.dirShadowRenderPass = new WebDirCascadeShadowRP();
+        forwardPass.spotShadowRenderPass = new WebBaseSpotRP();
+        return renderProcess;
     }
     createRenderContext3D(): IRenderContext3D {
         return new WebGPURenderContext3D();
     }
     createRenderElement3D(): IRenderElement3D {
         return new WebGPURenderElement3D();
-    }
-
-    createInstanceRenderElement3D(): WebGPUInstanceRenderElement3D {
-        return WebGPUInstanceRenderElement3D.create();
     }
 
     createSkinRenderElement(): ISkinRenderElement3D {
@@ -82,8 +80,10 @@ export class WebGPU3DRenderPassFactory implements I3DRenderPassFactory {
 }
 
 Laya.addBeforeInitCallback(() => {
-    if (!Laya3DRender.Render3DPassFactory)
+    if (!Laya3DRender.Render3DPassFactory) {
         Laya3DRender.Render3DPassFactory = new WebGPU3DRenderPassFactory();
+        LayaGL.statAgent = new DefaultStaticsContext();
+    }
 });
 
 Laya.addAfterInitCallback(() => {

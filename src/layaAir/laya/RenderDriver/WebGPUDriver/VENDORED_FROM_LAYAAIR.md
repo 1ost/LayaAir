@@ -20,15 +20,28 @@ TypeScript and history instead of an uninitialized directory.
 ## Installed 3.4.0 compatibility reference
 
 Forward ports are checked against the locally installed LayaAirIDE 3.4.0
-runtime at:
+runtime source maps at:
 
 `C:\Users\admin\AppData\Local\Programs\LayaAirIDE\resources\engine\libs\laya.webgpu_2D.js.map`
 
-The source map contains 72 WebGPU 2D/RenderDevice module bodies and has SHA-256
+`C:\Users\admin\AppData\Local\Programs\LayaAirIDE\resources\engine\libs\laya.webgpu_3D.js.map`
+
+The 2D map contains 59 WebGPU driver module bodies (72 bundled sources) and has
+SHA-256
 `8D45646A00F10AB75EFEEE6E6B750C8F764CE9EDDD38F6B20078FCEC926048A6`.
-It is a compatibility reference, not copied generated output. Changes in this
-directory remain TypeScript source and must pass the repository's build and
-runtime gates.
+The 3D map contains 25 WebGPU driver module bodies (47 bundled sources) and has
+SHA-256
+`EAE5075E14634F2D69D4AF8F91964577493592243C1867A8F1C6502A46066311`.
+They are compatibility references, not copied generated output. Changes in
+this directory remain reviewable TypeScript source and must pass the
+repository's build and runtime gates.
+
+The 3.4 forward port removes the recovered driver's obsolete private camera,
+forward, shadow, and instance-pass copies. `WebGPU3DRenderPassFactory` now
+wires the shared `WebModuleData` render process and passes used by the installed
+3.4 runtime. The render context and command adapters implement the current
+engine interfaces. This arrangement passes the complete `src/layaAir`
+TypeScript project and the Playwright WebGPU/WebGL compositor gate.
 
 ## Maintenance rule
 

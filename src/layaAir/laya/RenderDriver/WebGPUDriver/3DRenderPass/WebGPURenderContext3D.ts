@@ -52,7 +52,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
 
     private _scissor: Vector4;
 
-    private _sceneUpdataMask: number = 0;
+    private _sceneUpdateMask: number = 0;
 
     private _cameraUpdateMask: number = 0;
 
@@ -86,7 +86,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
 
     _globalConfigShaderData: WebDefineDatas;
 
-    _preDrawUniformMaps: Set<string>;
+    preDrawUniformMaps: Set<string>;
 
     //CacheData
     _cameraBindGroup: WebGPUBindGroup;
@@ -111,7 +111,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
 
         //重新绑定 
         if (value) {
-            for (let key of this._preDrawUniformMaps) {
+            for (let key of this.preDrawUniformMaps) {
                 let uniformMap = <WebGPUCommandUniformMap>LayaGL.renderDeviceFactory.createGlobalUniformMap(key);
                 if (uniformMap._idata.size > 0) {
                     this.sceneData.createSubUniformBuffer(key, key, uniformMap._idata);
@@ -158,12 +158,12 @@ export class WebGPURenderContext3D implements IRenderContext3D {
         this._globalShaderData = value;
     }
 
-    get sceneUpdataMask(): number {
-        return this._sceneUpdataMask;
+    get sceneUpdateMask(): number {
+        return this._sceneUpdateMask;
     }
 
-    set sceneUpdataMask(value: number) {
-        this._sceneUpdataMask = value;
+    set sceneUpdateMask(value: number) {
+        this._sceneUpdateMask = value;
     }
 
     get cameraUpdateMask(): number {
@@ -194,7 +194,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
 
     constructor() {
         this.device = WebGPURenderEngine._instance.getDevice();
-        this._preDrawUniformMaps = new Set<string>();
+        this.preDrawUniformMaps = new Set<string>();
         WebGPURenderContext3D._instance = this;
     }
 
@@ -212,7 +212,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
     private _getRenderPipeLine(): string {
         const engine = WebGPURenderEngine._instance;
 
-        let sceneCommands = Array.from(this._preDrawUniformMaps);
+        let sceneCommands = Array.from(this.preDrawUniformMaps);
         let sceneResources = WebGPUBindGroupHelper.createBindPropertyInfoArrayByCommandMap(0, sceneCommands);
         let sceneLayoutInfo = engine.bindGroupCache.getLayoutInfo(sceneCommands, this._sceneData, null, sceneResources, ~0);
 
@@ -260,7 +260,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
         if (this._sceneData) {
             this._sceneData._defineDatas.cloneTo(contextDef);
 
-            for (let key of this._preDrawUniformMaps) {
+            for (let key of this.preDrawUniformMaps) {
                 let uniformMap = <WebGPUCommandUniformMap>LayaGL.renderDeviceFactory.createGlobalUniformMap(key);
                 if (uniformMap._idata.size > 0) {
                     let buffer = this.sceneData.createSubUniformBuffer(key, key, uniformMap._idata);
@@ -268,7 +268,7 @@ export class WebGPURenderContext3D implements IRenderContext3D {
                 }
             }
 
-            let commandArray = Array.from(this._preDrawUniformMaps);
+            let commandArray = Array.from(this.preDrawUniformMaps);
 
             let resource = WebGPUBindGroupHelper.createBindPropertyInfoArrayByCommandMap(0, commandArray)
             this._sceneBindGroup = (LayaGL.renderEngine as WebGPURenderEngine).bindGroupCache.getBindGroup(commandArray, this._sceneData, null, resource, ~0);
