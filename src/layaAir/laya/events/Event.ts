@@ -209,6 +209,19 @@ export class Event {
      */
     static readonly INPUT = "input";
     /**
+     * @en Dispatched before a text input mutation. The payload can cancel the mutation.
+     * @zh 在文本输入更改发生前调度，事件数据可以取消本次更改。
+     */
+    static readonly BEFORE_INPUT = "beforeinput";
+    /** @en Dispatched when IME composition starts. @zh 输入法组合开始时调度。 */
+    static readonly COMPOSITION_START = "compositionstart";
+    /** @en Dispatched when IME composition text changes. @zh 输入法组合文本变化时调度。 */
+    static readonly COMPOSITION_UPDATE = "compositionupdate";
+    /** @en Dispatched when IME composition ends. @zh 输入法组合结束时调度。 */
+    static readonly COMPOSITION_END = "compositionend";
+    /** @en Dispatched when an input selection or caret changes. @zh 输入选择或光标变化时调度。 */
+    static readonly SELECTION_CHANGE = "selectionchange";
+    /**
      * @en Defines the value of the `type` property of a `render` event object.
      * @zh 定义 `render` 事件对象的 `type` 属性值。
      */

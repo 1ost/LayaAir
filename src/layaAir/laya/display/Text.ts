@@ -1148,6 +1148,8 @@ export class Text extends Sprite {
      */
     hideText(value: boolean) {
         this._hideText = value;
+        if (this._objContainer)
+            this._objContainer.visible = !value;
         if (value) {
             this.graphics.clear(true, this._bgDrawCmd);
         }
@@ -1163,7 +1165,7 @@ export class Text extends Sprite {
      */
     protected _typeset(): void {
         this._isChanged = false;
-        if (this._hideText || this._destroyed)
+        if (this._destroyed)
             return;
 
         HtmlElement.returnToPool(this._elements);
@@ -1909,7 +1911,13 @@ export class Text extends Sprite {
 
         this._updatingLayout = false;
 
-        this.renderText();
+        // Native input overlays hide the canvas glyphs while editing, but
+        // callers must still be able to query lines, bounds and scroll ranges.
+        // Keep layout current and suppress only the final drawing step.
+        if (this._hideText)
+            this.graphics.clear(true, this._bgDrawCmd);
+        else
+            this.renderText();
     }
 
     /**

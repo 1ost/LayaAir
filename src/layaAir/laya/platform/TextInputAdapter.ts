@@ -1,6 +1,6 @@
 import { ILaya, Mutable } from "../../ILaya";
 import { Laya } from "../../Laya";
-import { Input } from "../display/Input";
+import { Input, type InputSelectionDirection, type InputSelectionState } from "../display/Input";
 import { type Stage } from "../display/Stage";
 import { Text } from "../display/Text";
 import { Event } from "../events/Event";
@@ -8,6 +8,101 @@ import { InputManager } from "../events/InputManager";
 import { Browser } from "../utils/Browser";
 import { SpriteUtils } from "../utils/SpriteUtils";
 import { PAL } from "./PlatformAdapters";
+
+export interface TextBeforeInputData {
+    text: string;
+    inputType: string;
+    isComposing: boolean;
+    selectionStart: number;
+    selectionEnd: number;
+    nativeEvent: InputEvent | null;
+    defaultPrevented: boolean;
+    preventDefault(): void;
+}
+
+export interface TextCompositionData {
+    text: string;
+    selectionStart: number;
+    selectionEnd: number;
+    nativeEvent: CompositionEvent;
+}
+
+interface RestrictRange {
+    first: number;
+    last: number;
+    include: boolean;
+}
+
+function restrictRanges(value: string): { initiallyAllowed: boolean, ranges: RestrictRange[] } {
+    const characters = Array.from(value);
+    let index = 0;
+    let include = true;
+    let initiallyAllowed = false;
+    const tokens: Array<{ codePoint: number, escaped: boolean } | "exclude"> = [];
+    while (index < characters.length) {
+        const character = characters[index++];
+        if (character === "\\" && index < characters.length)
+            tokens.push({ codePoint: characters[index++].codePointAt(0), escaped: true });
+        else if (character === "^")
+            tokens.push("exclude");
+        else
+            tokens.push({ codePoint: character.codePointAt(0), escaped: false });
+    }
+    if (tokens[0] === "exclude") {
+        initiallyAllowed = true;
+        include = false;
+        tokens.shift();
+    }
+    const ranges: RestrictRange[] = [];
+    for (let cursor = 0; cursor < tokens.length;) {
+        const token = tokens[cursor++];
+        if (token === "exclude") {
+            include = false;
+            continue;
+        }
+        let last = token.codePoint;
+        const hyphen = tokens[cursor];
+        const end = tokens[cursor + 1];
+        if (hyphen !== "exclude" && hyphen?.codePoint === 45 && !hyphen.escaped && end && end !== "exclude") {
+            last = end.codePoint;
+            cursor += 2;
+        }
+        ranges.push({ first: Math.min(token.codePoint, last), last: Math.max(token.codePoint, last), include });
+    }
+    return { initiallyAllowed, ranges };
+}
+
+/** Applies Flash TextField.restrict syntax, including ranges, exclusion and allowed-case conversion. */
+export function applyTextInputRestriction(value: string, restrict: string | null | undefined): string {
+    if (restrict == null)
+        return value;
+    if (restrict === "")
+        return "";
+    const parsed = restrictRanges(restrict);
+    const allowed = (character: string): boolean => {
+        const codePoint = character.codePointAt(0);
+        let result = parsed.initiallyAllowed;
+        for (const range of parsed.ranges) {
+            if (codePoint >= range.first && codePoint <= range.last)
+                result = range.include;
+        }
+        return result;
+    };
+    let result = "";
+    for (const character of value) {
+        if (allowed(character)) {
+            result += character;
+            continue;
+        }
+        const upper = character.toLocaleUpperCase();
+        const lower = character.toLocaleLowerCase();
+        if (upper !== character && Array.from(upper).length === 1 && allowed(upper))
+            result += upper;
+        else if (lower !== character && Array.from(lower).length === 1 && allowed(lower))
+            result += lower;
+    }
+    return result;
+}
 
 /**
  * @ignore
@@ -21,10 +116,12 @@ export class TextInputAdapter {
     protected _visEle: HTMLInputElement | HTMLTextAreaElement;
     protected _container: HTMLDivElement;
     protected _promptStyleDOM: HTMLElement;
-    protected _restrictPattern: RegExp;
     protected _enterEvent: Event;
     protected _lastTransform: { x: number, y: number, width: number, height: number, scaleX: number, scaleY: number };
     protected _beginFlag: number = 0;
+    protected _composing: boolean = false;
+    protected _compositionCommittedByBeforeInput: boolean = false;
+    protected _compositionSnapshot: { value: string, selection: InputSelectionState } | null = null;
 
     /**
      * If true, the input box will be displayed inline with the canvas.
@@ -51,7 +148,6 @@ export class TextInputAdapter {
             (<Mutable<this>>this).target = target;
             (<Mutable<Stage>>ILaya.stage).focus = target;
 
-            this.updateRestrictPattern();
             this._lastTransform.x = null;
 
             target.on(Event.UNDISPLAY, this, this.end);
@@ -115,6 +211,8 @@ export class TextInputAdapter {
         ele.maxLength = target.maxChars <= 0 ? 1E5 : target.maxChars;
         ele.value = this.target.text;
         ele.placeholder = target.localizedPrompt;
+        const selection = target._getSelectionState();
+        this.setSelection(selection.start, selection.end, selection.direction);
 
         let style = ele.style;
         style.fontFamily = target.realFont;
@@ -145,6 +243,7 @@ export class TextInputAdapter {
 
     protected onEnd(target: Input, complete: boolean, switching: boolean): Promise<void> {
         Browser.document.body.scrollTop = 0;
+        this.updateTargetSelection(target);
         target.text = this._visEle.value;
 
         this._visEle.blur();
@@ -158,7 +257,7 @@ export class TextInputAdapter {
     }
 
     syncText() {
-        if (this._visEle && this._beginFlag === 0)
+        if (this._visEle && this._beginFlag === 0 && !this._composing)
             this.updateTargetText(this._visEle.value);
     }
 
@@ -167,18 +266,30 @@ export class TextInputAdapter {
             this._visEle.value = value;
     }
 
-    setSelection(startIndex: number, endIndex: number): void {
+    setSelection(startIndex: number, endIndex: number, direction: InputSelectionDirection = "none"): void {
         if (this._visEle) {
-            this._visEle.selectionStart = startIndex;
-            this._visEle.selectionEnd = endIndex;
+            const length = this._visEle.value.length;
+            startIndex = Math.max(0, Math.min(length, startIndex));
+            endIndex = endIndex < 0 ? length : Math.max(0, Math.min(length, endIndex));
+            try {
+                this._visEle.setSelectionRange(startIndex, endIndex, direction);
+            } catch {
+                // Some non-text HTML input types do not expose a selection.
+            }
         }
+    }
+
+    syncSelection(): InputSelectionState | null {
+        if (!this.target || !this._visEle)
+            return null;
+        return this.updateTargetSelection(this.target);
     }
 
     private onTouchBegin(): void {
         let lastFocus = ILaya.stage.focus;
         let touchTarget = InputManager.touchTarget;
         if (lastFocus != touchTarget) {
-            if (touchTarget instanceof Input)
+            if (touchTarget instanceof Input && (touchTarget.editable || touchTarget.selectable))
                 this.begin(touchTarget, true);
             else if (lastFocus instanceof Input)
                 this.end();
@@ -226,37 +337,12 @@ export class TextInputAdapter {
         `;
     }
 
-    protected updateRestrictPattern(): void {
-        let value = this.target.restrict;
-        // H5保存RegExp
-        if (value) {
-            value = "[^" + value + "]";
-
-            // 如果pattern为^\00-\FF，则我们需要的正则表达式是\00-\FF
-            if (value.indexOf("^^") > -1)
-                value = value.replace("^^", "");
-
-            this._restrictPattern = new RegExp(value, "g");
-        } else
-            this._restrictPattern = null;
-    }
-
     protected validateText(str: string): string {
         if (str == null)
             str = "";
         if (!this.target.multiline)
-            str = str.replace(/\r?\n/g, '');
-
-        // 对输入字符进行限制
-        if (this._restrictPattern) {
-            // 部分输入法兼容
-            str = str.replace(/\u2006|\x27/g, "");
-            if (this._restrictPattern.test(str)) {
-                str = str.replace(this._restrictPattern, "");
-            }
-        }
-
-        return str;
+            str = str.replace(/[\r\n]/g, '');
+        return applyTextInputRestriction(str, this.target.restrict);
     }
 
     protected showInputElement(): void {
@@ -278,10 +364,22 @@ export class TextInputAdapter {
     protected updateTargetText(value: string): boolean {
         let target = this.target;
         (<Mutable<this>>this).target = null;
-        let ret = target.text != value;
+        const before = target.text;
         target.text = value;
+        const ret = target.text != before;
         (<Mutable<this>>this).target = target;
         return ret;
+    }
+
+    protected updateTargetSelection(target: Input): InputSelectionState {
+        const previous = target._getSelectionState();
+        const length = this._visEle?.value.length ?? target.text.length;
+        const start = Math.max(0, Math.min(length, this._visEle?.selectionStart ?? previous.start));
+        const end = Math.max(start, Math.min(length, this._visEle?.selectionEnd ?? previous.end));
+        const direction = (this._visEle?.selectionDirection || "none") as InputSelectionDirection;
+        if (target._setSelectionState(start, end, direction))
+            target.event(Event.SELECTION_CHANGE, target._getSelectionState());
+        return target._getSelectionState();
     }
 
     protected getTargetTransform() {
@@ -341,8 +439,18 @@ export class TextInputAdapter {
         style.zIndex = '1';
         PAL.browser.setStyleTransformOrigin(style, "0 0");
 
-        input.addEventListener('input', ev => !(<InputEvent>ev).isComposing && this.processInputting(ev));
-        input.addEventListener("compositionend", ev => this.processInputting(ev));
+        input.addEventListener("beforeinput", ev => this.processBeforeInput(ev as InputEvent));
+        input.addEventListener('input', ev => {
+            const inputEvent = ev as InputEvent;
+            if (!inputEvent.isComposing && !this._composing)
+                this.processInputting(ev);
+        });
+        input.addEventListener("compositionstart", ev => this.processCompositionStart(ev as CompositionEvent));
+        input.addEventListener("compositionupdate", ev => this.processCompositionUpdate(ev as CompositionEvent));
+        input.addEventListener("compositionend", ev => this.processCompositionEnd(ev as CompositionEvent));
+        input.addEventListener("select", () => this.syncSelection());
+        input.addEventListener("keyup", () => this.syncSelection());
+        input.addEventListener("mouseup", () => this.syncSelection());
 
         input.addEventListener('mousemove', ev => this.stopEvent(ev), { passive: false });
         input.addEventListener('mousedown', ev => this.stopEvent(ev), { passive: false });
@@ -354,10 +462,111 @@ export class TextInputAdapter {
             return;
 
         let ele = <HTMLInputElement | HTMLTextAreaElement>ev.target;
-        let value = this.validateText(ele.value);
-        ele.value = value;
+        const rawValue = ele.value;
+        const rawStart = ele.selectionStart ?? rawValue.length;
+        const rawEnd = ele.selectionEnd ?? rawStart;
+        const direction = (ele.selectionDirection || "none") as InputSelectionDirection;
+        let value = this.validateText(rawValue);
+        if (value !== rawValue) {
+            // Assigning value resets the browser caret to the end. Map both
+            // UTF-16 selection endpoints through the same validation pass so
+            // a rejected character disappears in place instead.
+            const start = this.validateText(rawValue.slice(0, rawStart)).length;
+            const end = this.validateText(rawValue.slice(0, rawEnd)).length;
+            ele.value = value;
+            this.setSelection(start, end, direction);
+        }
+        this.updateTargetSelection(this.target);
         if (this.updateTargetText(value))
             this.target.event(Event.INPUT);
+    }
+
+    protected processBeforeInput(ev: InputEvent): void {
+        if (!this.target || ev.isComposing)
+            return;
+        if (this._composing)
+            this._compositionCommittedByBeforeInput = true;
+        const selection = this.updateTargetSelection(this.target);
+        const dataTransfer = (ev as InputEvent & { dataTransfer?: DataTransfer | null }).dataTransfer;
+        const text = ev.data ?? dataTransfer?.getData("text/plain") ?? "";
+        const payload = this.createBeforeInputData(text, ev.inputType ?? "", false, selection, ev);
+        this.target.event(Event.BEFORE_INPUT, payload);
+        if (payload.defaultPrevented && ev.cancelable)
+            ev.preventDefault();
+    }
+
+    protected processCompositionStart(ev: CompositionEvent): void {
+        if (!this.target || !this._visEle)
+            return;
+        const selection = this.updateTargetSelection(this.target);
+        this._composing = true;
+        this._compositionCommittedByBeforeInput = false;
+        this._compositionSnapshot = { value: this._visEle.value, selection };
+        this.target._setCompositionState(true, ev.data ?? "");
+        this.target.event(Event.COMPOSITION_START, this.compositionData(ev));
+    }
+
+    protected processCompositionUpdate(ev: CompositionEvent): void {
+        if (!this.target)
+            return;
+        this.updateTargetSelection(this.target);
+        this.target._setCompositionState(true, ev.data ?? "");
+        this.target.event(Event.COMPOSITION_UPDATE, this.compositionData(ev));
+    }
+
+    protected processCompositionEnd(ev: CompositionEvent): void {
+        if (!this.target || !this._visEle)
+            return;
+        const snapshot = this._compositionSnapshot;
+        if (!this._compositionCommittedByBeforeInput && snapshot) {
+            const payload = this.createBeforeInputData(
+                ev.data ?? "",
+                "insertCompositionText",
+                false,
+                snapshot.selection,
+                null,
+            );
+            this.target.event(Event.BEFORE_INPUT, payload);
+            if (payload.defaultPrevented) {
+                this._visEle.value = snapshot.value;
+                this.setSelection(snapshot.selection.start, snapshot.selection.end, snapshot.selection.direction);
+            }
+        }
+        this._compositionSnapshot = null;
+        this._compositionCommittedByBeforeInput = false;
+        this.target._setCompositionState(false, "");
+        this.target.event(Event.COMPOSITION_END, this.compositionData(ev));
+        this._composing = false;
+        this.processInputting(ev);
+    }
+
+    protected createBeforeInputData(
+        text: string,
+        inputType: string,
+        isComposing: boolean,
+        selection: InputSelectionState,
+        nativeEvent: InputEvent | null,
+    ): TextBeforeInputData {
+        return {
+            text,
+            inputType,
+            isComposing,
+            selectionStart: selection.start,
+            selectionEnd: selection.end,
+            nativeEvent,
+            defaultPrevented: false,
+            preventDefault() { this.defaultPrevented = true; },
+        };
+    }
+
+    protected compositionData(ev: CompositionEvent): TextCompositionData {
+        const selection = this.target?._getSelectionState() ?? { start: 0, end: 0 };
+        return {
+            text: ev.data ?? "",
+            selectionStart: selection.start,
+            selectionEnd: selection.end,
+            nativeEvent: ev,
+        };
     }
 
     protected stopEvent(e: any): void {

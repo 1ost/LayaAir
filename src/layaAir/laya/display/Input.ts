@@ -2,6 +2,14 @@ import { Text } from "./Text";
 import { Event } from "../events/Event"
 import { PAL } from "../platform/PlatformAdapters";
 
+export type InputSelectionDirection = "forward" | "backward" | "none";
+
+export interface InputSelectionState {
+    start: number;
+    end: number;
+    direction: InputSelectionDirection;
+}
+
 /**
  * @en The Input class is used to create display objects to display and input text.
  * The Input class encapsulates the native text input box. Due to differences between browsers, there may be slight deviations between the position of the default text of this object and the position of the text when the user clicks to input.
@@ -113,7 +121,13 @@ export class Input extends Text {
 
     protected _multiline: boolean = false;
     protected _editable: boolean = true;
+    protected _selectable: boolean = true;
     protected _type: string;
+    protected _selectionStart: number = 0;
+    protected _selectionEnd: number = 0;
+    protected _selectionDirection: InputSelectionDirection = "none";
+    protected _composing: boolean = false;
+    protected _compositionText: string = "";
 
     constructor() {
         super();
@@ -160,6 +174,37 @@ export class Input extends Text {
             PAL.textInput.begin(this);
         else if (this === PAL.textInput.target)
             PAL.textInput.end();
+    }
+
+    /** @en The lower UTF-16 index of the current selection. @zh 当前选择范围的较小 UTF-16 索引。 */
+    get selectionStart(): number {
+        if (PAL.textInput.target === this)
+            PAL.textInput.syncSelection();
+        return this._selectionStart;
+    }
+
+    /** @en The upper UTF-16 index of the current selection. @zh 当前选择范围的较大 UTF-16 索引。 */
+    get selectionEnd(): number {
+        if (PAL.textInput.target === this)
+            PAL.textInput.syncSelection();
+        return this._selectionEnd;
+    }
+
+    /** @en The active direction of the current selection. @zh 当前选择的活动方向。 */
+    get selectionDirection(): InputSelectionDirection {
+        if (PAL.textInput.target === this)
+            PAL.textInput.syncSelection();
+        return this._selectionDirection;
+    }
+
+    /** @en Whether an IME composition is currently active. @zh 当前是否正在进行输入法组合。 */
+    get composing(): boolean {
+        return this._composing;
+    }
+
+    /** @en The current provisional IME composition text. @zh 当前输入法组合的临时文本。 */
+    get compositionText(): string {
+        return this._compositionText;
     }
 
     /**
@@ -292,9 +337,15 @@ export class Input extends Text {
      * @param startIndex 光标起始位置。
      * @param endIndex 光标结束位置。
      */
-    setSelection(startIndex: number, endIndex: number): void {
+    setSelection(startIndex: number, endIndex: number, direction: InputSelectionDirection = "none"): void {
+        const length = this.text.length;
+        startIndex = Math.max(0, Math.min(length, Number.isFinite(startIndex) ? Math.trunc(startIndex) : 0));
+        endIndex = endIndex < 0 ? length : Math.max(0, Math.min(length, Number.isFinite(endIndex) ? Math.trunc(endIndex) : 0));
+        if (startIndex > endIndex)
+            [startIndex, endIndex] = [endIndex, startIndex];
+        this._setSelectionState(startIndex, endIndex, direction);
         this.focus = true;
-        PAL.textInput.setSelection(startIndex, endIndex);
+        PAL.textInput.setSelection(startIndex, endIndex, direction);
     }
 
     /**
@@ -302,14 +353,49 @@ export class Input extends Text {
      * @zh 选中当前实例的所有文本。
      */
     select(): void {
-        this.focus = true;
-        PAL.textInput.setSelection(0, -1);
+        this.setSelection(0, this.text.length);
+    }
+
+    /** @en Whether read-only text can receive focus and be selected. @zh 只读文本是否可获得焦点并被选择。 */
+    get selectable(): boolean {
+        return this._selectable;
+    }
+
+    set selectable(value: boolean) {
+        this._selectable = !!value;
+        if (!this._selectable && !this._editable && this.focus)
+            this.focus = false;
+    }
+
+    /** @internal */
+    _getSelectionState(): InputSelectionState {
+        return { start: this._selectionStart, end: this._selectionEnd, direction: this._selectionDirection };
+    }
+
+    /** @internal */
+    _setSelectionState(start: number, end: number, direction: InputSelectionDirection = "none"): boolean {
+        const changed = start !== this._selectionStart || end !== this._selectionEnd || direction !== this._selectionDirection;
+        this._selectionStart = start;
+        this._selectionEnd = end;
+        this._selectionDirection = direction;
+        return changed;
+    }
+
+    /** @internal */
+    _setCompositionState(composing: boolean, text: string = ""): void {
+        this._composing = composing;
+        this._compositionText = text;
     }
 
     /** @internal @blueprintEvent */
     Input_bpEvent: {
         [Event.CHANGE]: () => void;
         [Event.INPUT]: () => void;
+        [Event.BEFORE_INPUT]: (event: unknown) => void;
+        [Event.COMPOSITION_START]: (event: unknown) => void;
+        [Event.COMPOSITION_UPDATE]: (event: unknown) => void;
+        [Event.COMPOSITION_END]: (event: unknown) => void;
+        [Event.SELECTION_CHANGE]: (selection: InputSelectionState) => void;
         [Event.ENTER]: () => void;
         [Event.FOCUS]: () => void;
         [Event.BLUR]: () => void;
