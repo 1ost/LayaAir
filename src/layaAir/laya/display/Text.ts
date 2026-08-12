@@ -2150,7 +2150,10 @@ function cleanCmd(cmd: ITextCmd, releaseObj: boolean) {
 const emojiTest = /[\uD800-\uDBFF][\uDC00-\uDFFF]/;
 const wordBoundaryTest = /[a-zA-Z0-9\!-\+\/_]+$/;
 const punctuationChars = Array.from(".,，。、!！；;”’)）]】}》").map(char => char.charCodeAt(0));
-const normalizeCR = /\r\n/g;
+// Flash TextField content and classic Mac-authored text commonly use a bare
+// carriage return as the paragraph separator. Treat both CRLF and CR as a
+// line feed during layout while preserving the public text value verbatim.
+const normalizeCR = /\r\n?/g;
 const escapeCharsPattern = /\\(\w)/g;
 const escapeSequence: any = { "\\n": "\n", "\\t": "\t" };
 const ellipsisStr = "…";

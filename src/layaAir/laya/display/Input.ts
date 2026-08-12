@@ -184,7 +184,7 @@ export class Input extends Text {
         } else {
             // 单行时不允许换行
             if (!this._multiline)
-                value = value.replace(/\r?\n/g, '');
+                value = value.replace(/[\r\n]+/g, '');
 
             super.text = value;
         }
