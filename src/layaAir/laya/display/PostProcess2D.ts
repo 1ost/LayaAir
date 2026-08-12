@@ -27,6 +27,7 @@ export class PostProcess2D extends EventDispatcher {
 
    private _effects: PostProcess2DEffect[] = [];
    private _enabled: boolean = true;
+   private _ownsOwnerAlpha: boolean = false;
    /**@internal */
    _context: PostProcessRenderContext2D;
 
@@ -62,6 +63,23 @@ export class PostProcess2D extends EventDispatcher {
          this._context.command.clear(true);
          this._onChangeRender();
       }
+   }
+
+   /**
+    * When true, the effect stack consumes the owner's local alpha and the
+    * final off-screen quad is composited with inherited alpha only. This is
+    * required by effects whose alpha row can add opacity (for example a
+    * Flash color transform with alphaMultiplier=0 and alphaOffset>0).
+    */
+   get ownsOwnerAlpha(): boolean {
+      return this._ownsOwnerAlpha;
+   }
+
+   set ownsOwnerAlpha(value: boolean) {
+      value = !!value;
+      if (this._ownsOwnerAlpha === value) return;
+      this._ownsOwnerAlpha = value;
+      this._onChangeRender();
    }
 
    constructor() {
@@ -167,6 +185,7 @@ export class PostProcess2D extends EventDispatcher {
    }
 
    set effects(value: PostProcess2DEffect[]) {
+      this._ownsOwnerAlpha = false;
       this._effects.filter(e => !value.includes(e)).forEach(effect => effect.destroy());
       this._effects.length = 0;
       for (let i = 0, n = value.length; i < n; i++) {
@@ -252,6 +271,7 @@ export class PostProcess2D extends EventDispatcher {
     * @zh 清除所有后期处理效果。
     */
    clear() {
+      this._ownsOwnerAlpha = false;
       for (let i = 0; i < this._effects.length; i++) {
          this._effects[i].destroy();
       }
@@ -307,6 +327,7 @@ export class PostProcess2D extends EventDispatcher {
    destroy(): void {
       this.owner = null;
       this.inputProvider = null;
+      this._ownsOwnerAlpha = false;
       this._context.externalTextures.clear();
       this._context.compositeShaderData.destroy();
       this._context.compositeShaderData = null;

@@ -151,6 +151,12 @@ export class WebRenderStruct2D implements IRenderStruct2D {
    trans: StructTransform;
 
    public get globalAlpha(): number {
+      // A sub-struct is the quad that composites its owner's off-screen pass.
+      // Some effect stacks apply the complete local alpha transform inside
+      // that pass, so applying owner.alpha again here would both double the
+      // multiplier and erase a positive alpha offset when owner.alpha is 0.
+      if (this.owner?._struct !== this && this.owner?.postProcess?.ownsOwnerAlpha)
+         return this.owner._struct.parent?.globalAlpha ?? 1;
       return this._currentData.globalAlpha;
    }
 
