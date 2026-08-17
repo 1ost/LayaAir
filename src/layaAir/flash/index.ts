@@ -1,6 +1,9 @@
 export * from "./events/Event";
 export * from "./events/EventDispatcher";
 export * from "./events/MouseEvent";
+export * from "./events/FocusEvent";
+export * from "./events/TextEvent";
+export { IMEEvent } from "./events/IMEEvent";
 export * from "./display/DisplayObject";
 export * from "./display/InteractiveObject";
 export * from "./display/DisplayObjectContainer";

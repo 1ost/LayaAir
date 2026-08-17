@@ -6,17 +6,5 @@ export class InteractiveObject extends DisplayObject {
     needsSoftKeyboard: boolean = false;
     tabEnabled: boolean = false;
     tabIndex: number = -1;
-
+    focusRect: object | boolean | null = null;
 }
-
-Object.defineProperty(InteractiveObject, Symbol.hasInstance, {
-    configurable: false,
-    value(value: unknown): boolean {
-        const candidate = value as Partial<InteractiveObject>;
-        return value instanceof DisplayObject
-            && typeof candidate.doubleClickEnabled === "boolean"
-            && typeof candidate.needsSoftKeyboard === "boolean"
-            && typeof candidate.tabEnabled === "boolean"
-            && typeof candidate.tabIndex === "number";
-    }
-});

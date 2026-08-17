@@ -1,6 +1,8 @@
 import { Input as LayaInput } from "../../laya/display/Input";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { Event as LayaEvent } from "../../laya/events/Event";
 import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
+import { IMECompositionPhase, IMEEvent } from "../events/IMEEvent";
 import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
 
@@ -19,17 +21,20 @@ export class TextField extends LayaInput implements IEventDispatcher {
     needsSoftKeyboard = false;
     tabEnabled = false;
     tabIndex = -1;
+    focusRect: object | boolean | null = null;
 
     constructor() {
         super();
         super.type = LayaInput.TYPE_TEXT;
         this.editable = false;
+        this.on(LayaEvent.COMPOSITION_START, this, (value: unknown) => this._dispatchNativeIme("start", value));
+        this.on(LayaEvent.COMPOSITION_END, this, (value: unknown) => this._dispatchNativeIme("end", value));
     }
 
-    get root(): LayaSprite {
+    get root(): TextField {
         let value: LayaSprite = this;
         while (value.parent instanceof LayaSprite) value = value.parent;
-        return value;
+        return value as TextField;
     }
 
     get htmlText(): string { return this.text; }
@@ -52,6 +57,14 @@ export class TextField extends LayaInput implements IEventDispatcher {
     get selectionEndIndex(): number { return this.selectionEnd; }
     get caretIndex(): number {
         return this.selectionDirection === "backward" ? this.selectionStart : this.selectionEnd;
+    }
+
+    /** Explicit composition seam for native adapters that do not expose Laya composition events. */
+    dispatchImeComposition(phase: IMECompositionPhase, text: string,
+        selectionBeginIndex = this.selectionStart, selectionEndIndex = this.selectionEnd,
+        nativeEvent: unknown = null): boolean {
+        return this.dispatchEvent(new IMEEvent(IMEEvent.IME_COMPOSITION, true, false, text, phase,
+            selectionBeginIndex, selectionEndIndex, nativeEvent));
     }
 
     override get type(): string { return this._flashType; }
@@ -78,5 +91,16 @@ export class TextField extends LayaInput implements IEventDispatcher {
             node = node.parent as LayaSprite | null;
         }
         return false;
+    }
+
+    private _dispatchNativeIme(phase: "start" | "end", value: unknown): void {
+        if (!value || typeof value !== "object")
+            throw new TypeError(`Native IME ${phase} requires composition payload`);
+        const data = value as Record<string, unknown>;
+        if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
+            || !Number.isInteger(data.selectionEnd))
+            throw new TypeError(`Native IME ${phase} requires text and integer selection`);
+        this.dispatchImeComposition(phase, data.text, data.selectionStart as number,
+            data.selectionEnd as number, data.nativeEvent ?? null);
     }
 }

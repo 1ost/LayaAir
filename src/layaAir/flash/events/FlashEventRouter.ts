@@ -1,7 +1,10 @@
 import { Node as LayaNode } from "../../laya/display/Node";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { Event, EventPhase } from "./Event";
+import { FocusEvent } from "./FocusEvent";
+import { IMEEvent } from "./IMEEvent";
 import { MouseEvent } from "./MouseEvent";
+import { TextEvent } from "./TextEvent";
 import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 
 export type FlashEventListener = { bivarianceHack(event: Event): void }["bivarianceHack"];
@@ -41,7 +44,11 @@ const FLASH_TO_LAYA_EVENT: Readonly<Record<string, string>> = Object.freeze({
     [Event.COMPLETE]: LayaEvent.COMPLETE,
     [Event.REMOVED]: LayaEvent.REMOVED,
     [Event.REMOVED_FROM_STAGE]: LayaEvent.UNDISPLAY,
-    [Event.RESIZE]: LayaEvent.RESIZE
+    [Event.RESIZE]: LayaEvent.RESIZE,
+    [FocusEvent.FOCUS_IN]: LayaEvent.FOCUS,
+    [FocusEvent.FOCUS_OUT]: LayaEvent.BLUR,
+    [TextEvent.TEXT_INPUT]: LayaEvent.INPUT,
+    [IMEEvent.IME_COMPOSITION]: LayaEvent.COMPOSITION_UPDATE
 });
 
 const MOUSE_EVENT_TYPES = new Set([
@@ -129,17 +136,50 @@ export class FlashEventRouter {
                 markers.delete(type);
                 if (markers.size === 0) ROUTED_NATIVE.delete(value);
             });
-            const event = MOUSE_EVENT_TYPES.has(type)
-                ? MouseEvent._fromNative(type, value, target)
-                : new Event(type, false, false);
+            const event = this._projectNativeEvent(type, value, target);
             event._prepareForDispatch(target);
             event._bindNativeControl(value);
             this._route(event, target);
             return;
         }
-        const event = new Event(type);
+        const event = this._projectNativeEvent(type, value, this.host);
         event._prepareForDispatch(this.host);
-        this._invoke(event, false, EventPhase.AT_TARGET);
+        this._route(event, this.host);
+    }
+
+    private _projectNativeEvent(type: string, value: unknown, target: unknown): Event {
+        if (MOUSE_EVENT_TYPES.has(type)) {
+            if (!(value instanceof LayaEvent))
+                throw new TypeError(`Native ${type} requires a Laya Event payload`);
+            return MouseEvent._fromNative(type, value, target);
+        }
+        if (type === Event.ADDED || type === Event.REMOVED)
+            return new Event(type, true, false);
+        if (type === FocusEvent.FOCUS_IN || type === FocusEvent.FOCUS_OUT) {
+            const native = value instanceof LayaEvent ? value.nativeEvent : value;
+            const record = native && typeof native === "object" ? native as Record<string, unknown> : null;
+            const keyCode = record?.keyCode === undefined ? 0 : record.keyCode;
+            if (!Number.isInteger(keyCode) || (keyCode as number) < 0)
+                throw new TypeError(`Native ${type} keyCode must be a nonnegative integer`);
+            return new FocusEvent(type, true, false, record?.relatedTarget ?? null,
+                record?.shiftKey === true, keyCode as number, false);
+        }
+        if (type === TextEvent.TEXT_INPUT) {
+            const text = (this.host as { text?: unknown }).text;
+            if (typeof text !== "string") throw new TypeError("Native textInput requires exact host text");
+            return new TextEvent(type, true, false, text);
+        }
+        if (type === IMEEvent.IME_COMPOSITION) {
+            if (!value || typeof value !== "object")
+                throw new TypeError("Native imeComposition requires composition payload");
+            const data = value as Record<string, unknown>;
+            if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
+                || !Number.isInteger(data.selectionEnd))
+                throw new TypeError("Native imeComposition requires text and integer selection");
+            return new IMEEvent(type, true, false, data.text, "update",
+                data.selectionStart as number, data.selectionEnd as number, data.nativeEvent ?? null);
+        }
+        return new Event(type, false, false);
     }
 
     private _route(event: Event, target: unknown): void {

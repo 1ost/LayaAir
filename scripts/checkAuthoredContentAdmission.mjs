@@ -225,8 +225,27 @@ function isAuthoredReaderName(name) {
     return implementation && authored;
 }
 
+const CAPABILITY_HASH_MODE = "canonical-lf-utf8";
+
+function canonicalCapabilityBytes(root, file) {
+    const bytes = fs.readFileSync(absolute(root, file));
+    const text = bytes.toString("utf8");
+    if (!Buffer.from(text, "utf8").equals(bytes))
+        throw new Error(`${file}: ${CAPABILITY_HASH_MODE} requires valid UTF-8 source bytes`);
+    return Buffer.from(text.replace(/\r\n?/g, "\n"), "utf8");
+}
+
 function sha256(root, file) {
-    return crypto.createHash("sha256").update(fs.readFileSync(absolute(root, file))).digest("hex");
+    return crypto.createHash("sha256").update(canonicalCapabilityBytes(root, file)).digest("hex");
+}
+
+export function logicalCompilerSignature(root, value) {
+    const repository = normalize(path.resolve(root)).replace(/\/$/, "");
+    const escaped = repository.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value.replace(/\\/g, "/")
+        .replace(new RegExp(escaped, "gi"), "repo:")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 function compilerOptions(root, failures) {
@@ -829,6 +848,8 @@ function inspectCapabilityLedger(root, policy, code, failures) {
         failures.push(`${policy.capabilityLedger}: runtimeIdentity must be ${policy.runtimeIdentity}`);
     if (ledger.documentSchema !== policy.currentDocumentSchema)
         failures.push(`${policy.capabilityLedger}: documentSchema must be ${policy.currentDocumentSchema}`);
+    if (policy.capabilityHashMode !== CAPABILITY_HASH_MODE || ledger.hashMode !== CAPABILITY_HASH_MODE)
+        failures.push(`${policy.capabilityLedger}: hashMode must be ${CAPABILITY_HASH_MODE}`);
     if (Object.hasOwn(ledger, "productionReady"))
         failures.push(`${policy.capabilityLedger}: productionReady is derived and must not be asserted in the ledger`);
     if (!Array.isArray(ledger.capabilities)) {
@@ -1123,12 +1144,12 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
             : ts.isVariableDeclaration(declaration) && declaration.parent.flags & ts.NodeFlags.Const ? "const" : "other";
     if (!new Set(["function", "class", "const"]).has(obligation.kind) || obligation.kind !== actualKind)
         failures.push(`${label}.kind: expected concrete ${actualKind} export`);
-    const actualSignature = code.checker.typeToString(
+    const actualSignature = logicalCompilerSignature(root, code.checker.typeToString(
         code.checker.getTypeOfSymbolAtLocation(exported, declaration),
         declaration,
         ts.TypeFormatFlags.NoTruncation,
-    ).replace(/\s+/g, " ").trim();
-    if (typeof obligation.signature !== "string" || obligation.signature.replace(/\s+/g, " ").trim() !== actualSignature)
+    ));
+    if (typeof obligation.signature !== "string" || logicalCompilerSignature(root, obligation.signature) !== actualSignature)
         failures.push(`${label}.signature: expected exact compiler signature ${JSON.stringify(actualSignature)}`);
     if (actualKind === "class") {
         const instanceType = code.checker.getDeclaredTypeOfSymbol(exported);
@@ -1152,11 +1173,11 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
                 scope,
                 optional: Boolean(member.flags & ts.SymbolFlags.Optional || memberDeclaration.questionToken),
                 readonly: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ReadonlyKeyword),
-                signature: code.checker.typeToString(
+                signature: logicalCompilerSignature(root, code.checker.typeToString(
                     code.checker.getTypeOfSymbolAtLocation(member, memberDeclaration),
                     memberDeclaration,
                     ts.TypeFormatFlags.NoTruncation,
-                ).replace(/\s+/g, " ").trim(),
+                )),
             };
         });
         const actualMembers = [...collectMembers(instanceType, "instance"), ...collectMembers(classType, "static")]
@@ -1169,24 +1190,29 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
                 scope: member?.scope,
                 optional: member?.optional,
                 readonly: member?.readonly,
-                signature: member?.signature,
+                signature: typeof member?.signature === "string"
+                    ? logicalCompilerSignature(root, member.signature) : member?.signature,
             })).sort((a, b) => `${a.scope}:${a.name}`.localeCompare(`${b.scope}:${b.name}`))
             : null;
-        const actualConstructors = classType.getConstructSignatures().map(signature => code.checker.signatureToString(
+        const actualConstructors = classType.getConstructSignatures().map(signature => logicalCompilerSignature(root, code.checker.signatureToString(
             signature,
             declaration,
             ts.TypeFormatFlags.NoTruncation,
             ts.SignatureKind.Construct,
-        )).sort();
-        const declaredConstructors = Array.isArray(obligation.constructors) ? [...obligation.constructors].sort() : null;
+        ))).sort();
+        const declaredConstructors = Array.isArray(obligation.constructors)
+            ? obligation.constructors.map(signature => logicalCompilerSignature(root, signature)).sort() : null;
         const actualIndexSignatures = [
             ["number", instanceType.getNumberIndexType()],
             ["string", instanceType.getStringIndexType()],
         ].filter(([, type]) => Boolean(type)).map(([key, type]) => ({
             key,
-            signature: code.checker.typeToString(type, declaration, ts.TypeFormatFlags.NoTruncation).replace(/\s+/g, " ").trim(),
+            signature: logicalCompilerSignature(root, code.checker.typeToString(type, declaration, ts.TypeFormatFlags.NoTruncation)),
         }));
-        const declaredIndexSignatures = Array.isArray(obligation.indexSignatures) ? obligation.indexSignatures : null;
+        const declaredIndexSignatures = Array.isArray(obligation.indexSignatures) ? obligation.indexSignatures.map(item => ({
+            key: item?.key,
+            signature: typeof item?.signature === "string" ? logicalCompilerSignature(root, item.signature) : item?.signature,
+        })) : null;
         if (!declaredMembers || requiredRoot && declaredMembers.length === 0
             || JSON.stringify(declaredMembers) !== JSON.stringify(actualMembers))
             failures.push(`${label}.members: must exactly pin the public class surface ${JSON.stringify(actualMembers)}`);

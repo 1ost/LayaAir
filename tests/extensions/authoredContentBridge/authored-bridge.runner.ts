@@ -16,9 +16,11 @@ import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, Event, EventDispatcher, EventPhase, InteractiveObject, MovieClip,
-    MouseEvent, SimpleButton, TextField, TextFieldType, UnsupportedFlashFeatureError,
-    LayaAuthoredBindingHost, mapLayaAuthoredEventData,
-    registerAuthoredContentRuntime
+    FocusEvent, IMEEvent, MouseEvent, SimpleButton, TextEvent, TextField, TextFieldType,
+    UnsupportedFlashFeatureError
+} from "../../../src/layaAir/flash";
+import {
+    LayaAuthoredBindingHost, mapLayaAuthoredEventData, registerAuthoredContentRuntime
 } from "../../../src/extensions/authoredContent/runtime";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
 
@@ -164,6 +166,17 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(down.visible, true);
     button.enabled = false;
     assert.equal(button.mouseEnabled, false);
+    button.mouseEnabled = false;
+    button.enabled = true;
+    assert.equal(button.mouseEnabled, false, "authored mouseEnabled survives enabled toggles");
+
+    const priorUp = button.upState;
+    assert.throws(() => button.upState = button as DisplayObject, /ancestors/);
+    assert.equal(button.upState, priorUp, "self rejection is atomic");
+    const ancestor = new DisplayObject(); ancestor.addChild(button);
+    assert.throws(() => button.upState = ancestor, /ancestors/);
+    assert.equal(button.upState, priorUp, "ancestor rejection is atomic");
+    ancestor.removeChild(button);
 
     const shared = state(15, 8);
     const aliased = new SimpleButton(shared, null, null, shared);
@@ -177,9 +190,11 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
 
 test("TextField is a real Laya input with Flash type semantics and source event methods", () => {
     const field = new TextField();
+    const displayProbe: DisplayObject = field;
+    const interactiveProbe: InteractiveObject = field;
     assert.ok(field instanceof LayaSprite);
-    assert.ok(field instanceof DisplayObject);
-    assert.ok(field instanceof InteractiveObject);
+    assert.equal(displayProbe, field);
+    assert.equal(interactiveProbe, field);
     assert.equal(field.type, TextFieldType.DYNAMIC);
     assert.equal(field.editable, false);
     field.type = TextFieldType.INPUT;
@@ -198,6 +213,53 @@ test("TextField is a real Laya input with Flash type semantics and source event 
     field.dispatchEvent(new Event(Event.CHANGE));
     assert.equal(changed, 1);
     assert.throws(() => field.type = "password", /TextField.type/);
+});
+
+test("native focus, input and IME events project exact Flash-shaped payloads", () => {
+    const field = new TextField();
+    field.type = TextFieldType.INPUT;
+    const focus: FocusEvent[] = [];
+    const text: TextEvent[] = [];
+    const ime: IMEEvent[] = [];
+    field.addEventListener(FocusEvent.FOCUS_IN, event => focus.push(event as FocusEvent));
+    field.addEventListener(FocusEvent.FOCUS_OUT, event => focus.push(event as FocusEvent));
+    field.addEventListener(TextEvent.TEXT_INPUT, event => text.push(event as TextEvent));
+    field.addEventListener(IMEEvent.IME_COMPOSITION, event => ime.push(event as IMEEvent));
+    field.event(LayaEvent.FOCUS);
+    field.text = "native exact value";
+    field.event(LayaEvent.INPUT);
+    field.event(LayaEvent.COMPOSITION_START, {
+        text: "に", selectionStart: 1, selectionEnd: 1, nativeEvent: { data: "に" }
+    });
+    field.event(LayaEvent.COMPOSITION_UPDATE, {
+        text: "日本", selectionStart: 2, selectionEnd: 2, nativeEvent: { data: "日本" }
+    });
+    field.dispatchImeComposition("end", "日本語", 3, 3, { data: "日本語" });
+    field.event(LayaEvent.BLUR);
+    assert.deepEqual(focus.map(event => event.type), [FocusEvent.FOCUS_IN, FocusEvent.FOCUS_OUT]);
+    assert.ok(focus.every(event => event.target === field && event.bubbles));
+    assert.deepEqual(text.map(event => event.text), ["native exact value"]);
+    assert.deepEqual(ime.map(event => [event.compositionPhase, event.text,
+        event.selectionBeginIndex, event.selectionEndIndex]), [
+        ["start", "に", 1, 1], ["update", "日本", 2, 2], ["end", "日本語", 3, 3]
+    ]);
+    assert.throws(() => field.dispatchImeComposition("start", "invalid", -1, 0), /selection/);
+});
+
+test("real Laya ADDED and REMOVED use one Flash Event through capture, target and bubble", () => {
+    const parent = new DisplayObject();
+    const child = new DisplayObject();
+    for (const type of [Event.ADDED, Event.REMOVED]) {
+        const seen: Event[] = [];
+        parent.addEventListener(type, event => seen.push(event), true);
+        parent.addEventListener(type, event => seen.push(event));
+        child.addEventListener(type, event => seen.push(event));
+        if (type === Event.ADDED) parent.addChild(child); else parent.removeChild(child);
+        assert.equal(seen.length, 3);
+        assert.ok(seen.every(event => event === seen[0]));
+        assert.equal(seen[0].target, child);
+        assert.equal(seen[0].bubbles, true);
+    }
 });
 
 test("timeline invariants reject fallback and invalid replacement without corrupting state", () => {
@@ -241,17 +303,27 @@ test("neutral Laya host rejects missing native event, selection, cue, frame and 
 
 test("explicit bootstrap loads canonical Laya hierarchy with application linkage and named injection", () => {
     registerAuthoredContentRuntime([
-        { id: "fixtures.FlashPanel", ctor: FlashPanel },
-        { id: "fixtures.SubmitButtonLinkage", ctor: SubmitButtonLinkage },
-        { id: "fixtures.ButtonStateLinkage", ctor: ButtonStateLinkage }
+        { id: "fixtures.FlashPanel", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite" },
+        { id: "fixtures.SubmitButtonLinkage", ctor: SubmitButtonLinkage, sourceType: "SimpleButton", serializedType: "Sprite" },
+        { id: "fixtures.ButtonStateLinkage", ctor: ButtonStateLinkage, sourceType: "DisplayObject", serializedType: "Sprite" }
     ]);
     // Idempotent identical bootstrap is admitted; Flash aliases and collisions are not.
-    registerAuthoredContentRuntime([{ id: "fixtures.FlashPanel", ctor: FlashPanel }]);
+    registerAuthoredContentRuntime([{
+        id: "fixtures.FlashPanel", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite"
+    }]);
     assert.throws(() => registerAuthoredContentRuntime([
-        { id: "fixtures.Duplicate", ctor: FlashPanel }, { id: "fixtures.Duplicate", ctor: FlashPanel }
+        { id: "fixtures.Duplicate", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite" },
+        { id: "fixtures.Duplicate", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite" }
     ]), /Duplicate/);
-    assert.throws(() => registerAuthoredContentRuntime([{ id: "flash.display.MovieClip", ctor: FlashPanel }]), /application-owned/);
-    assert.throws(() => registerAuthoredContentRuntime([{ id: "fixtures.FlashPanel", ctor: SubmitButtonLinkage }]), /collision/);
+    assert.throws(() => registerAuthoredContentRuntime([{
+        id: "flash.display.MovieClip", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite"
+    }]), /application-owned/);
+    assert.throws(() => registerAuthoredContentRuntime([{
+        id: "fixtures.FlashPanel", ctor: SubmitButtonLinkage, sourceType: "SimpleButton", serializedType: "Sprite"
+    }]), /collision/);
+    assert.throws(() => registerAuthoredContentRuntime([{
+        id: "fixtures.WrongSerialized", ctor: SubmitButtonLinkage, sourceType: "SimpleButton", serializedType: "Input"
+    }]), /does not match/);
     const data = JSON.parse(readFileSync(join(process.cwd(), "tests/extensions/authoredContentBridge/fixtures/flash-panel.lh"), "utf8"));
     const serializedTypes: string[] = [];
     const visit = (node: any): void => { serializedTypes.push(node._$type); for (const child of node._$child ?? []) visit(child); };
@@ -263,6 +335,11 @@ test("explicit bootstrap loads canonical Laya hierarchy with application linkage
     assert.ok(panel instanceof FlashPanel);
     assert.ok(panel.submitButton instanceof SubmitButtonLinkage, `actual child: ${panel.submitButton?.constructor?.name}`);
     assert.equal(panel.submitButton.hitTestState?.visible, false);
+    const mismatched = structuredClone(data);
+    mismatched._$type = "Input";
+    const mismatchErrors: unknown[] = [];
+    assert.ok(!new PrefabImpl(HierarchyParser, mismatched).create(undefined, mismatchErrors));
+    assert.match(String(mismatchErrors[0]), /requires serialized type 'Sprite'/);
 });
 
 test("transpiled-style class keeps Flash add/remove APIs and bound method identity", () => {
@@ -288,8 +365,9 @@ function nativeMouse(type: string, target: DisplayObject, x: number, y: number, 
 }
 function createPanel(): FlashPanel {
     registerAuthoredContentRuntime([
-        { id: "fixtures.FlashPanel", ctor: FlashPanel }, { id: "fixtures.SubmitButtonLinkage", ctor: SubmitButtonLinkage },
-        { id: "fixtures.ButtonStateLinkage", ctor: ButtonStateLinkage }
+        { id: "fixtures.FlashPanel", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite" },
+        { id: "fixtures.SubmitButtonLinkage", ctor: SubmitButtonLinkage, sourceType: "SimpleButton", serializedType: "Sprite" },
+        { id: "fixtures.ButtonStateLinkage", ctor: ButtonStateLinkage, sourceType: "DisplayObject", serializedType: "Sprite" }
     ]);
     const data = JSON.parse(readFileSync(join(process.cwd(), "tests/extensions/authoredContentBridge/fixtures/flash-panel.lh"), "utf8"));
     const errors: unknown[] = [];

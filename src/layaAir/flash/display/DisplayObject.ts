@@ -3,18 +3,23 @@ import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter
 import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
 
+const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
+function events(value: DisplayObject): FlashEventRouter {
+    let router = DISPLAY_EVENTS.get(value);
+    if (!router) DISPLAY_EVENTS.set(value, router = new FlashEventRouter(value));
+    return router;
+}
+
 /** Flash display source shape backed by a real Laya Sprite. */
 export class DisplayObject extends LayaSprite implements IEventDispatcher {
-    private readonly _flashEvents = new FlashEventRouter(this);
-
     addEventListener(type: string, listener: FlashEventListener, useCapture = false, priority = 0, useWeakReference = false): void {
-        this._flashEvents.addEventListener(type, listener, useCapture, priority, useWeakReference);
+        events(this).addEventListener(type, listener, useCapture, priority, useWeakReference);
     }
     removeEventListener(type: string, listener: FlashEventListener, useCapture = false): void {
-        this._flashEvents.removeEventListener(type, listener, useCapture);
+        events(this).removeEventListener(type, listener, useCapture);
     }
-    dispatchEvent(event: Event): boolean { return this._flashEvents.dispatchEvent(event, this); }
-    hasEventListener(type: string): boolean { return this._flashEvents.hasEventListener(type); }
+    dispatchEvent(event: Event): boolean { return events(this).dispatchEvent(event, this); }
+    hasEventListener(type: string): boolean { return events(this).hasEventListener(type); }
     willTrigger(type: string): boolean {
         let node: LayaSprite | null = this;
         while (node) {
@@ -29,15 +34,3 @@ export class DisplayObject extends LayaSprite implements IEventDispatcher {
         return value;
     }
 }
-
-Object.defineProperty(DisplayObject, Symbol.hasInstance, {
-    configurable: false,
-    value(value: unknown): boolean {
-        const candidate = value as Partial<IEventDispatcher> & { root?: unknown };
-        return value instanceof LayaSprite
-            && typeof candidate.addEventListener === "function"
-            && typeof candidate.removeEventListener === "function"
-            && typeof candidate.dispatchEvent === "function"
-            && "root" in (value as object);
-    }
-});

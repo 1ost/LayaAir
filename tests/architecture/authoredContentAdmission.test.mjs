@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import {
     assertAuthoredContentAdmission,
     inspectAuthoredContentAdmission,
+    logicalCompilerSignature,
 } from "../../scripts/checkAuthoredContentAdmission.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -30,6 +31,10 @@ function clone(value) {
 
 function digest(content) {
     return crypto.createHash("sha256").update(content).digest("hex");
+}
+
+function canonicalDigest(content) {
+    return digest(content.replace(/\r\n?/g, "\n"));
 }
 
 function fixture(t, changes = {}) {
@@ -138,6 +143,11 @@ test("the capability ledger is exhaustive, unique, and status-checked", async t 
         const ledger = clone(blockedLedger);
         ledger.capabilities[0].status = "ready";
         failure(fixture(t, { [policy.capabilityLedger]: JSON.stringify(ledger) }), /invalid status/);
+    });
+    await t.test("hash mode is explicit", t => {
+        const ledger = clone(blockedLedger);
+        ledger.hashMode = "raw-worktree-bytes";
+        failure(fixture(t, { [policy.capabilityLedger]: JSON.stringify(ledger) }), /hashMode must be canonical-lf-utf8/);
     });
     await t.test("source code cannot become native execution", t => {
         const ledger = clone(blockedLedger);
@@ -255,6 +265,27 @@ test("admitted dispositions require concrete artifacts, symbols, and evidence", 
             }),
             "src/extensions/authoredContent/typed.ts": implementation,
             "tests/typed.test.mjs": evidence,
+        });
+        assertAuthoredContentAdmission(root);
+    });
+    await t.test("compiler signatures use repository-relative logical module paths", () => {
+        const suffix = '/src/extensions/index").TextField';
+        const first = logicalCompilerSignature("D:/worktrees/first", `() => import("D:/worktrees/first${suffix}`);
+        const second = logicalCompilerSignature("E:/detached/second", `() => import("E:/detached/second${suffix}`);
+        assert.equal(first, '() => import("repo:/src/extensions/index").TextField');
+        assert.equal(second, first);
+    });
+    await t.test("canonical LF hashes admit equivalent CRLF source and evidence", t => {
+        const artifactLf = "export const transformEvidence = true;\n";
+        const evidenceLf = `import assert from "node:assert/strict";\nimport test from "node:test";\nimport { transformEvidence } from "../src/layaAir/laya/display/TransformEvidence.ts";\ntest("canonical bytes", () => { assert.equal(transformEvidence, true); });\n`;
+        const root = fixture(t, {
+            [policy.capabilityLedger]: ledgerWith("rendering.transform", {
+                status: "native",
+                artifacts: [{ path: "src/layaAir/laya/display/TransformEvidence.ts", export: "transformEvidence", sha256: canonicalDigest(artifactLf) }],
+                evidence: [{ path: "tests/transform.test.mjs", test: "canonical bytes", sha256: canonicalDigest(evidenceLf), capability: "rendering.transform", covers: [canonicalDigest(artifactLf)] }],
+            }),
+            "src/layaAir/laya/display/TransformEvidence.ts": artifactLf.replace(/\n/g, "\r\n"),
+            "tests/transform.test.mjs": evidenceLf.replace(/\n/g, "\r\n"),
         });
         assertAuthoredContentAdmission(root);
     });

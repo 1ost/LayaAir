@@ -2,6 +2,7 @@
   "schema": "laya-authored-content-capabilities@1",
   "runtimeIdentity": "Laya.AuthoredTimelineClip",
   "documentSchema": "neutral-authored-content@1",
+  "hashMode": "canonical-lf-utf8",
   "capabilities": [
     {
       "id": "document.stage-metadata",
@@ -1832,7 +1833,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").DisplayObject; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObject; }"
             },
             {
               "abstract": false,
@@ -1976,7 +1977,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").DisplayObject; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObject; }"
             },
             {
               "abstract": false,
@@ -2361,7 +2362,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "51b21f381e01945ccd0693785f52e4d6309c364505243992386f5487ccedaaa5"
+          "sha256": "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -3433,6 +3434,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -3951,7 +3961,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").DisplayObjectContainer; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObjectContainer; }"
             },
             {
               "abstract": false,
@@ -4095,7 +4105,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").DisplayObjectContainer; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObjectContainer; }"
             },
             {
               "abstract": false,
@@ -4498,7 +4508,7 @@
             "new (): DisplayObjectContainer"
           ],
           "indexSignatures": [],
-          "sha256": "507acfe2e2ca7783ba635a7b43ea6b26efb5b4683ec83f45b0b831a83d73c457"
+          "sha256": "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf"
         },
         {
           "module": "src/layaAir/flash/display/InteractiveObject.ts",
@@ -5570,6 +5580,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -6088,7 +6107,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").InteractiveObject; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").InteractiveObject; }"
             },
             {
               "abstract": false,
@@ -6232,7 +6251,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").InteractiveObject; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").InteractiveObject; }"
             },
             {
               "abstract": false,
@@ -6635,7 +6654,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "b9639be64b020d0f45a127120779b758ee73b82542f1f7a21329949dc22953ee"
+          "sha256": "4a2245e94557f34d38f8355b144a35c5c66d442457a074e3e2747f074e86d01e"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -7761,6 +7780,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -8333,7 +8361,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").MovieClip; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").MovieClip; }"
             },
             {
               "abstract": false,
@@ -8486,7 +8514,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").MovieClip; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").MovieClip; }"
             },
             {
               "abstract": false,
@@ -8916,7 +8944,7 @@
             "new (): MovieClip"
           ],
           "indexSignatures": [],
-          "sha256": "6f734ed97cfca12875107be926c5a4fef66f2b48a4a811dae61bbb2749070635"
+          "sha256": "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447"
         },
         {
           "module": "src/layaAir/flash/display/NativeMovieClipTimeline.ts",
@@ -8983,7 +9011,7 @@
             "new (_animator: AnimatorClip2D): AnimatorClip2DTimeline"
           ],
           "indexSignatures": [],
-          "sha256": "c33d11ebf7902308bdd6508888d404c3a7b9a6e5878b3ab1066e6c98436f2d5e"
+          "sha256": "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b"
         },
         {
           "module": "src/layaAir/flash/display/SimpleButton.ts",
@@ -10073,6 +10101,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -10609,7 +10646,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").SimpleButton; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").SimpleButton; }"
             },
             {
               "abstract": false,
@@ -10753,7 +10790,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").SimpleButton; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").SimpleButton; }"
             },
             {
               "abstract": false,
@@ -11183,7 +11220,7 @@
             "new (upState?: DisplayObject | null, overState?: DisplayObject | null, downState?: DisplayObject | null, hitTestState?: DisplayObject | null): SimpleButton"
           ],
           "indexSignatures": [],
-          "sha256": "c894eec0159811c1a6ede1312f229336ddd7caa545fe2db72241e39ae18193c3"
+          "sha256": "a91de0c3088509da07195d74b0ac764d3a1e5ded631336880ae106bb94e780ac"
         },
         {
           "module": "src/layaAir/flash/display/Sprite.ts",
@@ -12264,6 +12301,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -12782,7 +12828,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").Sprite; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Sprite; }"
             },
             {
               "abstract": false,
@@ -12926,7 +12972,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").Sprite; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Sprite; }"
             },
             {
               "abstract": false,
@@ -13338,7 +13384,7 @@
             "new (): Sprite"
           ],
           "indexSignatures": [],
-          "sha256": "41db128b41a1a55b03fb887052ec02c6940db9c8f35b52b1a4508f19d39de711"
+          "sha256": "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
         }
       ],
       "evidence": [
@@ -13348,13 +13394,13 @@
           "sha256": "774e2dd76f1b54d999ccdb753dabc9f451673cda6d2726e72d3274fa30c93169",
           "capability": "api.flash.display",
           "covers": [
-            "41db128b41a1a55b03fb887052ec02c6940db9c8f35b52b1a4508f19d39de711",
-            "507acfe2e2ca7783ba635a7b43ea6b26efb5b4683ec83f45b0b831a83d73c457",
-            "51b21f381e01945ccd0693785f52e4d6309c364505243992386f5487ccedaaa5",
-            "6f734ed97cfca12875107be926c5a4fef66f2b48a4a811dae61bbb2749070635",
-            "b9639be64b020d0f45a127120779b758ee73b82542f1f7a21329949dc22953ee",
-            "c33d11ebf7902308bdd6508888d404c3a7b9a6e5878b3ab1066e6c98436f2d5e",
-            "c894eec0159811c1a6ede1312f229336ddd7caa545fe2db72241e39ae18193c3"
+            "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
+            "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
+            "4a2245e94557f34d38f8355b144a35c5c66d442457a074e3e2747f074e86d01e",
+            "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
+            "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
+            "a91de0c3088509da07195d74b0ac764d3a1e5ded631336880ae106bb94e780ac",
+            "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
           ]
         }
       ]
@@ -13368,7 +13414,7 @@
           "export": "EventPhase",
           "kind": "const",
           "signature": "Readonly<{ readonly CAPTURING_PHASE: 1; readonly AT_TARGET: 2; readonly BUBBLING_PHASE: 3; }>",
-          "sha256": "2599d728f2d32ffa0cde6b2fa83330ca2dc695ed4cb8052ca5ff888098a10511"
+          "sha256": "4b140ae880ccb0bd5d16ef989218e3a031b623ea59c2dd9d255cbc1aac0210fa"
         },
         {
           "module": "src/layaAir/flash/events/Event.ts",
@@ -13741,7 +13787,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean): Event"
           ],
           "indexSignatures": [],
-          "sha256": "2599d728f2d32ffa0cde6b2fa83330ca2dc695ed4cb8052ca5ff888098a10511"
+          "sha256": "4b140ae880ccb0bd5d16ef989218e3a031b623ea59c2dd9d255cbc1aac0210fa"
         },
         {
           "module": "src/layaAir/flash/events/EventDispatcher.ts",
@@ -13862,7 +13908,7 @@
             "new (target?: IEventDispatcher | null): EventDispatcher"
           ],
           "indexSignatures": [],
-          "sha256": "f2cd7015b18cb2689cd882201284880d229235a92bed62d8b598b94e63f5b1c8"
+          "sha256": "060903f4eef947b53ecda0888398fdf2f77a67d752cbe902b34ebc681e1cb562"
         },
         {
           "module": "src/layaAir/flash/events/FlashEventRouter.ts",
@@ -13938,7 +13984,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "cdf58a6f9f486bb1d625d9477c5c50694978e8040675d9e29dc6866c6cc68228"
+          "sha256": "9bdfb4af5ca192a40b70e65d3f7ef5a6f6ffe7a64bccb001d19a4156ae50716e"
         },
         {
           "module": "src/layaAir/flash/events/MouseEvent.ts",
@@ -14518,7 +14564,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, localX?: number, localY?: number, relatedObject?: unknown, ctrlKey?: boolean, altKey?: boolean, shiftKey?: boolean, buttonDown?: boolean, delta?: number, _commandKey?: boolean, _controlKey?: boolean, clickCount?: number, stageX?: number, stageY?: number): MouseEvent"
           ],
           "indexSignatures": [],
-          "sha256": "d9f4dfb1abd44af60ac404d35b52f1a7f8ed9581848fbba56410b0ea3153f686"
+          "sha256": "60ce45ed0418819eba8f3108accb6546b04fc0ed435940127972171ee0fbf8df"
         },
         {
           "module": "src/layaAir/flash/events/UnsupportedFlashFeatureError.ts",
@@ -14594,21 +14640,1296 @@
             "new (feature: string, detail?: string): UnsupportedFlashFeatureError"
           ],
           "indexSignatures": [],
-          "sha256": "ea01067211acc6d4e5615102f356793ab0db3b1bfd345f5f86d34f569d460749"
+          "sha256": "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509"
+        },
+        {
+          "module": "src/layaAir/flash/events/FocusEvent.ts",
+          "export": "FocusEvent",
+          "kind": "class",
+          "signature": "typeof FocusEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => FocusEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "isRelatedObjectInaccessible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "keyCode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "relatedObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "shiftKey",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FOCUS_IN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"focusIn\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FOCUS_OUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"focusOut\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, relatedObject?: unknown, shiftKey?: boolean, keyCode?: number, isRelatedObjectInaccessible?: boolean): FocusEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "8eefc113dd8b5261e95593382917b75d66de7e4eca1cfb4fe6cae0680c316326"
+        },
+        {
+          "module": "src/layaAir/flash/events/IMEEvent.ts",
+          "export": "IMEEvent",
+          "kind": "class",
+          "signature": "typeof IMEEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => IMEEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "compositionPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "IMECompositionPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "nativeEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "selectionBeginIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "selectionEndIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "text",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "IME_COMPOSITION",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"imeComposition\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LINK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"link\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT_INPUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"textInput\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, compositionPhase?: IMECompositionPhase, selectionBeginIndex?: number, selectionEndIndex?: number, nativeEvent?: unknown): IMEEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "18cce8b7af5de2db1246aa97ec37fd0a80993f4d9107f90c6894c7f870b853be"
+        },
+        {
+          "module": "src/layaAir/flash/events/TextEvent.ts",
+          "export": "TextEvent",
+          "kind": "class",
+          "signature": "typeof TextEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => TextEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "text",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LINK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"link\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT_INPUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"textInput\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string): TextEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashEventsBridgeEvidence.test.ts",
           "test": "Flash events bridge compiler surface",
-          "sha256": "57f404e765dea488e579d176ed2da63d639acb57e204f1f08048555a22427c25",
+          "sha256": "dfd4401c273a005604a578fa4fb0fd398353a0c78b03f9f725b832a1582e39f1",
           "capability": "api.flash.events",
           "covers": [
-            "2599d728f2d32ffa0cde6b2fa83330ca2dc695ed4cb8052ca5ff888098a10511",
-            "cdf58a6f9f486bb1d625d9477c5c50694978e8040675d9e29dc6866c6cc68228",
-            "d9f4dfb1abd44af60ac404d35b52f1a7f8ed9581848fbba56410b0ea3153f686",
-            "ea01067211acc6d4e5615102f356793ab0db3b1bfd345f5f86d34f569d460749",
-            "f2cd7015b18cb2689cd882201284880d229235a92bed62d8b598b94e63f5b1c8"
+            "060903f4eef947b53ecda0888398fdf2f77a67d752cbe902b34ebc681e1cb562",
+            "18cce8b7af5de2db1246aa97ec37fd0a80993f4d9107f90c6894c7f870b853be",
+            "4b140ae880ccb0bd5d16ef989218e3a031b623ea59c2dd9d255cbc1aac0210fa",
+            "60ce45ed0418819eba8f3108accb6546b04fc0ed435940127972171ee0fbf8df",
+            "8eefc113dd8b5261e95593382917b75d66de7e4eca1cfb4fe6cae0680c316326",
+            "9bdfb4af5ca192a40b70e65d3f7ef5a6f6ffe7a64bccb001d19a4156ae50716e",
+            "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
+            "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957"
           ]
         }
       ]
@@ -14646,7 +15967,7 @@
             "new (): TextFieldType"
           ],
           "indexSignatures": [],
-          "sha256": "3cbcc186d28f41c4943037dea4b1e750db669a5f90e736ee089268e98cbf6b14"
+          "sha256": "219b95ba8726b8582ca204a52638a2bb0783ffde9d5f3325e0d457e9dac40f53"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -15754,6 +17075,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "dispatchImeComposition",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(phase: IMECompositionPhase, text: string, selectionBeginIndex?: number, selectionEndIndex?: number, nativeEvent?: unknown) => boolean"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "displayAsPassword",
               "scope": "instance",
@@ -15904,6 +17234,15 @@
               "optional": false,
               "readonly": false,
               "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
             },
             {
               "abstract": false,
@@ -16632,7 +17971,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").TextField; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").TextField; }"
             },
             {
               "abstract": false,
@@ -16803,7 +18142,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "LayaSprite"
+              "signature": "TextField"
             },
             {
               "abstract": false,
@@ -16830,7 +18169,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"D:/layaair-worktrees/authored-bridge-synthesis-v2-worker7/src/extensions/index\").TextField; }"
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").TextField; }"
             },
             {
               "abstract": false,
@@ -17737,7 +19076,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "3cbcc186d28f41c4943037dea4b1e750db669a5f90e736ee089268e98cbf6b14"
+          "sha256": "219b95ba8726b8582ca204a52638a2bb0783ffde9d5f3325e0d457e9dac40f53"
         }
       ],
       "evidence": [
@@ -17747,7 +19086,7 @@
           "sha256": "885a61f583e293f3b9111197731733e0e1c417a4d9a5757f0dd3769240e1512e",
           "capability": "api.flash.text",
           "covers": [
-            "3cbcc186d28f41c4943037dea4b1e750db669a5f90e736ee089268e98cbf6b14"
+            "219b95ba8726b8582ca204a52638a2bb0783ffde9d5f3325e0d457e9dac40f53"
           ]
         }
       ]

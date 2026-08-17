@@ -1,7 +1,8 @@
 // Generated port fixture: source-visible Flash APIs over the canonical authored-content runtime.
 import {
-    DisplayObject, Event, MovieClip, MouseEvent, SimpleButton, bindAS3Method
-} from "../../../../src/extensions/authoredContent/runtime";
+    DisplayObject, Event, MovieClip, MouseEvent, SimpleButton
+} from "../../../../src/layaAir/flash";
+import { bindAS3Method } from "../../../../src/extensions/authoredContent/runtime/bindAS3Method";
 
 export class ButtonStateLinkage extends DisplayObject { }
 export class SubmitButtonLinkage extends SimpleButton { }

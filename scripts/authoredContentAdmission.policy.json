@@ -15,6 +15,7 @@
   ],
   "capabilityLedger": "docTool/architecture/authored-content-capabilities.json",
   "capabilitySchema": "laya-authored-content-capabilities@1",
+  "capabilityHashMode": "canonical-lf-utf8",
   "runtimeIdentity": "Laya.AuthoredTimelineClip",
   "currentDocumentSchema": "neutral-authored-content@1",
   "requiredCapabilities": [

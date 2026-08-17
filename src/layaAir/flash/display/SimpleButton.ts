@@ -36,6 +36,8 @@ export class SimpleButton extends InteractiveObject {
     private _downState: DisplayObject | null = null;
     private _hitTestState: DisplayObject | null = null;
     private _enabled = true;
+    private _authoredMouseEnabled = true;
+    private _updatingEnabled = false;
     private _trackAsMenu = false;
     private _visualState: ButtonVisualState = "up";
 
@@ -57,8 +59,16 @@ export class SimpleButton extends InteractiveObject {
     get enabled(): boolean { return this._enabled; }
     set enabled(value: boolean) {
         this._enabled = !!value;
-        this.mouseEnabled = this._enabled;
+        this._updatingEnabled = true;
+        try { super.mouseEnabled = this._enabled && this._authoredMouseEnabled; }
+        finally { this._updatingEnabled = false; }
         if (!this._enabled) this._setVisualState("up");
+    }
+
+    override get mouseEnabled(): boolean { return super.mouseEnabled; }
+    override set mouseEnabled(value: boolean) {
+        if (!this._updatingEnabled) this._authoredMouseEnabled = !!value;
+        super.mouseEnabled = this._enabled && this._authoredMouseEnabled;
     }
 
     get trackAsMenu(): boolean { return this._trackAsMenu; }
@@ -96,14 +106,16 @@ export class SimpleButton extends InteractiveObject {
 
     private _replaceState(slot: ButtonStateSlot, value: DisplayObject | null, name: string): void {
         if (value !== null && !(value instanceof DisplayObject)) throw new TypeError(`${name} must be a DisplayObject or null`);
+        if (value === this || value?.contains(this))
+            throw new TypeError(`${name} must not be the button or one of its ancestors`);
         const old = this[slot];
         if (old === value) return;
-        this[slot] = value;
         if (value) {
             if (value.parent !== this) this.addChild(value);
             if (!value.name) value.name = name;
             value.mouseEnabled = false;
         }
+        this[slot] = value;
         if (old && old.parent === this && !this._stateStillOwned(old)) this.removeChild(old);
         this._applyStateVisibility();
     }

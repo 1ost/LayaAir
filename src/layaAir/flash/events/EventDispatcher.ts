@@ -30,14 +30,3 @@ export class EventDispatcher extends LayaEventDispatcher implements IEventDispat
     hasEventListener(type: string): boolean { return this._flashEvents.hasEventListener(type); }
     willTrigger(type: string): boolean { return this.hasEventListener(type); }
 }
-
-Object.defineProperty(EventDispatcher, Symbol.hasInstance, {
-    configurable: false,
-    value(value: unknown): boolean {
-        const candidate = value as Partial<IEventDispatcher>;
-        return value instanceof LayaEventDispatcher
-            && typeof candidate.addEventListener === "function"
-            && typeof candidate.removeEventListener === "function"
-            && typeof candidate.dispatchEvent === "function";
-    }
-});

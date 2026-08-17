@@ -121,6 +121,8 @@ export class HierarchyParser {
                     const runtime = ClassUtils.getClass(pstr);
                     if (runtime) {
                         try {
+                            if (runtime._$authoredSerializedType && runtime._$authoredSerializedType !== nodeData._$type)
+                                throw new Error(`runtime class '${pstr}' requires serialized type '${runtime._$authoredSerializedType}', got '${nodeData._$type}'`);
                             node = new runtime();
                             if (!(node instanceof Node)) {
                                 errors.push(new Error(`runtime class invalid - '${pstr}', must derive from Node`));
@@ -232,6 +234,12 @@ export class HierarchyParser {
             if (options && options.runtime)
                 runtime = options.runtime;
             let node: Node;
+            if (runtime) {
+                if (runtime._$authoredSerializedType && runtime._$authoredSerializedType !== data._$type) {
+                    errors.push(new Error(`runtime class '${data._$runtime}' requires serialized type '${runtime._$authoredSerializedType}', got '${data._$type}'`));
+                    runtime = null;
+                }
+            }
             if (runtime) {
                 node = new runtime();
                 if (!(node instanceof Node)) {
