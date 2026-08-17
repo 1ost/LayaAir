@@ -18,6 +18,8 @@
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
     "buildDocTool": "cd ./docTool && tsc",
     "buildDocToolRun": "node ./docTool/dist/index.js",
+    "test:websocket": "node scripts/testWebSocketCore.mjs",
+    "test:websocket:types": "tsc -p tests/net/tsconfig.json --pretty false",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

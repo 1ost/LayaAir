@@ -3,13 +3,27 @@
  */
 export interface IWebSocket {
     onOpen: (result: any) => void;
-    onClose: () => void;
+    onClose: (info: IWebSocketCloseInfo) => void;
     onError: (e: any) => void;
     onMessage: (data: string | ArrayBuffer) => void;
 
     open(url: string, options?: IWebSocketConnectOptions): void;
-    close(): void;
+    close(code?: number, reason?: string): void;
     send(data: string | ArrayBuffer): Promise<void>;
+}
+
+/**
+ * @en Platform-neutral information describing why a WebSocket connection closed.
+ * Some platforms do not expose every field.
+ * @zh WebSocket 连接关闭原因的平台中立信息。部分平台可能无法提供所有字段。
+ */
+export interface IWebSocketCloseInfo {
+    /** @en The WebSocket close status code. @zh WebSocket 关闭状态码。 */
+    code?: number;
+    /** @en The WebSocket close reason. @zh WebSocket 关闭原因。 */
+    reason?: string;
+    /** @en Whether the connection closed cleanly. @zh 连接是否正常关闭。 */
+    wasClean?: boolean;
 }
 
 /**

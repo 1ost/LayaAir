@@ -1,22 +1,26 @@
-import { IWebSocket, IWebSocketConnectOptions } from "../../laya/net/IWebSocket";
+import { IWebSocket, IWebSocketCloseInfo, IWebSocketConnectOptions } from "../../laya/net/IWebSocket";
 import { PAL } from "../../laya/platform/PlatformAdapters";
 
 export class MgWebSocket implements IWebSocket {
     ws: WechatMinigame.SocketTask;
 
     onOpen: (result: any) => void;
-    onClose: () => void;
+    onClose: (info: IWebSocketCloseInfo) => void;
     onError: (e: any) => void;
     onMessage: (data: string | ArrayBuffer) => void;
 
+    private _generation: number = 0;
+
     open(url: string, options?: IWebSocketConnectOptions) {
+        const generation = ++this._generation;
         let failed = false;
         this.ws = PAL.g.connectSocket(Object.assign({
             url,
             multiple: true, //支付宝需要这个
             fail: (err: any) => {
                 failed = true;
-                this.onError(err);
+                if (this._generation === generation)
+                    this.onError(err);
             }
         }, options));
         if (this.ws == null || failed) {
@@ -24,11 +28,29 @@ export class MgWebSocket implements IWebSocket {
             return;
         }
 
-        this.ws.onOpen(res => this.onOpen(res));
-        this.ws.onClose(() => this.onClose());
-        this.ws.onError(err => this.onError(err));
-        this.ws.onMessage(msg => {
-            if (msg.data){
+        const ws = this.ws;
+        ws.onOpen(res => {
+            if (this._isCurrent(ws, generation))
+                this.onOpen(res);
+        });
+        ws.onClose(result => {
+            if (!this._isCurrent(ws, generation))
+                return;
+            const closeResult: any = result;
+            this.onClose({
+                code: closeResult?.code,
+                reason: closeResult?.reason,
+                wasClean: closeResult?.wasClean
+            });
+            if (this._isCurrent(ws, generation))
+                ++this._generation;
+        });
+        ws.onError(err => {
+            if (this._isCurrent(ws, generation))
+                this.onError(err);
+        });
+        ws.onMessage(msg => {
+            if (this._isCurrent(ws, generation) && msg.data != null) {
                 var data:any = msg.data;
                 if (data.isBuffer) {
                     // 对齐web转成arrayBuffer;
@@ -50,9 +72,15 @@ export class MgWebSocket implements IWebSocket {
         return bytes.buffer;
     }
 
-    close(): void {
-        if (this.ws)
-            this.ws.close({});
+    close(code?: number, reason?: string): void {
+        if (this.ws) {
+            const options: WechatMinigame.SocketTaskCloseOption = {};
+            if (code != null)
+                options.code = code;
+            if (reason != null)
+                options.reason = reason;
+            this.ws.close(options);
+        }
     }
 
     send(data: string | ArrayBuffer): Promise<void> {
@@ -66,5 +94,9 @@ export class MgWebSocket implements IWebSocket {
                 fail: (e) => reject(e)
             });
         });
+    }
+
+    private _isCurrent(ws: WechatMinigame.SocketTask, generation: number): boolean {
+        return this.ws === ws && this._generation === generation;
     }
 }

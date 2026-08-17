@@ -3,7 +3,7 @@ import { EventDispatcher } from "../events/EventDispatcher";
 import { PAL } from "../platform/PlatformAdapters";
 import { Byte } from "../utils/Byte";
 import { getErrorMsg } from "../utils/Error";
-import { IWebSocket, IWebSocketConnectOptions } from "./IWebSocket";
+import { IWebSocket, IWebSocketCloseInfo, IWebSocketConnectOptions } from "./IWebSocket";
 
 /**
  * @en Socket encapsulates HTML5 WebSocket, allowing full-duplex real-time communication between server and client, and cross-domain communication. After establishing a connection, both server and Browser/Client Agent can actively send or receive text and binary data to each other.
@@ -40,6 +40,8 @@ export class Socket extends EventDispatcher {
     protected _socket: IWebSocket;
     protected _connected: boolean;
     protected _inputPos: number;
+    private _connectionEpoch: number = 0;
+    private _closingSocket: IWebSocket;
 
     /**
      * @en Create a new Socket object. The default byte order is Socket.BIG_ENDIAN. If no parameters are specified, a socket initially in a disconnected state will be created. If valid parameters are specified, it attempts to connect to the specified host and port.
@@ -153,6 +155,7 @@ export class Socket extends EventDispatcher {
     connectByUrl(url: string, options?: IWebSocketConnectOptions): void;
 
     connectByUrl(url: string, options?: string[] | IWebSocketConnectOptions): void {
+        const epoch = ++this._connectionEpoch;
         if (this._socket != null)
             this.close();
 
@@ -164,40 +167,64 @@ export class Socket extends EventDispatcher {
             options = { protocols: options };
         }
 
-        this._socket = PAL.browser.createWebSocket();
-        if (this._socket == null) {
+        const socket = PAL.browser.createWebSocket();
+        this._socket = socket;
+        if (socket == null) {
             console.warn("WebSocket is not supported in this platform.");
             return;
         }
-        this._socket.onOpen = () => {
+        socket.onOpen = () => {
+            if (!this._isCurrent(socket, epoch))
+                return;
             this._connected = true;
             this.event(Event.OPEN);
         };
-        this._socket.onClose = () => {
+        socket.onClose = (info: IWebSocketCloseInfo) => {
+            if (this._connectionEpoch !== epoch
+                || (this._socket !== socket && this._closingSocket !== socket))
+                return;
+            if (this._socket === socket)
+                this._socket = null;
+            if (this._closingSocket === socket)
+                this._closingSocket = null;
             this._connected = false;
-            this.event(Event.CLOSE);
+            this.event(Event.CLOSE, info);
         };
-        this._socket.onError = (e: any) => {
+        socket.onError = (e: any) => {
+            if (!this._isCurrent(socket, epoch))
+                return;
             if (this.hasListener(Event.ERROR))
                 this.event(Event.ERROR, e);
             else
                 console.error("Socket Error: " + getErrorMsg(e));
         };
-        this._socket.onMessage = (msg: string | ArrayBuffer) => this._onMessage(msg);
-        this._socket.open(url, options);
+        socket.onMessage = (msg: string | ArrayBuffer) => {
+            if (this._isCurrent(socket, epoch))
+                this._onMessage(msg);
+        };
+        socket.open(url, options);
     }
 
     /**
      * @en Close the connection.
+     * @param code The WebSocket close status code.
+     * @param reason The WebSocket close reason.
      * @zh 关闭连接。
+     * @param code WebSocket 关闭状态码。
+     * @param reason WebSocket 关闭原因。
      */
-    close(): void {
+    close(code?: number, reason?: string): void {
         if (this._socket != null) {
+            const socket = this._socket;
+            this._socket = null;
+            this._closingSocket = socket;
+            socket.onOpen = () => { };
+            socket.onError = () => { };
+            socket.onMessage = () => { };
             try {
-                this._socket.close();
+                socket.close(code, reason);
             } catch (e) {
             }
-            this._socket = null;
         }
         this._connected = false;
     }
@@ -270,10 +297,14 @@ export class Socket extends EventDispatcher {
         this.event(Event.MESSAGE, data);
     }
 
+    private _isCurrent(socket: IWebSocket, epoch: number): boolean {
+        return this._socket === socket && this._connectionEpoch === epoch;
+    }
+
     /** @internal @blueprintEvent */
     Socket_bpEvent: {
         [Event.OPEN]: () => void;
-        [Event.CLOSE]: () => void;
+        [Event.CLOSE]: (info: IWebSocketCloseInfo) => void;
         [Event.ERROR]: (e: any) => void;
         [Event.MESSAGE]: (data: string | ArrayBuffer) => void;
     };
