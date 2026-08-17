@@ -70,6 +70,8 @@ export class BrowserAdapter extends EventDispatcher {
         win.addEventListener("orientationchange", (e: any) => this.event(Event.ORIENTATION_CHANGE, e));
         win.addEventListener("focus", () => this.event(Event.FOCUS));
         win.addEventListener("blur", () => this.event(Event.BLUR));
+        win.addEventListener("pagehide", (e: PageTransitionEvent) => this.event(Event.PAGE_HIDE, !!e.persisted));
+        win.addEventListener("pageshow", (e: PageTransitionEvent) => this.event(Event.PAGE_SHOW, !!e.persisted));
         if (Browser.onIOS && !Browser.onLayaRuntime) {
             //Safari从后台恢复时可能不派发focus。捕获用户交互并在业务点击事件前补发。
             let onUserInteraction = () => this.event(Event.FOCUS);

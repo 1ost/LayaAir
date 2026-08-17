@@ -1,4 +1,5 @@
 import { InputManager } from "../events/InputManager";
+import { Event } from "../events/Event";
 import { LayaGL } from "../layagl/LayaGL";
 import { PAL } from "../platform/PlatformAdapters";
 import { Browser } from "../utils/Browser";
@@ -47,24 +48,44 @@ export class Render {
     private static _paused: boolean = false;
 
     /**
-     * @en Pauses or resumes the rendering loop.
-     * @zh 暂停或恢复渲染循环。
+     * @internal
+     */
+    private static _lifecyclePaused: boolean = false;
+
+    /**
+     * @en Pauses or resumes the rendering loop. The getter also reports an automatic page-lifecycle pause; setting false does not resume rendering while the page remains hidden.
+     * @zh 暂停或恢复渲染循环。获取值时也会包含页面生命周期触发的自动暂停；页面仍处于隐藏状态时，设置为 false 不会恢复渲染。
      */
     static get paused(): boolean {
-        return Render._paused;
+        return Render._paused || Render._lifecyclePaused;
     }
 
     static set paused(value: boolean) {
         if (Render._paused === value) return;
 
+        let wasPaused = Render.paused;
         Render._paused = value;
 
-        // Resume: mark all timers as just resumed for smooth transition
-        if (!value) {
-            ILaya.systemTimer?._markResumed();
-            ILaya.physicsTimer?._markResumed();
-            ILaya.timer?._markResumed();
-        }
+        if (wasPaused && !Render.paused)
+            Render._markTimersResumed();
+    }
+
+    /** @internal */
+    private static _setLifecyclePaused(value: boolean): void {
+        if (Render._lifecyclePaused === value) return;
+
+        let wasPaused = Render.paused;
+        Render._lifecyclePaused = value;
+
+        if (wasPaused && !Render.paused)
+            Render._markTimersResumed();
+    }
+
+    /** @internal */
+    private static _markTimersResumed(): void {
+        ILaya.systemTimer?._markResumed();
+        ILaya.physicsTimer?._markResumed();
+        ILaya.timer?._markResumed();
     }
 
     /**
@@ -95,6 +116,8 @@ export class Render {
             else if (timeId != 0)
                 window.clearInterval(timeId);
         });
+        PAL.browser.on(Event.PAGE_HIDE, () => Render._setLifecyclePaused(true));
+        PAL.browser.on(Event.PAGE_SHOW, () => Render._setLifecyclePaused(false));
         Render.startLoop();
     }
 

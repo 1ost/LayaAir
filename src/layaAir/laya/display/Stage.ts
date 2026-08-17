@@ -37,6 +37,8 @@ import { Render } from "../renders/Render";
  * - Event.BLUR("blur"): Dispatched when the stage loses focus. For example, when the browser or current tab is switched to the background.
  * - Event.FOCUS_CHANGE("focuschange"): Dispatched when the stage focus changes. Use Laya.stage.isFocused to get whether the current stage has focus.
  * - Event.VISIBILITY_CHANGE("visibilitychange"): Dispatched when the stage visibility changes (e.g., when the browser or current tab is switched to the background). Use Laya.stage.isVisibility to get the current visibility state.
+ * - Event.PAGE_HIDE("pagehide"): Dispatched when the browser page is hidden. The event payload indicates whether it is entering the back-forward cache.
+ * - Event.PAGE_SHOW("pageshow"): Dispatched when the browser page is shown. The event payload indicates whether it was restored from the back-forward cache.
  * - Event.FULL_SCREEN_CHANGE("fullscreenchange"): Discheduled when the browser fullscreen state changes, such as entering or exiting fullscreen mode.
  * @zh Stage 是舞台类，显示列表的根节点，所有显示对象都在舞台上显示。通过 Laya.stage 单例访问。
  * Stage提供几种适配模式，不同的适配模式会产生不同的画布大小，画布越大，渲染压力越大，所以要选择合适的适配方案。
@@ -46,6 +48,8 @@ import { Render } from "../renders/Render";
  * - Event.BLUR("blur"): 舞台失去焦点时调度。比如浏览器或者当前标签被切换到后台后调度。
  * - Event.FOCUS_CHANGE("focuschange"): 舞台焦点变化时调度，使用Laya.stage.isFocused可以获取当前舞台是否获得焦点。
  * - Event.VISIBILITY_CHANGE("visibilitychange"): 舞台可见性发生变化时调度（比如浏览器或者当前标签被切换到后台后调度），使用Laya.stage.isVisibility可以获取当前是否处于显示状态。
+ * - Event.PAGE_HIDE("pagehide"): 浏览器页面隐藏时调度，事件参数表示页面是否进入往返缓存。
+ * - Event.PAGE_SHOW("pageshow"): 浏览器页面显示时调度，事件参数表示页面是否从往返缓存恢复。
  * - Event.FULL_SCREEN_CHANGE("fullscreenchange"): 浏览器全屏更改时调度，比如进入全屏或者退出全屏。
  */
 export class Stage extends Sprite {
@@ -261,6 +265,9 @@ export class Stage extends Sprite {
             this.renderingEnabled = visible;
             this.event(Event.VISIBILITY_CHANGE, visible);
         });
+
+        PAL.browser.on(Event.PAGE_HIDE, (persisted: boolean) => this.event(Event.PAGE_HIDE, persisted));
+        PAL.browser.on(Event.PAGE_SHOW, (persisted: boolean) => this.event(Event.PAGE_SHOW, persisted));
 
         PAL.browser.on(Event.RESIZE, () => {
             // 弹出输入法不应对画布进行resize。
@@ -945,6 +952,8 @@ export class Stage extends Sprite {
         [Event.BLUR]: () => void;
         [Event.FOCUS_CHANGE]: () => void;
         [Event.VISIBILITY_CHANGE]: (visible: boolean) => void;
+        [Event.PAGE_HIDE]: (persisted: boolean) => void;
+        [Event.PAGE_SHOW]: (persisted: boolean) => void;
         [Event.FULL_SCREEN_CHANGE]: () => void;
         [Event.WILL_RESIZE]: () => void;
     };

@@ -274,6 +274,18 @@ export class Event {
     static readonly VISIBILITY_CHANGE = "visibilitychange";
 
     /**
+     * @en Dispatched when the browser page is being hidden. The event payload is true when the page is entering the back-forward cache.
+     * @zh 浏览器页面即将隐藏时调度。事件参数为 true 时，表示页面正在进入往返缓存。
+     */
+    static readonly PAGE_HIDE = "pagehide";
+
+    /**
+     * @en Dispatched when the browser page is shown. The event payload is true when the page was restored from the back-forward cache.
+     * @zh 浏览器页面显示时调度。事件参数为 true 时，表示页面从往返缓存中恢复。
+     */
+    static readonly PAGE_SHOW = "pageshow";
+
+    /**
      * @en Defines the value of the `type` property of a `orientationchange` event object.
      * @zh 定义 `orientationchange` 事件对象的 `type` 属性值。
      */
