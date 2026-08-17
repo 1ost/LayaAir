@@ -101,6 +101,20 @@ const nativeRemove = (parent: LayaNode, value: DisplayObject): void => {
 const nativeAdd = (parent: LayaNode, value: DisplayObject, index: number): void => {
     Node.prototype.addChildAt.call(parent, value, Math.max(0, Math.min(index, parent.numChildren)));
 };
+const collectNodeGraph = (roots: Iterable<LayaNode | null | undefined>): Set<LayaNode> => {
+    const nodes = new Set<LayaNode>();
+    const pending = [...roots].filter((node): node is LayaNode => node != null);
+    while (pending.length > 0) {
+        const node = pending.pop()!;
+        if (nodes.has(node)) continue;
+        nodes.add(node);
+        const internals = nodeInternals(node);
+        for (const child of internals._children) pending.push(child);
+        for (const child of internals._$children) pending.push(child);
+        if (internals._$container && internals._$container !== node) pending.push(internals._$container);
+    }
+    return nodes;
+};
 
 class DisplayObjectHitArea implements IHitArea {
     private static readonly input = new InputManager();
@@ -238,31 +252,22 @@ export class SimpleButton extends InteractiveObject {
             mouseEnabled: nativeMouseEnabled(item),
             visible: nativeVisible(item),
         }));
-        const childArrays = new Map<LayaNode[], LayaNode[]>();
-        const snapshotArrays = (node: LayaNode | null): void => {
-            if (!node) return;
-            const internals = nodeInternals(node);
-            if (!childArrays.has(internals._children)) childArrays.set(internals._children, internals._children.slice());
-            if (!childArrays.has(internals._$children)) childArrays.set(internals._$children, internals._$children.slice());
-        };
-        snapshotArrays(this);
-        snapshotArrays(nodeInternals(this)._$container);
-        for (const snapshot of snapshots) {
-            snapshotArrays(snapshot.parent);
-            snapshotArrays(snapshot.actualParent);
-        }
         const initialButtonChildren = new Set<LayaNode>([
             ...nodeInternals(this)._children,
             ...nodeInternals(this)._$children,
         ]);
-        const placementNodes = new Set<LayaNode>([
+        const placementNodes = collectNodeGraph([
             this,
-            nodeInternals(this)._$container,
             ...initialButtonChildren,
             ...snapshots.map(snapshot => snapshot.item),
-            ...snapshots.flatMap(snapshot => [snapshot.parent, snapshot.actualParent]).filter((item): item is LayaNode => item != null),
             ...BUTTON_STATE_SLOTS.map(stateSlot => stateSlots.get(stateSlot)).filter((item): item is DisplayObject => item != null),
         ]);
+        for (const node of [...placementNodes]) {
+            const internals = nodeInternals(node);
+            if (internals._parent) placementNodes.add(internals._parent);
+            if (internals._$parent) placementNodes.add(internals._$parent);
+            if (internals._$container) placementNodes.add(internals._$container);
+        }
         const placements = [...placementNodes].map(item => ({
             item,
             actualParent: nodeInternals(item)._parent,
@@ -272,9 +277,48 @@ export class SimpleButton extends InteractiveObject {
             logicalChildren: nodeInternals(item)._$children,
             destroyed: nodeInternals(item)._destroyed,
         }));
+        const childArrays = new Map<LayaNode[], LayaNode[]>();
+        const snapshotArrays = (node: LayaNode | null): void => {
+            if (!node) return;
+            const internals = nodeInternals(node);
+            if (!childArrays.has(internals._children)) childArrays.set(internals._children, internals._children.slice());
+            if (!childArrays.has(internals._$children)) childArrays.set(internals._$children, internals._$children.slice());
+        };
         for (const placement of placements) {
             snapshotArrays(placement.item);
             snapshotArrays(placement.container);
+        }
+        const expectedArrays = new Map<LayaNode[], LayaNode[]>(
+            [...childArrays].map(([children, saved]) => [children, saved.slice()]),
+        );
+        const expectedActualParents = new Map(placements.map(placement => [placement.item, placement.actualParent]));
+        const expectedLogicalParents = new Map(placements.map(placement => [placement.item, placement.logicalParent]));
+        const expectedSlots = new Map(stateSlots);
+        expectedSlots.set(slot, value);
+        const expectedChildren = (parent: LayaNode): LayaNode[] => {
+            const children = nodeInternals(parent)._$children;
+            const expected = expectedArrays.get(children);
+            if (!expected) throw new Error(`${name} replacement is missing an expected Laya child-array snapshot`);
+            return expected;
+        };
+        if (value && value.parent !== this) {
+            if (value.parent) {
+                const source = expectedChildren(value.parent);
+                const sourceIndex = source.indexOf(value);
+                if (sourceIndex < 0) throw new Error(`${name} state is absent from its snapshotted source parent`);
+                source.splice(sourceIndex, 1);
+            }
+            expectedChildren(this).push(value);
+            expectedActualParents.set(value, nodeInternals(this)._$container);
+            expectedLogicalParents.set(value, this);
+        }
+        if (old && old.parent === this && ![...expectedSlots.values()].includes(old)) {
+            const ownerChildren = expectedChildren(this);
+            const oldIndex = ownerChildren.indexOf(old);
+            if (oldIndex < 0) throw new Error(`${name} prior state is absent from its snapshotted owner`);
+            ownerChildren.splice(oldIndex, 1);
+            expectedActualParents.set(old, null);
+            expectedLogicalParents.set(old, null);
         }
         const nodeTransaction = beginNodeMutationTransaction(placementNodes,
             operation => poisonButtonTransaction(this, operation));
@@ -289,11 +333,13 @@ export class SimpleButton extends InteractiveObject {
                         const sourceParent = value.parent;
                         runPermittedNodeMutation(nodeTransaction, [
                             { node: sourceParent, operation: "removeChild" },
+                            { node: value, operation: "setParentDerived" },
                             { node: value, operation: "setParent" },
                         ], () => nativeRemove(sourceParent, value));
                     }
                     runPermittedNodeMutation(nodeTransaction, [
                         { node: this, operation: "addChildAt" },
+                        { node: value, operation: "setParentDerived" },
                         { node: value, operation: "setParent" },
                     ], () => nativeAdd(this, value, this.numChildren));
                 }
@@ -302,6 +348,7 @@ export class SimpleButton extends InteractiveObject {
             if (old && old.parent === this && !this._stateStillOwned(old)) {
                 runPermittedNodeMutation(nodeTransaction, [
                     { node: this, operation: "removeChild" },
+                    { node: old, operation: "setParentDerived" },
                     { node: old, operation: "setParent" },
                 ], () => nativeRemove(this, old));
             }
@@ -321,6 +368,28 @@ export class SimpleButton extends InteractiveObject {
                 if (internals._$container !== placement.container || internals._children !== placement.children
                     || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
                     throw new Error(`${name} replacement observed a direct Laya lifecycle or container mutation`);
+                if (internals._parent !== expectedActualParents.get(placement.item)
+                    || internals._$parent !== expectedLogicalParents.get(placement.item))
+                    throw new Error(`${name} replacement observed a direct Laya parent-field mutation`);
+            }
+            for (const [children, expected] of expectedArrays) {
+                if (children.length !== expected.length || children.some((child, index) => child !== expected[index]))
+                    throw new Error(`${name} replacement observed a direct Laya child-array content mutation`);
+            }
+            for (const placement of placements) {
+                const logicalParent = expectedLogicalParents.get(placement.item);
+                const actualParent = expectedActualParents.get(placement.item);
+                if (!logicalParent || !actualParent) {
+                    if (logicalParent != null || actualParent != null)
+                        throw new Error(`${name} replacement produced split Laya parent fields`);
+                    continue;
+                }
+                const logicalChildren = expectedArrays.get(nodeInternals(logicalParent)._$children);
+                const actualChildren = expectedArrays.get(nodeInternals(actualParent)._children);
+                if (nodeInternals(logicalParent)._$container !== actualParent
+                    || logicalChildren?.filter(child => child === placement.item).length !== 1
+                    || actualChildren?.filter(child => child === placement.item).length !== 1)
+                    throw new Error(`${name} replacement produced an inconsistent recursive Laya graph`);
             }
             if (transaction.poisoned || buttonRevisions.get(this) !== transaction.revision)
                 throw new Error(`${name} replacement was poisoned by reentrant state or child mutation`);
@@ -328,11 +397,11 @@ export class SimpleButton extends InteractiveObject {
             const rollbackErrors: unknown[] = [];
             for (const stateSlot of BUTTON_STATE_SLOTS) this[stateSlot] = stateSlots.get(stateSlot)!;
             try {
-                const currentButtonChildren = new Set<LayaNode>([
-                    ...nodeInternals(this)._children,
-                    ...nodeInternals(this)._$children,
+                const currentGraph = collectNodeGraph([
+                    this, old, value,
+                    ...BUTTON_STATE_SLOTS.map(stateSlot => this[stateSlot]),
                 ]);
-                const introducedChildren = [...currentButtonChildren].filter(child => !initialButtonChildren.has(child));
+                const introducedChildren = [...currentGraph].filter(child => !placementNodes.has(child));
                 for (const [children, saved] of childArrays)
                     children.splice(0, children.length, ...saved);
                 for (const placement of placements) {
@@ -345,9 +414,11 @@ export class SimpleButton extends InteractiveObject {
                     internals._destroyed = placement.destroyed;
                 }
                 const owner = nodeInternals(this);
+                const guardedContainers = new Set(placements.map(placement => placement.container));
                 for (const child of introducedChildren) {
                     const internals = nodeInternals(child);
-                    if (internals._parent === owner._$container || internals._$parent === this) {
+                    if ((internals._parent && guardedContainers.has(internals._parent))
+                        || (internals._$parent && placementNodes.has(internals._$parent))) {
                         internals._parent = null;
                         internals._$parent = null;
                     }
@@ -363,6 +434,17 @@ export class SimpleButton extends InteractiveObject {
                     if (internals._$container !== placement.container || internals._children !== placement.children
                         || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
                         throw new Error("Laya lifecycle/container rollback did not restore the exact snapshot");
+                    if (!placement.logicalParent || !placement.actualParent) {
+                        if (placement.logicalParent != null || placement.actualParent != null)
+                            throw new Error("Laya rollback restored split parent fields");
+                    } else {
+                        const logicalSaved = childArrays.get(nodeInternals(placement.logicalParent)._$children);
+                        const actualSaved = childArrays.get(nodeInternals(placement.actualParent)._children);
+                        if (nodeInternals(placement.logicalParent)._$container !== placement.actualParent
+                            || logicalSaved?.filter(child => child === placement.item).length !== 1
+                            || actualSaved?.filter(child => child === placement.item).length !== 1)
+                            throw new Error("Laya rollback did not restore recursive graph closure");
+                    }
                 }
                 for (const child of owner._$children) {
                     const internals = nodeInternals(child);
@@ -371,8 +453,9 @@ export class SimpleButton extends InteractiveObject {
                 }
                 for (const child of introducedChildren) {
                     const internals = nodeInternals(child);
-                    if (owner._$children.includes(child) || nodeInternals(owner._$container)._children.includes(child)
-                        || internals._$parent === this || internals._parent === owner._$container)
+                    if ([...childArrays.keys()].some(children => children.includes(child))
+                        || (internals._$parent && placementNodes.has(internals._$parent))
+                        || (internals._parent && guardedContainers.has(internals._parent)))
                         throw new Error("Laya button rollback retained an introduced child");
                 }
             } catch (rollback) { rollbackErrors.push(rollback); }

@@ -1,7 +1,7 @@
 export type NodeMutationOperation =
     | "addChildAt" | "setChildIndex" | "removeChild" | "removeChildAt"
     | "addInternalChild" | "removeInternalChild" | "setParent" | "setContainer" | "destroy"
-    | "beginTransaction";
+    | "setParentDerived" | "destroyDerived" | "destroyChildren" | "beginTransaction";
 
 declare const transactionBrand: unique symbol;
 export type NodeMutationTransaction = { readonly [transactionBrand]: true };

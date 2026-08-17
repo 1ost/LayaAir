@@ -9,6 +9,7 @@ import { Texture } from "../resource/Texture";
 import { Handler } from "../utils/Handler";
 import { Graphics } from "./Graphics";
 import { Node } from "./Node";
+import { admitNodeMutation } from "./NodeMutationTransaction";
 import { RepaintFlag, SpriteConst, SubPassFlag, TransformKind } from "./SpriteConst";
 import { RenderTexture2D } from "../resource/RenderTexture2D";
 import { Event } from "../events/Event";
@@ -300,6 +301,7 @@ export class Sprite extends Node {
      * @param destroyChild 是否删除子节点。默认为 true。
      */
     destroy(destroyChild: boolean = true): void {
+        admitNodeMutation(this, "destroyDerived");
         this._filterArr?.forEach(filter => filter.off(Event.CHANGED, this, this._onFilterChanged));
         this._filterArr = null;
         this._textureCompositor?.destroy?.();
@@ -2626,6 +2628,7 @@ export class Sprite extends Node {
      * @ignore
      */
     protected _setParent(value: Node, index: number = -1): void {
+        admitNodeMutation(this, "setParentDerived");
         this._globalTrans._spTransChanged(TransformKind.TRS);
 
         super._setParent(value, index);

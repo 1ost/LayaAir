@@ -296,6 +296,7 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     const internals = (node: LayaNode) => node as unknown as {
         _children: LayaNode[]; _$children: LayaNode[];
         _parent: LayaNode | null | undefined; _$parent: LayaNode | null | undefined;
+        _$container: LayaNode; _destroyed: boolean;
     };
     const beforeActualChildren = Array.from(internals(button)._children);
     const beforeOldActualParent = beforeReentrantState ? internals(beforeReentrantState)._parent : undefined;
@@ -446,6 +447,81 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         assert.ok(rogue.parent == null);
         assert.equal(internalGuarded.children.includes(internalCandidate), false);
         assert.equal(internalGuarded.children.includes(rogue), false);
+    }
+
+    for (const descendantAttack of [
+        "add", "setContainer", "setParent", "array", "parentFields", "destroyChildren", "derivedDestroy",
+    ] as const) {
+        const roots = [state(24, 24), state(25, 25), state(26, 26), state(27, 27)];
+        const branches = roots.map((root, index) => {
+            const branch = state(8 + index, 8 + index);
+            const leaf = state(3 + index, 3 + index);
+            branch.addChild(leaf);
+            root.addChild(branch);
+            return { branch, leaf };
+        });
+        const recursiveButton = new SimpleButton(roots[0], roots[1], roots[2], roots[3]);
+        const candidate = state(28, 28), introduced = state(4, 4), foreign = state(5, 5), rogueContainer = state(6, 6);
+        const rootChildren = roots.map(root => Array.from(root.children));
+        const branchChildren = branches.map(({ branch }) => Array.from(branch.children));
+        let irreversibleCalls = 0;
+        let restoreDerivedProbe = (): void => undefined;
+        if (descendantAttack === "setParent") {
+            const globalTrans = (branches[3].leaf as unknown as { _globalTrans: { _spTransChanged(kind: unknown): void } })._globalTrans;
+            const original = globalTrans._spTransChanged;
+            globalTrans._spTransChanged = (): void => { irreversibleCalls++; };
+            restoreDerivedProbe = (): void => { globalTrans._spTransChanged = original; };
+        }
+        if (descendantAttack === "derivedDestroy") {
+            const exposed = roots[1] as unknown as Record<string, unknown>;
+            exposed._filterArr = [{ off: (): void => { irreversibleCalls++; } }];
+            exposed._textureCompositor = { destroy: (): void => { irreversibleCalls++; } };
+        }
+        candidate.on(LayaEvent.ADDED, candidate, () => {
+            try {
+                if (descendantAttack === "add") {
+                    branches[1].branch.addChild(introduced);
+                } else if (descendantAttack === "setContainer") {
+                    branches[2].branch._setContainer(rogueContainer);
+                } else if (descendantAttack === "setParent") {
+                    (LayaSprite.prototype as unknown as { _setParent(value: LayaNode | null): void })
+                        ._setParent.call(branches[3].leaf, foreign);
+                } else if (descendantAttack === "array") {
+                    internals(branches[1].branch)._children.push(introduced);
+                } else if (descendantAttack === "parentFields") {
+                    internals(branches[3].leaf)._parent = foreign;
+                    internals(branches[3].leaf)._$parent = foreign;
+                } else if (descendantAttack === "destroyChildren") {
+                    roots[1].destroyChildren();
+                } else {
+                    roots[1].destroy(false);
+                }
+            } catch { /* registered descendant primitives reject before their first side effect */ }
+        });
+        const expectedFailure = descendantAttack === "array" ? /child-array content mutation/
+            : descendantAttack === "parentFields" ? /parent-field mutation/
+                : /poisoned by reentrant state or child mutation/;
+        assert.throws(() => recursiveButton.upState = candidate, expectedFailure);
+        assert.equal(irreversibleCalls, 0, "derived destroy admission precedes filter/compositor side effects");
+        restoreDerivedProbe();
+        assert.equal(recursiveButton.upState, roots[0]);
+        assert.equal(recursiveButton.overState, roots[1]);
+        assert.equal(recursiveButton.downState, roots[2]);
+        assert.equal(recursiveButton.hitTestState, roots[3]);
+        for (let index = 0; index < roots.length; index++) {
+            assert.deepEqual(Array.from(roots[index].children), rootChildren[index]);
+            assert.deepEqual(Array.from(branches[index].branch.children), branchChildren[index]);
+            assert.equal(roots[index].destroyed, false);
+            assert.equal(branches[index].branch.destroyed, false);
+            assert.equal(branches[index].leaf.destroyed, false);
+            assert.equal(internals(branches[index].branch)._$container, branches[index].branch);
+            assert.equal(internals(branches[index].leaf)._parent, branches[index].branch);
+            assert.equal(internals(branches[index].leaf)._$parent, branches[index].branch);
+        }
+        assert.ok(candidate.parent == null);
+        assert.ok(introduced.parent == null);
+        assert.ok(foreign.parent == null);
+        assert.ok(rogueContainer.parent == null);
     }
 
     class HostileVisibleState extends DisplayObject {

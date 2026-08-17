@@ -371,6 +371,7 @@ export class Node extends EventDispatcher {
      * @zh 销毁所有子节点,但不销毁节点本身。
      */
     destroyChildren(): void {
+        admitNodeMutation(this, "destroyChildren");
         //为了保持销毁顺序，所以需要正序销毁
         for (let i = 0, n = this._$children.length; i < n; i++) {
             this._$children[0].destroy(true);
