@@ -1,3 +1,5 @@
+import "./cockpit/AuthoredContentCockpitPanel";
+
 const SOURCE_EXTENSIONS = ["swfxml", "xflbundle"] as const;
 
 class AuthoredContentRegistration {

@@ -1,15 +1,17 @@
 import path from "node:path";
-import { createRequire } from "node:module";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const require = createRequire(import.meta.url);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(scriptDirectory, "..");
 const repositoryRoot = path.resolve(pluginRoot, "../../..");
 
-process.env.TS_NODE_PROJECT = path.join(pluginRoot, "tsconfig.json");
-globalThis.window = {};
-globalThis.document = {};
-Object.defineProperty(globalThis, "navigator", { value: {}, configurable: true });
-require("ts-node/register/transpile-only");
-require(path.join(repositoryRoot, "tests", "authoredContent", "run.ts"));
+execFileSync(process.execPath, [path.join(scriptDirectory, "testCore.cjs")], {
+    cwd: repositoryRoot,
+    stdio: "inherit",
+    env: process.env
+});
+execFileSync(process.execPath, [path.join(repositoryRoot, "tests", "authoredContentCockpit", "run.mjs")], {
+    cwd: repositoryRoot,
+    stdio: "inherit"
+});

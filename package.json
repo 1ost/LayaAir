@@ -21,6 +21,8 @@
     "test:websocket": "node scripts/testWebSocketCore.mjs",
     "test:websocket:types": "tsc -p tests/net/tsconfig.json --pretty false",
     "test:authored-image-publish": "node --experimental-strip-types --test tests/authoredImagePublish/authored-image-publish.test.mjs",
+    "build:authored-content": "npm --prefix src/extensions/authoredContent run build",
+    "test:authored-content": "npm --prefix src/extensions/authoredContent run test",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",
