@@ -7,4 +7,6 @@ export * from "./display/DisplayObjectContainer";
 export * from "./display/Sprite";
 export * from "./display/SimpleButton";
 export * from "./display/MovieClip";
+export * from "./display/NativeMovieClipTimeline";
 export * from "./text/TextField";
+export * from "./events/UnsupportedFlashFeatureError";

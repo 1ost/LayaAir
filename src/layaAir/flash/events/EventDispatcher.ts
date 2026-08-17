@@ -1,5 +1,5 @@
-import { EventDispatcher as LayaEventDispatcher } from "../../../../../layaAir/laya/events/EventDispatcher";
-import { FlashEventListener, FlashEventRouter } from "../../FlashEventRouter";
+import { EventDispatcher as LayaEventDispatcher } from "../../laya/events/EventDispatcher";
+import { FlashEventListener, FlashEventRouter } from "./FlashEventRouter";
 import { Event } from "./Event";
 
 export interface IEventDispatcher {
@@ -20,14 +20,6 @@ export class EventDispatcher extends LayaEventDispatcher implements IEventDispat
         this._flashTarget = target ?? this;
     }
 
-    static [Symbol.hasInstance](value: unknown): boolean {
-        const candidate = value as Partial<IEventDispatcher>;
-        return value instanceof LayaEventDispatcher
-            && typeof candidate.addEventListener === "function"
-            && typeof candidate.removeEventListener === "function"
-            && typeof candidate.dispatchEvent === "function";
-    }
-
     addEventListener(type: string, listener: FlashEventListener, useCapture = false, priority = 0, useWeakReference = false): void {
         this._flashEvents.addEventListener(type, listener, useCapture, priority, useWeakReference);
     }
@@ -38,3 +30,14 @@ export class EventDispatcher extends LayaEventDispatcher implements IEventDispat
     hasEventListener(type: string): boolean { return this._flashEvents.hasEventListener(type); }
     willTrigger(type: string): boolean { return this.hasEventListener(type); }
 }
+
+Object.defineProperty(EventDispatcher, Symbol.hasInstance, {
+    configurable: false,
+    value(value: unknown): boolean {
+        const candidate = value as Partial<IEventDispatcher>;
+        return value instanceof LayaEventDispatcher
+            && typeof candidate.addEventListener === "function"
+            && typeof candidate.removeEventListener === "function"
+            && typeof candidate.dispatchEvent === "function";
+    }
+});

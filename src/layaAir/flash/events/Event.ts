@@ -1,9 +1,10 @@
 /** Flash-compatible event phases projected onto a native Laya display path. */
-export const enum EventPhase {
-    CAPTURING_PHASE = 1,
-    AT_TARGET = 2,
-    BUBBLING_PHASE = 3
-}
+export const EventPhase = Object.freeze({
+    CAPTURING_PHASE: 1,
+    AT_TARGET: 2,
+    BUBBLING_PHASE: 3
+} as const);
+export type EventPhase = (typeof EventPhase)[keyof typeof EventPhase];
 
 const EVENT_TYPE = /^[^\u0000-\u001f\u007f]{1,128}$/;
 
@@ -33,9 +34,9 @@ export class Event {
     static readonly SOUND_COMPLETE = "soundComplete";
     static readonly UNLOAD = "unload";
 
-    readonly type: string;
-    readonly bubbles: boolean;
-    readonly cancelable: boolean;
+    private readonly _type: string;
+    private readonly _bubbles: boolean;
+    private readonly _cancelable: boolean;
 
     private _eventPhase: EventPhase = EventPhase.AT_TARGET;
     private _target: unknown = null;
@@ -48,11 +49,14 @@ export class Event {
     constructor(type: string, bubbles: boolean = false, cancelable: boolean = false) {
         if (typeof type !== "string" || !EVENT_TYPE.test(type) || type.trim() !== type)
             throw new TypeError("Event.type must be a nonempty validated string");
-        this.type = type;
-        this.bubbles = bubbles;
-        this.cancelable = cancelable;
+        this._type = type;
+        this._bubbles = !!bubbles;
+        this._cancelable = !!cancelable;
     }
 
+    get type(): string { return this._type; }
+    get bubbles(): boolean { return this._bubbles; }
+    get cancelable(): boolean { return this._cancelable; }
     get eventPhase(): EventPhase { return this._eventPhase; }
     get target(): unknown { return this._target; }
     get currentTarget(): unknown { return this._currentTarget; }

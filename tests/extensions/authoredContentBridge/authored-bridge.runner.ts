@@ -15,9 +15,9 @@ import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRend
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
-    AnimatorClip2DTimeline, DisplayObject, Event, EventDispatcher, EventPhase, MovieClip,
+    AnimatorClip2DTimeline, DisplayObject, Event, EventDispatcher, EventPhase, InteractiveObject, MovieClip,
     MouseEvent, SimpleButton, TextField, TextFieldType, UnsupportedFlashFeatureError,
-    admittedAuthoredRuntimeCapabilities, assertAuthoredRuntimeCapability,
+    LayaAuthoredBindingHost, mapLayaAuthoredEventData,
     registerAuthoredContentRuntime
 } from "../../../src/extensions/authoredContent/runtime";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
@@ -26,29 +26,44 @@ LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 ILaya.stage = { _graphicUpdateList: new Set(), _tranMatrixUpdateList: new Set() } as any;
 ILaya.timer = { callLater: (): void => undefined } as any;
 ILaya.systemTimer = { callLater: (): void => undefined, runCallLater: (): void => undefined } as any;
-(PAL as any).textInput = { target: null, setText: (): void => undefined };
+(PAL as any).textInput = {
+    target: null,
+    begin(target: unknown): void { this.target = target; },
+    end(): void { this.target = null; },
+    setText: (): void => undefined,
+    setSelection: (): void => undefined,
+    syncSelection: (): void => undefined,
+    syncText: (): void => undefined
+};
 
-test("capability ledger is exact, signature-bearing and fail-closed", () => {
-    const path = join(process.cwd(), "src/extensions/authoredContent/runtime/capabilities/flash-source-api-capability-ledger.json");
+test("A12 capability ledger owns exact Flash declarations, members, signatures and hashes", () => {
+    const path = join(process.cwd(), "docTool/architecture/authored-content-capabilities.json");
     const ledger = JSON.parse(readFileSync(path, "utf8"));
-    assert.equal(ledger.authority.preserveNameAndSignature, true);
-    assert.equal(ledger.authority.productionExecutesAbc, false);
-    assert.equal(ledger.authority.serializedNodeTypes, "canonical-laya-only");
-    const ids = ledger.records.map((record: any) => record.id).sort();
-    assert.deepEqual(ids, admittedAuthoredRuntimeCapabilities());
-    assert.equal(new Set(ids).size, ids.length);
-    for (const record of ledger.records) {
-        assert.ok(record.qname.length > 0);
-        assert.ok(record.members.length > 0);
-        for (const member of record.members) assert.ok(member.name.length > 0 && member.signature.length > 0);
-        assertAuthoredRuntimeCapability(record.id);
+    for (const namespace of ["display", "events", "text"]) {
+        const capability = ledger.capabilities.find((item: any) => item.id === `api.flash.${namespace}`);
+        assert.equal(capability.status, "typescript-obligation");
+        assert.ok(capability.obligations.length > 0);
+        for (const obligation of capability.obligations) {
+            assert.ok(obligation.module.startsWith(`src/layaAir/flash/${namespace}/`));
+            assert.match(obligation.sha256, /^[a-f0-9]{64}$/);
+            assert.ok(obligation.signature.length > 0);
+            if (obligation.kind === "class") {
+                assert.ok(obligation.members.length > 0);
+                assert.ok(Array.isArray(obligation.constructors));
+                assert.ok(Array.isArray(obligation.indexSignatures));
+            }
+        }
+        assert.deepEqual(capability.evidence[0].covers,
+            [...new Set(capability.obligations.map((item: any) => item.sha256))].sort());
     }
-    assert.throws(() => assertAuthoredRuntimeCapability("flash.unseen.HiddenApi"), /not admitted/);
 });
 
 test("Event validates immutable type and listener priority", () => {
     const event = new Event("change");
     assert.equal(event.type, "change");
+    assert.throws(() => (event as { type: string }).type = "mutated", TypeError);
+    assert.throws(() => (event as { bubbles: boolean }).bubbles = true, TypeError);
+    assert.throws(() => (event as { cancelable: boolean }).cancelable = true, TypeError);
     assert.throws(() => new Event(""), /validated string/);
     assert.throws(() => new Event(" change"), /validated string/);
     const dispatcher = new EventDispatcher();
@@ -86,7 +101,8 @@ test("one Event instance traverses capture, target and bubble in real Laya paren
     const native = nativeMouse(LayaEvent.MOUSE_DOWN, target, 10, 12, 1);
     target.event(LayaEvent.MOUSE_DOWN, native);
     // Native InputManager would continue bubbling; the routed marker prevents duplicate delivery.
-    middle.event(LayaEvent.MOUSE_DOWN, native); root.event(LayaEvent.MOUSE_DOWN, native);
+    native.setTo(LayaEvent.MOUSE_DOWN, middle, target); middle.event(LayaEvent.MOUSE_DOWN, native);
+    native.setTo(LayaEvent.MOUSE_DOWN, root, target); root.event(LayaEvent.MOUSE_DOWN, native);
     assert.deepEqual(calls, [
         `root-c:${EventPhase.CAPTURING_PHASE}`, `middle-c:${EventPhase.CAPTURING_PHASE}`,
         `target:${EventPhase.AT_TARGET}`, `middle-b:${EventPhase.BUBBLING_PHASE}`,
@@ -94,6 +110,9 @@ test("one Event instance traverses capture, target and bubble in real Laya paren
     ]);
     assert.ok(seen.every(event => event === seen[0]));
     assert.equal(seen[0].target, target);
+    native.setTo(LayaEvent.MOUSE_DOWN, target, target);
+    target.event(LayaEvent.MOUSE_DOWN, native);
+    assert.equal(calls.length, 10, "a persistent TouchInfo Event starts a fresh dispatch at its target");
 });
 
 test("stopPropagation controls the native event and prevents ancestor bubble", () => {
@@ -145,15 +164,34 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(down.visible, true);
     button.enabled = false;
     assert.equal(button.mouseEnabled, false);
+
+    const shared = state(15, 8);
+    const aliased = new SimpleButton(shared, null, null, shared);
+    assert.equal(shared.visible, true, "a visible state aliased as hitTestState remains visible");
+    const recursiveHit = new DisplayObject();
+    const nested = state(8, 6); nested.pos(12, 4); nested.mouseEnabled = true; recursiveHit.addChild(nested);
+    aliased.hitTestState = recursiveHit;
+    assert.equal(manager.hitTest(aliased, 13, 5), true, "nested native hit geometry is retained");
+    assert.equal(manager.hitTest(aliased, 5, 5), false, "hit geometry is not reduced to aggregate bounds");
 });
 
 test("TextField is a real Laya input with Flash type semantics and source event methods", () => {
     const field = new TextField();
     assert.ok(field instanceof LayaSprite);
+    assert.ok(field instanceof DisplayObject);
+    assert.ok(field instanceof InteractiveObject);
     assert.equal(field.type, TextFieldType.DYNAMIC);
     assert.equal(field.editable, false);
     field.type = TextFieldType.INPUT;
     field.text = "Bleach";
+    field.htmlText = "<b>Bleach</b>";
+    assert.equal(field.htmlText, "<b>Bleach</b>");
+    field.displayAsPassword = true; assert.equal(field.displayAsPassword, true);
+    field.embedFonts = true; assert.equal(field.embedFonts, true);
+    field.tabEnabled = true; field.tabIndex = 3; field.doubleClickEnabled = true;
+    field.setSelection(1, 3);
+    assert.equal(field.selectionBeginIndex, 1); assert.equal(field.selectionEndIndex, 3); assert.equal(field.caretIndex, 3);
+    assert.equal(field.focus, true); assert.equal(field.mouseEnabled, true);
     assert.equal(field.editable, true);
     let changed = 0;
     field.addEventListener(Event.CHANGE, () => changed++);
@@ -177,6 +215,28 @@ test("timeline invariants reject fallback and invalid replacement without corrup
     const invalid = { totalFrames: 0, currentFrame: 0, playing: false, play() {}, stop() {}, gotoAndStop() {} };
     assert.throws(() => movie._bindNativeTimeline(invalid), /totalFrames/);
     assert.equal(movie.totalFrames, 3);
+});
+
+test("neutral Laya host rejects missing native event, selection, cue, frame and time data", () => {
+    const host = new LayaAuthoredBindingHost();
+    const click = new DisplayObject(); click.name = "button";
+    const clickLease = host.attach([{ node: click, nodeId: "button", type: "click", receive: () => undefined }]);
+    assert.throws(() => mapLayaAuthoredEventData(click, "click", LayaEvent.CLICK, undefined), /requires a native Laya Event/);
+    clickLease.detach();
+
+    const input = new DisplayObject(); input.name = "input"; (input as any).text = "value";
+    const inputLease = host.attach([{ node: input, nodeId: "input", type: "input", receive: () => undefined }]);
+    assert.throws(() => mapLayaAuthoredEventData(input, "input", LayaEvent.INPUT,
+        new LayaEvent().setTo(LayaEvent.INPUT, input, input)), /selectionStart/);
+    inputLease.detach();
+
+    const timeline = new DisplayObject(); timeline.name = "timeline";
+    const cueLease = host.attach([{ node: timeline, nodeId: "timeline", type: "cue", receive: () => undefined }]);
+    assert.throws(() => mapLayaAuthoredEventData(timeline, "cue", LayaEvent.LABEL,
+        { timelineId: "timeline", cueId: "start" }), /frame/);
+    assert.throws(() => mapLayaAuthoredEventData(timeline, "cue", LayaEvent.LABEL,
+        { timelineId: "timeline", cueId: "start", frame: 1 }), /timeMs/);
+    cueLease.detach();
 });
 
 test("explicit bootstrap loads canonical Laya hierarchy with application linkage and named injection", () => {

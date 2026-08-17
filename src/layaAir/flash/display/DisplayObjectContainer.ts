@@ -1,4 +1,4 @@
-import { Node as LayaNode } from "../../../../../layaAir/laya/display/Node";
+import { Node as LayaNode } from "../../laya/display/Node";
 import { DisplayObject } from "./DisplayObject";
 import { InteractiveObject } from "./InteractiveObject";
 

@@ -1,6 +1,5 @@
 import { Node } from "../../../layaAir/laya/display/Node";
 import { ClassUtils } from "../../../layaAir/laya/utils/ClassUtils";
-import { assertAuthoredRuntimeCapability } from "./CapabilityLedger";
 
 export interface AuthoredRuntimeLinkage {
     readonly id: string;
@@ -15,7 +14,6 @@ const installed = new Map<string, Function>();
  * canonical serialized `_$type` IDs continue to come from Laya ModuleDef.
  */
 export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntimeLinkage[]): void {
-    assertAuthoredRuntimeCapability("native.named-instance-linkage");
     if (!Array.isArray(linkages)) throw new TypeError("Authored runtime linkages must be an array");
     const batch = new Map<string, Function>();
     for (const [index, linkage] of linkages.entries()) {

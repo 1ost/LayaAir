@@ -37,12 +37,15 @@ try {
         throw result.error;
     process.exitCode = result.status ?? 1;
     if (process.exitCode === 0) {
-        const runtimeRoot = join(root, "src/extensions/authoredContent/runtime");
         const files = [
-            "FlashEventRouter.ts", "AuthoredCodeBindings.ts", "LayaAuthoredBindingHost.ts",
-            "flash/display/MovieClip.ts", "flash/display/SimpleButton.ts", "flash/text/TextField.ts"
+            "src/layaAir/flash/events/FlashEventRouter.ts",
+            "src/layaAir/flash/display/MovieClip.ts",
+            "src/layaAir/flash/display/SimpleButton.ts",
+            "src/layaAir/flash/text/TextField.ts",
+            "src/extensions/authoredContent/runtime/AuthoredCodeBindings.ts",
+            "src/extensions/authoredContent/runtime/LayaAuthoredBindingHost.ts"
         ];
-        const combined = (await Promise.all(files.map(file => readFile(join(runtimeRoot, file), "utf8")))).join("\n");
+        const combined = (await Promise.all(files.map(file => readFile(join(root, file), "utf8")))).join("\n");
         for (const forbidden of ["createSourceApi", "transpileAs3Subset", "@bleach/flash-compat", "eval(", "new Function"])
             if (combined.includes(forbidden)) throw new Error(`forbidden canonical runtime surface: ${forbidden}`);
     }

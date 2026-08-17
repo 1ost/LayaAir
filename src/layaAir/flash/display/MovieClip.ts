@@ -1,6 +1,6 @@
-import { AnimatorClip2D } from "../../../../../layaAir/laya/components/AnimatorClip2D";
-import { AnimatorClip2DTimeline, NativeMovieClipTimeline } from "../../native/NativeMovieClipTimeline";
-import { UnsupportedFlashFeatureError } from "../../UnsupportedFlashFeatureError";
+import { AnimatorClip2D } from "../../laya/components/AnimatorClip2D";
+import { AnimatorClip2DTimeline, NativeMovieClipTimeline } from "./NativeMovieClipTimeline";
+import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 import { Sprite } from "./Sprite";
 
 export type FlashFrameReference = number | string;

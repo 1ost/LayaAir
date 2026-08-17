@@ -1,7 +1,7 @@
-import { Event as LayaEvent } from "../../../../../layaAir/laya/events/Event";
-import { Point } from "../../../../../layaAir/laya/maths/Point";
-import { Sprite as LayaSprite } from "../../../../../layaAir/laya/display/Sprite";
-import { UnsupportedFlashFeatureError } from "../../UnsupportedFlashFeatureError";
+import { Event as LayaEvent } from "../../laya/events/Event";
+import { Point } from "../../laya/maths/Point";
+import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 import { Event } from "./Event";
 
 function finiteOrNaN(value: number, label: string): number {

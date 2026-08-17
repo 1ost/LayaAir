@@ -1,4 +1,4 @@
-import { AnimatorClip2D } from "../../../../layaAir/laya/components/AnimatorClip2D";
+import { AnimatorClip2D } from "../../laya/components/AnimatorClip2D";
 
 /** Zero-based, native-only timeline boundary. */
 export interface NativeMovieClipTimeline {

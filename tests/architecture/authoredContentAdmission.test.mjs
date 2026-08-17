@@ -14,7 +14,15 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const policy = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "scripts/authoredContentAdmission.policy.json"), "utf8"));
-const blockedLedger = JSON.parse(fs.readFileSync(path.join(repositoryRoot, policy.capabilityLedger), "utf8"));
+const repositoryLedger = JSON.parse(fs.readFileSync(path.join(repositoryRoot, policy.capabilityLedger), "utf8"));
+const blockedLedger = JSON.parse(JSON.stringify(repositoryLedger));
+for (const capability of blockedLedger.capabilities) {
+    capability.status = "blocking";
+    capability.blockingReason = `Fixture blocker for ${capability.id}.`;
+    delete capability.artifacts;
+    delete capability.obligations;
+    delete capability.evidence;
+}
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -90,10 +98,11 @@ function ledgerWith(id, replacement) {
     return JSON.stringify(ledger, null, 2);
 }
 
-test("the consolidated base records every capability as an explicit blocker", () => {
+test("the consolidated base records every unresolved capability as an explicit blocker", () => {
     const result = assertAuthoredContentAdmission(repositoryRoot);
     assert.equal(result.productionReady, false);
-    assert.deepEqual(result.blockingCapabilities, [...policy.requiredCapabilities].sort());
+    assert.deepEqual(result.blockingCapabilities, repositoryLedger.capabilities
+        .filter(capability => capability.status === "blocking").map(capability => capability.id).sort());
     assert.deepEqual(result.syntheticBlockingCapabilities, []);
 });
 

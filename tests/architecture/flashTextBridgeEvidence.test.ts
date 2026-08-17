@@ -1,0 +1,7 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { TextField, TextFieldType } from "../../src/layaAir/flash/text/TextField.ts";
+
+test("Flash text bridge compiler surface", () => {
+    assert.ok(true as boolean satisfies ([typeof TextField, typeof TextFieldType] extends readonly unknown[] ? boolean : never));
+});

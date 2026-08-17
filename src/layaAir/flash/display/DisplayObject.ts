@@ -1,5 +1,5 @@
-import { Sprite as LayaSprite } from "../../../../../layaAir/laya/display/Sprite";
-import { FlashEventListener, FlashEventRouter } from "../../FlashEventRouter";
+import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
 import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
 
@@ -29,3 +29,15 @@ export class DisplayObject extends LayaSprite implements IEventDispatcher {
         return value;
     }
 }
+
+Object.defineProperty(DisplayObject, Symbol.hasInstance, {
+    configurable: false,
+    value(value: unknown): boolean {
+        const candidate = value as Partial<IEventDispatcher> & { root?: unknown };
+        return value instanceof LayaSprite
+            && typeof candidate.addEventListener === "function"
+            && typeof candidate.removeEventListener === "function"
+            && typeof candidate.dispatchEvent === "function"
+            && "root" in (value as object);
+    }
+});

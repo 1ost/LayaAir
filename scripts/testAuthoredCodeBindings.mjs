@@ -19,8 +19,10 @@ fixture.run();
 
 const runtimeRoot = path.join(repository, "src/extensions/authoredContent/runtime");
 const combined = (await Promise.all([
-    "AuthoredCodeBindings.ts", "LayaAuthoredBindingHost.ts", "FlashEventRouter.ts"
-].map(name => readFile(path.join(runtimeRoot, name), "utf8")))).join("\n");
+    path.join(runtimeRoot, "AuthoredCodeBindings.ts"),
+    path.join(runtimeRoot, "LayaAuthoredBindingHost.ts"),
+    path.join(repository, "src/layaAir/flash/events/FlashEventRouter.ts")
+].map(file => readFile(file, "utf8")))).join("\n");
 for (const forbidden of ["@bleach/flash-compat", "avm2", "eval(", "globalThis", "new Function"])
     assert.equal(combined.includes(forbidden), false, `forbidden runtime surface: ${forbidden}`);
 const layaHost = await readFile(path.join(runtimeRoot, "LayaAuthoredBindingHost.ts"), "utf8");

@@ -1,8 +1,9 @@
-import { Event as LayaEvent } from "../../../../../layaAir/laya/events/Event";
-import { Point } from "../../../../../layaAir/laya/maths/Point";
-import { Sprite as LayaSprite } from "../../../../../layaAir/laya/display/Sprite";
-import { IHitArea } from "../../../../../layaAir/laya/utils/IHitArea";
-import { UnsupportedFlashFeatureError } from "../../UnsupportedFlashFeatureError";
+import { Event as LayaEvent } from "../../laya/events/Event";
+import { Point } from "../../laya/maths/Point";
+import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { IHitArea } from "../../laya/utils/IHitArea";
+import { InputManager } from "../../laya/events/InputManager";
+import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 import { DisplayObject } from "./DisplayObject";
 import { InteractiveObject } from "./InteractiveObject";
 
@@ -10,12 +11,20 @@ type ButtonVisualState = "up" | "over" | "down";
 type ButtonStateSlot = "_upState" | "_overState" | "_downState" | "_hitTestState";
 
 class DisplayObjectHitArea implements IHitArea {
+    private static readonly input = new InputManager();
     constructor(readonly state: DisplayObject) { }
     contains(x: number, y: number, _owner: LayaSprite): boolean {
         const local = this.state.fromParentPoint(new Point(x, y));
-        if (this.state.width > 0 && this.state.height > 0)
-            return local.x >= 0 && local.y >= 0 && local.x < this.state.width && local.y < this.state.height;
-        return this.state.getBounds().contains(local.x, local.y);
+        return this.containsSprite(this.state, local.x, local.y);
+    }
+    private containsSprite(sprite: LayaSprite, x: number, y: number): boolean {
+        for (let index = sprite.numChildren - 1; index >= 0; index--) {
+            const child = sprite.getChildAt(index);
+            if (!(child instanceof LayaSprite)) continue;
+            const local = child.fromParentPoint(new Point(x, y));
+            if (this.containsSprite(child, local.x, local.y)) return true;
+        }
+        return DisplayObjectHitArea.input.hitTest(sprite, x, y);
     }
 }
 
@@ -105,7 +114,6 @@ export class SimpleButton extends InteractiveObject {
 
     private _refreshHitArea(): void {
         if (this._hitTestState) {
-            this._hitTestState.visible = false;
             this.hitArea = new DisplayObjectHitArea(this._hitTestState);
         } else {
             this.hitArea = null as any;
@@ -117,9 +125,14 @@ export class SimpleButton extends InteractiveObject {
     private _showDownState(): void { if (this._enabled) this._setVisualState("down"); }
     private _setVisualState(value: ButtonVisualState): void { this._visualState = value; this._applyStateVisibility(); }
     private _applyStateVisibility(): void {
-        if (this._upState) this._upState.visible = this._visualState === "up";
-        if (this._overState) this._overState.visible = this._visualState === "over";
-        if (this._downState) this._downState.visible = this._visualState === "down";
-        if (this._hitTestState) this._hitTestState.visible = false;
+        const visible = new Map<DisplayObject, boolean>();
+        const include = (state: DisplayObject | null, active: boolean): void => {
+            if (state) visible.set(state, (visible.get(state) ?? false) || active);
+        };
+        include(this._hitTestState, false);
+        include(this._upState, this._visualState === "up");
+        include(this._overState, this._visualState === "over");
+        include(this._downState, this._visualState === "down");
+        for (const [state, active] of visible) state.visible = active;
     }
 }

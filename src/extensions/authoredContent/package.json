@@ -13,7 +13,6 @@
   "private": true,
   "exports": {
     "./runtime": "./runtime/index.ts",
-    "./runtime/neutral": "./runtime/neutral.ts",
-    "./runtime/flash": "./runtime/flash/index.ts"
+    "./runtime/neutral": "./runtime/neutral.ts"
   }
 }

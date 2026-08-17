@@ -1,7 +1,7 @@
-import { Node as LayaNode } from "../../../layaAir/laya/display/Node";
-import { Event as LayaEvent } from "../../../layaAir/laya/events/Event";
-import { Event, EventPhase } from "./flash/events/Event";
-import { MouseEvent } from "./flash/events/MouseEvent";
+import { Node as LayaNode } from "../../laya/display/Node";
+import { Event as LayaEvent } from "../../laya/events/Event";
+import { Event, EventPhase } from "./Event";
+import { MouseEvent } from "./MouseEvent";
 import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 
 export type FlashEventListener = { bivarianceHack(event: Event): void }["bivarianceHack"];
@@ -21,7 +21,8 @@ interface TypeEntry {
 }
 
 const HOST_ROUTERS = new WeakMap<object, FlashEventRouter>();
-const ROUTED_NATIVE = new WeakMap<LayaEvent, Map<string, unknown>>();
+interface NativeDispatchMarker { readonly target: unknown; readonly token: object; }
+const ROUTED_NATIVE = new WeakMap<LayaEvent, Map<string, NativeDispatchMarker>>();
 
 const FLASH_TO_LAYA_EVENT: Readonly<Record<string, string>> = Object.freeze({
     [MouseEvent.CLICK]: LayaEvent.CLICK,
@@ -117,9 +118,17 @@ export class FlashEventRouter {
             let routed = ROUTED_NATIVE.get(value);
             if (!routed) ROUTED_NATIVE.set(value, routed = new Map());
             const target = value.target ?? this.host;
-            const roll = type === MouseEvent.ROLL_OVER || type === MouseEvent.ROLL_OUT;
-            if (routed.has(type) && (!roll || routed.get(type) === target)) return;
-            routed.set(type, target);
+            const startsAtTarget = value.currentTarget === target;
+            const active = routed.get(type);
+            if (!startsAtTarget && active?.target === target) return;
+            const token = {};
+            routed.set(type, { target, token });
+            queueMicrotask(() => {
+                const markers = ROUTED_NATIVE.get(value);
+                if (markers?.get(type)?.token !== token) return;
+                markers.delete(type);
+                if (markers.size === 0) ROUTED_NATIVE.delete(value);
+            });
             const event = MOUSE_EVENT_TYPES.has(type)
                 ? MouseEvent._fromNative(type, value, target)
                 : new Event(type, false, false);
