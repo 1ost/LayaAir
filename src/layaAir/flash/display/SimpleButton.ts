@@ -1,7 +1,7 @@
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { Point } from "../../laya/maths/Point";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
-import { Node as LayaNode } from "../../laya/display/Node";
+import { Node } from "../../laya/display/Node";
 import { IHitArea } from "../../laya/utils/IHitArea";
 import { InputManager } from "../../laya/events/InputManager";
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
@@ -10,6 +10,9 @@ import { InteractiveObject } from "./InteractiveObject";
 
 type ButtonVisualState = "up" | "over" | "down";
 type ButtonStateSlot = "_upState" | "_overState" | "_downState" | "_hitTestState";
+type ButtonStateTransaction = { revision: number; poisoned: boolean };
+type LayaNode = Node;
+const BUTTON_STATE_SLOTS: readonly ButtonStateSlot[] = ["_upState", "_overState", "_downState", "_hitTestState"];
 
 const visibleDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "visible");
 const mouseDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "mouseEnabled");
@@ -75,10 +78,10 @@ const assertDetachedFromOwner = (value: DisplayObject, owner: LayaNode, name: st
         throw new TypeError(`${name} prior state remained in Laya child arrays after lifecycle dispatch`);
 };
 const nativeRemove = (parent: LayaNode, value: DisplayObject): void => {
-    if (value.parent === parent) LayaNode.prototype.removeChild.call(parent, value);
+    if (value.parent === parent) Node.prototype.removeChild.call(parent, value);
 };
 const nativeAdd = (parent: LayaNode, value: DisplayObject, index: number): void => {
-    LayaNode.prototype.addChildAt.call(parent, value, Math.max(0, Math.min(index, parent.numChildren)));
+    Node.prototype.addChildAt.call(parent, value, Math.max(0, Math.min(index, parent.numChildren)));
 };
 
 class DisplayObjectHitArea implements IHitArea {
@@ -111,6 +114,8 @@ export class SimpleButton extends InteractiveObject {
     private _updatingEnabled = false;
     private _trackAsMenu = false;
     private _visualState: ButtonVisualState = "up";
+    private _stateRevision = 0;
+    private _stateTransaction: ButtonStateTransaction | null = null;
 
     constructor(upState: DisplayObject | null = null, overState: DisplayObject | null = null,
         downState: DisplayObject | null = null, hitTestState: DisplayObject | null = null) {
@@ -125,6 +130,55 @@ export class SimpleButton extends InteractiveObject {
         this.overState = overState;
         this.downState = downState;
         this.hitTestState = hitTestState;
+    }
+
+    override addChild<T extends Node>(node: T): T {
+        this._rejectExternalChildMutation();
+        return super.addChild(node);
+    }
+    override addChildren(...args: Node[]): void {
+        this._rejectExternalChildMutation();
+        super.addChildren(...args);
+    }
+    override addChildAt<T extends Node>(node: T, index: number): T {
+        this._rejectExternalChildMutation();
+        return super.addChildAt(node, index);
+    }
+    override setChildIndex<T extends Node>(node: T, index: number): T {
+        this._rejectExternalChildMutation();
+        return super.setChildIndex(node, index);
+    }
+    override setChildIndexBefore(node: Node, index: number): number {
+        this._rejectExternalChildMutation();
+        return super.setChildIndexBefore(node, index);
+    }
+    override removeChild<T extends Node>(node: T, destroy?: boolean): T {
+        this._rejectExternalChildMutation();
+        return super.removeChild(node, destroy);
+    }
+    override removeChildByName(name: string, destroy?: boolean): Node {
+        this._rejectExternalChildMutation();
+        return super.removeChildByName(name, destroy);
+    }
+    override removeChildAt(index: number, destroy?: boolean): Node {
+        this._rejectExternalChildMutation();
+        return super.removeChildAt(index, destroy);
+    }
+    override removeChildren(beginIndex?: number, endIndex?: number, destroy?: boolean): void {
+        this._rejectExternalChildMutation();
+        super.removeChildren(beginIndex, endIndex, destroy);
+    }
+    override replaceChild(newNode: Node, oldNode: Node): Node {
+        this._rejectExternalChildMutation();
+        return super.replaceChild(newNode, oldNode);
+    }
+    override _addChild(node: Node, index?: number): Node {
+        this._rejectExternalChildMutation();
+        return super._addChild(node, index);
+    }
+    override _removeChild(node: Node): Node {
+        this._rejectExternalChildMutation();
+        return super._removeChild(node);
     }
 
     get enabled(): boolean { return this._enabled; }
@@ -176,11 +230,30 @@ export class SimpleButton extends InteractiveObject {
     }
 
     private _replaceState(slot: ButtonStateSlot, value: DisplayObject | null, name: string): void {
+        if (this._stateTransaction) {
+            this._stateTransaction.poisoned = true;
+            this._stateRevision++;
+            throw new Error(`${name} replacement is not reentrant`);
+        }
+        const transaction: ButtonStateTransaction = { revision: ++this._stateRevision, poisoned: false };
+        this._stateTransaction = transaction;
+        try {
+            this._replaceStateTransaction(slot, value, name, transaction);
+        } finally {
+            if (this._stateTransaction === transaction) this._stateTransaction = null;
+        }
+    }
+
+    private _replaceStateTransaction(slot: ButtonStateSlot, value: DisplayObject | null, name: string,
+        transaction: ButtonStateTransaction): void {
         if (value !== null && !(value instanceof DisplayObject)) throw new TypeError(`${name} must be a DisplayObject or null`);
         if (value === this || value?.contains(this))
             throw new TypeError(`${name} must not be the button or one of its ancestors`);
         const old = this[slot];
         if (old === value) return;
+        const stateSlots = new Map<ButtonStateSlot, DisplayObject | null>(
+            BUTTON_STATE_SLOTS.map(stateSlot => [stateSlot, this[stateSlot]]),
+        );
         if (value) {
             assertCanonicalStateLifecycle(value, name);
             assertConsistentPlacement(value, name);
@@ -210,6 +283,19 @@ export class SimpleButton extends InteractiveObject {
             snapshotArrays(snapshot.parent);
             snapshotArrays(snapshot.actualParent);
         }
+        const initialButtonChildren = new Set<LayaNode>([
+            ...nodeInternals(this)._children,
+            ...nodeInternals(this)._$children,
+        ]);
+        const placementNodes = new Set<LayaNode>([
+            ...initialButtonChildren,
+            ...snapshots.map(snapshot => snapshot.item),
+        ]);
+        const placements = [...placementNodes].map(item => ({
+            item,
+            actualParent: nodeInternals(item)._parent,
+            logicalParent: nodeInternals(item)._$parent,
+        }));
         try {
             if (value) {
                 if (!value.name) value.name = name;
@@ -227,16 +313,56 @@ export class SimpleButton extends InteractiveObject {
                 if (this._stateStillOwned(old)) assertOwnedPlacement(old, this, name);
                 else assertDetachedFromOwner(old, this, name);
             }
+            for (const stateSlot of BUTTON_STATE_SLOTS) {
+                const expected = stateSlot === slot ? value : stateSlots.get(stateSlot)!;
+                if (this[stateSlot] !== expected)
+                    throw new Error(`${name} replacement observed a reentrant state-slot mutation`);
+            }
+            if (transaction.poisoned || this._stateRevision !== transaction.revision)
+                throw new Error(`${name} replacement was poisoned by reentrant state or child mutation`);
         } catch (error) {
             const rollbackErrors: unknown[] = [];
-            this[slot] = old;
+            for (const stateSlot of BUTTON_STATE_SLOTS) this[stateSlot] = stateSlots.get(stateSlot)!;
             try {
+                const currentButtonChildren = new Set<LayaNode>([
+                    ...nodeInternals(this)._children,
+                    ...nodeInternals(this)._$children,
+                ]);
+                const introducedChildren = [...currentButtonChildren].filter(child => !initialButtonChildren.has(child));
                 for (const [children, saved] of childArrays)
                     children.splice(0, children.length, ...saved);
-                for (const snapshot of snapshots) {
-                    const internals = nodeInternals(snapshot.item);
-                    internals._parent = snapshot.actualParent;
-                    internals._$parent = snapshot.parent;
+                for (const placement of placements) {
+                    const internals = nodeInternals(placement.item);
+                    internals._parent = placement.actualParent;
+                    internals._$parent = placement.logicalParent;
+                }
+                const owner = nodeInternals(this);
+                for (const child of introducedChildren) {
+                    const internals = nodeInternals(child);
+                    if (internals._parent === owner._$container || internals._$parent === this) {
+                        internals._parent = null;
+                        internals._$parent = null;
+                    }
+                }
+                for (const [children, saved] of childArrays) {
+                    if (children.length !== saved.length || children.some((child, index) => child !== saved[index]))
+                        throw new Error("Laya child-array rollback did not restore the exact snapshot");
+                }
+                for (const placement of placements) {
+                    const internals = nodeInternals(placement.item);
+                    if (internals._parent !== placement.actualParent || internals._$parent !== placement.logicalParent)
+                        throw new Error("Laya parent-field rollback did not restore the exact snapshot");
+                }
+                for (const child of owner._$children) {
+                    const internals = nodeInternals(child);
+                    if (internals._$parent !== this || internals._parent !== owner._$container)
+                        throw new Error("Laya button rollback did not restore bidirectional child closure");
+                }
+                for (const child of introducedChildren) {
+                    const internals = nodeInternals(child);
+                    if (owner._$children.includes(child) || nodeInternals(owner._$container)._children.includes(child)
+                        || internals._$parent === this || internals._parent === owner._$container)
+                        throw new Error("Laya button rollback retained an introduced child");
                 }
             } catch (rollback) { rollbackErrors.push(rollback); }
             for (const snapshot of snapshots) {
@@ -251,6 +377,13 @@ export class SimpleButton extends InteractiveObject {
             }
             throw error;
         }
+    }
+
+    private _rejectExternalChildMutation(): void {
+        if (!this._stateTransaction) return;
+        this._stateTransaction.poisoned = true;
+        this._stateRevision++;
+        throw new Error("SimpleButton child mutation is not allowed during state replacement");
     }
 
     private _stateStillOwned(value: DisplayObject): boolean {

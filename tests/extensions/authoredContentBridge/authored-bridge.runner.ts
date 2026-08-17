@@ -301,8 +301,10 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     const beforeOldLogicalParent = beforeReentrantState ? internals(beforeReentrantState)._$parent : undefined;
     const beforeCandidateActualParent = internals(reentrantState)._parent;
     const beforeCandidateLogicalParent = internals(reentrantState)._$parent;
-    reentrantState.on(LayaEvent.ADDED, reentrantState, () => reentrantState.removeSelf());
-    assert.throws(() => button.upState = reentrantState, /did not remain attached/);
+    reentrantState.on(LayaEvent.ADDED, reentrantState, () => {
+        try { reentrantState.removeSelf(); } catch { }
+    });
+    assert.throws(() => button.upState = reentrantState, /poisoned/);
     assert.equal(button.upState, beforeReentrantState, "reentrant ADDED rejection restores the state slot");
     assert.deepEqual(Array.from(button.children), beforeReentrantChildren, "reentrant ADDED rejection restores exact child order");
     assert.deepEqual(internals(button)._children, beforeActualChildren, "rollback restores the actual engine child array");
@@ -312,6 +314,58 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     }
     assert.equal(internals(reentrantState)._parent, beforeCandidateActualParent);
     assert.equal(internals(reentrantState)._$parent, beforeCandidateLogicalParent);
+
+    for (const phase of [LayaEvent.ADDED, LayaEvent.REMOVED]) {
+        for (const nestedSlot of ["same", "cross"] as const) {
+            const initialUp = state(9, 9), initialOver = state(10, 10);
+            const guarded = new SimpleButton(initialUp, initialOver);
+            const candidate = state(11, 11), nested = state(12, 12);
+            const beforeChildren = Array.from(guarded.children);
+            const trigger = phase === LayaEvent.ADDED ? candidate : initialUp;
+            let nestedAttempts = 0;
+            trigger.on(phase, trigger, () => {
+                nestedAttempts++;
+                try {
+                    if (nestedSlot === "same") guarded.upState = nested;
+                    else guarded.overState = nested;
+                } catch { /* outer transaction must remain poisoned even when the handler catches this */ }
+            });
+            assert.throws(() => guarded.upState = candidate, /poisoned by reentrant state or child mutation/);
+            assert.equal(nestedAttempts, 1, `${phase}/${nestedSlot} adversary ran exactly once`);
+            assert.equal(guarded.upState, initialUp);
+            assert.equal(guarded.overState, initialOver);
+            assert.deepEqual(Array.from(guarded.children), beforeChildren);
+            assert.deepEqual(internals(guarded)._children, beforeChildren);
+            assert.equal(internals(initialUp)._parent, guarded);
+            assert.equal(internals(initialUp)._$parent, guarded);
+            assert.equal(internals(initialOver)._parent, guarded);
+            assert.equal(internals(initialOver)._$parent, guarded);
+            assert.ok(candidate.parent == null);
+            assert.ok(nested.parent == null);
+            assert.equal(guarded.children.includes(candidate), false);
+            assert.equal(guarded.children.includes(nested), false);
+        }
+    }
+
+    const siblingUp = state(13, 13), siblingOver = state(14, 14);
+    const siblingGuarded = new SimpleButton(siblingUp, siblingOver);
+    const siblingCandidate = state(15, 15);
+    const siblingChildren = Array.from(siblingGuarded.children);
+    siblingCandidate.on(LayaEvent.ADDED, siblingCandidate, () => {
+        try { siblingOver.removeSelf(); } catch { }
+        try { siblingCandidate.removeSelf(); } catch { }
+    });
+    assert.throws(() => siblingGuarded.upState = siblingCandidate, /poisoned by reentrant state or child mutation/);
+    assert.equal(siblingGuarded.upState, siblingUp);
+    assert.equal(siblingGuarded.overState, siblingOver);
+    assert.deepEqual(Array.from(siblingGuarded.children), siblingChildren);
+    assert.deepEqual(internals(siblingGuarded)._children, siblingChildren);
+    assert.equal(internals(siblingUp)._parent, siblingGuarded);
+    assert.equal(internals(siblingUp)._$parent, siblingGuarded);
+    assert.equal(internals(siblingOver)._parent, siblingGuarded);
+    assert.equal(internals(siblingOver)._$parent, siblingGuarded);
+    assert.ok(siblingCandidate.parent == null);
+    assert.equal(siblingGuarded.children.includes(siblingCandidate), false);
 
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;
