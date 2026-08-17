@@ -498,8 +498,8 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
                 }
             } catch { /* registered descendant primitives reject before their first side effect */ }
         });
-        const expectedFailure = descendantAttack === "array" ? /child-array content mutation/
-            : descendantAttack === "parentFields" ? /parent-field mutation/
+        const expectedFailure = descendantAttack === "array" ? /(child-array content mutation|child occurrence does not match)/
+            : descendantAttack === "parentFields" ? /(parent-field mutation|child occurrence does not match)/
                 : /poisoned by reentrant state or child mutation/;
         assert.throws(() => recursiveButton.upState = candidate, expectedFailure);
         assert.equal(irreversibleCalls, 0, "derived destroy admission precedes filter/compositor side effects");
@@ -554,7 +554,8 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         internals(sourceSibling)._parent = null;
         internals(sourceSibling)._$parent = null;
     });
-    assert.throws(() => siblingSourceTarget.overState = siblingSourceCandidate, /parent-field mutation/);
+    assert.throws(() => siblingSourceTarget.overState = siblingSourceCandidate,
+        /(parent-field mutation|child occurrence does not match)/);
     assert.deepEqual(Array.from(siblingSourceParent.children), [siblingSourceCandidate, sourceSibling]);
     assert.equal(siblingSourceCandidate.parent, siblingSourceParent);
     assert.equal(sourceSibling.parent, siblingSourceParent);
@@ -571,7 +572,8 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         internals(rogueSourceChild)._parent = rogueSourceParent;
         internals(rogueSourceChild)._$parent = rogueSourceParent;
     });
-    assert.throws(() => rogueSourceTarget.overState = rogueSourceCandidate, /child-array content mutation/);
+    assert.throws(() => rogueSourceTarget.overState = rogueSourceCandidate,
+        /(child-array content mutation|duplicate logical child)/);
     assert.deepEqual(Array.from(rogueSourceParent.children), [rogueSourceCandidate]);
     assert.equal(rogueSourceCandidate.parent, rogueSourceParent);
     assert.ok(rogueSourceChild.parent == null);
@@ -622,6 +624,98 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         assert.equal(hostileTarget.upState, null);
         assert.equal(hostileTarget.numChildren, 0);
     }
+
+    class NativeHostileSprite extends LayaSprite {
+        calls = 0;
+        override destroy(destroyChild: boolean = true): void { this.calls++; super.destroy(destroyChild); }
+    }
+    class NativeHostileNode extends LayaNode {
+        calls = 0;
+        protected override _setParent(value: LayaNode, index: number = -1): void {
+            this.calls++;
+            super._setParent(value, index);
+        }
+    }
+    for (const nativeDescendant of [new NativeHostileSprite(), new NativeHostileNode()]) {
+        const nativeRoot = state(25, 25);
+        nativeRoot.addChild(nativeDescendant);
+        nativeDescendant.calls = 0;
+        const nativeTarget = new SimpleButton();
+        assert.throws(() => nativeTarget.upState = nativeRoot, /graph node must not replace canonical Laya/);
+        assert.equal(nativeDescendant.calls, 0, "native Laya descendant override is rejected before invocation");
+        assert.equal(nativeDescendant.parent, nativeRoot);
+        assert.equal(nativeTarget.upState, null);
+    }
+    const nativeInputRoot = state(24, 24), nativeInput = new LayaInput(), nativeInputTarget = new SimpleButton();
+    nativeInputRoot.addChild(nativeInput);
+    assert.throws(() => nativeInputTarget.upState = nativeInputRoot,
+        /graph node must not replace canonical Laya (destroy|_setParent)/,
+        "native Text/Input lifecycle overrides are rejected before their pre-Sprite side effects");
+    assert.equal(nativeInput.parent, nativeInputRoot);
+    assert.equal(nativeInputTarget.upState, null);
+
+    class UnrelatedHostileBranch extends LayaSprite {
+        override destroy(destroyChild: boolean = true): void { super.destroy(destroyChild); }
+    }
+    const sceneRoot = new Stage(); sceneRoot.size(320, 200);
+    const ownerBranch = state(27, 27), unrelatedBranch = new UnrelatedHostileBranch();
+    const boundedButton = new SimpleButton(state(28, 28));
+    sceneRoot.addChild(ownerBranch);
+    sceneRoot.addChild(unrelatedBranch);
+    ownerBranch.addChild(boundedButton);
+    const unrelatedMutation = new LayaNode(), boundedReplacement = state(29, 29);
+    boundedReplacement.on(LayaEvent.ADDED, boundedReplacement, () => unrelatedBranch.addChild(unrelatedMutation));
+    boundedButton.upState = boundedReplacement;
+    assert.equal(boundedButton.upState, boundedReplacement);
+    assert.equal(unrelatedMutation.parent, unrelatedBranch,
+        "unrelated Stage sibling subtree is neither traversed nor frozen by button admission");
+
+    const admittedExternal = state(20, 20), admittedRogue = state(21, 21);
+    const admittedSource = state(22, 22), admittedCandidate = state(23, 23), admittedTarget = new SimpleButton();
+    admittedExternal.addChild(admittedRogue);
+    admittedSource.addChild(admittedCandidate);
+    admittedCandidate.on(LayaEvent.ADDED, admittedCandidate, () => {
+        try { admittedSource.addChild(admittedRogue); } catch { }
+    });
+    assert.throws(() => admittedTarget.upState = admittedCandidate, /poisoned by reentrant state or child mutation/);
+    assert.deepEqual(Array.from(admittedExternal.children), [admittedRogue]);
+    assert.equal(admittedRogue.parent, admittedExternal,
+        "admitted public child mutation rejects before disturbing externally owned state");
+    assert.deepEqual(Array.from(admittedSource.children), [admittedCandidate]);
+    assert.equal(admittedCandidate.parent, admittedSource);
+
+    const appendRawChild = (parent: LayaNode, child: LayaNode): void => {
+        internals(parent)._children.push(child);
+        if (internals(parent)._$children !== internals(parent)._children) internals(parent)._$children.push(child);
+    };
+    const inverseRoot = state(30, 30), inverseChild = state(31, 31), inverseTarget = new SimpleButton();
+    appendRawChild(inverseRoot, inverseChild);
+    assert.throws(() => inverseTarget.upState = inverseRoot, /child occurrence does not match its declared parent/);
+    assert.equal(inverseTarget.upState, null);
+
+    const sharedRoot = state(32, 32), sharedLeft = state(12, 12), sharedRight = state(13, 13), sharedNode = state(14, 14);
+    sharedRoot.addChild(sharedLeft);
+    sharedRoot.addChild(sharedRight);
+    sharedLeft.addChild(sharedNode);
+    appendRawChild(sharedRight, sharedNode);
+    assert.throws(() => new SimpleButton().upState = sharedRoot, /(shared logical child|child occurrence does not match)/);
+
+    const cycleA = state(15, 15), cycleB = state(16, 16);
+    appendRawChild(cycleA, cycleB);
+    appendRawChild(cycleB, cycleA);
+    internals(cycleB)._parent = cycleA;
+    internals(cycleB)._$parent = cycleA;
+    internals(cycleA)._parent = cycleB;
+    internals(cycleA)._$parent = cycleB;
+    assert.throws(() => new SimpleButton().upState = cycleA, /parent\/child cycle/);
+
+    const ancestryA = state(17, 17), ancestryB = state(18, 18), cyclicOwnerButton = new SimpleButton();
+    ancestryB.addChild(ancestryA);
+    ancestryA.addChild(cyclicOwnerButton);
+    appendRawChild(ancestryA, ancestryB);
+    internals(ancestryB)._parent = ancestryA;
+    internals(ancestryB)._$parent = ancestryA;
+    assert.throws(() => cyclicOwnerButton.upState = state(19, 19), /button ancestry is cyclic/);
 
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;

@@ -101,7 +101,7 @@ const nativeRemove = (parent: LayaNode, value: DisplayObject): void => {
 const nativeAdd = (parent: LayaNode, value: DisplayObject, index: number): void => {
     Node.prototype.addChildAt.call(parent, value, Math.max(0, Math.min(index, parent.numChildren)));
 };
-const collectNodeGraph = (roots: Iterable<LayaNode | null | undefined>): Set<LayaNode> => {
+const collectStateDescendants = (roots: Iterable<LayaNode | null | undefined>): Set<LayaNode> => {
     const nodes = new Set<LayaNode>();
     const pending = [...roots].filter((node): node is LayaNode => node != null);
     while (pending.length > 0) {
@@ -112,28 +112,107 @@ const collectNodeGraph = (roots: Iterable<LayaNode | null | undefined>): Set<Lay
         for (const child of internals._children) pending.push(child);
         for (const child of internals._$children) pending.push(child);
         if (internals._$container && internals._$container !== node) pending.push(internals._$container);
-        if (internals._parent) pending.push(internals._parent);
-        if (internals._$parent) pending.push(internals._$parent);
+    }
+    return nodes;
+};
+const collectPlacementBoundary = (stateNodes: ReadonlySet<LayaNode>): Set<LayaNode> => {
+    const nodes = new Set(stateNodes);
+    const pending = [...stateNodes];
+    while (pending.length > 0) {
+        const node = pending.pop()!;
+        const internals = nodeInternals(node);
+        for (const parent of [internals._parent, internals._$parent, internals._$container]) {
+            if (!parent || nodes.has(parent)) continue;
+            nodes.add(parent);
+            pending.push(parent);
+        }
+    }
+    return nodes;
+};
+const collectBoundaryPlacements = (guardedNodes: ReadonlySet<LayaNode>): Set<LayaNode> => {
+    const nodes = new Set(guardedNodes);
+    for (const owner of guardedNodes) {
+        const internals = nodeInternals(owner);
+        for (const child of internals._children) nodes.add(child);
+        for (const child of internals._$children) nodes.add(child);
     }
     return nodes;
 };
 const assertCanonicalGraphLifecycle = (node: LayaNode, name: string): void => {
-    if (!(node instanceof DisplayObject)) return;
     const lifecycleNames = ["_setParent", "destroy", "destroyChildren"] as const;
+    const canonicalPrototype = node instanceof DisplayObject ? DisplayObject.prototype
+        : node instanceof LayaSprite ? LayaSprite.prototype : Node.prototype;
     for (const lifecycleName of lifecycleNames) {
         if (Object.prototype.hasOwnProperty.call(node, lifecycleName))
             throw new TypeError(`${name} graph node must not replace canonical Laya ${lifecycleName}`);
     }
     let prototype = Object.getPrototypeOf(node);
-    while (prototype && prototype !== DisplayObject.prototype) {
+    while (prototype && prototype !== canonicalPrototype) {
         for (const lifecycleName of lifecycleNames) {
             if (Object.prototype.hasOwnProperty.call(prototype, lifecycleName))
                 throw new TypeError(`${name} graph node must not replace canonical Laya ${lifecycleName}`);
         }
         prototype = Object.getPrototypeOf(prototype);
     }
-    if (prototype !== DisplayObject.prototype)
-        throw new TypeError(`${name} graph node has an unrecognized DisplayObject lifecycle chain`);
+    if (prototype !== canonicalPrototype)
+        throw new TypeError(`${name} graph node has an unrecognized Laya lifecycle chain`);
+};
+const assertCycleSafeAncestry = (button: LayaNode, value: LayaNode, name: string): void => {
+    for (const parentField of ["_$parent", "_parent"] as const) {
+        const seen = new Set<LayaNode>();
+        let cursor: LayaNode | null | undefined = button;
+        while (cursor) {
+            if (cursor === value) throw new TypeError(`${name} must not be the button or one of its ancestors`);
+            if (seen.has(cursor)) throw new TypeError(`${name} cannot be assigned while the button ancestry is cyclic`);
+            seen.add(cursor);
+            cursor = nodeInternals(cursor)[parentField];
+        }
+    }
+};
+const assertInversePlacementClosure = (owners: ReadonlySet<LayaNode>, name: string): void => {
+    const logicalOwner = new Map<LayaNode, LayaNode>();
+    const actualOwner = new Map<LayaNode, LayaNode>();
+    for (const owner of owners) {
+        const internals = nodeInternals(owner);
+        const logicalSeen = new Set<LayaNode>();
+        for (const child of internals._$children) {
+            if (logicalSeen.has(child)) throw new TypeError(`${name} graph contains a duplicate logical child`);
+            logicalSeen.add(child);
+            const prior = logicalOwner.get(child);
+            if (prior && prior !== owner) throw new TypeError(`${name} graph contains a shared logical child`);
+            logicalOwner.set(child, owner);
+            if (nodeInternals(child)._$parent !== owner || nodeInternals(child)._parent !== internals._$container)
+                throw new TypeError(`${name} graph child occurrence does not match its declared parent`);
+        }
+        const actualSeen = new Set<LayaNode>();
+        for (const child of internals._children) {
+            if (actualSeen.has(child)) throw new TypeError(`${name} graph contains a duplicate actual child`);
+            actualSeen.add(child);
+            const prior = actualOwner.get(child);
+            if (prior && prior !== owner) throw new TypeError(`${name} graph contains a shared actual child`);
+            actualOwner.set(child, owner);
+            if (nodeInternals(child)._parent !== owner)
+                throw new TypeError(`${name} graph actual child occurrence does not match its declared parent`);
+        }
+    }
+    for (const [child, owner] of logicalOwner) {
+        const container = nodeInternals(owner)._$container;
+        if (actualOwner.get(child) !== container)
+            throw new TypeError(`${name} graph logical child has no exact container occurrence`);
+    }
+    const visiting = new Set<LayaNode>();
+    const visited = new Set<LayaNode>();
+    const visit = (node: LayaNode): void => {
+        if (visiting.has(node)) throw new TypeError(`${name} graph contains a parent/child cycle`);
+        if (visited.has(node)) return;
+        visiting.add(node);
+        for (const child of nodeInternals(node)._$children) {
+            if (owners.has(child)) visit(child);
+        }
+        visiting.delete(node);
+        visited.add(node);
+    };
+    for (const owner of owners) visit(owner);
 };
 
 class DisplayObjectHitArea implements IHitArea {
@@ -249,8 +328,7 @@ export class SimpleButton extends InteractiveObject {
     private _replaceStateTransaction(slot: ButtonStateSlot, value: DisplayObject | null, name: string,
         transaction: ButtonStateTransaction): void {
         if (value !== null && !(value instanceof DisplayObject)) throw new TypeError(`${name} must be a DisplayObject or null`);
-        if (value === this || value?.contains(this))
-            throw new TypeError(`${name} must not be the button or one of its ancestors`);
+        if (value) assertCycleSafeAncestry(this, value, name);
         const old = this[slot];
         if (old === value) return;
         const stateSlots = new Map<ButtonStateSlot, DisplayObject | null>(
@@ -276,13 +354,16 @@ export class SimpleButton extends InteractiveObject {
             ...nodeInternals(this)._children,
             ...nodeInternals(this)._$children,
         ]);
-        const placementNodes = collectNodeGraph([
+        const stateNodes = collectStateDescendants([
             this,
             ...initialButtonChildren,
             ...snapshots.map(snapshot => snapshot.item),
             ...BUTTON_STATE_SLOTS.map(stateSlot => stateSlots.get(stateSlot)).filter((item): item is DisplayObject => item != null),
         ]);
-        for (const node of placementNodes) assertCanonicalGraphLifecycle(node, name);
+        const guardedNodes = collectPlacementBoundary(stateNodes);
+        const placementNodes = collectBoundaryPlacements(guardedNodes);
+        assertInversePlacementClosure(guardedNodes, name);
+        for (const node of stateNodes) assertCanonicalGraphLifecycle(node, name);
         const placements = [...placementNodes].map(item => ({
             item,
             actualParent: nodeInternals(item)._parent,
@@ -300,8 +381,10 @@ export class SimpleButton extends InteractiveObject {
             if (!childArrays.has(internals._$children)) childArrays.set(internals._$children, internals._$children.slice());
         };
         for (const placement of placements) {
-            snapshotArrays(placement.item);
-            snapshotArrays(placement.container);
+            if (guardedNodes.has(placement.item)) {
+                snapshotArrays(placement.item);
+                snapshotArrays(placement.container);
+            }
         }
         const expectedArrays = new Map<LayaNode[], LayaNode[]>(
             [...childArrays].map(([children, saved]) => [children, saved.slice()]),
@@ -335,7 +418,7 @@ export class SimpleButton extends InteractiveObject {
             expectedActualParents.set(old, null);
             expectedLogicalParents.set(old, null);
         }
-        const nodeTransaction = beginNodeMutationTransaction(placementNodes,
+        const nodeTransaction = beginNodeMutationTransaction(guardedNodes,
             operation => poisonButtonTransaction(this, operation));
         transaction.nodeTransaction = nodeTransaction;
         try {
@@ -373,6 +456,7 @@ export class SimpleButton extends InteractiveObject {
                 if (this._stateStillOwned(old)) assertOwnedPlacement(old, this, name);
                 else assertDetachedFromOwner(old, this, name);
             }
+            assertInversePlacementClosure(guardedNodes, name);
             for (const stateSlot of BUTTON_STATE_SLOTS) {
                 const expected = stateSlot === slot ? value : stateSlots.get(stateSlot)!;
                 if (this[stateSlot] !== expected)
@@ -380,8 +464,9 @@ export class SimpleButton extends InteractiveObject {
             }
             for (const placement of placements) {
                 const internals = nodeInternals(placement.item);
-                if (internals._$container !== placement.container || internals._children !== placement.children
-                    || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
+                if (guardedNodes.has(placement.item)
+                    && (internals._$container !== placement.container || internals._children !== placement.children
+                        || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed))
                     throw new Error(`${name} replacement observed a direct Laya lifecycle or container mutation`);
                 if (internals._parent !== expectedActualParents.get(placement.item)
                     || internals._$parent !== expectedLogicalParents.get(placement.item))
@@ -412,25 +497,27 @@ export class SimpleButton extends InteractiveObject {
             const rollbackErrors: unknown[] = [];
             for (const stateSlot of BUTTON_STATE_SLOTS) this[stateSlot] = stateSlots.get(stateSlot)!;
             try {
-                const currentGraph = collectNodeGraph([
-                    ...placementNodes,
-                    this, old, value,
-                    ...BUTTON_STATE_SLOTS.map(stateSlot => this[stateSlot]),
-                ]);
-                const introducedChildren = [...currentGraph].filter(child => !placementNodes.has(child));
+                const introducedChildren = new Set<LayaNode>();
+                for (const [children, saved] of childArrays) {
+                    for (const child of children) {
+                        if (!saved.includes(child) && !placementNodes.has(child)) introducedChildren.add(child);
+                    }
+                }
                 for (const [children, saved] of childArrays)
                     children.splice(0, children.length, ...saved);
                 for (const placement of placements) {
                     const internals = nodeInternals(placement.item);
                     internals._parent = placement.actualParent;
                     internals._$parent = placement.logicalParent;
-                    internals._$container = placement.container;
-                    internals._children = placement.children;
-                    internals._$children = placement.logicalChildren;
-                    internals._destroyed = placement.destroyed;
+                    if (guardedNodes.has(placement.item)) {
+                        internals._$container = placement.container;
+                        internals._children = placement.children;
+                        internals._$children = placement.logicalChildren;
+                        internals._destroyed = placement.destroyed;
+                    }
                 }
                 const owner = nodeInternals(this);
-                const guardedContainers = new Set(placements.map(placement => placement.container));
+                const guardedContainers = new Set([...guardedNodes].map(node => nodeInternals(node)._$container));
                 for (const child of introducedChildren) {
                     const internals = nodeInternals(child);
                     if ((internals._parent && guardedContainers.has(internals._parent))
@@ -447,8 +534,9 @@ export class SimpleButton extends InteractiveObject {
                     const internals = nodeInternals(placement.item);
                     if (internals._parent !== placement.actualParent || internals._$parent !== placement.logicalParent)
                         throw new Error("Laya parent-field rollback did not restore the exact snapshot");
-                    if (internals._$container !== placement.container || internals._children !== placement.children
-                        || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
+                    if (guardedNodes.has(placement.item)
+                        && (internals._$container !== placement.container || internals._children !== placement.children
+                            || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed))
                         throw new Error("Laya lifecycle/container rollback did not restore the exact snapshot");
                     if (!placement.logicalParent || !placement.actualParent) {
                         if (placement.logicalParent != null || placement.actualParent != null)
