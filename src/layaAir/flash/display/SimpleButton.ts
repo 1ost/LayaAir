@@ -112,8 +112,28 @@ const collectNodeGraph = (roots: Iterable<LayaNode | null | undefined>): Set<Lay
         for (const child of internals._children) pending.push(child);
         for (const child of internals._$children) pending.push(child);
         if (internals._$container && internals._$container !== node) pending.push(internals._$container);
+        if (internals._parent) pending.push(internals._parent);
+        if (internals._$parent) pending.push(internals._$parent);
     }
     return nodes;
+};
+const assertCanonicalGraphLifecycle = (node: LayaNode, name: string): void => {
+    if (!(node instanceof DisplayObject)) return;
+    const lifecycleNames = ["_setParent", "destroy", "destroyChildren"] as const;
+    for (const lifecycleName of lifecycleNames) {
+        if (Object.prototype.hasOwnProperty.call(node, lifecycleName))
+            throw new TypeError(`${name} graph node must not replace canonical Laya ${lifecycleName}`);
+    }
+    let prototype = Object.getPrototypeOf(node);
+    while (prototype && prototype !== DisplayObject.prototype) {
+        for (const lifecycleName of lifecycleNames) {
+            if (Object.prototype.hasOwnProperty.call(prototype, lifecycleName))
+                throw new TypeError(`${name} graph node must not replace canonical Laya ${lifecycleName}`);
+        }
+        prototype = Object.getPrototypeOf(prototype);
+    }
+    if (prototype !== DisplayObject.prototype)
+        throw new TypeError(`${name} graph node has an unrecognized DisplayObject lifecycle chain`);
 };
 
 class DisplayObjectHitArea implements IHitArea {
@@ -262,12 +282,7 @@ export class SimpleButton extends InteractiveObject {
             ...snapshots.map(snapshot => snapshot.item),
             ...BUTTON_STATE_SLOTS.map(stateSlot => stateSlots.get(stateSlot)).filter((item): item is DisplayObject => item != null),
         ]);
-        for (const node of [...placementNodes]) {
-            const internals = nodeInternals(node);
-            if (internals._parent) placementNodes.add(internals._parent);
-            if (internals._$parent) placementNodes.add(internals._$parent);
-            if (internals._$container) placementNodes.add(internals._$container);
-        }
+        for (const node of placementNodes) assertCanonicalGraphLifecycle(node, name);
         const placements = [...placementNodes].map(item => ({
             item,
             actualParent: nodeInternals(item)._parent,
@@ -398,6 +413,7 @@ export class SimpleButton extends InteractiveObject {
             for (const stateSlot of BUTTON_STATE_SLOTS) this[stateSlot] = stateSlots.get(stateSlot)!;
             try {
                 const currentGraph = collectNodeGraph([
+                    ...placementNodes,
                     this, old, value,
                     ...BUTTON_STATE_SLOTS.map(stateSlot => this[stateSlot]),
                 ]);

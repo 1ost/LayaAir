@@ -524,6 +524,105 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         assert.ok(rogueContainer.parent == null);
     }
 
+    const ownerRoot = state(30, 30), ownerHolder = state(29, 29);
+    const nestedButton = new SimpleButton(state(7, 7), state(8, 8));
+    ownerRoot.addChild(ownerHolder);
+    ownerHolder.addChild(nestedButton);
+    const nestedReplacement = state(9, 9);
+    nestedButton.upState = nestedReplacement;
+    assert.equal(nestedButton.upState, nestedReplacement);
+    assert.equal(nestedButton.parent, ownerHolder);
+    assert.equal(ownerHolder.parent, ownerRoot);
+    assert.deepEqual(Array.from(ownerRoot.children), [ownerHolder]);
+    assert.deepEqual(Array.from(ownerHolder.children), [nestedButton]);
+
+    const sourceGrandparent = state(31, 31), sourceParent = state(10, 10), sourcedCandidate = state(11, 11);
+    sourceGrandparent.addChild(sourceParent);
+    sourceParent.addChild(sourcedCandidate);
+    const sourceTarget = new SimpleButton(state(12, 12));
+    sourceTarget.overState = sourcedCandidate;
+    assert.equal(sourcedCandidate.parent, sourceTarget);
+    assert.deepEqual(Array.from(sourceParent.children), []);
+    assert.deepEqual(Array.from(sourceGrandparent.children), [sourceParent]);
+    assert.equal(sourceParent.parent, sourceGrandparent);
+
+    const siblingSourceParent = state(17, 17), siblingSourceCandidate = state(18, 18), sourceSibling = state(19, 19);
+    siblingSourceParent.addChild(siblingSourceCandidate);
+    siblingSourceParent.addChild(sourceSibling);
+    const siblingSourceTarget = new SimpleButton(state(20, 20));
+    siblingSourceCandidate.on(LayaEvent.ADDED, siblingSourceCandidate, () => {
+        internals(sourceSibling)._parent = null;
+        internals(sourceSibling)._$parent = null;
+    });
+    assert.throws(() => siblingSourceTarget.overState = siblingSourceCandidate, /parent-field mutation/);
+    assert.deepEqual(Array.from(siblingSourceParent.children), [siblingSourceCandidate, sourceSibling]);
+    assert.equal(siblingSourceCandidate.parent, siblingSourceParent);
+    assert.equal(sourceSibling.parent, siblingSourceParent);
+    assert.equal(internals(sourceSibling)._parent, siblingSourceParent);
+    assert.equal(internals(sourceSibling)._$parent, siblingSourceParent);
+    assert.equal(siblingSourceTarget.overState, null);
+
+    const rogueSourceParent = state(21, 21), rogueSourceCandidate = state(22, 22), rogueSourceChild = state(23, 23);
+    rogueSourceParent.addChild(rogueSourceCandidate);
+    const rogueSourceTarget = new SimpleButton(state(24, 24));
+    rogueSourceCandidate.on(LayaEvent.ADDED, rogueSourceCandidate, () => {
+        internals(rogueSourceParent)._children.push(rogueSourceChild);
+        internals(rogueSourceParent)._$children.push(rogueSourceChild);
+        internals(rogueSourceChild)._parent = rogueSourceParent;
+        internals(rogueSourceChild)._$parent = rogueSourceParent;
+    });
+    assert.throws(() => rogueSourceTarget.overState = rogueSourceCandidate, /child-array content mutation/);
+    assert.deepEqual(Array.from(rogueSourceParent.children), [rogueSourceCandidate]);
+    assert.equal(rogueSourceCandidate.parent, rogueSourceParent);
+    assert.ok(rogueSourceChild.parent == null);
+    assert.ok(internals(rogueSourceChild)._parent == null);
+    assert.ok(internals(rogueSourceChild)._$parent == null);
+    assert.equal(rogueSourceTarget.overState, null);
+
+    const boundaryGrandparent = state(32, 32), boundaryParent = state(13, 13), boundaryCandidate = state(14, 14);
+    boundaryGrandparent.addChild(boundaryParent);
+    boundaryParent.addChild(boundaryCandidate);
+    const boundaryTarget = new SimpleButton(state(15, 15));
+    boundaryCandidate.on(LayaEvent.ADDED, boundaryCandidate, () => {
+        try { boundaryGrandparent.removeChild(boundaryParent); } catch { }
+    });
+    assert.throws(() => boundaryTarget.overState = boundaryCandidate, /poisoned by reentrant state or child mutation/);
+    assert.equal(boundaryCandidate.parent, boundaryParent);
+    assert.equal(boundaryParent.parent, boundaryGrandparent);
+    assert.deepEqual(Array.from(boundaryParent.children), [boundaryCandidate]);
+    assert.deepEqual(Array.from(boundaryGrandparent.children), [boundaryParent]);
+    assert.equal(boundaryTarget.overState, null);
+
+    class HostileDestroyDescendant extends DisplayObject {
+        calls = 0;
+        override destroy(destroyChild: boolean = true): void { this.calls++; super.destroy(destroyChild); }
+    }
+    class HostileParentDescendant extends DisplayObject {
+        calls = 0;
+        protected override _setParent(value: LayaNode, index: number = -1): void {
+            this.calls++;
+            super._setParent(value, index);
+        }
+    }
+    class HostileDestroyChildrenDescendant extends DisplayObject {
+        calls = 0;
+        override destroyChildren(): void { this.calls++; super.destroyChildren(); }
+    }
+    for (const hostileDescendant of [
+        new HostileDestroyDescendant(), new HostileParentDescendant(), new HostileDestroyChildrenDescendant(),
+    ]) {
+        const hostileRoot = state(16, 16);
+        hostileRoot.addChild(hostileDescendant);
+        hostileDescendant.calls = 0;
+        const hostileTarget = new SimpleButton();
+        assert.throws(() => hostileTarget.upState = hostileRoot, /graph node must not replace canonical Laya/);
+        assert.equal(hostileDescendant.calls, 0, "hostile descendant lifecycle code is rejected before invocation");
+        assert.ok(hostileRoot.parent == null);
+        assert.equal(hostileDescendant.parent, hostileRoot);
+        assert.equal(hostileTarget.upState, null);
+        assert.equal(hostileTarget.numChildren, 0);
+    }
+
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;
         override get visible(): boolean { return super.visible; }
