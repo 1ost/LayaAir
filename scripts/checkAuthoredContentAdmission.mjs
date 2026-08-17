@@ -489,7 +489,10 @@ function inspectCode(root, files, program, options, policy, failures) {
                     failures.push(`${file}: executable source-format symbol or value is forbidden (${value})`);
                 if ((role === "core" || role === "layaair" || role === "runtime") && hasAvmSemanticMachinery(value))
                     failures.push(`${file}: authored runtime may not contain AVM/QName/trait/bytecode machinery (${value})`);
-                if (hasAuthoredSourceSurface(value) && role !== "offline-adapter" && role !== "flash-api")
+                // The editor entrypoint is allowed to select and invoke an offline adapter.
+                // Implementations remain confined to offlineAdapterRoot, and production
+                // reachability checks keep both the editor and its adapters out of bundles.
+                if (hasAuthoredSourceSurface(value) && role !== "offline-adapter" && role !== "editor" && role !== "flash-api")
                     failures.push(`${file}: source-format symbol or value is outside the editor-only adapter lane (${value})`);
                 if (role === "flash-api" && hasAvmSemanticMachinery(value))
                     failures.push(`${file}: Flash API bridge may not contain ABC/AVM/QName/cinit/admission/trait machinery (${value})`);

@@ -409,6 +409,12 @@ test("source adapters are editor-only and executable source formats are never ad
             "src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts": "export class SwfXmlSourceAdapter {}",
         }));
     });
+    await t.test("editor may consume an offline adapter", t => {
+        assertAuthoredContentAdmission(fixture(t, {
+            "src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts": "export class SwfXmlSourceAdapter {}",
+            "src/extensions/authoredContent/EnvMain.ts": "import { SwfXmlSourceAdapter } from './offlineAdapters/SwfXmlSourceAdapter'; export const adapter = new SwfXmlSourceAdapter();",
+        }));
+    });
     await t.test("source adapter outside lane", t => {
         failure(fixture(t, {
             "src/extensions/authoredContent/SwfXmlSourceAdapter.ts": "export class SwfXmlSourceAdapter {}",

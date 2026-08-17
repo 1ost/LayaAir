@@ -35,8 +35,8 @@ await fs.promises.writeFile(path.join(packageRoot, "package.json"), JSON.stringi
 const expectedOutputs = [
     "EnvMain.js",
     "UIMain.js",
-    "adapters/SwfXmlSourceAdapter.js",
-    "adapters/XflBundleSourceAdapter.js",
+    "offlineAdapters/SwfXmlSourceAdapter.js",
+    "offlineAdapters/XflBundleSourceAdapter.js",
     "cockpit/AuthoredContentCockpitBridge.js",
     "cockpit/AuthoredContentCockpitModel.js",
     "cockpit/AuthoredContentCockpitPanel.js",

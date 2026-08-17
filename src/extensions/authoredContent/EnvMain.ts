@@ -1,5 +1,5 @@
-import { SwfXmlSourceAdapter } from "./adapters/SwfXmlSourceAdapter";
-import { XflBundleSourceAdapter } from "./adapters/XflBundleSourceAdapter";
+import { SwfXmlSourceAdapter } from "./offlineAdapters/SwfXmlSourceAdapter";
+import { XflBundleSourceAdapter } from "./offlineAdapters/XflBundleSourceAdapter";
 import { NativeAnimationClip2DWriter } from "./emit/NativeAnimationClip2DWriter";
 import { NativeLayaEmitter } from "./emit/NativeLayaEmitter";
 
