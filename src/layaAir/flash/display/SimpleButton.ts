@@ -2,6 +2,10 @@ import { Event as LayaEvent } from "../../laya/events/Event";
 import { Point } from "../../laya/maths/Point";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { Node } from "../../laya/display/Node";
+import {
+    beginNodeMutationTransaction, endNodeMutationTransaction, runPermittedNodeMutation,
+    NodeMutationOperation, NodeMutationTransaction,
+} from "../../laya/display/NodeMutationTransaction";
 import { IHitArea } from "../../laya/utils/IHitArea";
 import { InputManager } from "../../laya/events/InputManager";
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
@@ -10,9 +14,22 @@ import { InteractiveObject } from "./InteractiveObject";
 
 type ButtonVisualState = "up" | "over" | "down";
 type ButtonStateSlot = "_upState" | "_overState" | "_downState" | "_hitTestState";
-type ButtonStateTransaction = { revision: number; poisoned: boolean };
+type ButtonStateTransaction = { revision: number; poisoned: boolean; nodeTransaction?: NodeMutationTransaction };
 type LayaNode = Node;
 const BUTTON_STATE_SLOTS: readonly ButtonStateSlot[] = ["_upState", "_overState", "_downState", "_hitTestState"];
+const buttonTransactions = new WeakMap<object, ButtonStateTransaction>();
+const buttonRevisions = new WeakMap<object, number>();
+const nextButtonRevision = (button: object): number => {
+    const revision = (buttonRevisions.get(button) ?? 0) + 1;
+    buttonRevisions.set(button, revision);
+    return revision;
+};
+const poisonButtonTransaction = (button: object, operation: NodeMutationOperation): never => {
+    const transaction = buttonTransactions.get(button);
+    if (transaction) transaction.poisoned = true;
+    nextButtonRevision(button);
+    throw new Error(`SimpleButton ${operation} mutation is not allowed during state replacement`);
+};
 
 const visibleDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "visible");
 const mouseDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "mouseEnabled");
@@ -28,6 +45,7 @@ type NodeInternals = {
     _parent: LayaNode | null | undefined;
     _$parent: LayaNode | null | undefined;
     _$container: LayaNode;
+    _destroyed: boolean;
     _setParent(value: LayaNode | null, index?: number): void;
 };
 const nodeInternals = (value: LayaNode): NodeInternals => value as unknown as NodeInternals;
@@ -114,9 +132,6 @@ export class SimpleButton extends InteractiveObject {
     private _updatingEnabled = false;
     private _trackAsMenu = false;
     private _visualState: ButtonVisualState = "up";
-    private _stateRevision = 0;
-    private _stateTransaction: ButtonStateTransaction | null = null;
-    private _stateChildMutationPermit = 0;
 
     constructor(upState: DisplayObject | null = null, overState: DisplayObject | null = null,
         downState: DisplayObject | null = null, hitTestState: DisplayObject | null = null) {
@@ -131,64 +146,6 @@ export class SimpleButton extends InteractiveObject {
         this.overState = overState;
         this.downState = downState;
         this.hitTestState = hitTestState;
-    }
-
-    override addChild<T extends Node>(node: T): T {
-        this._rejectExternalChildMutation();
-        return super.addChild(node);
-    }
-    override addChildren(...args: Node[]): void {
-        this._rejectExternalChildMutation();
-        super.addChildren(...args);
-    }
-    override addChildAt<T extends Node>(node: T, index: number): T {
-        this._rejectExternalChildMutation();
-        return super.addChildAt(node, index);
-    }
-    override setChildIndex<T extends Node>(node: T, index: number): T {
-        this._rejectExternalChildMutation();
-        return super.setChildIndex(node, index);
-    }
-    override setChildIndexBefore(node: Node, index: number): number {
-        this._rejectExternalChildMutation();
-        return super.setChildIndexBefore(node, index);
-    }
-    override removeChild<T extends Node>(node: T, destroy?: boolean): T {
-        this._rejectExternalChildMutation();
-        return super.removeChild(node, destroy);
-    }
-    override removeChildByName(name: string, destroy?: boolean): Node {
-        this._rejectExternalChildMutation();
-        return super.removeChildByName(name, destroy);
-    }
-    override removeChildAt(index: number, destroy?: boolean): Node {
-        this._rejectExternalChildMutation();
-        return super.removeChildAt(index, destroy);
-    }
-    override removeChildren(beginIndex?: number, endIndex?: number, destroy?: boolean): void {
-        this._rejectExternalChildMutation();
-        super.removeChildren(beginIndex, endIndex, destroy);
-    }
-    override replaceChild(newNode: Node, oldNode: Node): Node {
-        this._rejectExternalChildMutation();
-        return super.replaceChild(newNode, oldNode);
-    }
-    override _addChild(node: Node, index?: number): Node {
-        this._rejectExternalChildMutation();
-        return super._addChild(node, index);
-    }
-    override _removeChild(node: Node): Node {
-        this._rejectExternalChildMutation();
-        return super._removeChild(node);
-    }
-    protected override _beforeChildMutation(): void {
-        if (this._stateTransaction && this._stateChildMutationPermit > 0) {
-            this._stateChildMutationPermit--;
-            super._beforeChildMutation();
-            return;
-        }
-        this._rejectExternalChildMutation();
-        super._beforeChildMutation();
     }
 
     get enabled(): boolean { return this._enabled; }
@@ -240,19 +197,18 @@ export class SimpleButton extends InteractiveObject {
     }
 
     private _replaceState(slot: ButtonStateSlot, value: DisplayObject | null, name: string): void {
-        if (this._stateTransaction) {
-            this._stateTransaction.poisoned = true;
-            this._stateRevision++;
+        const active = buttonTransactions.get(this);
+        if (active) {
+            active.poisoned = true;
+            nextButtonRevision(this);
             throw new Error(`${name} replacement is not reentrant`);
         }
-        if (this._beforeChildMutation !== SimpleButton.prototype._beforeChildMutation)
-            throw new TypeError(`${name} replacement requires the canonical SimpleButton child-mutation admission hook`);
-        const transaction: ButtonStateTransaction = { revision: ++this._stateRevision, poisoned: false };
-        this._stateTransaction = transaction;
+        const transaction: ButtonStateTransaction = { revision: nextButtonRevision(this), poisoned: false };
+        buttonTransactions.set(this, transaction);
         try {
             this._replaceStateTransaction(slot, value, name, transaction);
         } finally {
-            if (this._stateTransaction === transaction) this._stateTransaction = null;
+            if (buttonTransactions.get(this) === transaction) buttonTransactions.delete(this);
         }
     }
 
@@ -300,26 +256,55 @@ export class SimpleButton extends InteractiveObject {
             ...nodeInternals(this)._$children,
         ]);
         const placementNodes = new Set<LayaNode>([
+            this,
+            nodeInternals(this)._$container,
             ...initialButtonChildren,
             ...snapshots.map(snapshot => snapshot.item),
+            ...snapshots.flatMap(snapshot => [snapshot.parent, snapshot.actualParent]).filter((item): item is LayaNode => item != null),
+            ...BUTTON_STATE_SLOTS.map(stateSlot => stateSlots.get(stateSlot)).filter((item): item is DisplayObject => item != null),
         ]);
         const placements = [...placementNodes].map(item => ({
             item,
             actualParent: nodeInternals(item)._parent,
             logicalParent: nodeInternals(item)._$parent,
+            container: nodeInternals(item)._$container,
+            children: nodeInternals(item)._children,
+            logicalChildren: nodeInternals(item)._$children,
+            destroyed: nodeInternals(item)._destroyed,
         }));
+        for (const placement of placements) {
+            snapshotArrays(placement.item);
+            snapshotArrays(placement.container);
+        }
+        const nodeTransaction = beginNodeMutationTransaction(placementNodes,
+            operation => poisonButtonTransaction(this, operation));
+        transaction.nodeTransaction = nodeTransaction;
         try {
+          try {
             if (value) {
                 if (!value.name) value.name = name;
                 setNativeMouseEnabled(value, false);
                 if (value.parent !== this) {
-                    if (value.parent) nativeRemove(value.parent, value);
-                    this._runStateChildMutation(() => nativeAdd(this, value, this.numChildren));
+                    if (value.parent) {
+                        const sourceParent = value.parent;
+                        runPermittedNodeMutation(nodeTransaction, [
+                            { node: sourceParent, operation: "removeChild" },
+                            { node: value, operation: "setParent" },
+                        ], () => nativeRemove(sourceParent, value));
+                    }
+                    runPermittedNodeMutation(nodeTransaction, [
+                        { node: this, operation: "addChildAt" },
+                        { node: value, operation: "setParent" },
+                    ], () => nativeAdd(this, value, this.numChildren));
                 }
             }
             this[slot] = value;
-            if (old && old.parent === this && !this._stateStillOwned(old))
-                this._runStateChildMutation(() => nativeRemove(this, old));
+            if (old && old.parent === this && !this._stateStillOwned(old)) {
+                runPermittedNodeMutation(nodeTransaction, [
+                    { node: this, operation: "removeChild" },
+                    { node: old, operation: "setParent" },
+                ], () => nativeRemove(this, old));
+            }
             this._applyStateVisibility();
             if (value) assertOwnedPlacement(value, this, name);
             if (old) {
@@ -331,7 +316,13 @@ export class SimpleButton extends InteractiveObject {
                 if (this[stateSlot] !== expected)
                     throw new Error(`${name} replacement observed a reentrant state-slot mutation`);
             }
-            if (transaction.poisoned || this._stateRevision !== transaction.revision)
+            for (const placement of placements) {
+                const internals = nodeInternals(placement.item);
+                if (internals._$container !== placement.container || internals._children !== placement.children
+                    || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
+                    throw new Error(`${name} replacement observed a direct Laya lifecycle or container mutation`);
+            }
+            if (transaction.poisoned || buttonRevisions.get(this) !== transaction.revision)
                 throw new Error(`${name} replacement was poisoned by reentrant state or child mutation`);
         } catch (error) {
             const rollbackErrors: unknown[] = [];
@@ -348,6 +339,10 @@ export class SimpleButton extends InteractiveObject {
                     const internals = nodeInternals(placement.item);
                     internals._parent = placement.actualParent;
                     internals._$parent = placement.logicalParent;
+                    internals._$container = placement.container;
+                    internals._children = placement.children;
+                    internals._$children = placement.logicalChildren;
+                    internals._destroyed = placement.destroyed;
                 }
                 const owner = nodeInternals(this);
                 for (const child of introducedChildren) {
@@ -365,6 +360,9 @@ export class SimpleButton extends InteractiveObject {
                     const internals = nodeInternals(placement.item);
                     if (internals._parent !== placement.actualParent || internals._$parent !== placement.logicalParent)
                         throw new Error("Laya parent-field rollback did not restore the exact snapshot");
+                    if (internals._$container !== placement.container || internals._children !== placement.children
+                        || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed)
+                        throw new Error("Laya lifecycle/container rollback did not restore the exact snapshot");
                 }
                 for (const child of owner._$children) {
                     const internals = nodeInternals(child);
@@ -389,30 +387,10 @@ export class SimpleButton extends InteractiveObject {
                 throw failure;
             }
             throw error;
-        }
-    }
-
-    private _rejectExternalChildMutation(): void {
-        if (!this._stateTransaction) return;
-        this._stateTransaction.poisoned = true;
-        this._stateRevision++;
-        throw new Error("SimpleButton child mutation is not allowed during state replacement");
-    }
-
-    private _runStateChildMutation<T>(mutation: () => T): T {
-        if (!this._stateTransaction || this._stateChildMutationPermit !== 0)
-            throw new Error("SimpleButton internal child mutation permit is inconsistent");
-        this._stateChildMutationPermit = 1;
-        try {
-            const result = mutation();
-            if (this._stateChildMutationPermit !== 0) {
-                this._stateTransaction.poisoned = true;
-                this._stateRevision++;
-                throw new Error("Laya child mutation primitive did not consume its transaction permit");
-            }
-            return result;
+          }
         } finally {
-            this._stateChildMutationPermit = 0;
+            endNodeMutationTransaction(nodeTransaction);
+            transaction.nodeTransaction = undefined;
         }
     }
 

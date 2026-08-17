@@ -7,6 +7,7 @@ import { AnimationClip2D } from "../../../src/layaAir/laya/components/AnimationC
 import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorClip2D";
 import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
+import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
@@ -395,10 +396,57 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         assert.equal(prototypeGuarded.children.includes(introduced), false);
     }
 
-    class HostileMutationHookButton extends SimpleButton {
-        protected override _beforeChildMutation(): void { }
+    for (const internalAttack of ["setParent", "setContainer", "maskHook", "privateFields", "nestedTransaction", "destroy"] as const) {
+        const internalUp = state(20, 20), internalOver = state(21, 21);
+        const internalGuarded = new SimpleButton(internalUp, internalOver);
+        const internalCandidate = state(22, 22), rogue = state(23, 23);
+        const internalChildren = Array.from(internalGuarded.children);
+        internalCandidate.on(LayaEvent.ADDED, internalCandidate, () => {
+            try {
+                if (internalAttack === "setParent") {
+                    (LayaNode.prototype as unknown as { _setParent(value: LayaNode | null): void })
+                        ._setParent.call(internalOver, null);
+                } else if (internalAttack === "setContainer") {
+                    LayaNode.prototype._setContainer.call(internalGuarded, rogue);
+                } else if (internalAttack === "maskHook") {
+                    Object.defineProperty(internalGuarded, "_beforeChildMutation", {
+                        configurable: true, value: (LayaNode.prototype as unknown as Record<string, unknown>)._beforeChildMutation,
+                    });
+                    try { LayaNode.prototype.removeChild.call(internalGuarded, internalOver); }
+                    finally { delete (internalGuarded as unknown as Record<string, unknown>)._beforeChildMutation; }
+                } else if (internalAttack === "privateFields") {
+                    const exposed = internalGuarded as unknown as Record<string, unknown>;
+                    exposed._stateChildMutationPermit = 1;
+                    exposed._stateTransaction = null;
+                    try {
+                        assert.equal(exposed._runStateChildMutation, undefined);
+                        LayaNode.prototype.addChildAt.call(internalGuarded, rogue, internalGuarded.numChildren);
+                    } finally {
+                        delete exposed._stateChildMutationPermit;
+                        delete exposed._stateTransaction;
+                    }
+                } else if (internalAttack === "nestedTransaction") {
+                    beginNodeMutationTransaction([internalGuarded], () => { throw new Error("foreign guard"); });
+                } else {
+                    internalGuarded.destroy(false);
+                }
+            } catch { /* direct canonical/internal calls must poison before their first mutation */ }
+        });
+        assert.throws(() => internalGuarded.upState = internalCandidate, /poisoned by reentrant state or child mutation/);
+        assert.equal(internalGuarded.destroyed, false);
+        assert.equal(internalGuarded.upState, internalUp);
+        assert.equal(internalGuarded.overState, internalOver);
+        assert.deepEqual(Array.from(internalGuarded.children), internalChildren);
+        assert.deepEqual(internals(internalGuarded)._children, internalChildren);
+        assert.equal(internals(internalUp)._parent, internalGuarded);
+        assert.equal(internals(internalUp)._$parent, internalGuarded);
+        assert.equal(internals(internalOver)._parent, internalGuarded);
+        assert.equal(internals(internalOver)._$parent, internalGuarded);
+        assert.ok(internalCandidate.parent == null);
+        assert.ok(rogue.parent == null);
+        assert.equal(internalGuarded.children.includes(internalCandidate), false);
+        assert.equal(internalGuarded.children.includes(rogue), false);
     }
-    assert.throws(() => new HostileMutationHookButton(), /canonical SimpleButton child-mutation admission hook/);
 
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;

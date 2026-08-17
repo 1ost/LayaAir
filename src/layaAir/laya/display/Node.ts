@@ -14,6 +14,7 @@ import { type Scene3D } from "../d3/core/scene/Scene3D";
 import { type GWidget } from "../ui2/GWidget"
 import { LayaGL } from "../layagl/LayaGL"
 import { StatElement } from "../layagl/StatisticsContext"
+import { admitNodeMutation } from "./NodeMutationTransaction";
 
 const ARRAY_EMPTY: any[] = [];
 const initBits = NodeFlags.ACTIVE;
@@ -331,6 +332,7 @@ export class Node extends EventDispatcher {
      * @param destroyChild 是否同时销毁子节点,若值为true,则销毁子节点,否则不销毁子节点。
      */
     destroy(destroyChild: boolean = true): void {
+        admitNodeMutation(this, "destroy");
         if (this._destroyed)
             return;
 
@@ -419,7 +421,7 @@ export class Node extends EventDispatcher {
      * @returns 返回添加的节点。如果索引超出范围 [0, 子节点数量]，则抛出 `OutOfRangeError`。
      */
     addChildAt<T extends Node>(node: T, index: number): T {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "addChildAt");
         if (index >= 0 && index <= this._$children.length) {
             if (node._$parent === this) {
                 this.setChildIndex(node, index);
@@ -590,7 +592,7 @@ export class Node extends EventDispatcher {
      * @internal
      */
     _setChildIndex(node: Node, oldIndex: number, index: number): number {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "setChildIndex");
         let cnt = this._$children.length;
         if (index > cnt)
             index = cnt;
@@ -617,10 +619,6 @@ export class Node extends EventDispatcher {
     protected _childChanged(child?: Node): void {
     }
 
-    /** @internal Gives subclasses a fail-closed admission point for every child topology mutation. */
-    protected _beforeChildMutation(): void {
-    }
-
     /**
      * @en Remove a child node.
      * @param node The child node to be removed.
@@ -632,7 +630,7 @@ export class Node extends EventDispatcher {
      * @returns 被删除的节点。
      */
     removeChild<T extends Node>(node: T, destroy?: boolean): T {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "removeChild");
         let index: number = this._$children.indexOf(node);
         if (index === -1) {
             console.warn("not a child of this node");
@@ -683,7 +681,7 @@ export class Node extends EventDispatcher {
      * @returns 被删除的节点。
      */
     removeChildAt(index: number, destroy?: boolean): Node {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "removeChildAt");
         let node = this._$children[index];
         this._$children.splice(index, 1);
         node._setParent(null);
@@ -739,6 +737,7 @@ export class Node extends EventDispatcher {
      * 为节点设置一个容器节点，这样后续addChild等操作会默认添加到这个容器节点中，而不是自身
      */
     _setContainer(container: Node): void {
+        admitNodeMutation(this, "setContainer");
         this._$container = container;
         this._$children = container._children;
     }
@@ -748,7 +747,7 @@ export class Node extends EventDispatcher {
      * 当节点成为容器节点后，addChild操作会作用到容器节点上，如果需要添加到自身，可以通过这个方法恢复
      */
     _addChild(node: Node, index?: number): Node {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "addInternalChild");
         let children = this._children;
         if (index == null)
             index = children.length;
@@ -778,7 +777,7 @@ export class Node extends EventDispatcher {
      * 当节点成为容器节点后，removeChild操作会作用到容器节点上，如果需要移除自身的孩子，可以通过这个方法恢复
     */
     _removeChild(node: Node): Node {
-        this._beforeChildMutation();
+        admitNodeMutation(this, "removeInternalChild");
         let index: number = this._children.indexOf(node);
         if (index === -1) {
             console.warn("not a child of this node");
@@ -834,6 +833,7 @@ export class Node extends EventDispatcher {
      * @param value 新的父节点。
      */
     protected _setParent(value: Node, index: number = -1): void {
+        admitNodeMutation(this, "setParent");
         if (value) {
             this._parent = value;
             this._onAdded();
