@@ -1,3 +1,7 @@
+import {
+    AUTHORED_BINDING_NODE_SOURCE_TYPES, AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
+} from "./AuthoredBindingReservedSurfaces";
+
 export const AUTHORED_CODE_BINDING_SCHEMA = "neutral-authored-code-bindings@1" as const;
 
 export type AuthoredEventType =
@@ -146,31 +150,16 @@ function identifier(value: unknown, label: string): string {
     return value;
 }
 
-const RESERVED_MEMBER_NAMES = new Set([
-    "constructor", "prototype", "__proto__",
-    "parent", "root", "stage", "name", "numChildren",
-    "alpha", "blendMode", "cacheAsBitmap", "filters", "height", "mask", "mouseX", "mouseY",
-    "rotation", "scaleX", "scaleY", "transform", "visible", "width", "x", "y",
-    "doubleClickEnabled", "focusRect", "mouseEnabled", "mouseChildren", "needsSoftKeyboard",
-    "tabChildren", "tabEnabled", "tabIndex", "textSnapshot",
-    "addChild", "addChildAt", "removeChild", "removeChildAt", "removeChildren", "removeSelf",
-    "getChildAt", "getChildByName", "getChildIndex", "setChildIndex", "contains",
-    "destroy", "destroyChildren",
-    "addEventListener", "removeEventListener", "dispatchEvent", "hasEventListener", "willTrigger",
-    "play", "stop", "gotoAndPlay", "gotoAndStop", "nextFrame", "prevFrame",
-    "currentFrame", "currentLabel", "currentFrameLabel", "currentLabels", "totalFrames", "framesLoaded", "scenes", "isPlaying",
-    "enabled", "trackAsMenu", "useHandCursor", "upState", "overState", "downState", "hitTestState",
-    "antiAliasType", "autoSize", "background", "border", "caretIndex", "defaultTextFormat",
-    "displayAsPassword", "embedFonts", "htmlText", "length", "maxChars", "multiline", "restrict",
-    "selectable", "selectionBeginIndex", "selectionEndIndex", "sharpness", "text", "textColor",
-    "textHeight", "textWidth", "thickness", "type", "wordWrap", "appendText", "replaceSelectedText",
-    "replaceText", "setSelection",
-]);
+const reservedMemberNames = new Map(Object.entries(AUTHORED_BINDING_NODE_SOURCE_TYPES).map(([kind, sourceType]) => [
+    kind, new Set(AUTHORED_BINDING_RESERVED_SOURCE_SURFACES[sourceType]),
+]));
 
-function memberName(value: unknown, label: string): string {
+function memberName(value: unknown, nodeKind: AuthoredNodeKind, label: string): string {
     if (typeof value !== "string" || !/^[A-Za-z][A-Za-z0-9_$]{0,127}$/.test(value))
         throw new TypeError(`${label} must be a public authored TypeScript member name`);
-    if (RESERVED_MEMBER_NAMES.has(value)) throw new TypeError(`${label} is reserved by the Flash/Laya runtime surface`);
+    if (value === "constructor" || value === "prototype" || value === "__proto__"
+        || reservedMemberNames.get(nodeKind)?.has(value))
+        throw new TypeError(`${label} collides with the ${AUTHORED_BINDING_NODE_SOURCE_TYPES[nodeKind]} public surface`);
     return value;
 }
 
@@ -228,15 +217,15 @@ export function normalizeAuthoredCodeBindingContract(value: unknown): AuthoredCo
         const item = plainRecord(raw, label);
         exactKeys(item, ["bindingId", "memberName", "nodeId", "nodeKind", "required", "events"], label);
         const bindingId = identifier(item.bindingId, `${label}.bindingId`);
-        const member = memberName(item.memberName, `${label}.memberName`);
+        if (typeof item.nodeKind !== "string" || !(item.nodeKind in NODE_EVENT_TYPES))
+            throw new TypeError(`${label}.nodeKind is unsupported`);
+        const nodeKind = item.nodeKind as AuthoredNodeKind;
+        const member = memberName(item.memberName, nodeKind, `${label}.memberName`);
         const nodeId = identifier(item.nodeId, `${label}.nodeId`);
         if (bindingIds.has(bindingId)) throw new TypeError(`duplicate binding ID: ${bindingId}`);
         if (memberNames.has(member)) throw new TypeError(`duplicate member name: ${member}`);
         bindingIds.add(bindingId);
         memberNames.add(member);
-        if (typeof item.nodeKind !== "string" || !(item.nodeKind in NODE_EVENT_TYPES))
-            throw new TypeError(`${label}.nodeKind is unsupported`);
-        const nodeKind = item.nodeKind as AuthoredNodeKind;
         const localTypes = new Set<AuthoredEventType>();
         const events = denseArray(item.events, `${label}.events`).map((eventRaw, eventIndex) => {
             const eventLabel = `${label}.events[${eventIndex}]`;

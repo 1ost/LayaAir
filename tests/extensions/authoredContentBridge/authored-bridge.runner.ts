@@ -30,6 +30,9 @@ import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
     registerAuthoredContentRuntime
 } from "../../../src/extensions/authoredContent/runtime";
+import {
+    AUTHORED_BINDING_NODE_SOURCE_TYPES, AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
+} from "../../../src/extensions/authoredContent/runtime/AuthoredBindingReservedSurfaces";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
@@ -729,21 +732,30 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     internals(ancestryB)._$parent = ancestryA;
     assert.throws(() => cyclicOwnerButton.upState = state(19, 19), /button ancestry is cyclic/);
 
-    const reservedContract = (member: string) => ({
+    const reservedEvent = { button: "click", form: "change", input: "input", interactive: "click", timeline: "cue" } as const;
+    const reservedContract = (member: string, nodeKind: keyof typeof reservedEvent = "interactive") => ({
         schema: "neutral-authored-code-bindings@1",
         documentId: "reserved-member-probe",
         bindings: [{
-            bindingId: "probe", memberName: member, nodeId: "probe-node", nodeKind: "interactive", required: true,
-            events: [{ eventId: "probe-click", type: "click", required: true }],
+            bindingId: "probe", memberName: member, nodeId: "probe-node", nodeKind, required: true,
+            events: [{ eventId: "probe-event", type: reservedEvent[nodeKind], required: true }],
         }],
     });
-    for (const reserved of [
-        "_children", "_$children", "_parent", "_$parent", "_setParent", "_setContainer",
-        "_addChild", "_removeChild", "destroy", "destroyChildren", "addEventListener", "parent", "constructor",
-        "visible", "gotoAndStop", "upState", "text",
-    ]) {
-        assert.throws(() => normalizeAuthoredCodeBindingContract(reservedContract(reserved)),
-            /(public authored TypeScript member name|reserved by the Flash\/Laya runtime surface)/);
+    const exactReportedCollisions = [
+        "event", "on", "off", "graphics", "hitArea", "mouseThrough", "timer", "addChildren",
+        "removeChildByName", "setChildIndexBefore", "replaceChild", "children", "getChild", "getChildByPath",
+        "findChild", "once", "addComponent", "getComponent", "destroyed", "url", "size", "pos",
+    ];
+    for (const [nodeKind, sourceType] of Object.entries(AUTHORED_BINDING_NODE_SOURCE_TYPES)) {
+        const surface = AUTHORED_BINDING_RESERVED_SOURCE_SURFACES[sourceType];
+        for (const collision of exactReportedCollisions)
+            assert.ok(surface.includes(collision), `${sourceType} A12 surface owns reported collision ${collision}`);
+        for (const reserved of [...surface, "constructor", "prototype", "__proto__"]) {
+            assert.throws(() => normalizeAuthoredCodeBindingContract(
+                reservedContract(reserved, nodeKind as keyof typeof reservedEvent),
+            ), /(public authored TypeScript member name|collides with the .* public surface)/,
+            `${sourceType}.${reserved} must not be admitted as an authored member`);
+        }
     }
 
     class HostileVisibleState extends DisplayObject {
