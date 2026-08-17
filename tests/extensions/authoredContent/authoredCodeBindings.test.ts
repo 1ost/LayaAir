@@ -12,6 +12,7 @@ type Node = { readonly name: string };
 const contract = {
     schema: "neutral-authored-code-bindings@1",
     documentId: "sample-view",
+    sourceBase: "Sprite",
     bindings: [{
         bindingId: "sample.button",
         memberName: "submitButton",

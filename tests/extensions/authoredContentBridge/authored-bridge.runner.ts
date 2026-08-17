@@ -31,7 +31,7 @@ import {
     registerAuthoredContentRuntime
 } from "../../../src/extensions/authoredContent/runtime";
 import {
-    AUTHORED_BINDING_NODE_SOURCE_TYPES, AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
+    AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
 } from "../../../src/extensions/authoredContent/runtime/AuthoredBindingReservedSurfaces";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
 
@@ -733,9 +733,14 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.throws(() => cyclicOwnerButton.upState = state(19, 19), /button ancestry is cyclic/);
 
     const reservedEvent = { button: "click", form: "change", input: "input", interactive: "click", timeline: "cue" } as const;
-    const reservedContract = (member: string, nodeKind: keyof typeof reservedEvent = "interactive") => ({
+    const reservedContract = (
+        member: string,
+        nodeKind: keyof typeof reservedEvent = "interactive",
+        sourceBase: keyof typeof AUTHORED_BINDING_RESERVED_SOURCE_SURFACES = "MovieClip",
+    ) => ({
         schema: "neutral-authored-code-bindings@1",
         documentId: "reserved-member-probe",
+        sourceBase,
         bindings: [{
             bindingId: "probe", memberName: member, nodeId: "probe-node", nodeKind, required: true,
             events: [{ eventId: "probe-event", type: reservedEvent[nodeKind], required: true }],
@@ -746,17 +751,33 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         "removeChildByName", "setChildIndexBefore", "replaceChild", "children", "getChild", "getChildByPath",
         "findChild", "once", "addComponent", "getComponent", "destroyed", "url", "size", "pos",
     ];
-    for (const [nodeKind, sourceType] of Object.entries(AUTHORED_BINDING_NODE_SOURCE_TYPES)) {
-        const surface = AUTHORED_BINDING_RESERVED_SOURCE_SURFACES[sourceType];
+    const crossKind = { MovieClip: "button", SimpleButton: "input", Sprite: "timeline", TextField: "button" } as const;
+    for (const [sourceBase, surface] of Object.entries(AUTHORED_BINDING_RESERVED_SOURCE_SURFACES)) {
         for (const collision of exactReportedCollisions)
-            assert.ok(surface.includes(collision), `${sourceType} A12 surface owns reported collision ${collision}`);
+            assert.ok(surface.includes(collision), `${sourceBase} A12 surface owns reported collision ${collision}`);
         for (const reserved of [...surface, "constructor", "prototype", "__proto__"]) {
             assert.throws(() => normalizeAuthoredCodeBindingContract(
-                reservedContract(reserved, nodeKind as keyof typeof reservedEvent),
-            ), /(public authored TypeScript member name|collides with the .* public surface)/,
-            `${sourceType}.${reserved} must not be admitted as an authored member`);
+                reservedContract(reserved, crossKind[sourceBase as keyof typeof crossKind], sourceBase as keyof typeof crossKind),
+            ), /(public authored TypeScript member name|collides with the .* document public surface)/,
+            `${sourceBase}.${reserved} must not be admitted as a root-injected authored member`);
         }
     }
+    assert.throws(() => normalizeAuthoredCodeBindingContract(
+        reservedContract("gotoAndStop", "button", "MovieClip"),
+    ), /collides with the MovieClip document public surface/,
+    "a button field may not override its MovieClip document root's gotoAndStop method");
+    assert.doesNotThrow(() => normalizeAuthoredCodeBindingContract(
+        reservedContract("gotoAndStop", "timeline", "SimpleButton"),
+    ), "timeline node methods do not over-reserve an unrelated SimpleButton document root");
+    assert.throws(() => normalizeAuthoredCodeBindingContract(
+        reservedContract("upState", "input", "SimpleButton"),
+    ), /collides with the SimpleButton document public surface/);
+    assert.doesNotThrow(() => normalizeAuthoredCodeBindingContract(
+        reservedContract("upState", "button", "TextField"),
+    ));
+    assert.throws(() => normalizeAuthoredCodeBindingContract({
+        ...reservedContract("safeChild", "button", "Sprite"), sourceBase: "DisplayObject",
+    }), /not an authenticated document source type/);
 
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;

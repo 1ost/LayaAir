@@ -1,6 +1,4 @@
-import {
-    AUTHORED_BINDING_NODE_SOURCE_TYPES, AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
-} from "./AuthoredBindingReservedSurfaces";
+import { AUTHORED_BINDING_RESERVED_SOURCE_SURFACES } from "./AuthoredBindingReservedSurfaces";
 
 export const AUTHORED_CODE_BINDING_SCHEMA = "neutral-authored-code-bindings@1" as const;
 
@@ -9,6 +7,7 @@ export type AuthoredEventType =
     | "input" | "change" | "submit" | "timeline-complete" | "cue";
 
 export type AuthoredNodeKind = "button" | "input" | "form" | "timeline" | "interactive";
+export type AuthoredDocumentSourceType = keyof typeof AUTHORED_BINDING_RESERVED_SOURCE_SURFACES;
 
 export interface AuthoredPointerEventData {
     readonly x: number;
@@ -68,6 +67,7 @@ export interface AuthoredNodeBindingContract {
 export interface AuthoredCodeBindingContract {
     readonly schema: typeof AUTHORED_CODE_BINDING_SCHEMA;
     readonly documentId: string;
+    readonly sourceBase: AuthoredDocumentSourceType;
     readonly bindings: readonly AuthoredNodeBindingContract[];
 }
 
@@ -150,16 +150,23 @@ function identifier(value: unknown, label: string): string {
     return value;
 }
 
-const reservedMemberNames = new Map(Object.entries(AUTHORED_BINDING_NODE_SOURCE_TYPES).map(([kind, sourceType]) => [
-    kind, new Set(AUTHORED_BINDING_RESERVED_SOURCE_SURFACES[sourceType]),
+const reservedMemberNames = new Map(Object.entries(AUTHORED_BINDING_RESERVED_SOURCE_SURFACES).map(([sourceType, names]) => [
+    sourceType, new Set(names),
 ]));
 
-function memberName(value: unknown, nodeKind: AuthoredNodeKind, label: string): string {
+function documentSourceType(value: unknown, label: string): AuthoredDocumentSourceType {
+    if (typeof value !== "string"
+        || !Object.prototype.hasOwnProperty.call(AUTHORED_BINDING_RESERVED_SOURCE_SURFACES, value))
+        throw new TypeError(`${label} is not an authenticated document source type`);
+    return value as AuthoredDocumentSourceType;
+}
+
+function memberName(value: unknown, sourceBase: AuthoredDocumentSourceType, label: string): string {
     if (typeof value !== "string" || !/^[A-Za-z][A-Za-z0-9_$]{0,127}$/.test(value))
         throw new TypeError(`${label} must be a public authored TypeScript member name`);
     if (value === "constructor" || value === "prototype" || value === "__proto__"
-        || reservedMemberNames.get(nodeKind)?.has(value))
-        throw new TypeError(`${label} collides with the ${AUTHORED_BINDING_NODE_SOURCE_TYPES[nodeKind]} public surface`);
+        || reservedMemberNames.get(sourceBase)?.has(value))
+        throw new TypeError(`${label} collides with the ${sourceBase} document public surface`);
     return value;
 }
 
@@ -204,10 +211,11 @@ function scalar(value: unknown, label: string): AuthoredScalar {
 
 export function normalizeAuthoredCodeBindingContract(value: unknown): AuthoredCodeBindingContract {
     const root = plainRecord(value, "binding contract");
-    exactKeys(root, ["schema", "documentId", "bindings"], "binding contract");
+    exactKeys(root, ["schema", "documentId", "sourceBase", "bindings"], "binding contract");
     if (root.schema !== AUTHORED_CODE_BINDING_SCHEMA)
         throw new TypeError(`binding contract.schema must be ${AUTHORED_CODE_BINDING_SCHEMA}`);
     const documentId = identifier(root.documentId, "binding contract.documentId");
+    const sourceBase = documentSourceType(root.sourceBase, "binding contract.sourceBase");
     const bindingIds = new Set<string>();
     const memberNames = new Set<string>();
     const eventIds = new Set<string>();
@@ -220,7 +228,7 @@ export function normalizeAuthoredCodeBindingContract(value: unknown): AuthoredCo
         if (typeof item.nodeKind !== "string" || !(item.nodeKind in NODE_EVENT_TYPES))
             throw new TypeError(`${label}.nodeKind is unsupported`);
         const nodeKind = item.nodeKind as AuthoredNodeKind;
-        const member = memberName(item.memberName, nodeKind, `${label}.memberName`);
+        const member = memberName(item.memberName, sourceBase, `${label}.memberName`);
         const nodeId = identifier(item.nodeId, `${label}.nodeId`);
         if (bindingIds.has(bindingId)) throw new TypeError(`duplicate binding ID: ${bindingId}`);
         if (memberNames.has(member)) throw new TypeError(`duplicate member name: ${member}`);
@@ -254,7 +262,9 @@ export function normalizeAuthoredCodeBindingContract(value: unknown): AuthoredCo
             events: Object.freeze(events)
         });
     });
-    return Object.freeze({ schema: AUTHORED_CODE_BINDING_SCHEMA, documentId, bindings: Object.freeze(bindings) });
+    return Object.freeze({
+        schema: AUTHORED_CODE_BINDING_SCHEMA, documentId, sourceBase, bindings: Object.freeze(bindings)
+    });
 }
 
 function clonePointer(record: Record<string, unknown>, label: string): AuthoredPointerEventData {
