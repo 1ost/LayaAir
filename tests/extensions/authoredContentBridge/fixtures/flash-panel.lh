@@ -1,0 +1,24 @@
+{
+  "_$ver": 1,
+  "_$id": "symbol:flash-panel",
+  "_$type": "Sprite",
+  "_$runtime": "fixtures.FlashPanel",
+  "name": "FlashPanel",
+  "_$child": [
+    {
+      "_$id": "node:submit-button",
+      "_$type": "Sprite",
+      "_$runtime": "fixtures.SubmitButtonLinkage",
+      "_$var": true,
+      "name": "submitButton",
+      "x": 32,
+      "y": 18,
+      "_$child": [
+        {"_$id":"node:submit-up","_$type":"Sprite","_$runtime":"fixtures.ButtonStateLinkage","name":"upState","width":64,"height":24},
+        {"_$id":"node:submit-over","_$type":"Sprite","_$runtime":"fixtures.ButtonStateLinkage","name":"overState","width":64,"height":24},
+        {"_$id":"node:submit-down","_$type":"Sprite","_$runtime":"fixtures.ButtonStateLinkage","name":"downState","width":64,"height":24},
+        {"_$id":"node:submit-hit","_$type":"Sprite","_$runtime":"fixtures.ButtonStateLinkage","name":"hitTestState","width":64,"height":24}
+      ]
+    }
+  ]
+}

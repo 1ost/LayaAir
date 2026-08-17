@@ -115,6 +115,26 @@ export class HierarchyParser {
                         node = res.create({ inPrefab: true, prefabNodeDict: prefabNodeDict, overrideData: overrideData2 }, errors);
                     }
                 }
+                else if (pstr = nodeData._$runtime) {
+                    if (pstr.startsWith("res://"))
+                        pstr = pstr.substring(6);
+                    const runtime = ClassUtils.getClass(pstr);
+                    if (runtime) {
+                        try {
+                            node = new runtime();
+                            if (!(node instanceof Node)) {
+                                errors.push(new Error(`runtime class invalid - '${pstr}', must derive from Node`));
+                                node = null;
+                            }
+                        }
+                        catch (err: any) {
+                            errors.push(err);
+                        }
+                    }
+                    else {
+                        errors.push(new Error(`missing runtime class '${nodeData._$runtime}'`));
+                    }
+                }
                 else if (pstr = nodeData._$type) {
                     let cls = ClassUtils.getClass(pstr);
                     if (cls) {

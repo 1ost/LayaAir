@@ -90,6 +90,14 @@ export class AnimatorClip2D extends Animator2DBase {
     }
 
     /**
+     * @en Current normalized playback position in the active clip (0~1).
+     * @zh å½“å‰å‰ªè¾‘ä¸­çš„å½’ä¸€åŒ–æ’­æ”¾ä½ç½®ï¼ˆ0~1ï¼‰ã€‚
+     */
+    get normalizedTime(): number {
+        return this._playStateInfo._normalizedPlayTime;
+    }
+
+    /**
      * @en Number of loops: -1 use clip's islooping, 0 infinite, 1 once, 2 twice, etc.
      * @zh 循环次数：-1 使用 clip 的 islooping，0 无限，1 一次，2 两次等。
      */

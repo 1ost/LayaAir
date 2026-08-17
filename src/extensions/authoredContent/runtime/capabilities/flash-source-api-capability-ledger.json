@@ -1,0 +1,45 @@
+{
+  "schema": "authored-flash-source-capability-ledger@1",
+  "authority": {
+    "disposition": "layaair-flash-api-bridge",
+    "preserveNameAndSignature": true,
+    "productionExecutesAbc": false,
+    "serializedNodeTypes": "canonical-laya-only",
+    "nativeAssetAuthority": [".lh", ".ls", ".mc", ".mcc"]
+  },
+  "records": [
+    {"id":"flash.events.Event","qname":"flash.events.Event","members":[
+      {"name":"constructor","signature":"(type:string,bubbles:boolean=false,cancelable:boolean=false)"},
+      {"name":"type","signature":"readonly string"},{"name":"target","signature":"readonly unknown"},
+      {"name":"currentTarget","signature":"readonly unknown"},{"name":"eventPhase","signature":"readonly EventPhase"},
+      {"name":"preventDefault","signature":"():void"},{"name":"stopPropagation","signature":"():void"},
+      {"name":"stopImmediatePropagation","signature":"():void"}]},
+    {"id":"flash.events.EventDispatcher","qname":"flash.events.EventDispatcher","members":[
+      {"name":"addEventListener","signature":"(type:string,listener:(event:Event)=>void,useCapture:boolean=false,priority:number=0,useWeakReference:boolean=false):void"},
+      {"name":"removeEventListener","signature":"(type:string,listener:(event:Event)=>void,useCapture:boolean=false):void"},
+      {"name":"dispatchEvent","signature":"(event:Event):boolean"},{"name":"hasEventListener","signature":"(type:string):boolean"},
+      {"name":"willTrigger","signature":"(type:string):boolean"}]},
+    {"id":"flash.events.MouseEvent","qname":"flash.events.MouseEvent","members":[
+      {"name":"localX/localY","signature":"readonly number"},{"name":"stageX/stageY","signature":"readonly number"},
+      {"name":"buttonDown","signature":"readonly boolean"},{"name":"rollOver/rollOut","signature":"non-bubbling boundary events"}]},
+    {"id":"flash.display.DisplayObject","qname":"flash.display.DisplayObject","members":[{"name":"nativeBase","signature":"extends Laya.Sprite"},{"name":"root","signature":"readonly DisplayObject"}]},
+    {"id":"flash.display.InteractiveObject","qname":"flash.display.InteractiveObject","members":[{"name":"mouseEnabled","signature":"boolean"},{"name":"tabIndex","signature":"number"}]},
+    {"id":"flash.display.DisplayObjectContainer","qname":"flash.display.DisplayObjectContainer","members":[{"name":"children","signature":"native Laya child collection"}]},
+    {"id":"flash.display.Sprite","qname":"flash.display.Sprite","members":[{"name":"buttonMode","signature":"boolean"}]},
+    {"id":"flash.display.SimpleButton","qname":"flash.display.SimpleButton","members":[{"name":"states","signature":"DisplayObject|null"},{"name":"hitTestState","signature":"native IHitArea routing"}]},
+    {"id":"flash.display.MovieClip","qname":"flash.display.MovieClip","members":[{"name":"gotoAndPlay","signature":"(frame:number|string,scene:string|null=null):void"},{"name":"gotoAndStop","signature":"(frame:number|string,scene:string|null=null):void"},{"name":"totalFrames","signature":"integer>=1 from native .mc"}]},
+    {"id":"flash.text.TextField","qname":"flash.text.TextField","members":[{"name":"nativeBase","signature":"extends Laya.Input"},{"name":"type","signature":"TextFieldType.DYNAMIC|TextFieldType.INPUT"},{"name":"text","signature":"string"}]},
+    {"id":"native.AnimatorClip2D","qname":"laya.components.AnimatorClip2D","members":[{"name":"normalizedTime","signature":"readonly finite number"},{"name":"clip","signature":"native AnimationClip2D|null"}]},
+    {"id":"native.named-instance-linkage","qname":"native.named-instance-linkage","members":[{"name":"_$type","signature":"canonical Laya class ID"},{"name":"_$runtime","signature":"application linkage ID only"},{"name":"_$var","signature":"named property injection"}]},
+    {"id":"as3.method-closure","qname":"as3.method-closure","members":[{"name":"bindAS3Method","signature":"(target:object,methodName:string):void"}]}
+  ],
+  "notAdmitted": [
+    {"id":"flash.events.weak-listeners","failure":"UnsupportedFlashFeatureError"},
+    {"id":"flash.events.MouseEvent.updateAfterEvent","failure":"UnsupportedFlashFeatureError"},
+    {"id":"flash.display.MovieClip.scenes","failure":"UnsupportedFlashFeatureError"},
+    {"id":"flash.display.MovieClip.frame-scripts","failure":"TypeScript compile error"},
+    {"id":"flash.display.SimpleButton.trackAsMenu=true","failure":"UnsupportedFlashFeatureError"},
+    {"id":"as3.abc-execution","failure":"no runtime entry point"},
+    {"id":"flash-api.outside-capability-census","failure":"assertAuthoredRuntimeCapability rejects unknown ID"}
+  ]
+}
