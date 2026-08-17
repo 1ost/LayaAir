@@ -1,6 +1,39 @@
 import { Text } from "./Text";
 import { Event } from "../events/Event"
 import { PAL } from "../platform/PlatformAdapters";
+import type { Node } from "./Node";
+
+const INPUT_EVENT_OWNERS = new WeakMap<Input, Node>();
+
+/**
+ * Binds a composed Input to the ancestor that owns its source-visible event
+ * identity. InputManager and TextInputAdapter still operate on the real Input;
+ * consumers that deliberately project another event API may resolve the owner.
+ * @internal
+ */
+export function setInputEventOwner(input: Input, owner: Node | null): void {
+    if (!(input instanceof Input)) throw new TypeError("Input event owner requires a Laya Input");
+    if (owner === null) {
+        INPUT_EVENT_OWNERS.delete(input);
+        return;
+    }
+    let ancestor = input.parent;
+    while (ancestor && ancestor !== owner) ancestor = ancestor.parent;
+    if (ancestor !== owner) throw new TypeError("Input event owner must be an ancestor of the composed Input");
+    INPUT_EVENT_OWNERS.set(input, owner);
+}
+
+/** Returns a still-valid composed event owner without changing native hit ownership. @internal */
+export function getInputEventOwner(value: unknown): Node | null {
+    if (!(value instanceof Input)) return null;
+    const owner = INPUT_EVENT_OWNERS.get(value);
+    if (!owner) return null;
+    let ancestor = value.parent;
+    while (ancestor && ancestor !== owner) ancestor = ancestor.parent;
+    if (ancestor === owner) return owner;
+    INPUT_EVENT_OWNERS.delete(value);
+    return null;
+}
 
 export type InputSelectionDirection = "forward" | "backward" | "none";
 

@@ -3444,7 +3444,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -4290,7 +4290,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -4299,7 +4299,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -5596,7 +5596,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -6442,7 +6442,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -6451,7 +6451,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -6670,7 +6670,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "29fd61242300b604e95ba84e5e2f835e469a76b4abc5c0b5ecb4480cd5a81592",
+          "sha256": "282bbd1514f5a9456af047d078b91107054f6041d20f51ff98f0e65c82838fa7",
           "heritage": [
             {
               "kind": "extends",
@@ -7802,7 +7802,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -8720,7 +8720,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -8729,7 +8729,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -10135,7 +10135,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -10999,7 +10999,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -11008,7 +11008,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -12341,7 +12341,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -13187,7 +13187,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -13196,7 +13196,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -13442,7 +13442,7 @@
           "covers": [
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
             "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
-            "29fd61242300b604e95ba84e5e2f835e469a76b4abc5c0b5ecb4480cd5a81592",
+            "282bbd1514f5a9456af047d078b91107054f6041d20f51ff98f0e65c82838fa7",
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
             "a9723c531323fd1a133788d4548d9caa1f109bd82582f38248f5a4bee9b55af1",
@@ -14050,7 +14050,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "6eed8010240b5bc2dc45a6d6067b2ab845099f4ee77329d5370dc1576cf6b3c6",
+          "sha256": "f26239e5767f98ebd0f60095146760e003956489977f4d2e8bfefc384ec24cf2",
           "heritage": []
         },
         {
@@ -15995,11 +15995,11 @@
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4b140ae880ccb0bd5d16ef989218e3a031b623ea59c2dd9d255cbc1aac0210fa",
             "60ce45ed0418819eba8f3108accb6546b04fc0ed435940127972171ee0fbf8df",
-            "6eed8010240b5bc2dc45a6d6067b2ab845099f4ee77329d5370dc1576cf6b3c6",
             "8eefc113dd8b5261e95593382917b75d66de7e4eca1cfb4fe6cae0680c316326",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "dd23a4df178a56e5ff5431f1309c4ef715c204daf83a06b415565925da7860fe",
-            "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957"
+            "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957",
+            "f26239e5767f98ebd0f60095146760e003956489977f4d2e8bfefc384ec24cf2"
           ]
         }
       ]
@@ -16037,7 +16037,7 @@
             "new (): TextFieldType"
           ],
           "indexSignatures": [],
-          "sha256": "5372a174ff26cc52007996ee617a5ce15c5b5b4a6f95442dc69c3e7a24e52116",
+          "sha256": "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a",
           "heritage": []
         },
         {
@@ -17164,7 +17164,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "focusRect",
               "scope": "instance",
               "optional": false,
@@ -17498,6 +17498,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "maxChars",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "mouseEnabled",
               "scope": "instance",
               "optional": false,
@@ -17530,6 +17539,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "multiline",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -17812,6 +17830,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "restrict",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "root",
               "scope": "instance",
@@ -17881,6 +17908,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "selectable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -18073,7 +18109,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabEnabled",
               "scope": "instance",
               "optional": false,
@@ -18082,7 +18118,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "tabIndex",
               "scope": "instance",
               "optional": false,
@@ -18245,6 +18281,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "wordWrap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "x",
               "scope": "instance",
               "optional": false,
@@ -18319,7 +18364,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "5372a174ff26cc52007996ee617a5ce15c5b5b4a6f95442dc69c3e7a24e52116",
+          "sha256": "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a",
           "heritage": [
             {
               "kind": "extends",
@@ -18335,7 +18380,7 @@
           "sha256": "846d3945410ebab5288a1e56c9715bec35496e4433b24f8d6b4dee591b39b99b",
           "capability": "api.flash.text",
           "covers": [
-            "5372a174ff26cc52007996ee617a5ce15c5b5b4a6f95442dc69c3e7a24e52116"
+            "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a"
           ]
         }
       ]

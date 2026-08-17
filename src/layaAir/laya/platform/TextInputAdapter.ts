@@ -285,9 +285,10 @@ export class TextInputAdapter {
         return this.updateTargetSelection(this.target);
     }
 
-    private onTouchBegin(): void {
+    /** @internal Protected for platform adapters and real-input integration probes. */
+    protected onTouchBegin(_touchId?: number, capturedTarget?: unknown): void {
         let lastFocus = ILaya.stage.focus;
-        let touchTarget = InputManager.touchTarget;
+        let touchTarget = capturedTarget ?? InputManager.touchTarget;
         if (lastFocus != touchTarget) {
             if (touchTarget instanceof Input && (touchTarget.editable || touchTarget.selectable))
                 this.begin(touchTarget, true);
@@ -296,7 +297,8 @@ export class TextInputAdapter {
         }
     }
 
-    private onTouchEnd(): void {
+    /** @internal Protected for platform adapters and real-input integration probes. */
+    protected onTouchEnd(): void {
         if (this._beginFlag !== 0) {
             if (this._beginFlag === 1) { //如果onBegin还没完成，需要延时。一般不会发生
                 ILaya.systemTimer.frameOnce(1, this, this.onTouchEnd);

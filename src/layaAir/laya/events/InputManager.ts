@@ -334,7 +334,7 @@ export class InputManager {
                 touch.event.button = ev.button;
                 touch.downButton = ev.button;
 
-                InputManager.onMouseDownCapture.invoke(touch.touchId);
+                InputManager.onMouseDownCapture.invoke(touch.touchId, touch.target);
 
                 if (InputManager.mouseEventsEnabled) {
                     if (ev.button == 0)
@@ -466,7 +466,7 @@ export class InputManager {
                 if (!touch.began) {
                     touch.begin();
 
-                    InputManager.onMouseDownCapture.invoke(touch.touchId);
+                    InputManager.onMouseDownCapture.invoke(touch.touchId, touch.target);
 
                     if (InputManager.mouseEventsEnabled) {
                         touch.bubble(Event.MOUSE_DOWN);

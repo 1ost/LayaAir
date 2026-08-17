@@ -1,4 +1,4 @@
-import { Input as LayaInput, type InputSelectionDirection } from "../../laya/display/Input";
+import { Input as LayaInput, setInputEventOwner, type InputSelectionDirection } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { IMEEvent } from "../events/IMEEvent";
 import { DisplayObject } from "../display/DisplayObject";
@@ -20,17 +20,31 @@ export class TextField extends InteractiveObject {
     private _embedFonts = false;
     private _displayAsPassword = false;
     private _focusRequested = false;
+    private _nativeChangePending = false;
 
     constructor() {
         super();
         this._nativeInput.name = "__flashTextInput";
-        this._nativeInput.mouseEnabled = false;
+        this._nativeInput.mouseEnabled = true;
         this._nativeInput.type = LayaInput.TYPE_TEXT;
         this._nativeInput.editable = false;
         this.addChild(this._nativeInput);
+        setInputEventOwner(this._nativeInput, this);
         this._forwardNative(LayaEvent.FOCUS);
         this._forwardNative(LayaEvent.BLUR);
         this._forwardNative(LayaEvent.BEFORE_INPUT);
+        this._nativeInput.on(LayaEvent.CHANGE, this, (value: unknown) => {
+            this._nativeChangePending = true;
+            queueMicrotask(() => { this._nativeChangePending = false; });
+            this.event(LayaEvent.CHANGE, value);
+        });
+        this._nativeInput.on(LayaEvent.INPUT, this, (value: unknown) => {
+            if (this._nativeChangePending) {
+                this._nativeChangePending = false;
+                return;
+            }
+            this.event(LayaEvent.CHANGE, value);
+        });
         this._nativeInput.on(LayaEvent.COMPOSITION_START, this,
             (value: unknown) => this._dispatchNativeIme("start", value));
         this._nativeInput.on(LayaEvent.COMPOSITION_UPDATE, this,
@@ -63,6 +77,29 @@ export class TextField extends InteractiveObject {
 
     get editable(): boolean { return this._nativeInput.editable; }
     set editable(value: boolean) { this._nativeInput.editable = !!value; }
+
+    get restrict(): string | null { return this._nativeInput.restrict ?? null; }
+    set restrict(value: string | null) {
+        if (value !== null && typeof value !== "string")
+            throw new TypeError("TextField.restrict must be a string or null");
+        this._nativeInput.restrict = value;
+    }
+
+    get maxChars(): number { return this._nativeInput.maxChars; }
+    set maxChars(value: number) {
+        if (!Number.isInteger(value) || value < 0)
+            throw new TypeError("TextField.maxChars must be a nonnegative integer");
+        this._nativeInput.maxChars = value;
+    }
+
+    get multiline(): boolean { return this._nativeInput.multiline; }
+    set multiline(value: boolean) { this._nativeInput.multiline = !!value; }
+
+    get wordWrap(): boolean { return this._nativeInput.wordWrap; }
+    set wordWrap(value: boolean) { this._nativeInput.wordWrap = !!value; }
+
+    get selectable(): boolean { return this._nativeInput.selectable; }
+    set selectable(value: boolean) { this._nativeInput.selectable = !!value; }
 
     get focus(): boolean { return this._focusRequested || this._nativeInput.focus; }
     set focus(value: boolean) {
@@ -117,10 +154,20 @@ export class TextField extends InteractiveObject {
 
     private _forwardNative(type: string): void {
         this._nativeInput.on(type, this, (value: unknown) => {
-            if (type === LayaEvent.FOCUS) this._focusRequested = true;
-            else if (type === LayaEvent.BLUR) this._focusRequested = false;
+            if (type === LayaEvent.FOCUS) {
+                this._focusRequested = true;
+                this._syncNativeFocusIndicator(true);
+            } else if (type === LayaEvent.BLUR) {
+                this._focusRequested = false;
+                this._syncNativeFocusIndicator(false);
+            }
             this.event(type, value);
         });
+    }
+
+    protected override _applyNativeFocus(value: boolean): void {
+        this.focus = value;
+        this._syncNativeFocusIndicator(value);
     }
 
     private _dispatchNativeIme(phase: "start" | "end", value: unknown): void {

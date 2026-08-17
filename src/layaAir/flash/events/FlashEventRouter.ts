@@ -1,4 +1,5 @@
 import { Node as LayaNode } from "../../laya/display/Node";
+import { getInputEventOwner } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { Event, EventPhase } from "./Event";
 import { FocusEvent } from "./FocusEvent";
@@ -131,8 +132,9 @@ export class FlashEventRouter {
         if (value instanceof LayaEvent) {
             let routed = ROUTED_NATIVE.get(value);
             if (!routed) ROUTED_NATIVE.set(value, routed = new Map());
-            const target = value.target ?? this.host;
-            const startsAtTarget = value.currentTarget === target;
+            const nativeTarget = value.target ?? this.host;
+            const target = getInputEventOwner(nativeTarget) ?? nativeTarget;
+            const startsAtTarget = value.currentTarget === nativeTarget;
             const active = routed.get(type);
             if (!startsAtTarget && active?.target === target) return;
             const token = {};

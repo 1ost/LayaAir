@@ -8,12 +8,15 @@ import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorCli
 import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
+import { Stage } from "../../../src/layaAir/laya/display/Stage";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
 import { InputManager } from "../../../src/layaAir/laya/events/InputManager";
 import { PAL } from "../../../src/layaAir/laya/platform/PlatformAdapters";
+import { TextInputAdapter } from "../../../src/layaAir/laya/platform/TextInputAdapter";
 import { HierarchyParser } from "../../../src/layaAir/laya/loaders/HierarchyParser";
 import { LayaGL } from "../../../src/layaAir/laya/layagl/LayaGL";
 import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
+import { NoRenderDeviceFactory } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
@@ -27,9 +30,13 @@ import {
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
+LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
 ILaya.stage = { _graphicUpdateList: new Set(), _tranMatrixUpdateList: new Set() } as any;
 ILaya.timer = { callLater: (): void => undefined } as any;
-ILaya.systemTimer = { callLater: (): void => undefined, runCallLater: (): void => undefined } as any;
+ILaya.systemTimer = {
+    callLater: (): void => undefined, runCallLater: (): void => undefined,
+    frameOnce: (_frame: number, caller: unknown, method: Function): void => { queueMicrotask(() => method.call(caller)); }
+} as any;
 (PAL as any).textInput = {
     target: null,
     begin(target: unknown): void { this.target = target; },
@@ -39,6 +46,7 @@ ILaya.systemTimer = { callLater: (): void => undefined, runCallLater: (): void =
     syncSelection: (): void => undefined,
     syncText: (): void => undefined
 };
+(PAL as any).browser ??= { on: (): void => undefined };
 
 test("A12 capability ledger owns exact Flash declarations, members, signatures and hashes", () => {
     const path = join(process.cwd(), "docTool/architecture/authored-content-capabilities.json");
@@ -312,6 +320,128 @@ test("native focus, input and IME events project exact Flash-shaped payloads", (
         ["に", null], ["日本", null], ["日本語", null]
     ]);
     assert.throws(() => field.dispatchImeComposition("start", "invalid", -1, 0), /selection/);
+});
+
+test("real InputManager hit activates composed TextInputAdapter and keeps Flash target outer", async () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    class ProbeInputManager extends InputManager {
+        bind(stage: Stage): void { this._stage = stage; }
+        get hitTarget(): LayaNode { return this._touchTarget; }
+    }
+    class ProbeTextInputAdapter extends TextInputAdapter {
+        keyboardShows = 0;
+        constructor() { super(); this._editInline = false; }
+        install(stage: Stage): void {
+            InputManager.onMouseDownCapture.add(this.onTouchBegin, this);
+            stage.on(LayaEvent.MOUSE_UP, this, this.onTouchEnd);
+        }
+        uninstall(stage: Stage): void {
+            InputManager.onMouseDownCapture.remove(this.onTouchBegin, this);
+            stage.off(LayaEvent.MOUSE_UP, this, this.onTouchEnd);
+        }
+        protected override onBegin(): Promise<void> {
+            this._visEle = {
+                value: this.target.text, selectionStart: 0, selectionEnd: 0, selectionDirection: "none"
+            } as HTMLInputElement;
+            return Promise.resolve();
+        }
+        protected override onCanShowKeyboard(): Promise<void> { this.keyboardShows++; return Promise.resolve(); }
+        protected override onEnd(target: LayaInput): Promise<void> {
+            target.text = this._visEle?.value ?? target.text;
+            this._visEle = null;
+            return Promise.resolve();
+        }
+        browserEdit(value: string): void {
+            const state = { defaultPrevented: false };
+            const before = {
+                data: value, inputType: "insertText", isComposing: false, cancelable: true,
+                get defaultPrevented(): boolean { return state.defaultPrevented; },
+                preventDefault(): void { state.defaultPrevented = true; }
+            } as unknown as InputEvent;
+            this.processBeforeInput(before);
+            if (state.defaultPrevented) return;
+            const element = this._visEle;
+            element.value = value;
+            Object.defineProperties(element, {
+                selectionStart: { value: value.length, configurable: true },
+                selectionEnd: { value: value.length, configurable: true },
+            });
+            this.processInputting({ target: element } as unknown as globalThis.Event);
+        }
+    }
+
+    const previousStage = ILaya.stage;
+    const previousAdapter = PAL.textInput;
+    const stage = new Stage(); stage.size(320, 200);
+    ILaya.stage = stage;
+    const adapter = new ProbeTextInputAdapter();
+    (PAL as unknown as { textInput: TextInputAdapter }).textInput = adapter;
+    adapter.install(stage);
+    try {
+        const field = new ProbeTextField(); field.type = TextFieldType.INPUT; field.size(120, 24); field.pos(10, 10);
+        field.restrict = "A-Z"; field.maxChars = 8; field.multiline = false; field.wordWrap = true; field.selectable = true;
+        stage.addChild(field);
+        const manager = new ProbeInputManager(); manager.bind(stage);
+        const flashClicks: MouseEvent[] = [];
+        const changes: Event[] = [];
+        field.addEventListener(MouseEvent.CLICK, event => flashClicks.push(event as MouseEvent));
+        field.addEventListener(Event.CHANGE, event => changes.push(event));
+        const pointer = (type: string) => ({ type, pageX: 20, pageY: 18, clientX: 20, clientY: 18,
+            button: 0, buttons: type === "mousedown" ? 1 : 0, cancelable: true, preventDefault() {} }) as globalThis.MouseEvent;
+        manager.handleMouse(pointer("mousedown"), 0);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.equal(manager.hitTarget, field.nativeInput, "real hit target remains native Input");
+        assert.equal(adapter.target, field.nativeInput, "TextInputAdapter owns the composed native Input");
+        manager.handleMouse(pointer("mouseup"), 1);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.equal(adapter.keyboardShows, 1, "touch completion reaches the mobile keyboard seam");
+        assert.equal(flashClicks.length, 1);
+        assert.equal(flashClicks[0].target, field, "Flash source target is the outer TextField");
+        assert.equal(changes.length, 0, "focus and click do not fabricate a change");
+        adapter.browserEdit("ABC");
+        assert.equal(field.text, "ABC");
+        assert.equal(changes.length, 1, "real Laya INPUT becomes outer Flash change after mutation");
+        assert.equal(changes[0].target, field);
+        assert.deepEqual([field.restrict, field.maxChars, field.multiline, field.wordWrap, field.selectable],
+            ["A-Z", 8, false, true, true]);
+    } finally {
+        adapter.uninstall(stage);
+        await adapter.end();
+        (PAL as unknown as { textInput: typeof previousAdapter }).textInput = previousAdapter;
+        ILaya.stage = previousStage;
+        stage.destroy(true);
+    }
+});
+
+test("tab traversal uses native Stage focus order and a visible focus indicator", () => {
+    class ProbeInputManager extends InputManager { bind(stage: Stage): void { this._stage = stage; } }
+    const previousStage = ILaya.stage;
+    const stage = new Stage(); stage.size(320, 200); ILaya.stage = stage;
+    try {
+        const first = new InteractiveObject(); first.name = "first"; first.size(50, 20);
+        first.tabIndex = 2; first.tabEnabled = true; first.focusRect = true;
+        const second = new InteractiveObject(); second.name = "second"; second.size(50, 20);
+        second.tabIndex = 1; second.tabEnabled = true; second.focusRect = true;
+        stage.addChildren(first, second);
+        const manager = new ProbeInputManager(); manager.bind(stage);
+        let prevented = 0;
+        const tab = (shiftKey: boolean) => ({ type: "keydown", key: "Tab", keyCode: 9, shiftKey,
+            cancelable: true, preventDefault(): void { prevented++; } }) as unknown as KeyboardEvent;
+        manager.handleKeys(tab(false));
+        assert.equal(stage.focus, second);
+        assert.ok(second.getChildByName("__flashFocusIndicator"), "focused control owns a visible native ring");
+        manager.handleKeys(tab(false));
+        assert.equal(stage.focus, first);
+        assert.equal(second.getChildByName("__flashFocusIndicator"), null);
+        manager.handleKeys(tab(true));
+        assert.equal(stage.focus, second);
+        assert.equal(prevented, 3);
+    } finally {
+        ILaya.stage = previousStage;
+        stage.destroy(true);
+    }
 });
 
 test("real Laya ADDED and REMOVED use one Flash Event through capture, target and bubble", () => {
