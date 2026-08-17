@@ -212,30 +212,64 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         }
     }
     const hostileMouse = new HostileMouseState();
-    const originalName = hostileMouse.name;
-    const originalMouseEnabled = hostileMouse.mouseEnabled;
-    assert.throws(() => button.overState = hostileMouse, /hostile mouse setter/);
-    assert.equal(button.overState, over);
-    assert.equal(hostileMouse.parent, undefined);
-    assert.equal(hostileMouse.name, originalName);
-    assert.equal(hostileMouse.mouseEnabled, originalMouseEnabled);
+    button.overState = hostileMouse;
+    assert.equal(button.overState, hostileMouse);
+    assert.equal(over.parent, null);
+    assert.equal(hostileMouse.parent, button);
+    assert.equal(hostileMouse.mouseEnabled, false, "native state mutation bypasses hostile override");
 
     class HostileAttachButton extends SimpleButton {
+        attachCalls = 0;
         override addChild<T extends LayaNode>(node: T): T {
+            this.attachCalls++;
             super.addChild(node);
             throw new Error("hostile attach");
         }
     }
     const hostileButton = new HostileAttachButton();
     const attachState = state(4, 4);
-    const attachSnapshot = {
-        parent: attachState.parent, name: attachState.name, mouseEnabled: attachState.mouseEnabled
-    };
-    assert.throws(() => hostileButton.upState = attachState, /hostile attach/);
-    assert.equal(hostileButton.upState, null);
-    assert.equal(attachState.parent, attachSnapshot.parent);
-    assert.equal(attachState.name, attachSnapshot.name);
-    assert.equal(attachState.mouseEnabled, attachSnapshot.mouseEnabled);
+    hostileButton.upState = attachState;
+    assert.equal(hostileButton.attachCalls, 0);
+    assert.equal(hostileButton.upState, attachState);
+    assert.equal(attachState.parent, hostileButton);
+
+    class HostileBeforeRemoveButton extends SimpleButton {
+        removeCalls = 0;
+        override removeChild<T extends LayaNode>(_node: T): T {
+            this.removeCalls++;
+            throw new Error("hostile remove before");
+        }
+    }
+    class HostileAfterRemoveButton extends SimpleButton {
+        removeCalls = 0;
+        override removeChild<T extends LayaNode>(node: T): T {
+            this.removeCalls++;
+            super.removeChild(node);
+            throw new Error("hostile remove after");
+        }
+    }
+    for (const hostileRemove of [new HostileBeforeRemoveButton(state(3, 3)), new HostileAfterRemoveButton(state(3, 3))]) {
+        const oldState = hostileRemove.upState!;
+        const nextState = state(5, 5);
+        hostileRemove.upState = nextState;
+        assert.equal(hostileRemove.removeCalls, 0);
+        assert.equal(hostileRemove.upState, nextState);
+        assert.equal(nextState.parent, hostileRemove);
+        assert.equal(oldState.parent, null);
+    }
+
+    class HostileVisibleState extends DisplayObject {
+        visibleWrites = 0;
+        override get visible(): boolean { return super.visible; }
+        override set visible(_value: boolean) { this.visibleWrites++; throw new Error("hostile visible setter"); }
+    }
+    const hostileVisible = new HostileVisibleState();
+    button.downState = hostileVisible;
+    assert.equal(hostileVisible.visibleWrites, 0);
+    assert.equal(hostileVisible.visible, false);
+    button.event(LayaEvent.MOUSE_DOWN, nativeMouse(LayaEvent.MOUSE_DOWN, button, 1, 1, 1));
+    assert.equal(hostileVisible.visibleWrites, 0);
+    assert.equal(hostileVisible.visible, true);
 
     const shared = state(15, 8);
     const aliased = new SimpleButton(shared, null, null, shared);
@@ -255,6 +289,7 @@ test("TextField has genuine Flash heritage and a composed native Laya input", ()
     assert.ok(field instanceof InteractiveObject);
     assert.ok(field instanceof DisplayObject);
     assert.equal(field instanceof LayaInput, false, "TextField uses composition instead of breaking Flash heritage");
+    assert.equal("dispatchImeComposition" in field, false, "no public compatibility-looking IME control seam exists");
     assert.equal(displayProbe, field);
     assert.equal(interactiveProbe, field);
     assert.equal(field.root, field);
@@ -311,7 +346,9 @@ test("native focus, input and IME events project exact Flash-shaped payloads", (
     field.nativeInput.event(LayaEvent.COMPOSITION_UPDATE, {
         text: "日本", selectionStart: 2, selectionEnd: 2, nativeEvent: { data: "日本" }
     });
-    field.dispatchImeComposition("end", "日本語", 3, 3, { data: "日本語" });
+    field.nativeInput.event(LayaEvent.COMPOSITION_END, {
+        text: "日本語", selectionStart: 3, selectionEnd: 3, nativeEvent: { data: "日本語" }
+    });
     field.nativeInput.event(LayaEvent.BLUR);
     assert.deepEqual(focus.map(event => event.type), [FocusEvent.FOCUS_IN, FocusEvent.FOCUS_OUT]);
     assert.ok(focus.every(event => event.target === field && event.bubbles));
@@ -319,7 +356,14 @@ test("native focus, input and IME events project exact Flash-shaped payloads", (
     assert.deepEqual(ime.map(event => [event.text, event.imeClient]), [
         ["に", null], ["日本", null], ["日本語", null]
     ]);
-    assert.throws(() => field.dispatchImeComposition("start", "invalid", -1, 0), /selection/);
+    const invalidErrors: unknown[] = [];
+    const previousError = console.error; console.error = value => invalidErrors.push(value);
+    try {
+        field.nativeInput.event(LayaEvent.COMPOSITION_START, {
+            text: "invalid", selectionStart: -1, selectionEnd: 0, nativeEvent: null
+        });
+    } finally { console.error = previousError; }
+    assert.match(String(invalidErrors[0]), /selection/);
 });
 
 test("real InputManager hit activates composed TextInputAdapter and keeps Flash target outer", async () => {
@@ -370,6 +414,17 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
             });
             this.processInputting({ target: element } as unknown as globalThis.Event);
         }
+        browserComposition(start: string, update: string, commit: string): void {
+            const event = (type: string, data: string): CompositionEvent => ({
+                type, data, target: this._visEle
+            }) as unknown as CompositionEvent;
+            this.processCompositionStart(event("compositionstart", start));
+            this.processCompositionUpdate(event("compositionupdate", update));
+            this._visEle.value = commit;
+            this._visEle.selectionStart = commit.length;
+            this._visEle.selectionEnd = commit.length;
+            this.processCompositionEnd(event("compositionend", commit));
+        }
     }
 
     const previousStage = ILaya.stage;
@@ -386,10 +441,18 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
         const manager = new ProbeInputManager(); manager.bind(stage);
         const flashClicks: MouseEvent[] = [];
         const changes: Event[] = [];
+        const compositions: IMEEvent[] = [];
         field.addEventListener(MouseEvent.CLICK, event => flashClicks.push(event as MouseEvent));
         field.addEventListener(Event.CHANGE, event => changes.push(event));
-        const pointer = (type: string) => ({ type, pageX: 20, pageY: 18, clientX: 20, clientY: 18,
+        field.addEventListener(IMEEvent.IME_COMPOSITION, event => compositions.push(event as IMEEvent));
+        const pointer = (type: string, x = 20, y = 18) => ({ type, pageX: x, pageY: y, clientX: x, clientY: y,
             button: 0, buttons: type === "mousedown" ? 1 : 0, cancelable: true, preventDefault() {} }) as globalThis.MouseEvent;
+        const click = async (x: number, y: number): Promise<void> => {
+            manager.handleMouse(pointer("mousedown", x, y), 0);
+            await new Promise(resolve => setTimeout(resolve, 0));
+            manager.handleMouse(pointer("mouseup", x, y), 1);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        };
         manager.handleMouse(pointer("mousedown"), 0);
         await new Promise(resolve => setTimeout(resolve, 0));
         assert.equal(manager.hitTarget, field.nativeInput, "real hit target remains native Input");
@@ -404,8 +467,35 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
         assert.equal(field.text, "ABC");
         assert.equal(changes.length, 1, "real Laya INPUT becomes outer Flash change after mutation");
         assert.equal(changes[0].target, field);
+        await click(250, 100);
+        assert.equal(adapter.target, null);
+        assert.equal(changes.length, 1, "later adapter CHANGE and blur do not duplicate the edited generation");
+
+        await click(20, 18);
+        assert.equal(adapter.target, field.nativeInput);
+        field.text = "PROGRAM";
+        assert.equal(changes.length, 1, "programmatic text assignment while focused is not a user change");
+        await click(250, 100);
+        assert.equal(changes.length, 1, "programmatic assignment remains silent after real adapter blur");
+
+        await click(20, 18);
+        assert.equal(adapter.target, field.nativeInput);
+        await click(250, 100);
+        assert.equal(changes.length, 1, "untouched real focus and blur emit no Flash change");
+
+        field.restrict = null;
+        await click(20, 18);
+        adapter.browserComposition("に", "日本", "日本語");
+        assert.deepEqual(compositions.map(event => event.text), ["に", "日本", "日本語"]);
+        assert.equal(field.nativeInput.composing, false);
+        assert.equal(field.nativeInput.compositionText, "");
+        assert.equal(field.text, "日本語");
+        assert.deepEqual([field.selectionBeginIndex, field.selectionEndIndex, field.caretIndex], [3, 3, 3]);
+        assert.equal(changes.length, 2, "composition commit is one dirty user generation");
+        await click(250, 100);
+        assert.equal(changes.length, 2, "composition blur does not duplicate its committed change");
         assert.deepEqual([field.restrict, field.maxChars, field.multiline, field.wordWrap, field.selectable],
-            ["A-Z", 8, false, true, true]);
+            [null, 8, false, true, true]);
         field.mouseEnabled = false;
         assert.equal(field.nativeInput.mouseEnabled, false, "outer authored mouse policy disables the native hit owner");
     } finally {

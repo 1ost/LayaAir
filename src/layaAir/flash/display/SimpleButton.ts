@@ -1,6 +1,7 @@
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { Point } from "../../laya/maths/Point";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { Node as LayaNode } from "../../laya/display/Node";
 import { IHitArea } from "../../laya/utils/IHitArea";
 import { InputManager } from "../../laya/events/InputManager";
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
@@ -9,6 +10,21 @@ import { InteractiveObject } from "./InteractiveObject";
 
 type ButtonVisualState = "up" | "over" | "down";
 type ButtonStateSlot = "_upState" | "_overState" | "_downState" | "_hitTestState";
+
+const visibleDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "visible");
+const mouseDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "mouseEnabled");
+if (!visibleDescriptor?.get || !visibleDescriptor.set || !mouseDescriptor?.get || !mouseDescriptor.set)
+    throw new Error("Laya Sprite native state descriptors are unavailable");
+const nativeVisible = (value: DisplayObject): boolean => visibleDescriptor.get!.call(value);
+const setNativeVisible = (value: DisplayObject, visible: boolean): void => visibleDescriptor.set!.call(value, visible);
+const nativeMouseEnabled = (value: DisplayObject): boolean => mouseDescriptor.get!.call(value);
+const setNativeMouseEnabled = (value: DisplayObject, enabled: boolean): void => mouseDescriptor.set!.call(value, enabled);
+const nativeRemove = (parent: LayaNode, value: DisplayObject): void => {
+    if (value.parent === parent) LayaNode.prototype.removeChild.call(parent, value);
+};
+const nativeAdd = (parent: LayaNode, value: DisplayObject, index: number): void => {
+    LayaNode.prototype.addChildAt.call(parent, value, Math.max(0, Math.min(index, parent.numChildren)));
+};
 
 class DisplayObjectHitArea implements IHitArea {
     private static readonly input = new InputManager();
@@ -110,43 +126,51 @@ export class SimpleButton extends InteractiveObject {
             throw new TypeError(`${name} must not be the button or one of its ancestors`);
         const old = this[slot];
         if (old === value) return;
-        if (value) {
-            const originalParent = value.parent;
-            const originalSerializedParent = (value as DisplayObject & { _$parent?: unknown })._$parent;
-            const originalIndex = originalParent ? originalParent.getChildIndex(value) : -1;
-            const originalName = value.name;
-            const originalMouseEnabled = value.mouseEnabled;
-            try {
-                if (!originalName) value.name = name;
-                value.mouseEnabled = false;
-                if (value.parent !== this) this.addChild(value);
-            } catch (error) {
-                const rollbackErrors: unknown[] = [];
-                try {
-                    if (value.parent !== originalParent) {
-                        value.removeSelf();
-                        if (originalParent) originalParent.addChildAt(value, originalIndex);
-                        else {
-                            (value as unknown as { _parent?: typeof originalParent })._parent = originalParent;
-                            (value as unknown as { _$parent?: unknown })._$parent = originalSerializedParent;
-                        }
-                    }
-                } catch (rollback) { rollbackErrors.push(rollback); }
-                try { if (value.mouseEnabled !== originalMouseEnabled) value.mouseEnabled = originalMouseEnabled; }
-                catch (rollback) { rollbackErrors.push(rollback); }
-                try { if (value.name !== originalName) value.name = originalName; }
-                catch (rollback) { rollbackErrors.push(rollback); }
-                if (rollbackErrors.length > 0) {
-                    const failure = new Error(`${name} replacement rollback failed`);
-                    (failure as Error & { causes?: readonly unknown[] }).causes = [error, ...rollbackErrors];
-                    throw failure;
+        const snapshots = [...new Set([old, value].filter((item): item is DisplayObject => item !== null))].map(item => ({
+            item,
+            parent: item.parent,
+            index: item.parent ? item.parent.getChildIndex(item) : -1,
+            name: item.name,
+            mouseEnabled: nativeMouseEnabled(item),
+            visible: nativeVisible(item),
+        }));
+        try {
+            if (value) {
+                if (!value.name) value.name = name;
+                setNativeMouseEnabled(value, false);
+                if (value.parent !== this) {
+                    if (value.parent) nativeRemove(value.parent, value);
+                    nativeAdd(this, value, this.numChildren);
                 }
-                throw error;
             }
+            this[slot] = value;
+            if (old && old.parent === this && !this._stateStillOwned(old)) nativeRemove(this, old);
+            this._applyStateVisibility();
+        } catch (error) {
+            const rollbackErrors: unknown[] = [];
+            this[slot] = old;
+            try {
+                for (const snapshot of snapshots) {
+                    if (snapshot.item.parent && snapshot.item.parent !== snapshot.parent)
+                        nativeRemove(snapshot.item.parent, snapshot.item);
+                }
+                for (const snapshot of snapshots.slice().sort((left, right) => left.index - right.index)) {
+                    if (snapshot.parent && snapshot.item.parent !== snapshot.parent)
+                        nativeAdd(snapshot.parent, snapshot.item, snapshot.index);
+                }
+            } catch (rollback) { rollbackErrors.push(rollback); }
+            for (const snapshot of snapshots) {
+                try { snapshot.item.name = snapshot.name; } catch (rollback) { rollbackErrors.push(rollback); }
+                try { setNativeMouseEnabled(snapshot.item, snapshot.mouseEnabled); } catch (rollback) { rollbackErrors.push(rollback); }
+                try { setNativeVisible(snapshot.item, snapshot.visible); } catch (rollback) { rollbackErrors.push(rollback); }
+            }
+            if (rollbackErrors.length > 0) {
+                const failure = new Error(`${name} replacement rollback failed`);
+                (failure as Error & { causes?: readonly unknown[] }).causes = [error, ...rollbackErrors];
+                throw failure;
+            }
+            throw error;
         }
-        this[slot] = value;
-        if (old && old.parent === this && !this._stateStillOwned(old)) this.removeChild(old);
-        this._applyStateVisibility();
     }
 
     private _stateStillOwned(value: DisplayObject): boolean {
@@ -174,6 +198,6 @@ export class SimpleButton extends InteractiveObject {
         include(this._upState, this._visualState === "up");
         include(this._overState, this._visualState === "over");
         include(this._downState, this._visualState === "down");
-        for (const [state, active] of visible) state.visible = active;
+        for (const [state, active] of visible) setNativeVisible(state, active);
     }
 }

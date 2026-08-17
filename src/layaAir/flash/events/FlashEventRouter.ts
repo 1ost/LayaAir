@@ -191,8 +191,9 @@ export class FlashEventRouter {
                 throw new TypeError("Native imeComposition requires composition payload");
             const data = value as Record<string, unknown>;
             if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
-                || !Number.isInteger(data.selectionEnd))
-                throw new TypeError("Native imeComposition requires text and integer selection");
+                || (data.selectionStart as number) < 0 || !Number.isInteger(data.selectionEnd)
+                || (data.selectionEnd as number) < (data.selectionStart as number))
+                throw new TypeError("Native imeComposition requires text and ordered nonnegative selection");
             return new IMEEvent(type, true, false, data.text, null);
         }
         return new Event(type, false, false);

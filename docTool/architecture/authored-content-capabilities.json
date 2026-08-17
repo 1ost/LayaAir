@@ -11254,7 +11254,7 @@
             "new (upState?: DisplayObject | null, overState?: DisplayObject | null, downState?: DisplayObject | null, hitTestState?: DisplayObject | null): SimpleButton"
           ],
           "indexSignatures": [],
-          "sha256": "a9723c531323fd1a133788d4548d9caa1f109bd82582f38248f5a4bee9b55af1",
+          "sha256": "ef7aa830d9887b0986966e93ebbacc125687b280e14596b9f538510803d89d06",
           "heritage": [
             {
               "kind": "extends",
@@ -13445,8 +13445,8 @@
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
             "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
-            "a9723c531323fd1a133788d4548d9caa1f109bd82582f38248f5a4bee9b55af1",
-            "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
+            "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3",
+            "ef7aa830d9887b0986966e93ebbacc125687b280e14596b9f538510803d89d06"
           ]
         }
       ]
@@ -14050,7 +14050,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "f26239e5767f98ebd0f60095146760e003956489977f4d2e8bfefc384ec24cf2",
+          "sha256": "550a3f001b5876cc4e45fb864673fb9199ba742929779c4ec39292535583e308",
           "heritage": []
         },
         {
@@ -15994,12 +15994,12 @@
           "covers": [
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4b140ae880ccb0bd5d16ef989218e3a031b623ea59c2dd9d255cbc1aac0210fa",
+            "550a3f001b5876cc4e45fb864673fb9199ba742929779c4ec39292535583e308",
             "60ce45ed0418819eba8f3108accb6546b04fc0ed435940127972171ee0fbf8df",
             "8eefc113dd8b5261e95593382917b75d66de7e4eca1cfb4fe6cae0680c316326",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "dd23a4df178a56e5ff5431f1309c4ef715c204daf83a06b415565925da7860fe",
-            "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957",
-            "f26239e5767f98ebd0f60095146760e003956489977f4d2e8bfefc384ec24cf2"
+            "e45720ba42de355e36fb751694ed258648329fd16448f6aaf672c62f3f0ad957"
           ]
         }
       ]
@@ -16037,7 +16037,7 @@
             "new (): TextFieldType"
           ],
           "indexSignatures": [],
-          "sha256": "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf",
+          "sha256": "6cebdde643d3b27d1b233a78353f5c29d5b4711ca62cacf646d29e804b9b859b",
           "heritage": []
         },
         {
@@ -16999,15 +16999,6 @@
               "optional": false,
               "readonly": false,
               "signature": "(event: Event) => boolean"
-            },
-            {
-              "abstract": false,
-              "kind": "method",
-              "name": "dispatchImeComposition",
-              "scope": "instance",
-              "optional": false,
-              "readonly": false,
-              "signature": "(phase: \"start\" | \"update\" | \"end\", text: string, selectionBeginIndex?: number, selectionEndIndex?: number, nativeEvent?: unknown) => boolean"
             },
             {
               "abstract": false,
@@ -18364,7 +18355,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf",
+          "sha256": "6cebdde643d3b27d1b233a78353f5c29d5b4711ca62cacf646d29e804b9b859b",
           "heritage": [
             {
               "kind": "extends",
@@ -18380,7 +18371,7 @@
           "sha256": "846d3945410ebab5288a1e56c9715bec35496e4433b24f8d6b4dee591b39b99b",
           "capability": "api.flash.text",
           "covers": [
-            "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf"
+            "6cebdde643d3b27d1b233a78353f5c29d5b4711ca62cacf646d29e804b9b859b"
           ]
         }
       ]

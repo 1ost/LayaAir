@@ -20,7 +20,12 @@ export class TextField extends InteractiveObject {
     private _embedFonts = false;
     private _displayAsPassword = false;
     private _focusRequested = false;
-    private _nativeChangePending = false;
+    private _programmaticTextWrite = false;
+    private _nativeInputSession: {
+        lastText: string;
+        dirtyGeneration: number;
+        dispatchedGeneration: number;
+    } | null = null;
 
     constructor() {
         super();
@@ -34,16 +39,16 @@ export class TextField extends InteractiveObject {
         this._forwardNative(LayaEvent.BLUR);
         this._forwardNative(LayaEvent.BEFORE_INPUT);
         this._nativeInput.on(LayaEvent.CHANGE, this, (value: unknown) => {
-            this._nativeChangePending = true;
-            queueMicrotask(() => { this._nativeChangePending = false; });
-            this.event(LayaEvent.CHANGE, value);
+            if (this._programmaticTextWrite) return;
+            const session = this._nativeInputSession;
+            this._observeNativeTextMutation();
+            queueMicrotask(() => {
+                if (this._nativeInputSession === session) this._flushNativeTextChange(value);
+            });
         });
         this._nativeInput.on(LayaEvent.INPUT, this, (value: unknown) => {
-            if (this._nativeChangePending) {
-                this._nativeChangePending = false;
-                return;
-            }
-            this.event(LayaEvent.CHANGE, value);
+            this._observeNativeTextMutation();
+            this._flushNativeTextChange(value);
         });
         this._nativeInput.on(LayaEvent.COMPOSITION_START, this,
             (value: unknown) => this._dispatchNativeIme("start", value));
@@ -56,14 +61,13 @@ export class TextField extends InteractiveObject {
     get text(): string { return this._nativeInput.text; }
     set text(value: string) {
         if (typeof value !== "string") throw new TypeError("TextField.text must be a string");
-        this._nativeInput.text = value;
+        this._writeProgrammaticText(value, false);
     }
 
     get htmlText(): string { return this._nativeInput.text; }
     set htmlText(value: string) {
         if (typeof value !== "string") throw new TypeError("TextField.htmlText must be a string");
-        this._nativeInput.html = true;
-        this._nativeInput.text = value;
+        this._writeProgrammaticText(value, true);
     }
 
     get displayAsPassword(): boolean { return this._displayAsPassword; }
@@ -145,30 +149,52 @@ export class TextField extends InteractiveObject {
         return this;
     }
 
-    /** Explicit composition seam for native adapters that do not expose Laya composition events. */
-    dispatchImeComposition(phase: "start" | "update" | "end", text: string,
-        selectionBeginIndex = this.selectionStart, selectionEndIndex = this.selectionEnd,
-        nativeEvent: unknown = null): boolean {
-        if (phase !== "start" && phase !== "update" && phase !== "end")
-            throw new TypeError("IME composition phase must be start, update or end");
-        if (!Number.isInteger(selectionBeginIndex) || selectionBeginIndex < 0
-            || !Number.isInteger(selectionEndIndex) || selectionEndIndex < selectionBeginIndex)
-            throw new TypeError("IME composition selection must be ordered nonnegative integers");
-        void nativeEvent;
-        return this.dispatchEvent(new IMEEvent(IMEEvent.IME_COMPOSITION, true, false, text, null));
-    }
-
     private _forwardNative(type: string): void {
         this._nativeInput.on(type, this, (value: unknown) => {
             if (type === LayaEvent.FOCUS) {
                 this._focusRequested = true;
+                this._nativeInputSession = {
+                    lastText: this._nativeInput.text,
+                    dirtyGeneration: 0,
+                    dispatchedGeneration: 0,
+                };
                 this._syncNativeFocusIndicator(true);
             } else if (type === LayaEvent.BLUR) {
+                this._observeNativeTextMutation();
+                this._flushNativeTextChange();
+                this._nativeInputSession = null;
                 this._focusRequested = false;
                 this._syncNativeFocusIndicator(false);
             }
             this.event(type, value);
         });
+    }
+
+    private _writeProgrammaticText(value: string, html: boolean): void {
+        this._programmaticTextWrite = true;
+        try {
+            if (html) this._nativeInput.html = true;
+            this._nativeInput.text = value;
+            if (this._nativeInputSession) this._nativeInputSession.lastText = this._nativeInput.text;
+        } finally {
+            this._programmaticTextWrite = false;
+        }
+    }
+
+    private _observeNativeTextMutation(): void {
+        const session = this._nativeInputSession;
+        if (!session) return;
+        const text = this._nativeInput.text;
+        if (text === session.lastText) return;
+        session.lastText = text;
+        session.dirtyGeneration++;
+    }
+
+    private _flushNativeTextChange(value?: unknown): void {
+        const session = this._nativeInputSession;
+        if (!session || session.dispatchedGeneration === session.dirtyGeneration) return;
+        session.dispatchedGeneration = session.dirtyGeneration;
+        this.event(LayaEvent.CHANGE, value);
     }
 
     protected override _applyNativeFocus(value: boolean): void {
@@ -181,10 +207,10 @@ export class TextField extends InteractiveObject {
             throw new TypeError(`Native IME ${phase} requires composition payload`);
         const data = value as Record<string, unknown>;
         if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
-            || !Number.isInteger(data.selectionEnd))
-            throw new TypeError(`Native IME ${phase} requires text and integer selection`);
-        this.dispatchImeComposition(phase, data.text, data.selectionStart as number,
-            data.selectionEnd as number, data.nativeEvent ?? null);
+            || (data.selectionStart as number) < 0 || !Number.isInteger(data.selectionEnd)
+            || (data.selectionEnd as number) < (data.selectionStart as number))
+            throw new TypeError(`Native IME ${phase} requires text and ordered nonnegative selection`);
+        this.dispatchEvent(new IMEEvent(IMEEvent.IME_COMPOSITION, true, false, data.text, null));
     }
 
     /** @internal Runtime probe for the composed native control; not source API. */
