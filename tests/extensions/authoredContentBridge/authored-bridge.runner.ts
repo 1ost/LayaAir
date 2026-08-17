@@ -10,6 +10,7 @@ import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
+import { Panel } from "../../../src/layaAir/laya/ui/Panel";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
 import { InputManager } from "../../../src/layaAir/laya/events/InputManager";
 import { PAL } from "../../../src/layaAir/laya/platform/PlatformAdapters";
@@ -26,7 +27,8 @@ import {
     UnsupportedFlashFeatureError
 } from "../../../src/layaAir/flash";
 import {
-    LayaAuthoredBindingHost, mapLayaAuthoredEventData, registerAuthoredContentRuntime
+    LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
+    registerAuthoredContentRuntime
 } from "../../../src/extensions/authoredContent/runtime";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
 
@@ -670,6 +672,16 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(unrelatedMutation.parent, unrelatedBranch,
         "unrelated Stage sibling subtree is neither traversed nor frozen by button admission");
 
+    const panel = new Panel(), panelButton = new SimpleButton(state(10, 10));
+    panel.addChild(panelButton);
+    const panelReplacement = state(11, 11);
+    panelButton.upState = panelReplacement;
+    assert.equal(panelButton.upState, panelReplacement);
+    assert.equal(panelButton.parent, panel);
+    assert.equal(internals(panelButton)._$parent, panel);
+    assert.equal(internals(panelButton)._parent, panel.content,
+        "Panel logical ownership and content actual container remain distinct and valid");
+
     const admittedExternal = state(20, 20), admittedRogue = state(21, 21);
     const admittedSource = state(22, 22), admittedCandidate = state(23, 23), admittedTarget = new SimpleButton();
     admittedExternal.addChild(admittedRogue);
@@ -716,6 +728,23 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     internals(ancestryB)._parent = ancestryA;
     internals(ancestryB)._$parent = ancestryA;
     assert.throws(() => cyclicOwnerButton.upState = state(19, 19), /button ancestry is cyclic/);
+
+    const reservedContract = (member: string) => ({
+        schema: "neutral-authored-code-bindings@1",
+        documentId: "reserved-member-probe",
+        bindings: [{
+            bindingId: "probe", memberName: member, nodeId: "probe-node", nodeKind: "interactive", required: true,
+            events: [{ eventId: "probe-click", type: "click", required: true }],
+        }],
+    });
+    for (const reserved of [
+        "_children", "_$children", "_parent", "_$parent", "_setParent", "_setContainer",
+        "_addChild", "_removeChild", "destroy", "destroyChildren", "addEventListener", "parent", "constructor",
+        "visible", "gotoAndStop", "upState", "text",
+    ]) {
+        assert.throws(() => normalizeAuthoredCodeBindingContract(reservedContract(reserved)),
+            /(public authored TypeScript member name|reserved by the Flash\/Laya runtime surface)/);
+    }
 
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;

@@ -91,7 +91,6 @@ export interface AuthoredBindingLease {
 }
 
 const ID_PATTERN = /^[A-Za-z][A-Za-z0-9._:/-]{0,127}$/;
-const MEMBER_PATTERN = /^[A-Za-z_$][A-Za-z0-9_$]{0,127}$/;
 const EVENT_TYPES = new Set<AuthoredEventType>([
     "click", "hover", "down", "up", "focus", "input", "change", "submit",
     "timeline-complete", "cue"
@@ -147,8 +146,31 @@ function identifier(value: unknown, label: string): string {
     return value;
 }
 
+const RESERVED_MEMBER_NAMES = new Set([
+    "constructor", "prototype", "__proto__",
+    "parent", "root", "stage", "name", "numChildren",
+    "alpha", "blendMode", "cacheAsBitmap", "filters", "height", "mask", "mouseX", "mouseY",
+    "rotation", "scaleX", "scaleY", "transform", "visible", "width", "x", "y",
+    "doubleClickEnabled", "focusRect", "mouseEnabled", "mouseChildren", "needsSoftKeyboard",
+    "tabChildren", "tabEnabled", "tabIndex", "textSnapshot",
+    "addChild", "addChildAt", "removeChild", "removeChildAt", "removeChildren", "removeSelf",
+    "getChildAt", "getChildByName", "getChildIndex", "setChildIndex", "contains",
+    "destroy", "destroyChildren",
+    "addEventListener", "removeEventListener", "dispatchEvent", "hasEventListener", "willTrigger",
+    "play", "stop", "gotoAndPlay", "gotoAndStop", "nextFrame", "prevFrame",
+    "currentFrame", "currentLabel", "currentFrameLabel", "currentLabels", "totalFrames", "framesLoaded", "scenes", "isPlaying",
+    "enabled", "trackAsMenu", "useHandCursor", "upState", "overState", "downState", "hitTestState",
+    "antiAliasType", "autoSize", "background", "border", "caretIndex", "defaultTextFormat",
+    "displayAsPassword", "embedFonts", "htmlText", "length", "maxChars", "multiline", "restrict",
+    "selectable", "selectionBeginIndex", "selectionEndIndex", "sharpness", "text", "textColor",
+    "textHeight", "textWidth", "thickness", "type", "wordWrap", "appendText", "replaceSelectedText",
+    "replaceText", "setSelection",
+]);
+
 function memberName(value: unknown, label: string): string {
-    if (typeof value !== "string" || !MEMBER_PATTERN.test(value)) throw new TypeError(`${label} must be a TypeScript member name`);
+    if (typeof value !== "string" || !/^[A-Za-z][A-Za-z0-9_$]{0,127}$/.test(value))
+        throw new TypeError(`${label} must be a public authored TypeScript member name`);
+    if (RESERVED_MEMBER_NAMES.has(value)) throw new TypeError(`${label} is reserved by the Flash/Laya runtime surface`);
     return value;
 }
 

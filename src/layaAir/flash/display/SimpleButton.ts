@@ -176,6 +176,13 @@ const assertInversePlacementClosure = (owners: ReadonlySet<LayaNode>, name: stri
         const internals = nodeInternals(owner);
         const logicalSeen = new Set<LayaNode>();
         for (const child of internals._$children) {
+            if (nodeInternals(child)._$parent !== owner
+                && internals._$children === internals._children
+                && nodeInternals(child)._parent === owner
+                && nodeInternals(child)._$parent
+                && nodeInternals(nodeInternals(child)._$parent!)._$container === owner) {
+                continue;
+            }
             if (logicalSeen.has(child)) throw new TypeError(`${name} graph contains a duplicate logical child`);
             logicalSeen.add(child);
             const prior = logicalOwner.get(child);
@@ -207,7 +214,7 @@ const assertInversePlacementClosure = (owners: ReadonlySet<LayaNode>, name: stri
         if (visited.has(node)) return;
         visiting.add(node);
         for (const child of nodeInternals(node)._$children) {
-            if (owners.has(child)) visit(child);
+            if (owners.has(child) && nodeInternals(child)._$parent === node) visit(child);
         }
         visiting.delete(node);
         visited.add(node);
@@ -476,21 +483,6 @@ export class SimpleButton extends InteractiveObject {
                 if (children.length !== expected.length || children.some((child, index) => child !== expected[index]))
                     throw new Error(`${name} replacement observed a direct Laya child-array content mutation`);
             }
-            for (const placement of placements) {
-                const logicalParent = expectedLogicalParents.get(placement.item);
-                const actualParent = expectedActualParents.get(placement.item);
-                if (!logicalParent || !actualParent) {
-                    if (logicalParent != null || actualParent != null)
-                        throw new Error(`${name} replacement produced split Laya parent fields`);
-                    continue;
-                }
-                const logicalChildren = expectedArrays.get(nodeInternals(logicalParent)._$children);
-                const actualChildren = expectedArrays.get(nodeInternals(actualParent)._children);
-                if (nodeInternals(logicalParent)._$container !== actualParent
-                    || logicalChildren?.filter(child => child === placement.item).length !== 1
-                    || actualChildren?.filter(child => child === placement.item).length !== 1)
-                    throw new Error(`${name} replacement produced an inconsistent recursive Laya graph`);
-            }
             if (transaction.poisoned || buttonRevisions.get(this) !== transaction.revision)
                 throw new Error(`${name} replacement was poisoned by reentrant state or child mutation`);
         } catch (error) {
@@ -538,18 +530,8 @@ export class SimpleButton extends InteractiveObject {
                         && (internals._$container !== placement.container || internals._children !== placement.children
                             || internals._$children !== placement.logicalChildren || internals._destroyed !== placement.destroyed))
                         throw new Error("Laya lifecycle/container rollback did not restore the exact snapshot");
-                    if (!placement.logicalParent || !placement.actualParent) {
-                        if (placement.logicalParent != null || placement.actualParent != null)
-                            throw new Error("Laya rollback restored split parent fields");
-                    } else {
-                        const logicalSaved = childArrays.get(nodeInternals(placement.logicalParent)._$children);
-                        const actualSaved = childArrays.get(nodeInternals(placement.actualParent)._children);
-                        if (nodeInternals(placement.logicalParent)._$container !== placement.actualParent
-                            || logicalSaved?.filter(child => child === placement.item).length !== 1
-                            || actualSaved?.filter(child => child === placement.item).length !== 1)
-                            throw new Error("Laya rollback did not restore recursive graph closure");
-                    }
                 }
+                assertInversePlacementClosure(guardedNodes, name);
                 for (const child of owner._$children) {
                     const internals = nodeInternals(child);
                     if (internals._$parent !== this || internals._parent !== owner._$container)
