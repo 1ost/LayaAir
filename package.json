@@ -20,6 +20,8 @@
     "buildDocToolRun": "node ./docTool/dist/index.js",
     "test:websocket": "node scripts/testWebSocketCore.mjs",
     "test:websocket:types": "tsc -p tests/net/tsconfig.json --pretty false",
+    "build:authored-content": "npm --prefix src/extensions/authoredContent run build",
+    "test:authored-content": "npm --prefix src/extensions/authoredContent run test",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",
