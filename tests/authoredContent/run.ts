@@ -184,6 +184,14 @@ async function main(): Promise<void> {
             [
                 '<!-- ignored --><swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
                 "AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/>',
+                "AUTHORED_CONTENT_SWF_XML_UNBALANCED"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"><node linkage="Child" kind="container"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_UNBALANCED"
             ]
         ];
         for (const [xml, code] of cases)

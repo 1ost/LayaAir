@@ -94,16 +94,116 @@ function parseTimeline(element: Laya.XML): Record<string, unknown> {
 function rejectIgnoredLexicalContent(text: string): void {
     if (/<!--|<!\[CDATA\[|<!DOCTYPE|<\?/i.test(text))
         throw new Error("AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: Comments, CDATA, declarations, and processing instructions are unsupported.");
-    const outsideTags = text.replace(/<[^>]*>/g, "");
-    if (outsideTags.trim().length > 0)
-        throw new Error("AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: Element text content is unsupported; use declared attributes.");
-    for (const match of text.matchAll(/<([A-Za-z_][A-Za-z0-9_.:-]*)([^<>]*)>/g)) {
-        const attributes = new Set<string>();
-        for (const attribute of match[2].matchAll(/([A-Za-z_][A-Za-z0-9_.:-]*)\s*=/g)) {
-            if (attributes.has(attribute[1]))
-                throw new Error(`AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_DUPLICATE: ${match[1]}.${attribute[1]}`);
-            attributes.add(attribute[1]);
+    const openElements: Array<string> = [];
+    let rootCount = 0;
+    let cursor = 0;
+    while (cursor < text.length) {
+        const tagStart = text.indexOf("<", cursor);
+        const outsideTag = tagStart === -1 ? text.slice(cursor) : text.slice(cursor, tagStart);
+        if (outsideTag.trim().length > 0)
+            throw new Error("AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: Element text content is unsupported; use declared attributes.");
+        if (tagStart === -1)
+            break;
+
+        const tagEnd = findTagEnd(text, tagStart);
+        let tagBody = text.slice(tagStart + 1, tagEnd).trim();
+        if (!tagBody || tagBody.startsWith("!") || tagBody.startsWith("?"))
+            throw new Error("AUTHORED_CONTENT_SWF_XML_MALFORMED: Unsupported or empty tag syntax.");
+
+        const closing = tagBody.startsWith("/");
+        if (closing)
+            tagBody = tagBody.slice(1).trim();
+        const selfClosing = !closing && tagBody.endsWith("/");
+        if (selfClosing)
+            tagBody = tagBody.slice(0, -1).trimEnd();
+
+        const tag = /^([A-Za-z_][A-Za-z0-9_.:-]*)([\s\S]*)$/.exec(tagBody);
+        if (!tag)
+            throw new Error("AUTHORED_CONTENT_SWF_XML_MALFORMED: Invalid element name or tag syntax.");
+        const name = tag[1];
+        const remainder = tag[2];
+
+        if (closing) {
+            if (remainder.trim().length > 0)
+                throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: Closing tag ${name} contains trailing syntax.`);
+            const expected = openElements.pop();
+            if (expected !== name)
+                throw new Error(`AUTHORED_CONTENT_SWF_XML_UNBALANCED: Expected closing tag ${expected ?? "none"}; received ${name}.`);
         }
+        else {
+            rejectMalformedOrDuplicateAttributes(name, remainder);
+            if (openElements.length === 0) {
+                rootCount++;
+                if (rootCount > 1)
+                    throw new Error("AUTHORED_CONTENT_SWF_XML_UNBALANCED: Multiple root elements are unsupported.");
+            }
+            if (!selfClosing)
+                openElements.push(name);
+        }
+        cursor = tagEnd + 1;
+    }
+    if (openElements.length > 0)
+        throw new Error(`AUTHORED_CONTENT_SWF_XML_UNBALANCED: Unclosed element ${openElements[openElements.length - 1]}.`);
+}
+
+function findTagEnd(text: string, tagStart: number): number {
+    let quote = "";
+    for (let cursor = tagStart + 1; cursor < text.length; cursor++) {
+        const character = text[cursor];
+        if (quote) {
+            if (character === quote)
+                quote = "";
+            else if (character === "<")
+                throw new Error("AUTHORED_CONTENT_SWF_XML_MALFORMED: Raw < is unsupported inside an attribute value.");
+        }
+        else if (character === "\"" || character === "'")
+            quote = character;
+        else if (character === ">")
+            return cursor;
+        else if (character === "<")
+            throw new Error("AUTHORED_CONTENT_SWF_XML_MALFORMED: Nested < encountered before tag close.");
+    }
+    throw new Error("AUTHORED_CONTENT_SWF_XML_UNBALANCED: Tag is not terminated.");
+}
+
+function rejectMalformedOrDuplicateAttributes(elementName: string, source: string): void {
+    const attributes = new Set<string>();
+    let cursor = 0;
+    while (cursor < source.length) {
+        const whitespaceStart = cursor;
+        while (cursor < source.length && /\s/.test(source[cursor]))
+            cursor++;
+        if (cursor === source.length)
+            return;
+        if (cursor === whitespaceStart)
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: ${elementName} attributes must be separated by whitespace.`);
+
+        const nameMatch = /^[A-Za-z_][A-Za-z0-9_.:-]*/.exec(source.slice(cursor));
+        if (!nameMatch)
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: ${elementName} contains invalid attribute syntax.`);
+        const name = nameMatch[0];
+        cursor += name.length;
+        while (cursor < source.length && /\s/.test(source[cursor]))
+            cursor++;
+        if (source[cursor] !== "=")
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: ${elementName}.${name} is missing =.`);
+        cursor++;
+        while (cursor < source.length && /\s/.test(source[cursor]))
+            cursor++;
+        const quote = source[cursor];
+        if (quote !== "\"" && quote !== "'")
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: ${elementName}.${name} must use a quoted value.`);
+        cursor++;
+        const valueEnd = source.indexOf(quote, cursor);
+        if (valueEnd === -1)
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_UNBALANCED: ${elementName}.${name} has an unterminated value.`);
+        if (source.slice(cursor, valueEnd).includes("<"))
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_MALFORMED: ${elementName}.${name} contains a raw <.`);
+        cursor = valueEnd + 1;
+
+        if (attributes.has(name))
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_DUPLICATE: ${elementName}.${name}`);
+        attributes.add(name);
     }
 }
 
