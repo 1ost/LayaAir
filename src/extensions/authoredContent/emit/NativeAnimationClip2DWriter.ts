@@ -6,6 +6,11 @@ const NATIVE_ANIMATION_VERSION = "LAYAANIMATION2D:01";
 export class NativeAnimationClip2DWriter {
     static write(clip: Laya.AnimationClip2D): ArrayBuffer {
         const nativeClip = clip as NativeAnimationClip2D;
+        if (!Number.isInteger(nativeClip._frameRate)
+            || nativeClip._frameRate < 1
+            || nativeClip._frameRate > 0x7fff) {
+            throw new Error("AUTHORED_CONTENT_NATIVE_FRAME_RATE_RANGE: Frame rate must fit the signed native parser field.");
+        }
         const strings: string[] = [];
         const numbers: number[] = [];
         const byte = new Laya.Byte();

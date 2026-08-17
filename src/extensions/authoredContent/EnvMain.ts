@@ -40,10 +40,9 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
                 timeline.fullPath,
                 new Uint8Array(NativeAnimationClip2DWriter.write(nativeTimeline))
             );
-            await IEditorEnv.utils.writeJsonAsync(
-                prefab.fullPath,
-                IEditorEnv.HierarchyWriter.write(root, { creatingPrefab: true })
-            );
+            const hierarchy = IEditorEnv.HierarchyWriter.write(root, { creatingPrefab: true });
+            hierarchy._$authoredContent = NativeLayaEmitter.createMetadata(content, timeline.id);
+            await IEditorEnv.utils.writeJsonAsync(prefab.fullPath, hierarchy);
         }
         finally {
             root?.destroy();

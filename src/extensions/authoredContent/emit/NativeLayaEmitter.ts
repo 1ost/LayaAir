@@ -32,8 +32,9 @@ export class NativeLayaEmitter {
 
         const nodeList = new Laya.KeyframeNodeList2D();
         nodeList.count = content.timeline.tracks.length;
+        const nativeOwnerPaths = this.collectNodeBindings(content).nativeOwnerPaths;
         content.timeline.tracks.forEach((track, index) => {
-            const node = this.createTrack(track);
+            const node = this.createTrack(track, nativeOwnerPaths);
             node._indexInList = index;
             nodeList.setNodeByIndex(index, node);
             nativeClip._nodesDic[node.fullPath] = node;
@@ -44,9 +45,22 @@ export class NativeLayaEmitter {
         return clip;
     }
 
+    static createMetadata(content: NeutralAuthoredContentIR, timelineAssetId: string): NativeAuthoredContentMetadata {
+        if (!timelineAssetId)
+            throw new Error("AUTHORED_CONTENT_TIMELINE_ID_REQUIRED");
+        const { nodes } = this.collectNodeBindings(content);
+        return {
+            schema: "laya-authored-content-metadata@1",
+            documentId: content.documentId,
+            rootLinkageClass: content.root.linkage,
+            timelineAssetId,
+            nodes
+        };
+    }
+
     private static createNode(source: NeutralAuthoredNode): Laya.Sprite {
         const node = source.kind === "text" ? new Laya.Text() : new Laya.Sprite();
-        node.name = source.linkage;
+        node.name = source.name ?? source.linkage;
         if (source.x !== undefined) node.x = source.x;
         if (source.y !== undefined) node.y = source.y;
         if (source.width !== undefined) node.width = source.width;
@@ -62,9 +76,16 @@ export class NativeLayaEmitter {
         return node;
     }
 
-    private static createTrack(track: NeutralTimelineTrack): Laya.KeyframeNode2D {
+    private static createTrack(
+        track: NeutralTimelineTrack,
+        nativeOwnerPaths: ReadonlyMap<string, ReadonlyArray<string>>
+    ): Laya.KeyframeNode2D {
         const node = new Laya.KeyframeNode2D();
-        const ownerPath = ["", ...track.targetPath];
+        const semanticPath = track.targetPath.join("/");
+        const nativeOwnerPath = nativeOwnerPaths.get(semanticPath);
+        if (!nativeOwnerPath)
+            throw new Error(`AUTHORED_CONTENT_NATIVE_TIMELINE_TARGET_MISSING: ${semanticPath}`);
+        const ownerPath = ["", ...nativeOwnerPath];
         node._setOwnerPathCount(ownerPath.length);
         ownerPath.forEach((value, index) => node._setOwnerPathByIndex(index, value));
         node._setPropertyCount(1);
@@ -84,6 +105,54 @@ export class NativeLayaEmitter {
         });
         return node;
     }
+
+    private static collectNodeBindings(content: NeutralAuthoredContentIR): {
+        nodes: NativeAuthoredContentNodeMetadata[];
+        nativeOwnerPaths: Map<string, ReadonlyArray<string>>;
+    } {
+        const nodes: NativeAuthoredContentNodeMetadata[] = [];
+        const nativeOwnerPaths = new Map<string, ReadonlyArray<string>>();
+        const visit = (
+            node: NeutralAuthoredNode,
+            semanticParent: ReadonlyArray<string>,
+            nativeParent: ReadonlyArray<string>,
+            isRoot: boolean
+        ) => {
+            const semanticPath = [...semanticParent, node.linkage];
+            const instanceName = node.name ?? node.linkage;
+            const nativePath = [...nativeParent, instanceName];
+            const animatorOwnerPath = isRoot ? [] : nativePath.slice(1);
+            nodes.push({
+                semanticPath,
+                nativePath,
+                animatorOwnerPath,
+                linkageClass: node.linkage,
+                instanceName,
+                kind: node.kind
+            });
+            nativeOwnerPaths.set(semanticPath.join("/"), animatorOwnerPath);
+            node.children.forEach(child => visit(child, semanticPath, nativePath, false));
+        };
+        visit(content.root, [], [], true);
+        return { nodes, nativeOwnerPaths };
+    }
+}
+
+export interface NativeAuthoredContentNodeMetadata {
+    readonly semanticPath: ReadonlyArray<string>;
+    readonly nativePath: ReadonlyArray<string>;
+    readonly animatorOwnerPath: ReadonlyArray<string>;
+    readonly linkageClass: string;
+    readonly instanceName: string;
+    readonly kind: "container" | "text";
+}
+
+export interface NativeAuthoredContentMetadata {
+    readonly schema: "laya-authored-content-metadata@1";
+    readonly documentId: string;
+    readonly rootLinkageClass: string;
+    readonly timelineAssetId: string;
+    readonly nodes: ReadonlyArray<NativeAuthoredContentNodeMetadata>;
 }
 
 export type NativeAnimationClip2D = Laya.AnimationClip2D & {

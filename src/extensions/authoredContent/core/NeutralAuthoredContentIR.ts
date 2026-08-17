@@ -7,6 +7,7 @@ export type NeutralKeyframeValue = number | boolean;
 export interface NeutralAuthoredNode {
     readonly linkage: string;
     readonly kind: NeutralNodeKind;
+    /** Native node name and generated-accessor name; defaults to linkage. */
     readonly name?: string;
     readonly x?: number;
     readonly y?: number;
@@ -84,7 +85,9 @@ function normalizeNode(
     const node: NeutralAuthoredNode = {
         linkage,
         kind: kind as NeutralNodeKind,
-        name: optionalString(source.name, `${path}.name`),
+        name: source.name === undefined
+            ? undefined
+            : canonicalLinkage(requiredString(source.name, `${path}.name`)),
         x: optionalNumber(source.x, `${path}.x`, scale),
         y: optionalNumber(source.y, `${path}.y`, scale),
         width: optionalNumber(source.width, `${path}.width`, scale),
@@ -102,15 +105,24 @@ function normalizeNode(
 }
 
 function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: number): ReadonlyArray<NeutralAuthoredNode> {
-    const owners = new Map<string, string>();
+    const linkageOwners = new Map<string, string>();
+    const instanceOwners = new Map<string, string>();
     return values.map((value, index) => {
         const source = record(value, `${path}[${index}]`);
         const rawLinkage = requiredString(source.linkage, `${path}[${index}].linkage`);
         const collisionKey = canonicalLinkage(rawLinkage).toLocaleLowerCase("en-US");
-        const previous = owners.get(collisionKey);
+        const previous = linkageOwners.get(collisionKey);
         if (previous !== undefined)
             fail("AUTHORED_CONTENT_LINKAGE_COLLISION", `'${rawLinkage}' duplicates or normalizes to the same sibling semantic ID as '${previous}'.`);
-        owners.set(collisionKey, rawLinkage);
+        linkageOwners.set(collisionKey, rawLinkage);
+        const rawInstanceName = source.name === undefined
+            ? rawLinkage
+            : requiredString(source.name, `${path}[${index}].name`);
+        const instanceKey = canonicalLinkage(rawInstanceName).toLocaleLowerCase("en-US");
+        const previousInstance = instanceOwners.get(instanceKey);
+        if (previousInstance !== undefined)
+            fail("AUTHORED_CONTENT_INSTANCE_NAME_COLLISION", `'${rawInstanceName}' duplicates or normalizes to the same sibling native name as '${previousInstance}'.`);
+        instanceOwners.set(instanceKey, rawInstanceName);
         return normalizeNode(value, `${path}[${index}]`, scale);
     });
 }
@@ -119,8 +131,10 @@ function normalizeTimeline(value: unknown, scale: number, nodePaths: ReadonlySet
     const source = record(value, "timeline");
     const frameRate = requiredFiniteNumber(source.frameRate, "timeline.frameRate");
     const duration = requiredFiniteNumber(source.duration, "timeline.duration");
-    if (frameRate <= 0 || duration < 0)
-        fail("AUTHORED_CONTENT_TIMELINE_RANGE", "Frame rate must be positive and duration cannot be negative.");
+    if (!Number.isInteger(frameRate) || frameRate < 1 || frameRate > 0x7fff)
+        fail("AUTHORED_CONTENT_FRAME_RATE_RANGE", "Frame rate must be an integer from 1 through 32767 for the signed native parser field.");
+    if (duration < 0)
+        fail("AUTHORED_CONTENT_TIMELINE_RANGE", "Timeline duration cannot be negative.");
     const loop = requiredBoolean(source.loop, "timeline.loop");
     const trackKeys = new Set<string>();
     const tracks = array(source.tracks, "timeline.tracks").map((value2, index) => {

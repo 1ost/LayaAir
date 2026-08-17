@@ -10,7 +10,11 @@ import { normalizeNeutralAuthoredContent } from "../../src/extensions/authoredCo
 import { NativeAnimationClip2DWriter } from "../../src/extensions/authoredContent/emit/NativeAnimationClip2DWriter";
 import { NativeLayaEmitter } from "../../src/extensions/authoredContent/emit/NativeLayaEmitter";
 const { runIdeHierarchyRoundTrip } = require("./ideHierarchyRoundTrip.cjs") as {
-    runIdeHierarchyRoundTrip(): void;
+    runIdeHierarchyRoundTrip(
+        content: ReturnType<typeof normalizeNeutralAuthoredContent>,
+        emitter: typeof NativeLayaEmitter,
+        writer: typeof NativeAnimationClip2DWriter
+    ): void;
 };
 
 (globalThis as any).Laya = {
@@ -46,6 +50,7 @@ function sourceDocument(): Record<string, unknown> {
             height: 100,
             children: [{
                 linkage: "Title",
+                name: "titleField",
                 kind: "text",
                 x: 10,
                 y: 12,
@@ -142,6 +147,67 @@ async function main(): Promise<void> {
         );
     });
 
+    await test("SWF XML rejects every undeclared or duplicate structural input", () => {
+        const cases: Array<[string, string]> = [
+            [
+                '<swf-authored-content version="1" id="x" extra="ignored"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_UNSUPPORTED"
+            ],
+            [
+                '<swf-authored-content version="1" id="x" id="ignored"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_DUPLICATE"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><node linkage="Other" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ELEMENT_COUNT"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ELEMENT_COUNT"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"><script/></node><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ELEMENT_UNSUPPORTED"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><children/><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ELEMENT_UNSUPPORTED"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"><track target="Root" property="x"><script/></track></timeline></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_ELEMENT_UNSUPPORTED"
+            ],
+            [
+                '<swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/>ignored<timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT"
+            ],
+            [
+                '<!-- ignored --><swf-authored-content version="1" id="x"><node linkage="Root" kind="container"/><timeline frameRate="24" duration="1" loop="true"/></swf-authored-content>',
+                "AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT"
+            ]
+        ];
+        for (const [xml, code] of cases)
+            assertThrows(() => new SwfXmlSourceAdapter().parseText(xml), code);
+    });
+
+    await test("native frame rate is an exact signed-parser-safe integer", () => {
+        for (const frameRate of [1.5, 0, -1, 32768]) {
+            const source = sourceDocument();
+            (source.timeline as any).frameRate = frameRate;
+            assertThrows(() => normalizeNeutralAuthoredContent(source), "AUTHORED_CONTENT_FRAME_RATE_RANGE");
+        }
+        const maximum = sourceDocument();
+        (maximum.timeline as any).frameRate = 32767;
+        const maximumContent = normalizeNeutralAuthoredContent(maximum);
+        const maximumBytes = NativeAnimationClip2DWriter.write(NativeLayaEmitter.createTimeline(maximumContent));
+        const maximumParsed = AnimationClip2D._parse(maximumBytes) as any;
+        assert(maximumParsed._frameRate === 32767, "maximum signed native frame rate did not round-trip");
+
+        const direct = NativeLayaEmitter.createTimeline(normalizeNeutralAuthoredContent(sourceDocument())) as any;
+        direct._frameRate = 1.5;
+        assertThrows(() => NativeAnimationClip2DWriter.write(direct), "AUTHORED_CONTENT_NATIVE_FRAME_RATE_RANGE");
+    });
+
     await test("uncaptured animation controllers are rejected", () => {
         const source = { ...sourceDocument(), controller: {} };
         assertThrows(() => normalizeNeutralAuthoredContent(source), "AUTHORED_CONTENT_CONTROLLER_CAPTURE_REQUIRED");
@@ -172,6 +238,17 @@ async function main(): Promise<void> {
         assert(first.every((value, index) => value === second[index]), "native animation bytes are not deterministic");
     });
 
+    await test("metadata preserves linkage, named-instance paths, and timeline identity", () => {
+        const content = normalizeNeutralAuthoredContent(sourceDocument());
+        const metadata = NativeLayaEmitter.createMetadata(content, "timeline");
+        assert(metadata.rootLinkageClass === "Root", "root linkage class was lost");
+        assert(metadata.timelineAssetId === "timeline", "timeline semantic identity was lost");
+        assert(metadata.nodes[1].linkageClass === "Title", "child linkage class was lost");
+        assert(metadata.nodes[1].instanceName === "titleField", "authored instance name was lost");
+        assert(metadata.nodes[1].nativePath.join("/") === "Root/titleField", "native named-instance path is unstable");
+        assert(metadata.nodes[1].animatorOwnerPath.join("/") === "titleField", "animator owner path is not root-relative");
+    });
+
     await test("semantic subasset IDs are fixed and payload-independent", () => {
         const importerSource = require("fs").readFileSync(
             require("path").resolve(__dirname, "../../src/extensions/authoredContent/EnvMain.ts"),
@@ -192,14 +269,31 @@ async function main(): Promise<void> {
             "importer does not serialize the native prefab with HierarchyWriter"
         );
         assert(
+            importerSource.includes("hierarchy._$authoredContent = NativeLayaEmitter.createMetadata(content, timeline.id)"),
+            "importer does not persist the generated-accessor metadata seam"
+        );
+        assert(
             importerSource.includes("Laya.Loader.HIERARCHY"),
             "preview does not load the generated .lh as a native hierarchy"
         );
         assert(!/\.prefab|\.scene|\.mcc/.test(importerSource), "legacy or unsupported runtime asset path is present");
     });
 
-    await test("installed IDE 3.4 hierarchy writer, parser, and SerializeUtil round-trip native .lh", () => {
-        runIdeHierarchyRoundTrip();
+    await test("IDE-host activation remains an explicit non-MVP HOLD", () => {
+        const hold = require("fs").readFileSync(
+            require("path").resolve(__dirname, "../../src/extensions/authoredContent/ACTIVATION_HOLD.md"),
+            "utf8"
+        );
+        assert(hold.includes("MVP activation therefore remains **HOLD**"), "activation HOLD is not explicit");
+        assert(hold.includes("Build/typecheck/unit gates do not substitute"), "activation gate is being overclaimed");
+    });
+
+    await test("installed IDE 3.4 round-trips the actual emitted native hierarchy and clip", () => {
+        runIdeHierarchyRoundTrip(
+            normalizeNeutralAuthoredContent(sourceDocument()),
+            NativeLayaEmitter,
+            NativeAnimationClip2DWriter
+        );
     });
 
     console.log(`1..${passed}`);

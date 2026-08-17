@@ -14,10 +14,12 @@ const ENGINE_TYPE_BINDINGS_MODULE = 93471;
 const ENGINE_TYPES_MODULE = 44898;
 const SERIALIZE_UTIL_MODULE = 78276;
 
-exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip() {
+exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, NativeLayaEmitter, NativeAnimationClip2DWriter) {
     const ideResources = resolveIdeResources();
     const archivePath = path.join(ideResources, "app.asar");
     const corePath = path.join(ideResources, "engine", "libs", "laya.core.js");
+    const d3Path = path.join(ideResources, "engine", "libs", "laya.d3.js");
+    const noRenderPath = path.join(ideResources, "engine", "libs", "laya.no-render.js");
     const archive = readAsar(archivePath);
     const manifest = JSON.parse(archive.read("package.json"));
     assert(manifest.version === "3.4.0", `AUTHORED_CONTENT_IDE_VERSION_UNSUPPORTED: ${manifest.version}`);
@@ -30,12 +32,21 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip() {
     try {
         globalThis.window = globalThis;
         globalThis.document = {};
-        delete require.cache[require.resolve(corePath)];
-        require(corePath);
+        for (const libraryPath of [corePath, d3Path, noRenderPath]) {
+            delete require.cache[require.resolve(libraryPath)];
+            require(libraryPath);
+        }
+        globalThis.Laya.Laya._beforeInitCallbacks.forEach(callback => callback({}));
+        globalThis.Laya.ILaya.stage = {
+            _graphicUpdateList: new Set(),
+            _componentDriver: { _toDestroys: new Set() }
+        };
+        globalThis.Laya.ILaya.systemTimer = {
+            callLater() {},
+            runCallLater() {}
+        };
+        globalThis.Laya.ILaya.loader = new globalThis.Laya.Loader();
 
-        // The editor serializer references this 3D class before it examines a 2D/Node value.
-        // The no-render Node-only integration gate does not load the 3D engine bundle.
-        globalThis.Laya.RenderableSprite3D ||= class RenderableSprite3D {};
         globalThis.Laya.ControllerRef ||= class ControllerRef {};
         Module._load = function loadWithoutElectron(request) {
             if (request === "electron")
@@ -58,26 +69,72 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip() {
         typeRegistry.addTypes(ideRequire(ENGINE_TYPES_MODULE).allTypes);
         ideRequire(ENGINE_TYPE_BINDINGS_MODULE).bindEngineTypes();
 
-        const root = new globalThis.Laya.Node();
-        root.name = "Root";
-        const title = new globalThis.Laya.Node();
-        title.name = "Title";
-        root.addChild(title);
+        const clip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(content, "timeline", clip);
+        assert(root instanceof globalThis.Laya.Sprite, "AUTHORED_CONTENT_EMITTER_ROOT_NOT_SPRITE");
+        assert(root.getChildAt(0) instanceof globalThis.Laya.Text, "AUTHORED_CONTENT_EMITTER_CHILD_NOT_TEXT");
+        assert(root.getChildAt(0).name === "titleField", "AUTHORED_CONTENT_EMITTER_INSTANCE_NAME_LOST");
+        const animator = root.getComponent(globalThis.Laya.AnimatorClip2D);
+        assert(animator?.clip === clip, "AUTHORED_CONTENT_EMITTER_ANIMATOR_CLIP_MISSING");
+        assert(clip.url === "res://timeline" && clip.uuid === "timeline", "AUTHORED_CONTENT_EMITTER_TIMELINE_REFERENCE_INVALID");
 
         const HierarchyWriter = ideRequire(HIERARCHY_WRITER_MODULE).HierarchyWriter;
         const hierarchy = HierarchyWriter.write(root, { creatingPrefab: true });
+        hierarchy._$authoredContent = NativeLayaEmitter.createMetadata(content, "timeline");
         assert(hierarchy._$ver === 1, "AUTHORED_CONTENT_LH_VERSION_MISSING");
-        assert(hierarchy._$type === "Node", "AUTHORED_CONTENT_LH_ROOT_TYPE_INVALID");
-        assert(hierarchy._$child?.[0]?.name === "Title", "AUTHORED_CONTENT_LH_CHILD_MISSING");
+        assert(hierarchy._$type === "Sprite", "AUTHORED_CONTENT_LH_ROOT_TYPE_INVALID");
+        assert(hierarchy._$child?.[0]?._$type === "Text", "AUTHORED_CONTENT_LH_TEXT_CHILD_MISSING");
+        assert(hierarchy._$child?.[0]?.name === "titleField", "AUTHORED_CONTENT_LH_INSTANCE_NAME_MISSING");
+        const animatorData = hierarchy._$comp?.find(component => component._$type === "AnimatorClip2D");
+        assert(animatorData, "AUTHORED_CONTENT_LH_ANIMATOR_MISSING");
+        assert(animatorData.clip?._$uuid === "timeline", "AUTHORED_CONTENT_LH_TIMELINE_REFERENCE_MISSING");
+        assert(
+            hierarchy._$authoredContent?.nodes?.[1]?.linkageClass === "Title",
+            "AUTHORED_CONTENT_LH_LINKAGE_METADATA_MISSING"
+        );
+
+        const clipBytes = NativeAnimationClip2DWriter.write(clip);
+        const parsedClip = globalThis.Laya.AnimationClip2D._parse(clipBytes);
+        assert(parsedClip._frameRate === content.timeline.frameRate, "AUTHORED_CONTENT_MC_FRAME_RATE_LOST");
+        assert(parsedClip._nodes.count === content.timeline.tracks.length, "AUTHORED_CONTENT_MC_TRACKS_LOST");
+        const parsedTrack = parsedClip._nodes.getNodeByIndex(0);
+        assert(parsedTrack.nodePath === "/titleField", "AUTHORED_CONTENT_MC_NAMED_INSTANCE_PATH_LOST");
+
+        const clipType = globalThis.Laya.Loader.getURLInfo("timeline.mc");
+        globalThis.Laya.Loader._cacheRes("timeline", clip, clipType.typeId, clipType.main);
 
         // JSON serialization is the actual .lh file boundary used by the importer.
         const fileBoundary = JSON.parse(JSON.stringify(hierarchy));
         const errors = [];
+        const loaderStub = {
+            getRes(url, type) {
+                if (url === "timeline")
+                    return clip;
+                return globalThis.Laya.Loader.getRes(url, type);
+            },
+            clearRes(url, resource) {
+                globalThis.Laya.Loader.clearRes(url, resource);
+            }
+        };
+        globalThis.Laya.ILaya.loader = loaderStub;
+        globalThis.Laya.Laya.loader = loaderStub;
+        assert(
+            typeof ideRequire(ENGINE_EXTERNAL_MODULE).ILaya.loader?.getRes === "function",
+            "AUTHORED_CONTENT_IDE_LOADER_STUB_MISSING"
+        );
         const parsedRoots = ideRequire(HIERARCHY_PARSER_MODULE).HierarchyParser.parse(fileBoundary, {}, errors);
-        assert(errors.length === 0, `AUTHORED_CONTENT_LH_PARSE_ERRORS: ${errors.join("; ")}`);
+        assert(
+            errors.length === 0,
+            `AUTHORED_CONTENT_LH_PARSE_ERRORS: ${errors.map(error => error?.stack || String(error)).join("; ")}`
+        );
         assert(parsedRoots.length === 1, "AUTHORED_CONTENT_LH_ROOT_COUNT_INVALID");
+        assert(parsedRoots[0] instanceof globalThis.Laya.Sprite, "AUTHORED_CONTENT_LH_PARSED_ROOT_NOT_SPRITE");
         assert(parsedRoots[0].name === "Root", "AUTHORED_CONTENT_LH_ROOT_NAME_LOST");
-        assert(parsedRoots[0].getChildAt(0)?.name === "Title", "AUTHORED_CONTENT_LH_CHILD_NAME_LOST");
+        assert(parsedRoots[0].getChildAt(0) instanceof globalThis.Laya.Text, "AUTHORED_CONTENT_LH_PARSED_CHILD_NOT_TEXT");
+        assert(parsedRoots[0].getChildAt(0)?.name === "titleField", "AUTHORED_CONTENT_LH_CHILD_NAME_LOST");
+        const parsedAnimator = parsedRoots[0].getComponent(globalThis.Laya.AnimatorClip2D);
+        assert(parsedAnimator, "AUTHORED_CONTENT_LH_PARSED_ANIMATOR_MISSING");
+        assert(parsedAnimator.clip === clip, "AUTHORED_CONTENT_LH_PARSED_TIMELINE_REFERENCE_LOST");
 
         const serializeErrors = [];
         const decoded = ideRequire(SERIALIZE_UTIL_MODULE).SerializeUtil.decodeObj(
@@ -93,6 +150,7 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip() {
         decoded.destroy();
         parsedRoots[0].destroy();
         root.destroy();
+        clip.destroy();
     }
     finally {
         Module._load = originalLoad;

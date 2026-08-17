@@ -32,9 +32,23 @@ manifest.main = "UIMain.js";
 delete manifest.scripts;
 await fs.promises.writeFile(path.join(packageRoot, "package.json"), JSON.stringify(manifest, null, 2) + os.EOL);
 
-for (const requiredOutput of ["UIMain.js", "EnvMain.js", "package.json", "editorResources/authored-content-source.svg"]) {
-    if (!fs.existsSync(path.join(packageRoot, requiredOutput)))
-        throw new Error(`AUTHORED_CONTENT_PACKAGE_OUTPUT_MISSING: ${requiredOutput}`);
+const expectedOutputs = [
+    "EnvMain.js",
+    "UIMain.js",
+    "adapters/SwfXmlSourceAdapter.js",
+    "adapters/XflBundleSourceAdapter.js",
+    "core/NeutralAuthoredContentIR.js",
+    "core/SourceAdapter.js",
+    "editorResources/authored-content-source.svg",
+    "emit/NativeAnimationClip2DWriter.js",
+    "emit/NativeLayaEmitter.js",
+    "package.json"
+].sort();
+const actualOutputs = (await listFiles(packageRoot)).sort();
+if (JSON.stringify(actualOutputs) !== JSON.stringify(expectedOutputs)) {
+    throw new Error(
+        `AUTHORED_CONTENT_PACKAGE_INVENTORY_MISMATCH:\nexpected=${expectedOutputs.join(",")}\nactual=${actualOutputs.join(",")}`
+    );
 }
 console.log(`Authored Content IDE package staged at ${packageRoot}`);
 
@@ -78,4 +92,16 @@ function resolveInstalledTypes() {
         return path.join(process.env.LOCALAPPDATA, "Programs", "LayaAirIDE", "resources", "engine", "types");
     }
     throw new Error("AUTHORED_CONTENT_IDE_TYPES_REQUIRED: Set LAYAAIR_IDE_TYPES to the LayaAir IDE 3.4 types directory.");
+}
+
+async function listFiles(directory, relative = "") {
+    const result = [];
+    for (const entry of await fs.promises.readdir(path.join(directory, relative), { withFileTypes: true })) {
+        const child = path.posix.join(relative.replaceAll("\\", "/"), entry.name);
+        if (entry.isDirectory())
+            result.push(...await listFiles(directory, child));
+        else
+            result.push(child);
+    }
+    return result;
 }

@@ -15,6 +15,7 @@ export class SwfXmlSourceAdapter implements SourceAdapter {
     }
 
     parseText(text: string, settings: AuthoredContentImportSettings = {}): NeutralAuthoredContentIR {
+        rejectIgnoredLexicalContent(text);
         let documentElement: Laya.XML;
         try {
             documentElement = new Laya.XML(text);
@@ -24,12 +25,9 @@ export class SwfXmlSourceAdapter implements SourceAdapter {
         }
         if (documentElement.name !== "swf-authored-content" || documentElement.getAttrString("version") !== "1")
             throw new Error("AUTHORED_CONTENT_SWF_XML_SCHEMA_UNSUPPORTED: Expected swf-authored-content version 1.");
-        const nodeElement = documentElement.getNode("node");
-        if (!nodeElement)
-            throw new Error("AUTHORED_CONTENT_SWF_XML_ROOT_MISSING: A root node is required.");
-        const timelineElement = documentElement.getNode("timeline");
-        if (!timelineElement)
-            throw new Error("AUTHORED_CONTENT_SWF_XML_TIMELINE_MISSING: A captured timeline is required.");
+        assertElementGrammar(documentElement, ["version", "id"], ["node", "timeline"], "swf-authored-content");
+        const nodeElement = exactlyOneChild(documentElement, "node");
+        const timelineElement = exactlyOneChild(documentElement, "timeline");
         const content = {
             schema: NEUTRAL_AUTHORED_CONTENT_SCHEMA,
             documentId: requiredAttribute(documentElement, "id"),
@@ -41,6 +39,12 @@ export class SwfXmlSourceAdapter implements SourceAdapter {
 }
 
 function parseNode(element: Laya.XML): Record<string, unknown> {
+    assertElementGrammar(
+        element,
+        ["linkage", "kind", "name", "x", "y", "width", "height", "alpha", "visible", "text", "fontSize", "color"],
+        ["node"],
+        "node"
+    );
     const kind = requiredAttribute(element, "kind");
     const node: Record<string, unknown> = {
         linkage: requiredAttribute(element, "linkage"),
@@ -61,25 +65,73 @@ function parseNode(element: Laya.XML): Record<string, unknown> {
 }
 
 function parseTimeline(element: Laya.XML): Record<string, unknown> {
+    assertElementGrammar(element, ["frameRate", "duration", "loop"], ["track"], "timeline");
     return {
         frameRate: numberAttribute(element, "frameRate"),
         duration: numberAttribute(element, "duration"),
         loop: booleanAttribute(element, "loop"),
         tracks: element.elements("track").map(track => {
+            assertElementGrammar(track, ["target", "property"], ["key"], "track");
             const property = requiredAttribute(track, "property");
             return {
                 targetPath: requiredAttribute(track, "target").split("/"),
                 property,
-                keyframes: track.elements("key").map(key => ({
-                    time: numberAttribute(key, "time"),
-                    value: property === "visible"
-                        ? booleanAttribute(key, "value")
-                        : numberAttribute(key, "value"),
-                    tweenType: key.getAttrString("tween") || undefined
-                }))
+                keyframes: track.elements("key").map(key => {
+                    assertElementGrammar(key, ["time", "value", "tween"], [], "key");
+                    return {
+                        time: numberAttribute(key, "time"),
+                        value: property === "visible"
+                            ? booleanAttribute(key, "value")
+                            : numberAttribute(key, "value"),
+                        tweenType: key.getAttrString("tween") || undefined
+                    };
+                })
             };
         })
     };
+}
+
+function rejectIgnoredLexicalContent(text: string): void {
+    if (/<!--|<!\[CDATA\[|<!DOCTYPE|<\?/i.test(text))
+        throw new Error("AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: Comments, CDATA, declarations, and processing instructions are unsupported.");
+    const outsideTags = text.replace(/<[^>]*>/g, "");
+    if (outsideTags.trim().length > 0)
+        throw new Error("AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: Element text content is unsupported; use declared attributes.");
+    for (const match of text.matchAll(/<([A-Za-z_][A-Za-z0-9_.:-]*)([^<>]*)>/g)) {
+        const attributes = new Set<string>();
+        for (const attribute of match[2].matchAll(/([A-Za-z_][A-Za-z0-9_.:-]*)\s*=/g)) {
+            if (attributes.has(attribute[1]))
+                throw new Error(`AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_DUPLICATE: ${match[1]}.${attribute[1]}`);
+            attributes.add(attribute[1]);
+        }
+    }
+}
+
+function assertElementGrammar(
+    element: Laya.XML,
+    allowedAttributes: ReadonlyArray<string>,
+    allowedChildren: ReadonlyArray<string>,
+    path: string
+): void {
+    const attributeSet = new Set(allowedAttributes);
+    for (const name of Object.keys(element.attributes)) {
+        if (!attributeSet.has(name))
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_ATTRIBUTE_UNSUPPORTED: ${path}.${name}`);
+    }
+    const childSet = new Set(allowedChildren);
+    for (const child of element.elements()) {
+        if (!childSet.has(child.name))
+            throw new Error(`AUTHORED_CONTENT_SWF_XML_ELEMENT_UNSUPPORTED: ${path}/${child.name}`);
+    }
+    if (element.text?.trim())
+        throw new Error(`AUTHORED_CONTENT_SWF_XML_IGNORED_CONTENT: ${path} contains unsupported text.`);
+}
+
+function exactlyOneChild(element: Laya.XML, name: string): Laya.XML {
+    const children = element.elements(name);
+    if (children.length !== 1)
+        throw new Error(`AUTHORED_CONTENT_SWF_XML_ELEMENT_COUNT: Expected exactly one ${name}; received ${children.length}.`);
+    return children[0];
 }
 
 function requiredAttribute(element: Laya.XML, name: string): string {
