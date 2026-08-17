@@ -19,6 +19,61 @@ const nativeVisible = (value: DisplayObject): boolean => visibleDescriptor.get!.
 const setNativeVisible = (value: DisplayObject, visible: boolean): void => visibleDescriptor.set!.call(value, visible);
 const nativeMouseEnabled = (value: DisplayObject): boolean => mouseDescriptor.get!.call(value);
 const setNativeMouseEnabled = (value: DisplayObject, enabled: boolean): void => mouseDescriptor.set!.call(value, enabled);
+type NodeInternals = {
+    _children: LayaNode[];
+    _$children: LayaNode[];
+    _parent: LayaNode | null | undefined;
+    _$parent: LayaNode | null | undefined;
+    _$container: LayaNode;
+    _setParent(value: LayaNode | null, index?: number): void;
+};
+const nodeInternals = (value: LayaNode): NodeInternals => value as unknown as NodeInternals;
+const canonicalStateSetParent = nodeInternals(DisplayObject.prototype as unknown as LayaNode)._setParent;
+if (typeof canonicalStateSetParent !== "function")
+    throw new Error("Laya DisplayObject canonical _setParent implementation is unavailable");
+const assertCanonicalStateLifecycle = (value: DisplayObject, name: string): void => {
+    if (Object.prototype.hasOwnProperty.call(value, "_setParent"))
+        throw new TypeError(`${name} state must use the canonical Laya DisplayObject _setParent implementation`);
+    let prototype = Object.getPrototypeOf(value);
+    while (prototype && prototype !== DisplayObject.prototype) {
+        if (Object.prototype.hasOwnProperty.call(prototype, "_setParent"))
+            throw new TypeError(`${name} state must use the canonical Laya DisplayObject _setParent implementation`);
+        prototype = Object.getPrototypeOf(prototype);
+    }
+    if (prototype !== DisplayObject.prototype || nodeInternals(value)._setParent !== canonicalStateSetParent)
+        throw new TypeError(`${name} state must use the canonical Laya DisplayObject _setParent implementation`);
+};
+const assertConsistentPlacement = (value: DisplayObject, name: string): void => {
+    const state = nodeInternals(value);
+    const logicalParent = state._$parent;
+    const actualParent = state._parent;
+    if (!logicalParent || !actualParent) {
+        if (logicalParent != null || actualParent != null)
+            throw new TypeError(`${name} state has inconsistent Laya parent fields`);
+        return;
+    }
+    const logical = nodeInternals(logicalParent);
+    if (logical._$container !== actualParent)
+        throw new TypeError(`${name} state has inconsistent Laya logical and container parents`);
+    const logicalCount = logical._$children.reduce((count, child) => count + Number(child === value), 0);
+    const actualCount = nodeInternals(actualParent)._children.reduce((count, child) => count + Number(child === value), 0);
+    if (logicalCount !== 1 || actualCount !== 1 || logical._$children.indexOf(value) !== nodeInternals(actualParent)._children.indexOf(value))
+        throw new TypeError(`${name} state has inconsistent Laya child-array placement`);
+};
+const assertOwnedPlacement = (value: DisplayObject, owner: LayaNode, name: string): void => {
+    assertConsistentPlacement(value, name);
+    const state = nodeInternals(value);
+    const ownerState = nodeInternals(owner);
+    if (state._$parent !== owner || state._parent !== ownerState._$container
+        || ownerState._$children.indexOf(value) < 0 || nodeInternals(ownerState._$container)._children.indexOf(value) < 0)
+        throw new TypeError(`${name} state did not remain attached after Laya lifecycle dispatch`);
+};
+const assertDetachedFromOwner = (value: DisplayObject, owner: LayaNode, name: string): void => {
+    assertConsistentPlacement(value, name);
+    const ownerState = nodeInternals(owner);
+    if (ownerState._$children.includes(value) || nodeInternals(ownerState._$container)._children.includes(value))
+        throw new TypeError(`${name} prior state remained in Laya child arrays after lifecycle dispatch`);
+};
 const nativeRemove = (parent: LayaNode, value: DisplayObject): void => {
     if (value.parent === parent) LayaNode.prototype.removeChild.call(parent, value);
 };
@@ -126,14 +181,35 @@ export class SimpleButton extends InteractiveObject {
             throw new TypeError(`${name} must not be the button or one of its ancestors`);
         const old = this[slot];
         if (old === value) return;
+        if (value) {
+            assertCanonicalStateLifecycle(value, name);
+            assertConsistentPlacement(value, name);
+        }
+        if (old) {
+            assertCanonicalStateLifecycle(old, name);
+            assertConsistentPlacement(old, name);
+        }
         const snapshots = [...new Set([old, value].filter((item): item is DisplayObject => item !== null))].map(item => ({
             item,
             parent: item.parent,
-            index: item.parent ? item.parent.getChildIndex(item) : -1,
+            actualParent: nodeInternals(item)._parent,
             name: item.name,
             mouseEnabled: nativeMouseEnabled(item),
             visible: nativeVisible(item),
         }));
+        const childArrays = new Map<LayaNode[], LayaNode[]>();
+        const snapshotArrays = (node: LayaNode | null): void => {
+            if (!node) return;
+            const internals = nodeInternals(node);
+            if (!childArrays.has(internals._children)) childArrays.set(internals._children, internals._children.slice());
+            if (!childArrays.has(internals._$children)) childArrays.set(internals._$children, internals._$children.slice());
+        };
+        snapshotArrays(this);
+        snapshotArrays(nodeInternals(this)._$container);
+        for (const snapshot of snapshots) {
+            snapshotArrays(snapshot.parent);
+            snapshotArrays(snapshot.actualParent);
+        }
         try {
             if (value) {
                 if (!value.name) value.name = name;
@@ -146,17 +222,21 @@ export class SimpleButton extends InteractiveObject {
             this[slot] = value;
             if (old && old.parent === this && !this._stateStillOwned(old)) nativeRemove(this, old);
             this._applyStateVisibility();
+            if (value) assertOwnedPlacement(value, this, name);
+            if (old) {
+                if (this._stateStillOwned(old)) assertOwnedPlacement(old, this, name);
+                else assertDetachedFromOwner(old, this, name);
+            }
         } catch (error) {
             const rollbackErrors: unknown[] = [];
             this[slot] = old;
             try {
+                for (const [children, saved] of childArrays)
+                    children.splice(0, children.length, ...saved);
                 for (const snapshot of snapshots) {
-                    if (snapshot.item.parent && snapshot.item.parent !== snapshot.parent)
-                        nativeRemove(snapshot.item.parent, snapshot.item);
-                }
-                for (const snapshot of snapshots.slice().sort((left, right) => left.index - right.index)) {
-                    if (snapshot.parent && snapshot.item.parent !== snapshot.parent)
-                        nativeAdd(snapshot.parent, snapshot.item, snapshot.index);
+                    const internals = nodeInternals(snapshot.item);
+                    internals._parent = snapshot.actualParent;
+                    internals._$parent = snapshot.parent;
                 }
             } catch (rollback) { rollbackErrors.push(rollback); }
             for (const snapshot of snapshots) {

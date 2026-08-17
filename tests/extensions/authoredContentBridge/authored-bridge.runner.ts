@@ -258,6 +258,61 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
         assert.equal(oldState.parent, null);
     }
 
+    class HostileBeforeSetParentState extends DisplayObject {
+        setParentCalls = 0;
+        protected override _setParent(_value: LayaNode, _index: number = -1): void {
+            this.setParentCalls++;
+            throw new Error("hostile _setParent before");
+        }
+    }
+    class HostileAfterSetParentState extends DisplayObject {
+        setParentCalls = 0;
+        protected override _setParent(value: LayaNode, index: number = -1): void {
+            this.setParentCalls++;
+            super._setParent(value, index);
+            throw new Error("hostile _setParent after");
+        }
+    }
+    for (const hostileState of [new HostileBeforeSetParentState(), new HostileAfterSetParentState()]) {
+        hostileState.name = "hostile";
+        hostileState.mouseEnabled = true;
+        hostileState.visible = true;
+        const beforeState = button.upState;
+        const beforeChildren = Array.from(button.children);
+        assert.throws(() => button.upState = hostileState, /canonical Laya DisplayObject _setParent/);
+        assert.equal(hostileState.setParentCalls, 0, "hostile lifecycle override is rejected before invocation");
+        assert.equal(button.upState, beforeState);
+        assert.deepEqual(Array.from(button.children), beforeChildren);
+        assert.ok(hostileState.parent == null);
+        assert.equal(hostileState.name, "hostile");
+        assert.equal(hostileState.mouseEnabled, true);
+        assert.equal(hostileState.visible, true);
+    }
+
+    const reentrantState = state(7, 7);
+    const beforeReentrantState = button.upState;
+    const beforeReentrantChildren = Array.from(button.children);
+    const internals = (node: LayaNode) => node as unknown as {
+        _children: LayaNode[]; _$children: LayaNode[];
+        _parent: LayaNode | null | undefined; _$parent: LayaNode | null | undefined;
+    };
+    const beforeActualChildren = Array.from(internals(button)._children);
+    const beforeOldActualParent = beforeReentrantState ? internals(beforeReentrantState)._parent : undefined;
+    const beforeOldLogicalParent = beforeReentrantState ? internals(beforeReentrantState)._$parent : undefined;
+    const beforeCandidateActualParent = internals(reentrantState)._parent;
+    const beforeCandidateLogicalParent = internals(reentrantState)._$parent;
+    reentrantState.on(LayaEvent.ADDED, reentrantState, () => reentrantState.removeSelf());
+    assert.throws(() => button.upState = reentrantState, /did not remain attached/);
+    assert.equal(button.upState, beforeReentrantState, "reentrant ADDED rejection restores the state slot");
+    assert.deepEqual(Array.from(button.children), beforeReentrantChildren, "reentrant ADDED rejection restores exact child order");
+    assert.deepEqual(internals(button)._children, beforeActualChildren, "rollback restores the actual engine child array");
+    if (beforeReentrantState) {
+        assert.equal(internals(beforeReentrantState)._parent, beforeOldActualParent);
+        assert.equal(internals(beforeReentrantState)._$parent, beforeOldLogicalParent);
+    }
+    assert.equal(internals(reentrantState)._parent, beforeCandidateActualParent);
+    assert.equal(internals(reentrantState)._$parent, beforeCandidateLogicalParent);
+
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;
         override get visible(): boolean { return super.visible; }

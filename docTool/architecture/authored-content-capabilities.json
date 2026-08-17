@@ -11254,7 +11254,7 @@
             "new (upState?: DisplayObject | null, overState?: DisplayObject | null, downState?: DisplayObject | null, hitTestState?: DisplayObject | null): SimpleButton"
           ],
           "indexSignatures": [],
-          "sha256": "ef7aa830d9887b0986966e93ebbacc125687b280e14596b9f538510803d89d06",
+          "sha256": "5c9365fe1e91a7d0601c2527dc474016f588dda5b1c56b2aefff16b00f889179",
           "heritage": [
             {
               "kind": "extends",
@@ -13442,11 +13442,11 @@
           "covers": [
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
             "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
+            "5c9365fe1e91a7d0601c2527dc474016f588dda5b1c56b2aefff16b00f889179",
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
             "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
-            "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3",
-            "ef7aa830d9887b0986966e93ebbacc125687b280e14596b9f538510803d89d06"
+            "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
           ]
         }
       ]
