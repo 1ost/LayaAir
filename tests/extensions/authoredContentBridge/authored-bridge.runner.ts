@@ -367,6 +367,39 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.ok(siblingCandidate.parent == null);
     assert.equal(siblingGuarded.children.includes(siblingCandidate), false);
 
+    for (const prototypeAttack of ["remove", "add"] as const) {
+        const prototypeUp = state(16, 16), prototypeOver = state(17, 17);
+        const prototypeGuarded = new SimpleButton(prototypeUp, prototypeOver);
+        const prototypeCandidate = state(18, 18), introduced = state(19, 19);
+        const prototypeChildren = Array.from(prototypeGuarded.children);
+        prototypeCandidate.on(LayaEvent.ADDED, prototypeCandidate, () => {
+            try {
+                if (prototypeAttack === "remove")
+                    LayaNode.prototype.removeChild.call(prototypeGuarded, prototypeOver);
+                else
+                    LayaNode.prototype.addChildAt.call(prototypeGuarded, introduced, prototypeGuarded.numChildren);
+            } catch { /* the canonical primitive must poison the outer transaction before mutation */ }
+        });
+        assert.throws(() => prototypeGuarded.upState = prototypeCandidate, /poisoned by reentrant state or child mutation/);
+        assert.equal(prototypeGuarded.upState, prototypeUp);
+        assert.equal(prototypeGuarded.overState, prototypeOver);
+        assert.deepEqual(Array.from(prototypeGuarded.children), prototypeChildren);
+        assert.deepEqual(internals(prototypeGuarded)._children, prototypeChildren);
+        assert.equal(internals(prototypeUp)._parent, prototypeGuarded);
+        assert.equal(internals(prototypeUp)._$parent, prototypeGuarded);
+        assert.equal(internals(prototypeOver)._parent, prototypeGuarded);
+        assert.equal(internals(prototypeOver)._$parent, prototypeGuarded);
+        assert.ok(prototypeCandidate.parent == null);
+        assert.ok(introduced.parent == null);
+        assert.equal(prototypeGuarded.children.includes(prototypeCandidate), false);
+        assert.equal(prototypeGuarded.children.includes(introduced), false);
+    }
+
+    class HostileMutationHookButton extends SimpleButton {
+        protected override _beforeChildMutation(): void { }
+    }
+    assert.throws(() => new HostileMutationHookButton(), /canonical SimpleButton child-mutation admission hook/);
+
     class HostileVisibleState extends DisplayObject {
         visibleWrites = 0;
         override get visible(): boolean { return super.visible; }

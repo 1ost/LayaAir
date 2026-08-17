@@ -116,6 +116,7 @@ export class SimpleButton extends InteractiveObject {
     private _visualState: ButtonVisualState = "up";
     private _stateRevision = 0;
     private _stateTransaction: ButtonStateTransaction | null = null;
+    private _stateChildMutationPermit = 0;
 
     constructor(upState: DisplayObject | null = null, overState: DisplayObject | null = null,
         downState: DisplayObject | null = null, hitTestState: DisplayObject | null = null) {
@@ -180,6 +181,15 @@ export class SimpleButton extends InteractiveObject {
         this._rejectExternalChildMutation();
         return super._removeChild(node);
     }
+    protected override _beforeChildMutation(): void {
+        if (this._stateTransaction && this._stateChildMutationPermit > 0) {
+            this._stateChildMutationPermit--;
+            super._beforeChildMutation();
+            return;
+        }
+        this._rejectExternalChildMutation();
+        super._beforeChildMutation();
+    }
 
     get enabled(): boolean { return this._enabled; }
     set enabled(value: boolean) {
@@ -235,6 +245,8 @@ export class SimpleButton extends InteractiveObject {
             this._stateRevision++;
             throw new Error(`${name} replacement is not reentrant`);
         }
+        if (this._beforeChildMutation !== SimpleButton.prototype._beforeChildMutation)
+            throw new TypeError(`${name} replacement requires the canonical SimpleButton child-mutation admission hook`);
         const transaction: ButtonStateTransaction = { revision: ++this._stateRevision, poisoned: false };
         this._stateTransaction = transaction;
         try {
@@ -302,11 +314,12 @@ export class SimpleButton extends InteractiveObject {
                 setNativeMouseEnabled(value, false);
                 if (value.parent !== this) {
                     if (value.parent) nativeRemove(value.parent, value);
-                    nativeAdd(this, value, this.numChildren);
+                    this._runStateChildMutation(() => nativeAdd(this, value, this.numChildren));
                 }
             }
             this[slot] = value;
-            if (old && old.parent === this && !this._stateStillOwned(old)) nativeRemove(this, old);
+            if (old && old.parent === this && !this._stateStillOwned(old))
+                this._runStateChildMutation(() => nativeRemove(this, old));
             this._applyStateVisibility();
             if (value) assertOwnedPlacement(value, this, name);
             if (old) {
@@ -384,6 +397,23 @@ export class SimpleButton extends InteractiveObject {
         this._stateTransaction.poisoned = true;
         this._stateRevision++;
         throw new Error("SimpleButton child mutation is not allowed during state replacement");
+    }
+
+    private _runStateChildMutation<T>(mutation: () => T): T {
+        if (!this._stateTransaction || this._stateChildMutationPermit !== 0)
+            throw new Error("SimpleButton internal child mutation permit is inconsistent");
+        this._stateChildMutationPermit = 1;
+        try {
+            const result = mutation();
+            if (this._stateChildMutationPermit !== 0) {
+                this._stateTransaction.poisoned = true;
+                this._stateRevision++;
+                throw new Error("Laya child mutation primitive did not consume its transaction permit");
+            }
+            return result;
+        } finally {
+            this._stateChildMutationPermit = 0;
+        }
     }
 
     private _stateStillOwned(value: DisplayObject): boolean {
