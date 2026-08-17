@@ -16,13 +16,20 @@ function tabCandidates(stage: LayaNode): InteractiveObject[] {
     const ordered: Array<{ value: InteractiveObject, order: number }> = [];
     let order = 0;
     const visit = (node: LayaNode): void => {
-        if (node instanceof InteractiveObject && node.tabEnabled && node.tabIndex >= 0 && node.activeInHierarchy)
+        if (node instanceof InteractiveObject && node.tabEnabled && node.activeInHierarchy) {
+            if (node.tabIndex < 0)
+                throw new Error(`Tab-enabled InteractiveObject '${node.name}' requires an explicit nonnegative tabIndex`);
             ordered.push({ value: node, order: order++ });
+        }
         for (const child of node._children) visit(child);
     };
     visit(stage);
-    return ordered.sort((left, right) => left.value.tabIndex - right.value.tabIndex || left.order - right.order)
-        .map(item => item.value);
+    ordered.sort((left, right) => left.value.tabIndex - right.value.tabIndex || left.order - right.order);
+    for (let index = 1; index < ordered.length; index++) {
+        if (ordered[index - 1].value.tabIndex === ordered[index].value.tabIndex)
+            throw new Error(`Tab-enabled InteractiveObjects require unique tabIndex ${ordered[index].value.tabIndex}`);
+    }
+    return ordered.map(item => item.value);
 }
 
 function installFocusTraversal(stage: LayaNode): void {
@@ -32,7 +39,12 @@ function installFocusTraversal(stage: LayaNode): void {
         if (!(event instanceof LayaEvent)) return;
         const native = event.nativeEvent as KeyboardEvent | null;
         if (!native || native.key !== "Tab") return;
-        const candidates = tabCandidates(stage);
+        let candidates: InteractiveObject[];
+        try { candidates = tabCandidates(stage); }
+        catch (error) {
+            event.preventDefault();
+            throw error;
+        }
         if (candidates.length === 0) return;
         const current = focusOwner((stage as unknown as { focus?: LayaNode | null }).focus);
         const currentIndex = current ? candidates.indexOf(current) : -1;

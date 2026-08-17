@@ -78,6 +78,12 @@ export class TextField extends InteractiveObject {
     get editable(): boolean { return this._nativeInput.editable; }
     set editable(value: boolean) { this._nativeInput.editable = !!value; }
 
+    override get mouseEnabled(): boolean { return super.mouseEnabled; }
+    override set mouseEnabled(value: boolean) {
+        super.mouseEnabled = !!value;
+        if (this._nativeInput) this._nativeInput.mouseEnabled = super.mouseEnabled;
+    }
+
     get restrict(): string | null { return this._nativeInput.restrict ?? null; }
     set restrict(value: string | null) {
         if (value !== null && typeof value !== "string")

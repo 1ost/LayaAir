@@ -406,6 +406,8 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
         assert.equal(changes[0].target, field);
         assert.deepEqual([field.restrict, field.maxChars, field.multiline, field.wordWrap, field.selectable],
             ["A-Z", 8, false, true, true]);
+        field.mouseEnabled = false;
+        assert.equal(field.nativeInput.mouseEnabled, false, "outer authored mouse policy disables the native hit owner");
     } finally {
         adapter.uninstall(stage);
         await adapter.end();
@@ -438,6 +440,13 @@ test("tab traversal uses native Stage focus order and a visible focus indicator"
         manager.handleKeys(tab(true));
         assert.equal(stage.focus, second);
         assert.equal(prevented, 3);
+        const duplicate = new InteractiveObject(); duplicate.name = "duplicate";
+        duplicate.tabEnabled = true; duplicate.tabIndex = second.tabIndex; stage.addChild(duplicate);
+        const errors: unknown[] = [];
+        const previousError = console.error; console.error = value => errors.push(value);
+        try { manager.handleKeys(tab(false)); } finally { console.error = previousError; }
+        assert.match(String(errors[0]), /unique tabIndex/);
+        assert.equal(stage.focus, second, "ambiguous tab order never changes focus");
     } finally {
         ILaya.stage = previousStage;
         stage.destroy(true);

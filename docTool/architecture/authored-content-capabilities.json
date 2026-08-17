@@ -6670,7 +6670,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "282bbd1514f5a9456af047d078b91107054f6041d20f51ff98f0e65c82838fa7",
+          "sha256": "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
           "heritage": [
             {
               "kind": "extends",
@@ -13442,8 +13442,8 @@
           "covers": [
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
             "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
-            "282bbd1514f5a9456af047d078b91107054f6041d20f51ff98f0e65c82838fa7",
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
+            "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
             "a9723c531323fd1a133788d4548d9caa1f109bd82582f38248f5a4bee9b55af1",
             "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
@@ -16037,7 +16037,7 @@
             "new (): TextFieldType"
           ],
           "indexSignatures": [],
-          "sha256": "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a",
+          "sha256": "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf",
           "heritage": []
         },
         {
@@ -18364,7 +18364,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a",
+          "sha256": "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf",
           "heritage": [
             {
               "kind": "extends",
@@ -18380,7 +18380,7 @@
           "sha256": "846d3945410ebab5288a1e56c9715bec35496e4433b24f8d6b4dee591b39b99b",
           "capability": "api.flash.text",
           "covers": [
-            "8b7619b6eafdf4befb8da1f6473f9e02babf4f761e3c414acad63878a26f6e6a"
+            "f1f3c0761b386a6706fe85b4af861a241de7f101e8aadb61bb595771f79eb0bf"
           ]
         }
       ]
