@@ -58,10 +58,10 @@ function compile(label, rootNames) {
             throw new Error(`AUTHORED_CONTENT_IDE_TYPE_OR_ENTRY_MISSING: ${file}`);
     });
     const options = {
-        target: ts.ScriptTarget.ES2019,
+        target: ts.ScriptTarget.ES2020,
         module: ts.ModuleKind.CommonJS,
         moduleResolution: ts.ModuleResolutionKind.NodeJs,
-        lib: ["lib.es2019.d.ts", "lib.dom.d.ts"],
+        lib: ["lib.es2020.d.ts", "lib.dom.d.ts"],
         experimentalDecorators: true,
         strict: true,
         skipLibCheck: true,
