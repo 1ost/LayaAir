@@ -43,7 +43,12 @@ const source = `// Generated from docTool/architecture/authored-content-capabili
   + `export const AUTHORED_BINDING_RESERVED_SOURCE_SURFACES = Object.freeze(${JSON.stringify(surfaces, null, 2)}) as Readonly<Record<"MovieClip" | "SimpleButton" | "Sprite" | "TextField", readonly string[]>>;\n`
   + `export const AUTHORED_BINDING_NODE_SOURCE_TYPES = Object.freeze(${JSON.stringify(nodeKinds, null, 2)}) as Readonly<Record<string, keyof typeof AUTHORED_BINDING_RESERVED_SOURCE_SURFACES>>;\n`;
 if (process.argv.includes("--check")) {
-  if (readFileSync(outputPath, "utf8") !== source) throw new Error("authored binding reserved surface artifact is stale");
+  const outputBytes = readFileSync(outputPath);
+  const outputText = outputBytes.toString("utf8");
+  if (!Buffer.from(outputText, "utf8").equals(outputBytes))
+    throw new Error("authored binding reserved surface artifact must be valid UTF-8");
+  if (outputText.replace(/\r\n?/g, "\n") !== source)
+    throw new Error("authored binding reserved surface artifact is stale");
 } else {
   writeFileSync(outputPath, source, "utf8");
   console.log(`Updated ${outputPath} from A12 ${ledgerSha256}`);
