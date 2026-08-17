@@ -1,0 +1,14 @@
+{
+  "name": "laya.authoredContent",
+  "displayName": "Authored Content",
+  "version": "0.1.0",
+  "description": "LayaAir-owned editor import and preview bridge for neutral authored content.",
+  "main": "UIMain.ts",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "test": "node ./scripts/test.mjs"
+  },
+  "author": "Layabox Inc.",
+  "license": "MIT",
+  "private": true
+}
