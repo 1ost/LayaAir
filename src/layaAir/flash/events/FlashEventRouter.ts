@@ -47,7 +47,7 @@ const FLASH_TO_LAYA_EVENT: Readonly<Record<string, string>> = Object.freeze({
     [Event.RESIZE]: LayaEvent.RESIZE,
     [FocusEvent.FOCUS_IN]: LayaEvent.FOCUS,
     [FocusEvent.FOCUS_OUT]: LayaEvent.BLUR,
-    [TextEvent.TEXT_INPUT]: LayaEvent.INPUT,
+    [TextEvent.TEXT_INPUT]: LayaEvent.BEFORE_INPUT,
     [IMEEvent.IME_COMPOSITION]: LayaEvent.COMPOSITION_UPDATE
 });
 
@@ -113,6 +113,13 @@ export class FlashEventRouter {
         return !event.isDefaultPrevented();
     }
 
+    dispatchOwnedEvent(event: Event, eventTarget: unknown): boolean {
+        if (!(event instanceof Event)) throw new TypeError("dispatchEvent requires a flash.events.Event instance");
+        event._prepareForDispatch(eventTarget);
+        this._route(event, eventTarget, this);
+        return !event.isDefaultPrevented();
+    }
+
     static nativeTypeFor(flashType: string): string { return FLASH_TO_LAYA_EVENT[flashType] ?? flashType; }
     static forHost(host: unknown): FlashEventRouter | undefined {
         return ((typeof host === "object" || typeof host === "function") && host !== null)
@@ -144,6 +151,14 @@ export class FlashEventRouter {
         }
         const event = this._projectNativeEvent(type, value, this.host);
         event._prepareForDispatch(this.host);
+        if (event.cancelable && value && typeof value === "object"
+            && typeof (value as { preventDefault?: unknown }).preventDefault === "function") {
+            const control = value as { preventDefault(): void; stopPropagation?: () => void };
+            event._bindNativeControl({
+                preventDefault: () => control.preventDefault(),
+                stopPropagation: () => control.stopPropagation?.()
+            });
+        }
         this._route(event, this.host);
     }
 
@@ -165,9 +180,9 @@ export class FlashEventRouter {
                 record?.shiftKey === true, keyCode as number, false);
         }
         if (type === TextEvent.TEXT_INPUT) {
-            const text = (this.host as { text?: unknown }).text;
-            if (typeof text !== "string") throw new TypeError("Native textInput requires exact host text");
-            return new TextEvent(type, true, false, text);
+            if (!value || typeof value !== "object" || typeof (value as { text?: unknown }).text !== "string")
+                throw new TypeError("Native textInput requires exact before-input text");
+            return new TextEvent(type, true, true, (value as { text: string }).text);
         }
         if (type === IMEEvent.IME_COMPOSITION) {
             if (!value || typeof value !== "object")
@@ -176,14 +191,12 @@ export class FlashEventRouter {
             if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
                 || !Number.isInteger(data.selectionEnd))
                 throw new TypeError("Native imeComposition requires text and integer selection");
-            return new IMEEvent(type, true, false, data.text, "update",
-                data.selectionStart as number, data.selectionEnd as number, data.nativeEvent ?? null);
+            return new IMEEvent(type, true, false, data.text, null);
         }
         return new Event(type, false, false);
     }
 
-    private _route(event: Event, target: unknown): void {
-        const targetRouter = FlashEventRouter.forHost(target) ?? this;
+    private _route(event: Event, target: unknown, targetRouter = FlashEventRouter.forHost(target) ?? this): void {
         const path: FlashEventRouter[] = [targetRouter];
         if (event.bubbles && target instanceof LayaNode) {
             let node = target.parent;

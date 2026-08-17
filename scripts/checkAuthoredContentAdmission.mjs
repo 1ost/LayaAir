@@ -1154,6 +1154,17 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
     if (actualKind === "class") {
         const instanceType = code.checker.getDeclaredTypeOfSymbol(exported);
         const classType = code.checker.getTypeOfSymbolAtLocation(exported, declaration);
+        const actualHeritage = (declaration.heritageClauses || []).flatMap(clause => clause.types.map(type => ({
+            kind: clause.token === ts.SyntaxKind.ExtendsKeyword ? "extends" : "implements",
+            signature: logicalCompilerSignature(root, code.checker.typeToString(
+                code.checker.getTypeAtLocation(type), type, ts.TypeFormatFlags.NoTruncation)),
+        }))).sort((a, b) => `${a.kind}:${a.signature}`.localeCompare(`${b.kind}:${b.signature}`));
+        const declaredHeritage = Array.isArray(obligation.heritage) ? obligation.heritage.map(item => ({
+            kind: item?.kind,
+            signature: typeof item?.signature === "string"
+                ? logicalCompilerSignature(root, item.signature) : item?.signature,
+        })).sort((a, b) => `${a.kind}:${a.signature}`.localeCompare(`${b.kind}:${b.signature}`))
+            : actualHeritage.length === 0 ? [] : null;
         const collectMembers = (type, scope) => code.checker.getPropertiesOfType(type).filter(member => {
             if (scope === "static" && member.name === "prototype")
                 return false;
@@ -1216,6 +1227,8 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
         if (!declaredMembers || requiredRoot && declaredMembers.length === 0
             || JSON.stringify(declaredMembers) !== JSON.stringify(actualMembers))
             failures.push(`${label}.members: must exactly pin the public class surface ${JSON.stringify(actualMembers)}`);
+        if (!declaredHeritage || JSON.stringify(declaredHeritage) !== JSON.stringify(actualHeritage))
+            failures.push(`${label}.heritage: must exactly pin compiler-resolved class heritage ${JSON.stringify(actualHeritage)}`);
         if (!declaredConstructors || JSON.stringify(declaredConstructors) !== JSON.stringify(actualConstructors))
             failures.push(`${label}.constructors: must exactly pin constructor overloads ${JSON.stringify(actualConstructors)}`);
         if (!declaredIndexSignatures || JSON.stringify(declaredIndexSignatures) !== JSON.stringify(actualIndexSignatures))

@@ -7,4 +7,9 @@ export class InteractiveObject extends DisplayObject {
     tabEnabled: boolean = false;
     tabIndex: number = -1;
     focusRect: object | boolean | null = null;
+
+    constructor() {
+        super();
+        this.mouseEnabled = true;
+    }
 }

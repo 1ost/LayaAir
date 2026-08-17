@@ -111,9 +111,38 @@ export class SimpleButton extends InteractiveObject {
         const old = this[slot];
         if (old === value) return;
         if (value) {
-            if (value.parent !== this) this.addChild(value);
-            if (!value.name) value.name = name;
-            value.mouseEnabled = false;
+            const originalParent = value.parent;
+            const originalSerializedParent = (value as DisplayObject & { _$parent?: unknown })._$parent;
+            const originalIndex = originalParent ? originalParent.getChildIndex(value) : -1;
+            const originalName = value.name;
+            const originalMouseEnabled = value.mouseEnabled;
+            try {
+                if (!originalName) value.name = name;
+                value.mouseEnabled = false;
+                if (value.parent !== this) this.addChild(value);
+            } catch (error) {
+                const rollbackErrors: unknown[] = [];
+                try {
+                    if (value.parent !== originalParent) {
+                        value.removeSelf();
+                        if (originalParent) originalParent.addChildAt(value, originalIndex);
+                        else {
+                            (value as unknown as { _parent?: typeof originalParent })._parent = originalParent;
+                            (value as unknown as { _$parent?: unknown })._$parent = originalSerializedParent;
+                        }
+                    }
+                } catch (rollback) { rollbackErrors.push(rollback); }
+                try { if (value.mouseEnabled !== originalMouseEnabled) value.mouseEnabled = originalMouseEnabled; }
+                catch (rollback) { rollbackErrors.push(rollback); }
+                try { if (value.name !== originalName) value.name = originalName; }
+                catch (rollback) { rollbackErrors.push(rollback); }
+                if (rollbackErrors.length > 0) {
+                    const failure = new Error(`${name} replacement rollback failed`);
+                    (failure as Error & { causes?: readonly unknown[] }).causes = [error, ...rollbackErrors];
+                    throw failure;
+                }
+                throw error;
+            }
         }
         this[slot] = value;
         if (old && old.parent === this && !this._stateStillOwned(old)) this.removeChild(old);

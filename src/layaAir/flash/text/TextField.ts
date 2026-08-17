@@ -1,96 +1,126 @@
-import { Input as LayaInput } from "../../laya/display/Input";
-import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { Input as LayaInput, type InputSelectionDirection } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
-import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
-import { IMECompositionPhase, IMEEvent } from "../events/IMEEvent";
-import { Event } from "../events/Event";
-import { IEventDispatcher } from "../events/EventDispatcher";
+import { IMEEvent } from "../events/IMEEvent";
+import { DisplayObject } from "../display/DisplayObject";
+import { InteractiveObject } from "../display/InteractiveObject";
 
 export class TextFieldType {
     static readonly DYNAMIC = "dynamic";
     static readonly INPUT = "input";
 }
 
-/** Flash-shaped editable/dynamic text over the real Laya Input/Text implementation. */
-export class TextField extends LayaInput implements IEventDispatcher {
-    private readonly _textFlashEvents = new FlashEventRouter(this);
+/**
+ * Genuine Flash display hierarchy with a composed native Laya Input.
+ * The outer object owns display identity; the inner Input owns browser text,
+ * selection, focus, password, HTML and IME behavior.
+ */
+export class TextField extends InteractiveObject {
+    private readonly _nativeInput = new LayaInput();
     private _flashType = TextFieldType.DYNAMIC;
     private _embedFonts = false;
     private _displayAsPassword = false;
-    doubleClickEnabled = false;
-    needsSoftKeyboard = false;
-    tabEnabled = false;
-    tabIndex = -1;
-    focusRect: object | boolean | null = null;
+    private _focusRequested = false;
 
     constructor() {
         super();
-        super.type = LayaInput.TYPE_TEXT;
-        this.editable = false;
-        this.on(LayaEvent.COMPOSITION_START, this, (value: unknown) => this._dispatchNativeIme("start", value));
-        this.on(LayaEvent.COMPOSITION_END, this, (value: unknown) => this._dispatchNativeIme("end", value));
+        this._nativeInput.name = "__flashTextInput";
+        this._nativeInput.mouseEnabled = false;
+        this._nativeInput.type = LayaInput.TYPE_TEXT;
+        this._nativeInput.editable = false;
+        this.addChild(this._nativeInput);
+        this._forwardNative(LayaEvent.FOCUS);
+        this._forwardNative(LayaEvent.BLUR);
+        this._forwardNative(LayaEvent.BEFORE_INPUT);
+        this._nativeInput.on(LayaEvent.COMPOSITION_START, this,
+            (value: unknown) => this._dispatchNativeIme("start", value));
+        this._nativeInput.on(LayaEvent.COMPOSITION_UPDATE, this,
+            (value: unknown) => this.event(LayaEvent.COMPOSITION_UPDATE, value));
+        this._nativeInput.on(LayaEvent.COMPOSITION_END, this,
+            (value: unknown) => this._dispatchNativeIme("end", value));
     }
 
-    get root(): TextField {
-        let value: LayaSprite = this;
-        while (value.parent instanceof LayaSprite) value = value.parent;
-        return value as TextField;
+    get text(): string { return this._nativeInput.text; }
+    set text(value: string) {
+        if (typeof value !== "string") throw new TypeError("TextField.text must be a string");
+        this._nativeInput.text = value;
     }
 
-    get htmlText(): string { return this.text; }
+    get htmlText(): string { return this._nativeInput.text; }
     set htmlText(value: string) {
         if (typeof value !== "string") throw new TypeError("TextField.htmlText must be a string");
-        this.html = true;
-        this.text = value;
+        this._nativeInput.html = true;
+        this._nativeInput.text = value;
     }
 
     get displayAsPassword(): boolean { return this._displayAsPassword; }
     set displayAsPassword(value: boolean) {
         this._displayAsPassword = !!value;
-        super.type = this._displayAsPassword ? LayaInput.TYPE_PASSWORD : LayaInput.TYPE_TEXT;
+        this._nativeInput.type = this._displayAsPassword ? LayaInput.TYPE_PASSWORD : LayaInput.TYPE_TEXT;
     }
 
     get embedFonts(): boolean { return this._embedFonts; }
     set embedFonts(value: boolean) { this._embedFonts = !!value; }
 
+    get editable(): boolean { return this._nativeInput.editable; }
+    set editable(value: boolean) { this._nativeInput.editable = !!value; }
+
+    get focus(): boolean { return this._focusRequested || this._nativeInput.focus; }
+    set focus(value: boolean) {
+        this._focusRequested = !!value;
+        this._nativeInput.focus = this._focusRequested;
+    }
+
+    get selectionStart(): number { return this._nativeInput.selectionStart; }
+    get selectionEnd(): number { return this._nativeInput.selectionEnd; }
+    get selectionDirection(): InputSelectionDirection { return this._nativeInput.selectionDirection; }
     get selectionBeginIndex(): number { return this.selectionStart; }
     get selectionEndIndex(): number { return this.selectionEnd; }
     get caretIndex(): number {
         return this.selectionDirection === "backward" ? this.selectionStart : this.selectionEnd;
     }
 
-    /** Explicit composition seam for native adapters that do not expose Laya composition events. */
-    dispatchImeComposition(phase: IMECompositionPhase, text: string,
-        selectionBeginIndex = this.selectionStart, selectionEndIndex = this.selectionEnd,
-        nativeEvent: unknown = null): boolean {
-        return this.dispatchEvent(new IMEEvent(IMEEvent.IME_COMPOSITION, true, false, text, phase,
-            selectionBeginIndex, selectionEndIndex, nativeEvent));
+    setSelection(startIndex: number, endIndex: number): void {
+        this._nativeInput.setSelection(startIndex, endIndex);
     }
 
-    override get type(): string { return this._flashType; }
-    override set type(value: string) {
+    get type(): string { return this._flashType; }
+    set type(value: string) {
         if (value !== TextFieldType.DYNAMIC && value !== TextFieldType.INPUT)
             throw new TypeError("TextField.type must be TextFieldType.DYNAMIC or TextFieldType.INPUT");
         this._flashType = value;
         this.editable = value === TextFieldType.INPUT;
-        super.type = this._displayAsPassword ? LayaInput.TYPE_PASSWORD : LayaInput.TYPE_TEXT;
+        this._nativeInput.type = this._displayAsPassword ? LayaInput.TYPE_PASSWORD : LayaInput.TYPE_TEXT;
     }
 
-    addEventListener(type: string, listener: FlashEventListener, useCapture = false, priority = 0, useWeakReference = false): void {
-        this._textFlashEvents.addEventListener(type, listener, useCapture, priority, useWeakReference);
+    override get width(): number { return super.width; }
+    override set width(value: number) { super.width = value; this._nativeInput.width = value; }
+    override get height(): number { return super.height; }
+    override set height(value: number) { super.height = value; this._nativeInput.height = value; }
+    override size(width: number, height: number): this {
+        super.size(width, height);
+        this._nativeInput.size(width, height);
+        return this;
     }
-    removeEventListener(type: string, listener: FlashEventListener, useCapture = false): void {
-        this._textFlashEvents.removeEventListener(type, listener, useCapture);
+
+    /** Explicit composition seam for native adapters that do not expose Laya composition events. */
+    dispatchImeComposition(phase: "start" | "update" | "end", text: string,
+        selectionBeginIndex = this.selectionStart, selectionEndIndex = this.selectionEnd,
+        nativeEvent: unknown = null): boolean {
+        if (phase !== "start" && phase !== "update" && phase !== "end")
+            throw new TypeError("IME composition phase must be start, update or end");
+        if (!Number.isInteger(selectionBeginIndex) || selectionBeginIndex < 0
+            || !Number.isInteger(selectionEndIndex) || selectionEndIndex < selectionBeginIndex)
+            throw new TypeError("IME composition selection must be ordered nonnegative integers");
+        void nativeEvent;
+        return this.dispatchEvent(new IMEEvent(IMEEvent.IME_COMPOSITION, true, false, text, null));
     }
-    dispatchEvent(event: Event): boolean { return this._textFlashEvents.dispatchEvent(event, this); }
-    hasEventListener(type: string): boolean { return this._textFlashEvents.hasEventListener(type); }
-    willTrigger(type: string): boolean {
-        let node: LayaSprite | null = this;
-        while (node) {
-            if (FlashEventRouter.forHost(node)?.hasEventListener(type)) return true;
-            node = node.parent as LayaSprite | null;
-        }
-        return false;
+
+    private _forwardNative(type: string): void {
+        this._nativeInput.on(type, this, (value: unknown) => {
+            if (type === LayaEvent.FOCUS) this._focusRequested = true;
+            else if (type === LayaEvent.BLUR) this._focusRequested = false;
+            this.event(type, value);
+        });
     }
 
     private _dispatchNativeIme(phase: "start" | "end", value: unknown): void {
@@ -103,4 +133,13 @@ export class TextField extends LayaInput implements IEventDispatcher {
         this.dispatchImeComposition(phase, data.text, data.selectionStart as number,
             data.selectionEnd as number, data.nativeEvent ?? null);
     }
+
+    /** @internal Runtime probe for the composed native control; not source API. */
+    protected get _nativeTextInput(): LayaInput { return this._nativeInput; }
 }
+
+// Compiler-enforced heritage proof: no structural or Symbol.hasInstance substitution.
+const _textFieldHeritage: new () => InteractiveObject = TextField;
+void _textFieldHeritage;
+const _textFieldRoot: (value: TextField) => DisplayObject = value => value.root;
+void _textFieldRoot;

@@ -5,6 +5,8 @@ import test from "node:test";
 import { ILaya } from "../../../src/layaAir/ILaya";
 import { AnimationClip2D } from "../../../src/layaAir/laya/components/AnimationClip2D";
 import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorClip2D";
+import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
+import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
 import { InputManager } from "../../../src/layaAir/laya/events/InputManager";
@@ -86,6 +88,22 @@ test("priority, duplicate identity, cancellation and removal preserve Flash beha
     calls.length = 0;
     dispatcher.dispatchEvent(new Event(Event.CHANGE));
     assert.deepEqual(calls, ["low:change"]);
+});
+
+test("EventDispatcher aggregation retains dispatcher listener ownership", () => {
+    const aggregate = new EventDispatcher();
+    const dispatcher = new EventDispatcher(aggregate);
+    let own = 0;
+    let foreign = 0;
+    dispatcher.addEventListener(Event.CHANGE, event => {
+        own++;
+        assert.equal(event.currentTarget, dispatcher);
+        assert.equal(event.target, aggregate);
+    });
+    aggregate.addEventListener(Event.CHANGE, () => foreign++);
+    dispatcher.dispatchEvent(new Event(Event.CHANGE));
+    assert.equal(own, 1);
+    assert.equal(foreign, 0);
 });
 
 test("one Event instance traverses capture, target and bubble in real Laya parent order", () => {
@@ -178,6 +196,39 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(button.upState, priorUp, "ancestor rejection is atomic");
     ancestor.removeChild(button);
 
+    class HostileMouseState extends DisplayObject {
+        override get mouseEnabled(): boolean { return super.mouseEnabled; }
+        override set mouseEnabled(value: boolean) {
+            if (!value) throw new Error("hostile mouse setter");
+            super.mouseEnabled = value;
+        }
+    }
+    const hostileMouse = new HostileMouseState();
+    const originalName = hostileMouse.name;
+    const originalMouseEnabled = hostileMouse.mouseEnabled;
+    assert.throws(() => button.overState = hostileMouse, /hostile mouse setter/);
+    assert.equal(button.overState, over);
+    assert.equal(hostileMouse.parent, undefined);
+    assert.equal(hostileMouse.name, originalName);
+    assert.equal(hostileMouse.mouseEnabled, originalMouseEnabled);
+
+    class HostileAttachButton extends SimpleButton {
+        override addChild<T extends LayaNode>(node: T): T {
+            super.addChild(node);
+            throw new Error("hostile attach");
+        }
+    }
+    const hostileButton = new HostileAttachButton();
+    const attachState = state(4, 4);
+    const attachSnapshot = {
+        parent: attachState.parent, name: attachState.name, mouseEnabled: attachState.mouseEnabled
+    };
+    assert.throws(() => hostileButton.upState = attachState, /hostile attach/);
+    assert.equal(hostileButton.upState, null);
+    assert.equal(attachState.parent, attachSnapshot.parent);
+    assert.equal(attachState.name, attachSnapshot.name);
+    assert.equal(attachState.mouseEnabled, attachSnapshot.mouseEnabled);
+
     const shared = state(15, 8);
     const aliased = new SimpleButton(shared, null, null, shared);
     assert.equal(shared.visible, true, "a visible state aliased as hitTestState remains visible");
@@ -188,13 +239,19 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(manager.hitTest(aliased, 5, 5), false, "hit geometry is not reduced to aggregate bounds");
 });
 
-test("TextField is a real Laya input with Flash type semantics and source event methods", () => {
+test("TextField has genuine Flash heritage and a composed native Laya input", () => {
     const field = new TextField();
     const displayProbe: DisplayObject = field;
     const interactiveProbe: InteractiveObject = field;
     assert.ok(field instanceof LayaSprite);
+    assert.ok(field instanceof InteractiveObject);
+    assert.ok(field instanceof DisplayObject);
+    assert.equal(field instanceof LayaInput, false, "TextField uses composition instead of breaking Flash heritage");
     assert.equal(displayProbe, field);
     assert.equal(interactiveProbe, field);
+    assert.equal(field.root, field);
+    const textRoot = new DisplayObject(); textRoot.addChild(field);
+    assert.equal(field.root, textRoot);
     assert.equal(field.type, TextFieldType.DYNAMIC);
     assert.equal(field.editable, false);
     field.type = TextFieldType.INPUT;
@@ -205,6 +262,7 @@ test("TextField is a real Laya input with Flash type semantics and source event 
     field.embedFonts = true; assert.equal(field.embedFonts, true);
     field.tabEnabled = true; field.tabIndex = 3; field.doubleClickEnabled = true;
     field.setSelection(1, 3);
+    field.focus = true;
     assert.equal(field.selectionBeginIndex, 1); assert.equal(field.selectionEndIndex, 3); assert.equal(field.caretIndex, 3);
     assert.equal(field.focus, true); assert.equal(field.mouseEnabled, true);
     assert.equal(field.editable, true);
@@ -216,32 +274,42 @@ test("TextField is a real Laya input with Flash type semantics and source event 
 });
 
 test("native focus, input and IME events project exact Flash-shaped payloads", () => {
-    const field = new TextField();
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const field = new ProbeTextField();
     field.type = TextFieldType.INPUT;
     const focus: FocusEvent[] = [];
     const text: TextEvent[] = [];
     const ime: IMEEvent[] = [];
     field.addEventListener(FocusEvent.FOCUS_IN, event => focus.push(event as FocusEvent));
     field.addEventListener(FocusEvent.FOCUS_OUT, event => focus.push(event as FocusEvent));
-    field.addEventListener(TextEvent.TEXT_INPUT, event => text.push(event as TextEvent));
+    field.addEventListener(TextEvent.TEXT_INPUT, event => {
+        text.push(event as TextEvent);
+        event.preventDefault();
+    });
     field.addEventListener(IMEEvent.IME_COMPOSITION, event => ime.push(event as IMEEvent));
-    field.event(LayaEvent.FOCUS);
-    field.text = "native exact value";
-    field.event(LayaEvent.INPUT);
-    field.event(LayaEvent.COMPOSITION_START, {
+    field.nativeInput.event(LayaEvent.FOCUS);
+    const beforeInput = {
+        text: "inserted", inputType: "insertText", isComposing: false,
+        selectionStart: 0, selectionEnd: 0, nativeEvent: null as unknown, defaultPrevented: false,
+        preventDefault(): void { this.defaultPrevented = true; }
+    };
+    field.nativeInput.event(LayaEvent.BEFORE_INPUT, beforeInput);
+    assert.equal(beforeInput.defaultPrevented, true, "Flash cancellation reaches Laya before mutation");
+    field.nativeInput.event(LayaEvent.COMPOSITION_START, {
         text: "に", selectionStart: 1, selectionEnd: 1, nativeEvent: { data: "に" }
     });
-    field.event(LayaEvent.COMPOSITION_UPDATE, {
+    field.nativeInput.event(LayaEvent.COMPOSITION_UPDATE, {
         text: "日本", selectionStart: 2, selectionEnd: 2, nativeEvent: { data: "日本" }
     });
     field.dispatchImeComposition("end", "日本語", 3, 3, { data: "日本語" });
-    field.event(LayaEvent.BLUR);
+    field.nativeInput.event(LayaEvent.BLUR);
     assert.deepEqual(focus.map(event => event.type), [FocusEvent.FOCUS_IN, FocusEvent.FOCUS_OUT]);
     assert.ok(focus.every(event => event.target === field && event.bubbles));
-    assert.deepEqual(text.map(event => event.text), ["native exact value"]);
-    assert.deepEqual(ime.map(event => [event.compositionPhase, event.text,
-        event.selectionBeginIndex, event.selectionEndIndex]), [
-        ["start", "に", 1, 1], ["update", "日本", 2, 2], ["end", "日本語", 3, 3]
+    assert.deepEqual(text.map(event => [event.text, event.cancelable]), [["inserted", true]]);
+    assert.deepEqual(ime.map(event => [event.text, event.imeClient]), [
+        ["に", null], ["日本", null], ["日本語", null]
     ]);
     assert.throws(() => field.dispatchImeComposition("start", "invalid", -1, 0), /selection/);
 });

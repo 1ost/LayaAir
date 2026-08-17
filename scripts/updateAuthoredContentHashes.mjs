@@ -93,6 +93,11 @@ function updateSurface(obligation) {
     if (!ts.isClassDeclaration(declaration)) return;
     const instanceType = checker.getDeclaredTypeOfSymbol(exported);
     const classType = checker.getTypeOfSymbolAtLocation(exported, declaration);
+    obligation.heritage = (declaration.heritageClauses || []).flatMap(clause => clause.types.map(type => ({
+        kind: clause.token === ts.SyntaxKind.ExtendsKeyword ? "extends" : "implements",
+        signature: logicalCompilerSignature(root, checker.typeToString(
+            checker.getTypeAtLocation(type), type, ts.TypeFormatFlags.NoTruncation)),
+    }))).sort((a, b) => `${a.kind}:${a.signature}`.localeCompare(`${b.kind}:${b.signature}`));
     const collect = (type, scope) => checker.getPropertiesOfType(type).filter(member => {
         if (scope === "static" && member.name === "prototype") return false;
         const memberDeclaration = member.valueDeclaration || member.declarations?.[0];

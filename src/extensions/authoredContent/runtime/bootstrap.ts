@@ -16,7 +16,7 @@ const LINKAGE_ID = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/;
 const installed = new Map<string, Function>();
 const SOURCE_TYPES = { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } as const;
 const SERIALIZED_TYPES: Readonly<Record<AuthoredSourceType, AuthoredSerializedType>> = {
-    DisplayObject: "Sprite", MovieClip: "Sprite", SimpleButton: "Sprite", Sprite: "Sprite", TextField: "Input"
+    DisplayObject: "Sprite", MovieClip: "Sprite", SimpleButton: "Sprite", Sprite: "Sprite", TextField: "Sprite"
 };
 
 /**

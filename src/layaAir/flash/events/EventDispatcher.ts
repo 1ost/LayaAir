@@ -26,7 +26,7 @@ export class EventDispatcher extends LayaEventDispatcher implements IEventDispat
     removeEventListener(type: string, listener: FlashEventListener, useCapture = false): void {
         this._flashEvents.removeEventListener(type, listener, useCapture);
     }
-    dispatchEvent(event: Event): boolean { return this._flashEvents.dispatchEvent(event, this._flashTarget); }
+    dispatchEvent(event: Event): boolean { return this._flashEvents.dispatchOwnedEvent(event, this._flashTarget); }
     hasEventListener(type: string): boolean { return this._flashEvents.hasEventListener(type); }
     willTrigger(type: string): boolean { return this.hasEventListener(type); }
 }
