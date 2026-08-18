@@ -44,6 +44,9 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/BitmapData.ts", "BitmapData"],
     ["src/layaAir/flash/display/BitmapDataChannel.ts", "BitmapDataChannel"],
     ["src/layaAir/flash/display/PixelSnapping.ts", "PixelSnapping"],
+    ["src/layaAir/flash/display/StageAlign.ts", "StageAlign"],
+    ["src/layaAir/flash/display/GradientType.ts", "GradientType"],
+    ["src/layaAir/flash/display/BlendMode.ts", "BlendMode"],
     ["src/layaAir/flash/display/Bitmap.ts", "isFlashBitmap", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "acquireBitmapDataTexture", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "isFlashBitmapData", "function"],
@@ -140,6 +143,27 @@ Object.assign(utilsCapability, {
     }],
 });
 delete utilsCapability.blockingReason;
+
+let uiCapability = ledger.capabilities.find(item => item.id === "api.flash.ui");
+if (!uiCapability) {
+    uiCapability = { id: "api.flash.ui", status: "typescript-obligation", obligations: [], evidence: [] };
+    ledger.capabilities.push(uiCapability);
+}
+Object.assign(uiCapability, {
+    status: "typescript-obligation",
+    obligations: [["src/layaAir/flash/ui/MouseCursor.ts", "MouseCursor", "class"]].map(
+        ([module, exported, kind]) => uiCapability.obligations?.find(
+            item => item.module === module && item.export === exported)
+            || { module, export: exported, kind, signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashConstantsBridgeEvidence.test.ts",
+        test: "Flash string constant compiler and runtime surface",
+        sha256: "",
+        capability: "api.flash.ui",
+        covers: [],
+    }],
+});
+delete uiCapability.blockingReason;
 
 let filterCapability = ledger.capabilities.find(item => item.id === "api.flash.filters");
 if (!filterCapability) {

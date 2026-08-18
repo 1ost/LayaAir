@@ -16,6 +16,9 @@ import type { Bitmap, isFlashBitmap } from "../../src/layaAir/flash/display/Bitm
 import type { BitmapData, acquireBitmapDataTexture, isFlashBitmapData, observeBitmapData } from "../../src/layaAir/flash/display/BitmapData.ts";
 import type { BitmapDataChannel } from "../../src/layaAir/flash/display/BitmapDataChannel.ts";
 import type { PixelSnapping } from "../../src/layaAir/flash/display/PixelSnapping.ts";
+import type { StageAlign } from "../../src/layaAir/flash/display/StageAlign.ts";
+import type { GradientType } from "../../src/layaAir/flash/display/GradientType.ts";
+import type { BlendMode } from "../../src/layaAir/flash/display/BlendMode.ts";
 
 test("Flash display bridge compiler surface", () => {
     assert.ok(true as boolean satisfies ([typeof DisplayObject, typeof DisplayObjectContainer, typeof InteractiveObject,
@@ -23,6 +26,7 @@ test("Flash display bridge compiler surface", () => {
         typeof Graphics, IBitmapDrawable, typeof isFlashBitmapDrawable, typeof MovieClip, typeof AnimatorClip2DTimeline,
         typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
         typeof BitmapDataChannel, typeof PixelSnapping,
+        typeof StageAlign, typeof GradientType, typeof BlendMode,
         typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof isFlashBitmapData, typeof observeBitmapData,
         typeof isFlashDisplayObject, typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
         typeof isFlashGraphics, typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,

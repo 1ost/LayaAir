@@ -13,7 +13,8 @@
     "flash.text",
     "flash.net",
     "flash.utils",
-    "flash.filters"
+    "flash.filters",
+    "flash.ui"
   ],
   "capabilityLedger": "docTool/architecture/authored-content-capabilities.json",
   "capabilitySchema": "laya-authored-content-capabilities@1",
@@ -78,7 +79,8 @@
     "api.flash.text",
     "api.flash.net",
     "api.flash.utils",
-    "api.flash.filters"
+    "api.flash.filters",
+    "api.flash.ui"
   ],
   "statuses": [
     "native",
