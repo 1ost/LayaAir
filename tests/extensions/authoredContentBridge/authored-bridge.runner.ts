@@ -11,16 +11,24 @@ import { Point as LayaPoint } from "../../../src/layaAir/laya/maths/Point";
 import { isFlashPoint } from "../../../src/layaAir/flash/geom/Point";
 import { isFlashRectangle } from "../../../src/layaAir/flash/geom/Rectangle";
 import { isFlashDisplayObject } from "../../../src/layaAir/flash/display/DisplayObject";
+import { isFlashGraphics } from "../../../src/layaAir/flash/display/Graphics";
+import { isFlashBitmapDrawable } from "../../../src/layaAir/flash/display/IBitmapDrawable";
 import { isFlashDisplayObjectContainer } from "../../../src/layaAir/flash/display/DisplayObjectContainer";
 import { isFlashInteractiveObject } from "../../../src/layaAir/flash/display/InteractiveObject";
 import { isFlashMovieClip } from "../../../src/layaAir/flash/display/MovieClip";
 import { isFlashSimpleButton } from "../../../src/layaAir/flash/display/SimpleButton";
 import { isFlashSprite } from "../../../src/layaAir/flash/display/Sprite";
+import { isFlashShape } from "../../../src/layaAir/flash/display/Shape";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
+import { isFlashErrorEvent } from "../../../src/layaAir/flash/events/ErrorEvent";
+import { isFlashIOErrorEvent } from "../../../src/layaAir/flash/events/IOErrorEvent";
+import { isFlashKeyboardEvent } from "../../../src/layaAir/flash/events/KeyboardEvent";
 import { isFlashMouseEvent } from "../../../src/layaAir/flash/events/MouseEvent";
 import { isFlashTextEvent } from "../../../src/layaAir/flash/events/TextEvent";
+import { isFlashTimerEvent } from "../../../src/layaAir/flash/events/TimerEvent";
+import { isFlashURLRequest } from "../../../src/layaAir/flash/net/URLRequest";
 import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
@@ -38,8 +46,9 @@ import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
-    InteractiveObject, MovieClip, Sprite, FocusEvent, IMEEvent, MouseEvent, SimpleButton, TextEvent, TextField, TextFieldType,
-    Point, Rectangle, UnsupportedFlashFeatureError
+    ErrorEvent, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
+    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TextField, TextFieldType, TimerEvent,
+    Point, Rectangle, UnsupportedFlashFeatureError, URLRequest
 } from "../../../src/layaAir/flash";
 import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
@@ -53,7 +62,17 @@ import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
 ILaya.stage = { _graphicUpdateList: new Set(), _tranMatrixUpdateList: new Set() } as any;
-ILaya.timer = { callLater: (): void => undefined } as any;
+const frameCallbacks: Array<{ caller: unknown; method: Function }> = [];
+ILaya.timer = {
+    callLater: (): void => undefined,
+    frameLoop(_delay: number, caller: unknown, method: Function): void {
+        frameCallbacks.push({ caller, method });
+    },
+    clear(caller: unknown, method: Function): void {
+        const index = frameCallbacks.findIndex(item => item.caller === caller && item.method === method);
+        if (index >= 0) frameCallbacks.splice(index, 1);
+    }
+} as any;
 ILaya.systemTimer = {
     callLater: (): void => undefined, runCallLater: (): void => undefined,
     frameOnce: (_frame: number, caller: unknown, method: Function): void => { queueMicrotask(() => method.call(caller)); }
@@ -72,7 +91,7 @@ ILaya.systemTimer = {
 test("A12 capability ledger owns exact Flash declarations, members, signatures and hashes", () => {
     const path = join(process.cwd(), "docTool/architecture/authored-content-capabilities.json");
     const ledger = JSON.parse(readFileSync(path, "utf8"));
-    for (const namespace of ["display", "events", "geom", "text"]) {
+    for (const namespace of ["display", "events", "geom", "net", "text"]) {
         const capability = ledger.capabilities.find((item: any) => item.id === `api.flash.${namespace}`);
         assert.equal(capability.status, "typescript-obligation");
         assert.ok(capability.obligations.length > 0);
@@ -104,6 +123,13 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     const mouse = new MouseEvent(MouseEvent.CLICK);
     const text = new TextEvent(TextEvent.TEXT_INPUT);
     const dispatcher = new EventDispatcher();
+    const shape = new Shape();
+    const graphics = shape.graphics;
+    const error = new ErrorEvent(ErrorEvent.ERROR);
+    const ioError = new IOErrorEvent(IOErrorEvent.IO_ERROR);
+    const keyboard = new KeyboardEvent(KeyboardEvent.KEY_DOWN);
+    const timer = new TimerEvent(TimerEvent.TIMER);
+    const request = new URLRequest();
 
     assert.deepEqual([
         isFlashDisplayObject(display), isFlashDisplayObject(interactive), isFlashDisplayObject(container),
@@ -128,6 +154,9 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     assert.deepEqual([isFlashFocusEvent(event), isFlashMouseEvent(focus), isFlashTextEvent(mouse)], [false, false, false]);
     assert.equal(isFlashEventDispatcher(dispatcher), true);
     assert.equal(isFlashEventDispatcher(event), false);
+    assert.deepEqual([isFlashShape(shape), isFlashGraphics(graphics), isFlashBitmapDrawable(shape)], [true, true, true]);
+    assert.deepEqual([isFlashErrorEvent(error), isFlashErrorEvent(ioError), isFlashIOErrorEvent(ioError)], [true, true, true]);
+    assert.deepEqual([isFlashKeyboardEvent(keyboard), isFlashTimerEvent(timer), isFlashURLRequest(request)], [true, true, true]);
 
     const adversaries: Array<[(value: unknown) => boolean, new (...args: any[]) => object, object]> = [
         [isFlashDisplayObject, DisplayObject, display],
@@ -142,6 +171,13 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
         [isFlashMouseEvent, MouseEvent, mouse],
         [isFlashTextEvent, TextEvent, text],
         [isFlashTextField, TextField, textField],
+        [isFlashShape, Shape, shape],
+        [isFlashGraphics, Graphics, graphics],
+        [isFlashErrorEvent, ErrorEvent, error],
+        [isFlashIOErrorEvent, IOErrorEvent, ioError],
+        [isFlashKeyboardEvent, KeyboardEvent, keyboard],
+        [isFlashTimerEvent, TimerEvent, timer],
+        [isFlashURLRequest, URLRequest, request],
     ];
     for (const [predicate, constructor, genuine] of adversaries) {
         assert.equal(predicate({}), false);
@@ -262,6 +298,151 @@ test("Event validates immutable type and listener priority", () => {
     assert.throws(() => new Event(" change"), /validated string/);
     const dispatcher = new EventDispatcher();
     assert.throws(() => dispatcher.addEventListener("change", () => undefined, false, Number.NaN), /finite/);
+});
+
+test("URLRequest preserves exact descriptor bytes and never opens transport", () => {
+    const empty = new URLRequest();
+    assert.equal(empty.url, null);
+    const request = new URLRequest("assets/data.bin?x=%2F");
+    assert.equal(request.url, "assets/data.bin?x=%2F");
+    request.url = "assets/data.bin?x=%2F&cache=1";
+    request.data = { untouched: true };
+    request.method = "POST";
+    request.contentType = "application/octet-stream";
+    request.requestHeaders = [{ name: "X-Test", value: "exact" }];
+    assert.deepEqual({ url: request.url, data: request.data, method: request.method,
+        contentType: request.contentType, requestHeaders: request.requestHeaders }, {
+        url: "assets/data.bin?x=%2F&cache=1", data: { untouched: true }, method: "POST",
+        contentType: "application/octet-stream", requestHeaders: [{ name: "X-Test", value: "exact" }]
+    });
+    assert.throws(() => new URLRequest(1 as unknown as string), /string or null/);
+    assert.equal(Object.keys(request).some(key => /socket|transport/i.test(key)), false);
+});
+
+test("native keyboard ingress projects one exact Flash KeyboardEvent", () => {
+    const target = new DisplayObject();
+    let received: KeyboardEvent | null = null;
+    target.addEventListener(KeyboardEvent.KEY_DOWN, event => received = event as KeyboardEvent);
+    const native = new LayaEvent();
+    native.setTo(LayaEvent.KEY_DOWN, target, target);
+    native.nativeEvent = {
+        key: "p", keyCode: 80, charCode: 112, location: 2,
+        ctrlKey: true, altKey: true, shiftKey: false, metaKey: false,
+        preventDefault(): void {}, stopPropagation(): void {}
+    } as any;
+    target.event(LayaEvent.KEY_DOWN, native);
+    assert.ok(received);
+    assert.equal(received!.type, KeyboardEvent.KEY_DOWN);
+    assert.equal(received!.target, target);
+    assert.equal(received!.currentTarget, target);
+    assert.deepEqual([received!.keyCode, received!.charCode, received!.keyLocation], [80, 112, 2]);
+    assert.deepEqual([received!.ctrlKey, received!.altKey, received!.shiftKey], [true, true, false]);
+    assert.deepEqual(received!.clone(), new KeyboardEvent(KeyboardEvent.KEY_DOWN, true, false,
+        112, 80, 2, true, true, false, true, false));
+    const zeroCharCode = new LayaEvent();
+    zeroCharCode.nativeEvent = { key: "p", keyCode: 80, charCode: 0, location: 0 } as any;
+    assert.equal(KeyboardEvent._fromNative(KeyboardEvent.KEY_DOWN, zeroCharCode).charCode, 112);
+    const malformed = new LayaEvent();
+    malformed.setTo(LayaEvent.KEY_DOWN, target, target);
+    assert.throws(() => KeyboardEvent._fromNative(KeyboardEvent.KEY_DOWN, malformed), /DOM keyboard payload/);
+});
+
+test("IOErrorEvent and TimerEvent retain used hierarchy, constants and fields", () => {
+    const target = new DisplayObject();
+    let io: IOErrorEvent | null = null;
+    target.addEventListener(IOErrorEvent.IO_ERROR, event => io = event as IOErrorEvent);
+    target.event(IOErrorEvent.IO_ERROR, new Error("network unavailable"));
+    assert.ok(io instanceof ErrorEvent);
+    assert.equal(io!.text, "network unavailable");
+    assert.equal(io!.target, target);
+    assert.deepEqual([
+        IOErrorEvent.DISK_ERROR, IOErrorEvent.IO_ERROR, IOErrorEvent.NETWORK_ERROR
+    ], ["diskError", "ioError", "networkError"]);
+    const timer = new TimerEvent(TimerEvent.TIMER_COMPLETE);
+    assert.equal(timer.clone().type, "timerComplete");
+    assert.throws(() => timer.updateAfterEvent(), UnsupportedFlashFeatureError);
+});
+
+test("Flash Graphics owns state while preserving native command storage", () => {
+    const sprite = new Sprite();
+    const graphics = sprite.graphics;
+    assert.ok(graphics instanceof Graphics);
+    graphics.beginFill(0x112233, 0.5);
+    graphics.drawRect(1, 2, 30, 40);
+    graphics.endFill();
+    graphics.lineStyle(2, 0x445566, 0.75);
+    graphics.moveTo(3, 4);
+    graphics.lineTo(8, 9);
+    assert.equal(graphics.cmds.length, 2);
+    graphics.clear();
+    assert.equal(graphics.cmds.length, 0);
+    graphics.drawRect(0, 0, 5, 5);
+    assert.equal(graphics.cmds.length, 0, "drawing without Flash paint is a no-op");
+    graphics.drawRect(0, 0, 5, 5, "#ffffff");
+    assert.equal(graphics.cmds.length, 1, "native Laya drawRect remains available");
+    graphics.beginFill(0xabcdef);
+    graphics.drawRoundRect(0, 0, 18, 18, 4, 4);
+    assert.equal(graphics.cmds.length, 2, "equal Flash ellipse diameters map to native corner radii");
+    assert.throws(() => graphics.drawRoundRect(0, 0, 18, 18, 4, 6), UnsupportedFlashFeatureError);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 1], [0, 1, 2]), UnsupportedFlashFeatureError);
+    graphics.clear();
+    graphics.lineStyle(1, 0, 1, true);
+    graphics.beginFill(0xffffff);
+    graphics.moveTo(7, 4);
+    graphics.lineTo(13, 9);
+    graphics.lineTo(7, 14);
+    graphics.lineTo(7, 4);
+    assert.equal(graphics.cmds.length, 0, "filled paths remain buffered until endFill");
+    graphics.endFill();
+    assert.equal(graphics.cmds.length, 1, "retained arrow path becomes one filled native polygon");
+    assert.throws(() => graphics.lineStyle(2, 0, 1, true), UnsupportedFlashFeatureError);
+    assert.throws(() => graphics.beginGradientFill(), UnsupportedFlashFeatureError);
+
+    const fabricated = Object.create(Graphics.prototype) as Graphics;
+    const proxy = new Proxy(new Graphics(), {});
+    assert.throws(() => sprite.graphics = fabricated, /requires flash\.display\.Graphics/);
+    assert.throws(() => sprite.graphics = proxy, /requires flash\.display\.Graphics/);
+    const original = (sprite as any)._graphics;
+    (sprite as any)._graphics = fabricated;
+    assert.throws(() => sprite.graphics, /source-shaped Graphics seam/);
+    (sprite as any)._graphics = original;
+
+    Object.defineProperty(Graphics, Symbol.hasInstance, { configurable: true, value: () => true });
+    try {
+        assert.equal({} instanceof Graphics, true, "adversarial Symbol.hasInstance is active");
+        assert.throws(() => sprite.graphics = {} as Graphics, /requires flash\.display\.Graphics/);
+        const shape = new Shape();
+        assert.throws(() => shape.graphics = fabricated, /requires flash\.display\.Graphics/);
+        const shapeOriginal = (shape as any)._graphics;
+        (shape as any)._graphics = fabricated;
+        assert.throws(() => shape.graphics, /source-shaped Graphics seam/);
+        (shape as any)._graphics = shapeOriginal;
+    } finally {
+        delete (Graphics as any)[Symbol.hasInstance];
+    }
+});
+
+test("IBitmapDrawable uses central nominal identity and unattached Shape receives global enterFrame", () => {
+    const shape = new Shape();
+    assert.equal(isFlashBitmapDrawable(shape), true);
+    assert.equal(isFlashBitmapDrawable({}), false);
+    assert.equal(isFlashBitmapDrawable(new Proxy(shape, {})), false);
+    assert.equal(new DisplayObject().graphics instanceof Graphics, false, "base DisplayObject has no Flash Graphics seam");
+    let frames = 0;
+    const listener = (event: Event): void => {
+        frames++;
+        assert.equal(event.type, Event.ENTER_FRAME);
+        assert.equal(event.target, shape);
+    };
+    shape.addEventListener(Event.ENTER_FRAME, listener);
+    assert.equal(frameCallbacks.length, 1);
+    frameCallbacks[0].method.call(frameCallbacks[0].caller);
+    assert.equal(frames, 1);
+    shape.removeEventListener(Event.ENTER_FRAME, listener);
+    assert.equal(frameCallbacks.length, 0);
+    shape.addEventListener(Event.ENTER_FRAME, listener);
+    shape.destroy();
+    assert.equal(frameCallbacks.length, 0, "destroy releases the global frame hook");
 });
 
 test("priority, duplicate identity, cancellation and removal preserve Flash behavior", () => {
@@ -1217,7 +1398,7 @@ test("tab traversal uses native Stage focus order and a visible focus indicator"
         const manager = new ProbeInputManager(); manager.bind(stage);
         let prevented = 0;
         const tab = (shiftKey: boolean) => ({ type: "keydown", key: "Tab", keyCode: 9, shiftKey,
-            cancelable: true, preventDefault(): void { prevented++; } }) as unknown as KeyboardEvent;
+            cancelable: true, preventDefault(): void { prevented++; } }) as unknown as globalThis.KeyboardEvent;
         manager.handleKeys(tab(false));
         assert.equal(stage.focus, second);
         assert.ok(second.getChildByName("__flashFocusIndicator"), "focused control owns a visible native ring");

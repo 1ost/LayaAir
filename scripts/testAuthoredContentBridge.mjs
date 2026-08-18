@@ -47,7 +47,7 @@ try {
         if (actualHash !== expectedHash) throw new Error("Flash runtime type predicate authority hash drift");
         const authority = JSON.parse(authorityText);
         if (authority.schema !== "laya-flash-runtime-type-predicates@1"
-            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 14)
+            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 21)
             throw new Error("Flash runtime type predicate authority is incomplete");
         const rootBarrel = await readFile(join(root, "src/layaAir/flash/index.ts"), "utf8");
         for (const entry of authority.types) {

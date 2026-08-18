@@ -66,4 +66,13 @@ export class DisplayObject extends LayaSprite implements IEventDispatcher {
         while (value.parent instanceof DisplayObject) value = value.parent;
         return value;
     }
+
+    override destroy(destroyChild = true): void {
+        const router = DISPLAY_EVENTS.get(this);
+        if (router) {
+            router.dispose();
+            DISPLAY_EVENTS.delete(this);
+        }
+        super.destroy(destroyChild);
+    }
 }

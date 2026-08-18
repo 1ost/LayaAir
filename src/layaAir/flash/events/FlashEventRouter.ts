@@ -1,11 +1,15 @@
+import { ILaya } from "../../ILaya";
 import { Node as LayaNode } from "../../laya/display/Node";
 import { getInputEventOwner } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { Event, EventPhase } from "./Event";
 import { FocusEvent } from "./FocusEvent";
 import { IMEEvent } from "./IMEEvent";
+import { IOErrorEvent } from "./IOErrorEvent";
+import { KeyboardEvent } from "./KeyboardEvent";
 import { MouseEvent } from "./MouseEvent";
 import { TextEvent } from "./TextEvent";
+import { TimerEvent } from "./TimerEvent";
 import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 
 export type FlashEventListener = { bivarianceHack(event: Event): void }["bivarianceHack"];
@@ -22,6 +26,7 @@ interface TypeEntry {
     capture: ListenerEntry[];
     bubble: ListenerEntry[];
     forward: (value?: unknown) => void;
+    detach: () => void;
 }
 
 const HOST_ROUTERS = new WeakMap<object, FlashEventRouter>();
@@ -46,10 +51,13 @@ const FLASH_TO_LAYA_EVENT: Readonly<Record<string, string>> = Object.freeze({
     [Event.REMOVED]: LayaEvent.REMOVED,
     [Event.REMOVED_FROM_STAGE]: LayaEvent.UNDISPLAY,
     [Event.RESIZE]: LayaEvent.RESIZE,
+    [Event.ENTER_FRAME]: LayaEvent.FRAME,
     [FocusEvent.FOCUS_IN]: LayaEvent.FOCUS,
     [FocusEvent.FOCUS_OUT]: LayaEvent.BLUR,
     [TextEvent.TEXT_INPUT]: LayaEvent.BEFORE_INPUT,
-    [IMEEvent.IME_COMPOSITION]: LayaEvent.COMPOSITION_UPDATE
+    [IMEEvent.IME_COMPOSITION]: LayaEvent.COMPOSITION_UPDATE,
+    [KeyboardEvent.KEY_DOWN]: LayaEvent.KEY_DOWN,
+    [KeyboardEvent.KEY_UP]: LayaEvent.KEY_UP
 });
 
 const MOUSE_EVENT_TYPES = new Set([
@@ -80,9 +88,12 @@ export class FlashEventRouter {
         let entry = this._types.get(type);
         if (!entry) {
             const nativeType = FlashEventRouter.nativeTypeFor(type);
-            entry = { nativeType, capture: [], bubble: [], forward: value => this._forward(type, value) };
+            entry = {
+                nativeType, capture: [], bubble: [],
+                forward: value => this._forward(type, value), detach: () => undefined
+            };
+            entry.detach = this._subscribe(type, entry);
             this._types.set(type, entry);
-            this.host.on(nativeType, this, entry.forward);
         }
         const list = useCapture ? entry.capture : entry.bubble;
         if (list.some(item => item.listener === listener)) return;
@@ -97,7 +108,7 @@ export class FlashEventRouter {
         const index = list.findIndex(item => item.listener === listener);
         if (index >= 0) list.splice(index, 1);
         if (entry.capture.length === 0 && entry.bubble.length === 0) {
-            this.host.off(entry.nativeType, this, entry.forward);
+            entry.detach();
             this._types.delete(type);
         }
     }
@@ -125,6 +136,26 @@ export class FlashEventRouter {
     static forHost(host: unknown): FlashEventRouter | undefined {
         return ((typeof host === "object" || typeof host === "function") && host !== null)
             ? HOST_ROUTERS.get(host as object) : undefined;
+    }
+
+    /** Releases native subscriptions, including global frame loops owned by this router. */
+    dispose(): void {
+        for (const entry of this._types.values()) entry.detach();
+        this._types.clear();
+        HOST_ROUTERS.delete(this.host as object);
+    }
+
+    private _subscribe(type: string, entry: TypeEntry): () => void {
+        if (type === Event.ENTER_FRAME) {
+            if (!(this.host instanceof LayaNode))
+                throw new TypeError("Flash enterFrame requires a native display host");
+            const timer = ILaya.timer;
+            if (!timer) throw new Error("Laya timer is unavailable for Flash enterFrame");
+            timer.frameLoop(1, this, entry.forward);
+            return () => timer.clear(this, entry.forward);
+        }
+        this.host.on(entry.nativeType, this, entry.forward);
+        return () => { this.host.off(entry.nativeType, this, entry.forward); };
     }
 
     private _forward(type: string, value?: unknown): void {
@@ -170,6 +201,16 @@ export class FlashEventRouter {
                 throw new TypeError(`Native ${type} requires a Laya Event payload`);
             return MouseEvent._fromNative(type, value, target);
         }
+        if (type === KeyboardEvent.KEY_DOWN || type === KeyboardEvent.KEY_UP) {
+            if (!(value instanceof LayaEvent))
+                throw new TypeError(`Native ${type} requires a Laya Event payload`);
+            return KeyboardEvent._fromNative(type, value);
+        }
+        if (type === IOErrorEvent.IO_ERROR || type === IOErrorEvent.DISK_ERROR
+            || type === IOErrorEvent.NETWORK_ERROR || type === IOErrorEvent.VERIFY_ERROR)
+            return IOErrorEvent._fromNative(type, value);
+        if (type === TimerEvent.TIMER || type === TimerEvent.TIMER_COMPLETE)
+            return new TimerEvent(type);
         if (type === Event.ADDED || type === Event.REMOVED)
             return new Event(type, true, false);
         if (type === FocusEvent.FOCUS_IN || type === FocusEvent.FOCUS_OUT) {

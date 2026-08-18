@@ -14,7 +14,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "cbbc442ae50c6359921dbf2604dd37fd2051213e334de6cb51e5c3435b15b31a"
+      "moduleSha256": "4ce11c250fb9597dae964c49ea04fb8c3f254cdbaec24020106a69fbcedcb716"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -32,6 +32,20 @@
         "flash.display.DisplayObject"
       ],
       "moduleSha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27"
+    },
+    {
+      "sourceQName": "flash.display.Graphics",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Graphics.ts",
+      "constructorExport": "Graphics",
+      "constructorSignature": "typeof Graphics",
+      "constructSignatures": [
+        "new (): Graphics"
+      ],
+      "predicateExport": "isFlashGraphics",
+      "predicateSignature": "(value: unknown) => value is Graphics",
+      "heritageClosure": [],
+      "moduleSha256": "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
     },
     {
       "sourceQName": "flash.display.InteractiveObject",
@@ -69,6 +83,22 @@
       "moduleSha256": "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba"
     },
     {
+      "sourceQName": "flash.display.Shape",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Shape.ts",
+      "constructorExport": "Shape",
+      "constructorSignature": "typeof Shape",
+      "constructSignatures": [
+        "new (): Shape"
+      ],
+      "predicateExport": "isFlashShape",
+      "predicateSignature": "(value: unknown) => value is Shape",
+      "heritageClosure": [
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21"
+    },
+    {
       "sourceQName": "flash.display.SimpleButton",
       "targetCapabilityId": "api.flash.display",
       "targetModule": "src/layaAir/flash/display/SimpleButton.ts",
@@ -101,7 +131,24 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "be3a2a8e0b45d0652be933c019f6c2628a7b0257664b5062d5f88fb5e22d11b9"
+      "moduleSha256": "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6"
+    },
+    {
+      "sourceQName": "flash.events.ErrorEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/ErrorEvent.ts",
+      "constructorExport": "ErrorEvent",
+      "constructorSignature": "typeof ErrorEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, errorID?: number): ErrorEvent"
+      ],
+      "predicateExport": "isFlashErrorEvent",
+      "predicateSignature": "(value: unknown) => value is ErrorEvent",
+      "heritageClosure": [
+        "flash.events.TextEvent",
+        "flash.events.Event"
+      ],
+      "moduleSha256": "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f"
     },
     {
       "sourceQName": "flash.events.Event",
@@ -148,6 +195,40 @@
       "moduleSha256": "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25"
     },
     {
+      "sourceQName": "flash.events.IOErrorEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/IOErrorEvent.ts",
+      "constructorExport": "IOErrorEvent",
+      "constructorSignature": "typeof IOErrorEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, errorID?: number): IOErrorEvent"
+      ],
+      "predicateExport": "isFlashIOErrorEvent",
+      "predicateSignature": "(value: unknown) => value is IOErrorEvent",
+      "heritageClosure": [
+        "flash.events.ErrorEvent",
+        "flash.events.TextEvent",
+        "flash.events.Event"
+      ],
+      "moduleSha256": "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d"
+    },
+    {
+      "sourceQName": "flash.events.KeyboardEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/KeyboardEvent.ts",
+      "constructorExport": "KeyboardEvent",
+      "constructorSignature": "typeof KeyboardEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, charCode?: number, keyCode?: number, keyLocation?: number, ctrlKey?: boolean, altKey?: boolean, shiftKey?: boolean, controlKey?: boolean, commandKey?: boolean): KeyboardEvent"
+      ],
+      "predicateExport": "isFlashKeyboardEvent",
+      "predicateSignature": "(value: unknown) => value is KeyboardEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "fe4066d6474a605e7ff3b686c59d59f4d184afdf0a6070a54922327e42e1d884"
+    },
+    {
       "sourceQName": "flash.events.MouseEvent",
       "targetCapabilityId": "api.flash.events",
       "targetModule": "src/layaAir/flash/events/MouseEvent.ts",
@@ -180,6 +261,22 @@
       "moduleSha256": "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273"
     },
     {
+      "sourceQName": "flash.events.TimerEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/TimerEvent.ts",
+      "constructorExport": "TimerEvent",
+      "constructorSignature": "typeof TimerEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean): TimerEvent"
+      ],
+      "predicateExport": "isFlashTimerEvent",
+      "predicateSignature": "(value: unknown) => value is TimerEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f"
+    },
+    {
       "sourceQName": "flash.geom.Point",
       "targetCapabilityId": "api.flash.geom",
       "targetModule": "src/layaAir/flash/geom/Point.ts",
@@ -206,6 +303,20 @@
       "predicateSignature": "(value: unknown) => value is Rectangle",
       "heritageClosure": [],
       "moduleSha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6"
+    },
+    {
+      "sourceQName": "flash.net.URLRequest",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/URLRequest.ts",
+      "constructorExport": "URLRequest",
+      "constructorSignature": "typeof URLRequest",
+      "constructSignatures": [
+        "new (url?: string | null): URLRequest"
+      ],
+      "predicateExport": "isFlashURLRequest",
+      "predicateSignature": "(value: unknown) => value is URLRequest",
+      "heritageClosure": [],
+      "moduleSha256": "4a21c6fd46989c1f6e8f79c0be3d7c9879a48bea2fdc2e8ac2dd04f76b468469"
     },
     {
       "sourceQName": "flash.text.TextField",
