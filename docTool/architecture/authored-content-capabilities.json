@@ -1356,7 +1356,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -2362,7 +2362,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "cad70f5d6a05f4dcedf72ba39ce528ba4aa9d593d1d2ca9976e398530209ce18",
+          "sha256": "3fec24445b97286a2f3115095bf24265d9dc830f04096448bc4471c1ea1ff4ca",
           "heritage": [
             {
               "kind": "extends",
@@ -3485,7 +3485,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -5637,7 +5637,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -7852,7 +7852,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -10176,7 +10176,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -12382,7 +12382,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,
@@ -13441,11 +13441,11 @@
           "capability": "api.flash.display",
           "covers": [
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
+            "3fec24445b97286a2f3115095bf24265d9dc830f04096448bc4471c1ea1ff4ca",
             "7a6eef8afaeedf5ee9e27fcd4ec04f2e88212b2860bf1940c495ade79635a549",
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
             "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
-            "cad70f5d6a05f4dcedf72ba39ce528ba4aa9d593d1d2ca9976e398530209ce18",
             "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
           ]
         }
@@ -17629,7 +17629,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
+              "signature": "(out?: Rectangle) => Rectangle"
             },
             {
               "abstract": false,

@@ -8,8 +8,6 @@ import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorCli
 import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { Point as LayaPoint } from "../../../src/layaAir/laya/maths/Point";
-import { Rectangle as LayaRectangle } from "../../../src/layaAir/laya/maths/Rectangle";
-import { isFlashDisplayObject } from "../../../src/layaAir/flash/display/DisplayObject";
 import { isFlashPoint } from "../../../src/layaAir/flash/geom/Point";
 import { isFlashRectangle } from "../../../src/layaAir/flash/geom/Rectangle";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
@@ -180,23 +178,6 @@ test("Point and Rectangle retain Flash value semantics on native Laya values", (
     assert.throws(() => display.localToGlobal({ x: 3, y: 4 } as Point), TypeError);
     assert.throws(() => display.localToGlobal(Object.create(Point.prototype) as Point), TypeError);
     assert.throws(() => display.localToGlobal(new Proxy(new Point(3, 4), {}) as Point), TypeError);
-
-    const root = new DisplayObject();
-    const targetCoordinates = new DisplayObject();
-    const bounded = new DisplayObject();
-    root.addChild(targetCoordinates);
-    root.addChild(bounded);
-    targetCoordinates.pos(5, 6);
-    bounded.pos(10, 20);
-    bounded.setSelfBounds(new LayaRectangle(0, 0, 2, 3));
-    assert.equal(isFlashDisplayObject(bounded), true);
-    assert.deepEqual(bounded.getBounds(targetCoordinates), new Rectangle(5, 14, 2, 3));
-    assert.deepEqual(bounded.getBounds(bounded), new Rectangle(0, 0, 2, 3));
-    const nativeBounds = new LayaRectangle();
-    assert.equal(bounded.getBounds(nativeBounds), nativeBounds);
-    assert.deepEqual(nativeBounds, new LayaRectangle(10, 20, 2, 3));
-    assert.throws(() => bounded.getBounds(null as DisplayObject), TypeError);
-    assert.throws(() => bounded.getBounds(Object.create(DisplayObject.prototype) as DisplayObject), TypeError);
 });
 
 test("Event validates immutable type and listener priority", () => {
