@@ -57,7 +57,7 @@ import {
     AntiAliasType, CSMSettings, GridFitType,
     TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
     Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
-    UnsupportedFlashFeatureError, URLRequest, isFlashCSMSettings, isFlashTextFormat
+    UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
@@ -528,6 +528,126 @@ test("URLRequest preserves exact descriptor bytes and never opens transport", ()
     });
     assert.throws(() => new URLRequest(1 as unknown as string), /string or null/);
     assert.equal(Object.keys(request).some(key => /socket|transport/i.test(key)), false);
+});
+
+test("navigateToURL admits only canonical trap-free GET/_blank browser navigation", () => {
+    const previousWindow = Browser.window;
+    const previousDomSupport = Browser.isDomSupported;
+    const originalHasInstance = Object.getOwnPropertyDescriptor(URLRequest, Symbol.hasInstance);
+    const opened: unknown[][] = [];
+    let locationReads = 0;
+    let hrefReads = 0;
+    let openReads = 0;
+    const fakeLocation = {} as Location;
+    Object.defineProperty(fakeLocation, "href", {
+        configurable: true,
+        get(): string { hrefReads++; return "https://client.example/game/index.html"; },
+    });
+    const fakeWindow = {} as Window & typeof globalThis;
+    Object.defineProperty(fakeWindow, "location", {
+        configurable: true,
+        get(): Location { locationReads++; return fakeLocation; },
+    });
+    Object.defineProperty(fakeWindow, "open", {
+        configurable: true,
+        get(): (...args: unknown[]) => null {
+            openReads++;
+            return (...args: unknown[]): null => { opened.push(args); return null; };
+        },
+    });
+
+    try {
+        Browser.isDomSupported = true;
+        Browser.window = fakeWindow;
+
+        assert.throws(() => navigateToURL(new URLRequest("javascript:alert(1)"), "_blank"), UnsupportedFlashFeatureError);
+        assert.throws(() => navigateToURL(new URLRequest("data:text/plain,blocked"), "_blank"), UnsupportedFlashFeatureError);
+        assert.throws(() => navigateToURL(new URLRequest("https://[invalid"), "_blank"), /valid absolute or browser-relative URL/);
+        assert.deepEqual([locationReads, hrefReads, openReads, opened.length], [0, 0, 0, 0]);
+
+        const header = { name: "X-Blocked", value: "exact" };
+        const pushPop = new URLRequest("https://example.test/");
+        pushPop.requestHeaders.push(header);
+        pushPop.requestHeaders.pop();
+        const setDelete = new URLRequest("https://example.test/");
+        setDelete.requestHeaders[0] = header;
+        delete setDelete.requestHeaders[0];
+        const lengthGrowShrink = new URLRequest("https://example.test/");
+        lengthGrowShrink.requestHeaders.length = 2;
+        lengthGrowShrink.requestHeaders.length = 0;
+        const defineDelete = new URLRequest("https://example.test/");
+        Object.defineProperty(defineDelete.requestHeaders, "0", {
+            configurable: true, enumerable: true, writable: true, value: header,
+        });
+        delete defineDelete.requestHeaders[0];
+        const prototypeChange = new URLRequest("https://example.test/");
+        Object.setPrototypeOf(prototypeChange.requestHeaders, null);
+        const preventExtensions = new URLRequest("https://example.test/");
+        Object.preventExtensions(preventExtensions.requestHeaders);
+        const outerForward = new URLRequest("https://example.test/");
+        const outerHeaders = new Proxy(outerForward.requestHeaders, {});
+        outerHeaders.push(header);
+        outerHeaders.pop();
+        for (const value of [pushPop, setDelete, lengthGrowShrink, defineDelete,
+            prototypeChange, preventExtensions, outerForward])
+            assert.throws(() => navigateToURL(value, "_blank"), UnsupportedFlashFeatureError);
+        assert.deepEqual([locationReads, hrefReads, openReads, opened.length], [0, 0, 0, 0]);
+
+        const request = new URLRequest("../account/register?from=game%2Fmenu");
+        const getterCounts = { url: 0, method: 0, data: 0, contentType: 0, requestHeaders: 0 };
+        for (const name of Object.keys(getterCounts) as Array<keyof typeof getterCounts>) {
+            Object.defineProperty(request, name, {
+                configurable: true,
+                get(): never { getterCounts[name]++; throw new Error(`hostile ${name} getter`); },
+            });
+        }
+        navigateToURL(request, "_blank");
+        assert.deepEqual(getterCounts, { url: 0, method: 0, data: 0, contentType: 0, requestHeaders: 0 });
+        assert.deepEqual([locationReads, hrefReads, openReads], [1, 1, 1]);
+        assert.deepEqual(opened, [["../account/register?from=game%2Fmenu", "_blank", "noopener"]]);
+
+        let proxyTraps = 0;
+        const proxied = new Proxy(new URLRequest("https://example.test/"), {
+            get(): never { proxyTraps++; throw new Error("proxy get trap"); },
+            getPrototypeOf(): never { proxyTraps++; throw new Error("proxy prototype trap"); },
+        });
+        assert.throws(() => navigateToURL(proxied, "_blank"), /canonical URLRequest/);
+        assert.equal(proxyTraps, 0);
+        assert.throws(() => navigateToURL(Object.create(URLRequest.prototype), "_blank"), /canonical URLRequest/);
+        assert.throws(() => navigateToURL({ url: "https://example.test/" } as URLRequest, "_blank"), /canonical URLRequest/);
+        Object.defineProperty(URLRequest, Symbol.hasInstance, { configurable: true, value: () => true });
+        assert.throws(() => navigateToURL({} as URLRequest, "_blank"), /canonical URLRequest/);
+
+        const unsupported = [
+            Object.assign(new URLRequest("https://example.test/"), { method: "POST" }),
+            Object.assign(new URLRequest("https://example.test/"), { data: "payload" }),
+            Object.assign(new URLRequest("https://example.test/"), { contentType: "text/plain" }),
+            Object.assign(new URLRequest("https://example.test/"), { requestHeaders: [] }),
+        ];
+        const mutatedDefaultHeaders = new URLRequest("https://example.test/");
+        mutatedDefaultHeaders.requestHeaders.push({ name: "X-Blocked", value: "exact" });
+        unsupported.push(mutatedDefaultHeaders);
+        for (const value of unsupported) assert.throws(() => navigateToURL(value, "_blank"), UnsupportedFlashFeatureError);
+        assert.throws(() => navigateToURL(new URLRequest("https://example.test/"), "_self"), UnsupportedFlashFeatureError);
+        assert.throws(() => navigateToURL(new URLRequest(), "_blank"), /non-empty URL/);
+        assert.throws(() => navigateToURL(new URLRequest("   "), "_blank"), /non-empty URL/);
+        assert.equal(opened.length, 1);
+
+        Browser.isDomSupported = false;
+        assert.throws(() => navigateToURL(new URLRequest("https://example.test/"), "_blank"), /browser navigation is unavailable/);
+        Browser.isDomSupported = true;
+        Browser.window = null as unknown as Window & typeof globalThis;
+        assert.throws(() => navigateToURL(new URLRequest("https://example.test/"), "_blank"), /browser navigation is unavailable/);
+        Browser.window = { location: fakeLocation } as unknown as Window & typeof globalThis;
+        assert.throws(() => navigateToURL(new URLRequest("https://example.test/"), "_blank"), /browser navigation is unavailable/);
+        assert.equal(opened.length, 1);
+        assert.equal(openReads, 1);
+    } finally {
+        Browser.window = previousWindow;
+        Browser.isDomSupported = previousDomSupport;
+        if (originalHasInstance) Object.defineProperty(URLRequest, Symbol.hasInstance, originalHasInstance);
+        else delete (URLRequest as unknown as Record<PropertyKey, unknown>)[Symbol.hasInstance];
+    }
 });
 
 test("native keyboard ingress projects one exact Flash KeyboardEvent", () => {

@@ -75,6 +75,15 @@ for (const [module, exported] of [
         geometryCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+const netCapability = ledger.capabilities.find(item => item.id === "api.flash.net");
+const netSubjects = [
+    ["src/layaAir/flash/net/URLRequest.ts", "URLRequest", "class"],
+    ["src/layaAir/flash/net/URLRequest.ts", "navigateToURL", "function"],
+];
+netCapability.obligations = netSubjects.map(([module, exported, kind]) =>
+    netCapability.obligations.find(item => item.module === module && item.export === exported)
+    || { module, export: exported, kind, signature: "", ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
+
 let filterCapability = ledger.capabilities.find(item => item.id === "api.flash.filters");
 if (!filterCapability) {
     filterCapability = {

@@ -29,7 +29,7 @@ export { Point } from "./geom/Point";
 export { Rectangle } from "./geom/Rectangle";
 export * from "./text/TextField";
 export * from "./text/TextFormat";
-export { URLRequest } from "./net/URLRequest";
+export { URLRequest, navigateToURL } from "./net/URLRequest";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";
 export { BlurFilter } from "./filters/BlurFilter";

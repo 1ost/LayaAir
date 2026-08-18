@@ -26773,7 +26773,7 @@
           "members": [
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "contentType",
               "scope": "instance",
               "optional": false,
@@ -26782,7 +26782,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "data",
               "scope": "instance",
               "optional": false,
@@ -26791,7 +26791,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "method",
               "scope": "instance",
               "optional": false,
@@ -26800,7 +26800,7 @@
             },
             {
               "abstract": false,
-              "kind": "property",
+              "kind": "get+set",
               "name": "requestHeaders",
               "scope": "instance",
               "optional": false,
@@ -26821,18 +26821,25 @@
             "new (url?: string | null): URLRequest"
           ],
           "indexSignatures": [],
-          "sha256": "4a21c6fd46989c1f6e8f79c0be3d7c9879a48bea2fdc2e8ac2dd04f76b468469",
+          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/net/URLRequest.ts",
+          "export": "navigateToURL",
+          "kind": "function",
+          "signature": "(request: URLRequest, target: string) => void",
+          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashNetBridgeEvidence.test.ts",
           "test": "Flash net bridge compiler surface",
-          "sha256": "28b87159570ab174e0874c7c52d24ec7f1226d26913d596f3149d84472ed9f81",
+          "sha256": "b1a686a8e48be5a1e8aefecd371549d42e3b6cc3c04af7484a857d6c020883ce",
           "capability": "api.flash.net",
           "covers": [
-            "4a21c6fd46989c1f6e8f79c0be3d7c9879a48bea2fdc2e8ac2dd04f76b468469"
+            "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
           ]
         }
       ]
