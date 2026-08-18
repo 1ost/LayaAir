@@ -22,3 +22,5 @@ export class TextEvent extends Event {
         return new TextEvent(this.type, this.bubbles, this.cancelable, this.text);
     }
 }
+
+Object.freeze(TextEvent);

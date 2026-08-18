@@ -119,3 +119,5 @@ export class Event {
         this._nativeControl = control;
     }
 }
+
+Object.freeze(Event);

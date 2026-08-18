@@ -95,3 +95,5 @@ export class MouseEvent extends Event {
             value.delta ?? 0, false, false, value.isDblClick ? 2 : 1, stageX, stageY);
     }
 }
+
+Object.freeze(MouseEvent);

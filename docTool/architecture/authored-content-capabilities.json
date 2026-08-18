@@ -20495,7 +20495,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, errorID?: number): IOErrorEvent"
           ],
           "indexSignatures": [],
-          "sha256": "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d",
+          "sha256": "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
           "heritage": [
             {
               "kind": "extends",
@@ -20982,7 +20982,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, charCode?: number, keyCode?: number, keyLocation?: number, ctrlKey?: boolean, altKey?: boolean, shiftKey?: boolean, controlKey?: boolean, commandKey?: boolean): KeyboardEvent"
           ],
           "indexSignatures": [],
-          "sha256": "fe4066d6474a605e7ff3b686c59d59f4d184afdf0a6070a54922327e42e1d884",
+          "sha256": "158d1fed0fc6e316d3199fabf21c081f636193fd5be894dc302a622dade894a1",
           "heritage": [
             {
               "kind": "extends",
@@ -21388,7 +21388,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean): TimerEvent"
           ],
           "indexSignatures": [],
-          "sha256": "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f",
+          "sha256": "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81",
           "heritage": [
             {
               "kind": "extends",
@@ -21401,7 +21401,7 @@
           "export": "EventPhase",
           "kind": "const",
           "signature": "Readonly<{ readonly CAPTURING_PHASE: 1; readonly AT_TARGET: 2; readonly BUBBLING_PHASE: 3; }>",
-          "sha256": "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd"
+          "sha256": "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
         },
         {
           "module": "src/layaAir/flash/events/Event.ts",
@@ -21774,7 +21774,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean): Event"
           ],
           "indexSignatures": [],
-          "sha256": "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd",
+          "sha256": "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542",
           "heritage": []
         },
         {
@@ -22581,7 +22581,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, localX?: number, localY?: number, relatedObject?: unknown, ctrlKey?: boolean, altKey?: boolean, shiftKey?: boolean, buttonDown?: boolean, delta?: number, _commandKey?: boolean, _controlKey?: boolean, clickCount?: number, stageX?: number, stageY?: number): MouseEvent"
           ],
           "indexSignatures": [],
-          "sha256": "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c",
+          "sha256": "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
           "heritage": [
             {
               "kind": "extends",
@@ -23096,7 +23096,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, relatedObject?: unknown, shiftKey?: boolean, keyCode?: number, isRelatedObjectInaccessible?: boolean): FocusEvent"
           ],
           "indexSignatures": [],
-          "sha256": "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25",
+          "sha256": "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
           "heritage": [
             {
               "kind": "extends",
@@ -23926,7 +23926,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string): TextEvent"
           ],
           "indexSignatures": [],
-          "sha256": "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273",
+          "sha256": "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d",
           "heritage": [
             {
               "kind": "extends",
@@ -23946,7 +23946,7 @@
           "export": "isFlashEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is Event",
-          "sha256": "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd"
+          "sha256": "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
         },
         {
           "module": "src/layaAir/flash/events/EventDispatcher.ts",
@@ -23981,42 +23981,42 @@
           "export": "isFlashFocusEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is FocusEvent",
-          "sha256": "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25"
+          "sha256": "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb"
         },
         {
           "module": "src/layaAir/flash/events/IOErrorEvent.ts",
           "export": "isFlashIOErrorEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is IOErrorEvent",
-          "sha256": "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d"
+          "sha256": "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782"
         },
         {
           "module": "src/layaAir/flash/events/KeyboardEvent.ts",
           "export": "isFlashKeyboardEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is KeyboardEvent",
-          "sha256": "fe4066d6474a605e7ff3b686c59d59f4d184afdf0a6070a54922327e42e1d884"
+          "sha256": "158d1fed0fc6e316d3199fabf21c081f636193fd5be894dc302a622dade894a1"
         },
         {
           "module": "src/layaAir/flash/events/MouseEvent.ts",
           "export": "isFlashMouseEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is MouseEvent",
-          "sha256": "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c"
+          "sha256": "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70"
         },
         {
           "module": "src/layaAir/flash/events/TextEvent.ts",
           "export": "isFlashTextEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is TextEvent",
-          "sha256": "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273"
+          "sha256": "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d"
         },
         {
           "module": "src/layaAir/flash/events/TimerEvent.ts",
           "export": "isFlashTimerEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is TimerEvent",
-          "sha256": "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f"
+          "sha256": "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81"
         }
       ],
       "evidence": [
@@ -24026,18 +24026,18 @@
           "sha256": "9f3b68b046579b0b2ea35a80bbcb76bfa2e150914e6081c478740f0270816415",
           "capability": "api.flash.events",
           "covers": [
-            "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25",
-            "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273",
+            "158d1fed0fc6e316d3199fabf21c081f636193fd5be894dc302a622dade894a1",
             "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc",
+            "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d",
+            "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f",
-            "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
-            "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d",
+            "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
-            "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c",
-            "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd",
-            "fe4066d6474a605e7ff3b686c59d59f4d184afdf0a6070a54922327e42e1d884"
+            "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
+            "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
+            "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
           ]
         }
       ]

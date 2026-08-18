@@ -72,3 +72,5 @@ export class KeyboardEvent extends Event {
             data.ctrlKey === true, data.metaKey === true);
     }
 }
+
+Object.freeze(KeyboardEvent);

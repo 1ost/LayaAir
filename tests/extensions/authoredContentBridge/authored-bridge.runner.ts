@@ -698,6 +698,36 @@ test("IOErrorEvent and TimerEvent retain used hierarchy, constants and fields", 
     assert.throws(() => timer.updateAfterEvent(), UnsupportedFlashFeatureError);
 });
 
+test("maintained Flash event constants are immutable", () => {
+    assert.deepEqual([
+        Event.ACTIVATE, Event.ADDED, Event.ADDED_TO_STAGE, Event.CHANGE, Event.CLOSE, Event.COMPLETE,
+        Event.CONNECT, Event.DEACTIVATE, Event.ENTER_FRAME, Event.INIT, Event.REMOVED_FROM_STAGE,
+        Event.RESIZE, Event.SOUND_COMPLETE,
+        FocusEvent.FOCUS_IN, FocusEvent.FOCUS_OUT,
+        IOErrorEvent.DISK_ERROR, IOErrorEvent.IO_ERROR, IOErrorEvent.NETWORK_ERROR,
+        KeyboardEvent.KEY_DOWN, KeyboardEvent.KEY_UP,
+        MouseEvent.CLICK, MouseEvent.DOUBLE_CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_MOVE,
+        MouseEvent.MOUSE_OUT, MouseEvent.MOUSE_OVER, MouseEvent.MOUSE_UP, MouseEvent.MOUSE_WHEEL,
+        MouseEvent.ROLL_OUT, MouseEvent.ROLL_OVER,
+        TextEvent.LINK, TextEvent.TEXT_INPUT,
+        TimerEvent.TIMER, TimerEvent.TIMER_COMPLETE,
+    ], [
+        "activate", "added", "addedToStage", "change", "close", "complete", "connect", "deactivate",
+        "enterFrame", "init", "removedFromStage", "resize", "soundComplete",
+        "focusIn", "focusOut", "diskError", "ioError", "networkError", "keyDown", "keyUp",
+        "click", "doubleClick", "mouseDown", "mouseMove", "mouseOut", "mouseOver", "mouseUp",
+        "mouseWheel", "rollOut", "rollOver", "link", "textInput", "timer", "timerComplete",
+    ]);
+    for (const constructor of [Event, FocusEvent, IOErrorEvent, KeyboardEvent, MouseEvent, TextEvent, TimerEvent]) {
+        assert.equal(Object.isFrozen(constructor), true, constructor.name);
+        const stringConstants = Object.values(Object.getOwnPropertyDescriptors(constructor))
+            .filter(descriptor => "value" in descriptor && typeof descriptor.value === "string");
+        assert.ok(stringConstants.length > 0, constructor.name);
+        assert.equal(stringConstants.every(descriptor => descriptor.writable === false
+            && descriptor.configurable === false), true, constructor.name);
+    }
+});
+
 test("Flash Graphics owns state while preserving native command storage", () => {
     const sprite = new Sprite();
     const graphics = sprite.graphics;

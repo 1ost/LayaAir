@@ -28,3 +28,5 @@ export class FocusEvent extends Event {
             this.shiftKey, this.keyCode, this.isRelatedObjectInaccessible);
     }
 }
+
+Object.freeze(FocusEvent);

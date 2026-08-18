@@ -26,3 +26,5 @@ export class TimerEvent extends Event {
         throw new UnsupportedFlashFeatureError("flash.events.TimerEvent.updateAfterEvent", "Laya owns render scheduling");
     }
 }
+
+Object.freeze(TimerEvent);

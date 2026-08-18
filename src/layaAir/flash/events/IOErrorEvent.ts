@@ -39,3 +39,5 @@ export class IOErrorEvent extends ErrorEvent {
         return new IOErrorEvent(type, false, false, text, errorID as number);
     }
 }
+
+Object.freeze(IOErrorEvent);
