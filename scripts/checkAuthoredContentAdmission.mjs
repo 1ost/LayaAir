@@ -39,7 +39,7 @@ timeline.frames-labels timeline.property-track timeline.nested-symbol timeline.m
 binding.event binding.typed-handler localization.text localization.media localization.layout
 identity.persistent patch.semantic reimport.three-way
 native.prefab native.scene native.animation-clip native.animation-controller publish.atlas source.executable-code
-api.flash.display api.flash.events api.flash.geom api.flash.text api.flash.net api.flash.utils
+api.flash.display api.flash.events api.flash.geom api.flash.text api.flash.net api.flash.utils api.flash.filters
 `.trim().split(/\s+/));
 const REQUIRED_POLICY_VALUES = Object.freeze({
     schema: "laya-authored-content-admission-policy@1",
@@ -54,8 +54,15 @@ const REQUIRED_POLICY_VALUES = Object.freeze({
     runtimeIdentity: "Laya.AuthoredTimelineClip",
     currentDocumentSchema: "neutral-authored-content@1",
 });
-const REQUIRED_FLASH_NAMESPACES = ["flash.display", "flash.events", "flash.geom", "flash.text", "flash.net", "flash.utils"];
+const REQUIRED_FLASH_NAMESPACES = ["flash.display", "flash.events", "flash.geom", "flash.text", "flash.net", "flash.utils", "flash.filters"];
 const REQUIRED_STATUSES = ["native", "declarative", "typescript-obligation", "evidence", "blocking"];
+const BITMAP_FILTER_BASE = "src/layaAir/flash/filters/BitmapFilter.ts";
+const ADMITTED_BITMAP_FILTER_SUBCLASSES = new Set([
+    "src/layaAir/flash/filters/BlurFilter.ts",
+    "src/layaAir/flash/filters/ColorMatrixFilter.ts",
+    "src/layaAir/flash/filters/DropShadowFilter.ts",
+    "src/layaAir/flash/filters/GlowFilter.ts",
+]);
 
 function normalize(value) {
     return value.replaceAll("\\", "/");
@@ -576,6 +583,14 @@ function inspectCode(root, files, program, options, policy, failures) {
                     failures.push(`${file}: Flash API bridge may not contain authored-asset reader/parser class ${declaredName}`);
                 if (role === "flash-api" && classTokens.includes("trait"))
                     failures.push(`${file}: Flash API bridge may not declare AVM-style trait class ${declaredName}`);
+                const extendsBitmapFilter = node.heritageClauses?.some(clause => clause.token === ts.SyntaxKind.ExtendsKeyword
+                    && clause.types.some(type => {
+                        let symbol = checker.getSymbolAtLocation(type.expression);
+                        if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+                        return symbol?.declarations?.some(declaration => normalize(path.relative(root, declaration.getSourceFile().fileName)) === BITMAP_FILTER_BASE);
+                    })) || false;
+                if (extendsBitmapFilter && !ADMITTED_BITMAP_FILTER_SUBCLASSES.has(file))
+                    failures.push(`${file}: BitmapFilter is a closed Flash value base and may only be extended by admitted native filter classes`);
             }
             if (ts.isExportSpecifier(node) && node.propertyName && node.propertyName.text !== node.name.text
                 && (tokens(node.propertyName.text).includes("authored") || tokens(node.name.text).includes("authored")))
@@ -1176,6 +1191,33 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
             const modifiers = ts.getModifiers(memberDeclaration) || [];
             const declarationKinds = (member.declarations || []).map(item => ts.SyntaxKind[item.kind]);
             const accessorKinds = [declarationKinds.includes("GetAccessor") ? "get" : null, declarationKinds.includes("SetAccessor") ? "set" : null].filter(Boolean);
+            let signature = logicalCompilerSignature(root, code.checker.typeToString(
+                code.checker.getTypeOfSymbolAtLocation(member, memberDeclaration),
+                memberDeclaration,
+                ts.TypeFormatFlags.NoTruncation,
+            ));
+            const localAccessors = declaration.members.filter(item =>
+                (ts.isGetAccessorDeclaration(item) || ts.isSetAccessorDeclaration(item))
+                && item.name.getText() === member.name);
+            const getterDeclaration = localAccessors.find(ts.isGetAccessorDeclaration)
+                || member.declarations?.find(ts.isGetAccessorDeclaration);
+            const setterDeclaration = localAccessors.find(ts.isSetAccessorDeclaration)
+                || member.declarations?.find(ts.isSetAccessorDeclaration);
+            if (getterDeclaration && setterDeclaration && setterDeclaration.parameters.length === 1) {
+                const getterCall = code.checker.getSignatureFromDeclaration(getterDeclaration);
+                const getterType = getterCall && code.checker.getReturnTypeOfSignature(getterCall);
+                const setterType = code.checker.getTypeAtLocation(setterDeclaration.parameters[0]);
+                const getterSignature = getterDeclaration.type
+                    ? logicalCompilerSignature(root, getterDeclaration.type.getText())
+                    : getterType && logicalCompilerSignature(root,
+                        code.checker.typeToString(getterType, getterDeclaration, ts.TypeFormatFlags.NoTruncation));
+                const setterSignature = setterDeclaration.parameters[0].type
+                    ? logicalCompilerSignature(root, setterDeclaration.parameters[0].type.getText())
+                    : logicalCompilerSignature(root,
+                        code.checker.typeToString(setterType, setterDeclaration, ts.TypeFormatFlags.NoTruncation));
+                if (getterSignature && getterSignature !== setterSignature)
+                    signature = `get ${getterSignature}; set ${setterSignature}`;
+            }
             return {
                 abstract: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword),
                 kind: accessorKinds.length > 0 ? accessorKinds.join("+")
@@ -1184,11 +1226,7 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
                 scope,
                 optional: Boolean(member.flags & ts.SymbolFlags.Optional || memberDeclaration.questionToken),
                 readonly: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ReadonlyKeyword),
-                signature: logicalCompilerSignature(root, code.checker.typeToString(
-                    code.checker.getTypeOfSymbolAtLocation(member, memberDeclaration),
-                    memberDeclaration,
-                    ts.TypeFormatFlags.NoTruncation,
-                )),
+                signature,
             };
         });
         const actualMembers = [...collectMembers(instanceType, "instance"), ...collectMembers(classType, "static")]
@@ -1205,7 +1243,12 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
                     ? logicalCompilerSignature(root, member.signature) : member?.signature,
             })).sort((a, b) => `${a.scope}:${a.name}`.localeCompare(`${b.scope}:${b.name}`))
             : null;
-        const actualConstructors = classType.getConstructSignatures().map(signature => logicalCompilerSignature(root, code.checker.signatureToString(
+        const classModifiers = ts.getModifiers(declaration) || [];
+        const sourceConstructors = declaration.members.filter(ts.isConstructorDeclaration);
+        const isNonConstructibleClass = classModifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword)
+            || sourceConstructors.some(constructor => (ts.getModifiers(constructor) || []).some(modifier =>
+                modifier.kind === ts.SyntaxKind.PrivateKeyword || modifier.kind === ts.SyntaxKind.ProtectedKeyword));
+        const actualConstructors = isNonConstructibleClass ? [] : classType.getConstructSignatures().map(signature => logicalCompilerSignature(root, code.checker.signatureToString(
             signature,
             declaration,
             ts.TypeFormatFlags.NoTruncation,

@@ -28,6 +28,9 @@
     "test:authored-content": "npm --prefix src/extensions/authoredContent run test",
     "test:authored-bridge": "node scripts/testAuthoredContentBridge.mjs",
     "test:authored-bridge:types": "tsc -p tests/extensions/authoredContentBridge/tsconfig.json --pretty false",
+    "test:flash-filters": "node scripts/testFlashFilters.mjs",
+    "test:flash-filters:types": "tsc -p tests/flashFilters/tsconfig.json --pretty false",
+    "test:flash-filters:gpu": "node scripts/testFlashFiltersGpu.mjs",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

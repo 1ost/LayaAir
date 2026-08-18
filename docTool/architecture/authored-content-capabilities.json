@@ -146,8 +146,25 @@
     },
     {
       "id": "rendering.filter",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "native",
+      "artifacts": [
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
+          "export": "FlashBlurEffect2D",
+          "sha256": "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
+          "test": "Flash filter bridge compiler surface and native effect ownership",
+          "sha256": "f50dc6078e7bbcdf89203a22bdd48f85514f992f0d5ba14a939edc1ca609ec6b",
+          "capability": "rendering.filter",
+          "covers": [
+            "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+          ]
+        }
+      ]
     },
     {
       "id": "rendering.cache",
@@ -1823,7 +1840,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -2012,7 +2029,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Graphics"
+              "signature": "get Graphics; set LayaGraphics"
             },
             {
               "abstract": false,
@@ -3930,7 +3947,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -4981,7 +4998,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "4ce11c250fb9597dae964c49ea04fb8c3f254cdbaec24020106a69fbcedcb716",
+          "sha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b",
           "heritage": [
             {
               "kind": "extends",
@@ -6050,7 +6067,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -8202,7 +8219,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -10399,7 +10416,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -10633,7 +10650,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Graphics"
+              "signature": "get Graphics; set LayaGraphics"
             },
             {
               "abstract": false,
@@ -12741,7 +12758,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -14947,7 +14964,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -15145,7 +15162,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Graphics"
+              "signature": "get Graphics; set LayaGraphics"
             },
             {
               "abstract": false,
@@ -17108,7 +17125,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -18453,10 +18470,10 @@
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
+            "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
-            "4ce11c250fb9597dae964c49ea04fb8c3f254cdbaec24020106a69fbcedcb716",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "9c08e0387489372ace4fff8b5e45e34bf53c91be0db69f3ef45395b4873881f8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
@@ -24396,7 +24413,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Filter[]"
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
             },
             {
               "abstract": false,
@@ -26685,6 +26702,986 @@
       "id": "api.flash.utils",
       "status": "blocking",
       "blockingReason": "The universal source-visible utilities API bridge is not yet admitted on the consolidated engine base."
+    },
+    {
+      "id": "api.flash.filters",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/filters/BitmapFilter.ts",
+          "export": "BitmapFilter",
+          "kind": "class",
+          "signature": "typeof BitmapFilter",
+          "members": [
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => BitmapFilter"
+            },
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "LayaFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/BitmapFilter.ts",
+          "export": "bitmapFilterNumberEquals",
+          "kind": "function",
+          "signature": "(left: number, right: number) => boolean",
+          "sha256": "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0"
+        },
+        {
+          "module": "src/layaAir/flash/filters/BlurFilter.ts",
+          "export": "BlurFilter",
+          "kind": "class",
+          "signature": "typeof BlurFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => BlurFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "quality",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (blurX?: number, blurY?: number, quality?: number): BlurFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/BlurFilter.ts",
+          "export": "isBlurFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is BlurFilter",
+          "sha256": "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
+        },
+        {
+          "module": "src/layaAir/flash/filters/ColorMatrixFilter.ts",
+          "export": "ColorMatrixFilter",
+          "kind": "class",
+          "signature": "typeof ColorMatrixFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => ColorMatrixFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "matrix",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            }
+          ],
+          "constructors": [
+            "new (matrix?: readonly number[] | null): ColorMatrixFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/ColorMatrixFilter.ts",
+          "export": "isColorMatrixFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ColorMatrixFilter",
+          "sha256": "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072"
+        },
+        {
+          "module": "src/layaAir/flash/filters/DropShadowFilter.ts",
+          "export": "DropShadowFilter",
+          "kind": "class",
+          "signature": "typeof DropShadowFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "angle",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => DropShadowFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "color",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "distance",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "hideObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "inner",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "knockout",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "quality",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "strength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (distance?: number, angle?: number, color?: number, alpha?: number, blurX?: number, blurY?: number, strength?: number, quality?: number, inner?: boolean, knockout?: boolean, hideObject?: boolean): DropShadowFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/DropShadowFilter.ts",
+          "export": "isDropShadowFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is DropShadowFilter",
+          "sha256": "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d"
+        },
+        {
+          "module": "src/layaAir/flash/filters/FilterProxy.ts",
+          "export": "FilterProxy",
+          "kind": "class",
+          "signature": "typeof FilterProxy",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "applyFilter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(owner: DisplayObject) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "autoUpdateIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get number | null; set number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get number | null; set number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "callLater",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "changeFilter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(filter: BitmapFilter | null) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destory",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destroy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "filter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BitmapFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getProperty",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: FilterProxyProperty) => number | boolean | null"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "index",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "owner",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeFilter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setProperty",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: FilterProxyProperty, value: number | boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateFilter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            }
+          ],
+          "constructors": [
+            "new (filter?: BitmapFilter | null, autoUpdateIndex?: boolean, callLater?: boolean): FilterProxy"
+          ],
+          "indexSignatures": [],
+          "sha256": "99f07e15c0f32438cb428ffcb50de6cd8be2f581d603d51e545feeff76402655",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/filters/FilterRegistry.ts",
+          "export": "bitmapFilterEquals",
+          "kind": "function",
+          "signature": "(left: BitmapFilter | null, right: BitmapFilter | null) => boolean",
+          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+        },
+        {
+          "module": "src/layaAir/flash/filters/FilterRegistry.ts",
+          "export": "isBitmapFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ConcreteBitmapFilter",
+          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+        },
+        {
+          "module": "src/layaAir/flash/filters/GlowFilter.ts",
+          "export": "GlowFilter",
+          "kind": "class",
+          "signature": "typeof GlowFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => GlowFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "color",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "inner",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "knockout",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "quality",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "strength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (color?: number, alpha?: number, blurX?: number, blurY?: number, strength?: number, quality?: number, inner?: boolean, knockout?: boolean): GlowFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/GlowFilter.ts",
+          "export": "isGlowFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is GlowFilter",
+          "sha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
+          "test": "Flash filter bridge compiler surface and native effect ownership",
+          "sha256": "f50dc6078e7bbcdf89203a22bdd48f85514f992f0d5ba14a939edc1ca609ec6b",
+          "capability": "api.flash.filters",
+          "covers": [
+            "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",
+            "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0",
+            "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef",
+            "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0",
+            "99f07e15c0f32438cb428ffcb50de6cd8be2f581d603d51e545feeff76402655",
+            "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d",
+            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
+          ]
+        }
+      ]
     }
   ]
 }

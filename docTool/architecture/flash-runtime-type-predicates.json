@@ -44,7 +44,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "4ce11c250fb9597dae964c49ea04fb8c3f254cdbaec24020106a69fbcedcb716"
+      "moduleSha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -305,6 +305,62 @@
         "flash.events.Event"
       ],
       "moduleSha256": "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f"
+    },
+    {
+      "sourceQName": "flash.filters.BlurFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/BlurFilter.ts",
+      "constructorExport": "BlurFilter",
+      "constructorSignature": "typeof BlurFilter",
+      "constructSignatures": [
+        "new (blurX?: number, blurY?: number, quality?: number): BlurFilter"
+      ],
+      "predicateExport": "isBlurFilter",
+      "predicateSignature": "(value: unknown) => value is BlurFilter",
+      "heritageClosure": [],
+      "moduleSha256": "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
+    },
+    {
+      "sourceQName": "flash.filters.ColorMatrixFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/ColorMatrixFilter.ts",
+      "constructorExport": "ColorMatrixFilter",
+      "constructorSignature": "typeof ColorMatrixFilter",
+      "constructSignatures": [
+        "new (matrix?: readonly number[] | null): ColorMatrixFilter"
+      ],
+      "predicateExport": "isColorMatrixFilter",
+      "predicateSignature": "(value: unknown) => value is ColorMatrixFilter",
+      "heritageClosure": [],
+      "moduleSha256": "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072"
+    },
+    {
+      "sourceQName": "flash.filters.DropShadowFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/DropShadowFilter.ts",
+      "constructorExport": "DropShadowFilter",
+      "constructorSignature": "typeof DropShadowFilter",
+      "constructSignatures": [
+        "new (distance?: number, angle?: number, color?: number, alpha?: number, blurX?: number, blurY?: number, strength?: number, quality?: number, inner?: boolean, knockout?: boolean, hideObject?: boolean): DropShadowFilter"
+      ],
+      "predicateExport": "isDropShadowFilter",
+      "predicateSignature": "(value: unknown) => value is DropShadowFilter",
+      "heritageClosure": [],
+      "moduleSha256": "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d"
+    },
+    {
+      "sourceQName": "flash.filters.GlowFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/GlowFilter.ts",
+      "constructorExport": "GlowFilter",
+      "constructorSignature": "typeof GlowFilter",
+      "constructSignatures": [
+        "new (color?: number, alpha?: number, blurX?: number, blurY?: number, strength?: number, quality?: number, inner?: boolean, knockout?: boolean): GlowFilter"
+      ],
+      "predicateExport": "isGlowFilter",
+      "predicateSignature": "(value: unknown) => value is GlowFilter",
+      "heritageClosure": [],
+      "moduleSha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef"
     },
     {
       "sourceQName": "flash.geom.Point",

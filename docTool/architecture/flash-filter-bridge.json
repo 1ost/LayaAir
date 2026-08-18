@@ -1,0 +1,44 @@
+{
+  "schema": "laya-flash-filter-bridge@1",
+  "semanticAuthority": {
+    "oracle": "Pepper Flash 26.0.0.131",
+    "fixture": "bleach-services/as3-to-layaair-porting-kit/tests/native-runtime/filter-api/RunMain.as",
+    "fixtureCanonicalSha256": "2ac97ac7ed6c78ed346ee72730abe2ebb10fd5f324176964d22d264a5094f434",
+    "result": "bleach-services/as3-to-layaair-porting-kit/tests/native-runtime/filter-api/pepper-flash-26.txt",
+    "resultCanonicalSha256": "fdfd757fb924524fcc0ca0211c4b34e36ebf2278915bfc34a4d1b09c12638386"
+  },
+  "implemented": [
+    "flash.filters.BitmapFilter",
+    "flash.filters.BlurFilter",
+    "flash.filters.ColorMatrixFilter",
+    "flash.filters.DropShadowFilter",
+    "flash.filters.GlowFilter",
+    "flash.display.DisplayObject.filters",
+    "ghostcat.display.filter.FilterProxy.explicit-native-seam"
+  ],
+  "rendering": {
+    "blur": "separable-flash-box-kernel-with-independent-x-y-and-quality",
+    "glowAndShadow": "premultiplied-alpha-mask-and-porter-duff-composition",
+    "colorMatrix": "straight-rgba-full-4x5-with-alpha-cross-terms-and-offsets"
+  },
+  "holds": [
+    {
+      "symbol": "flash.filters.GradientBevelFilter",
+      "status": "HOLD",
+      "reason": "The maintained constructor and FFDec pixels require the separate gradient-ramp bevel workpack; no partial class is exported."
+    },
+    {
+      "symbol": "flash.display.BitmapData.applyFilter",
+      "status": "HOLD",
+      "reason": "Same-source temporary-copy, transparency, rectangle growth, and per-filter pixel behavior are not yet admitted; FilterProxy rejects this path explicitly."
+    }
+  ],
+  "gates": [
+    "npm run test:flash-filters",
+    "npm run test:flash-filters:types",
+    "npm run test:flash-filters:gpu",
+    "npm run check:authored-content-admission",
+    "npm run verify:authored-content-capabilities",
+    "npm run build"
+  ]
+}

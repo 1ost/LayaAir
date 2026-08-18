@@ -3,6 +3,7 @@ import { LayaGL } from "../layagl/LayaGL";
 import { Vector2 } from "../maths/Vector2";
 import { ShaderData } from "../RenderDriver/DriverDesign/RenderDevice/ShaderData";
 import { RenderTargetFormat } from "../RenderEngine/RenderEnum/RenderTargetFormat";
+import { RenderParams } from "../RenderEngine/RenderEnum/RenderParams";
 import { RenderTexture2D } from "../resource/RenderTexture2D";
 import { Effect2DShaderInit } from "./effect2d/shader/Effect2DShaderInit";
 import { PostProcess2DEffect } from "./PostProcess2DEffect";
@@ -121,6 +122,7 @@ export class PostProcess2D extends EventDispatcher {
     * @zh 刷新渲染
     */
    _onChangeRender() {
+      this._ownsOwnerAlpha = this._effects.some(effect => effect.active && !effect.destroyed && effect.ownsOwnerAlpha);
       // this.event(PostProcess2D.POSTRENDERCHANGE);
       if (this._owner) {
          if (this._checkEnabled()) {
@@ -241,6 +243,7 @@ export class PostProcess2D extends EventDispatcher {
    _render(): void {
       this._context.command.clear(true);
       this._context.owner = this._owner;
+      this._context.resetOwnerAlpha(this._ownsOwnerAlpha ? this._owner?.alpha ?? 1 : 1);
       this._context.oriOffset.setValue(0, 0);
       this.inputProvider?.(this._owner, this._context.source, this._context);
       this._context.indirectTarget = this._context.source;
@@ -340,6 +343,21 @@ export class PostProcess2D extends EventDispatcher {
 export class PostProcessRenderContext2D {
    /** The sprite whose off-screen texture is being processed. */
    owner: Sprite;
+   private _ownerAlpha: number = 1;
+   private _ownerAlphaPending: boolean = false;
+
+   /** @internal Resets the once-per-stack local-alpha input. */
+   resetOwnerAlpha(value: number): void {
+      this._ownerAlpha = value;
+      this._ownerAlphaPending = value !== 1;
+   }
+
+   /** @internal Returns local alpha to the first native effect that consumes the source. */
+   takeOwnerAlpha(): number {
+      if (!this._ownerAlphaPending) return 1;
+      this._ownerAlphaPending = false;
+      return this._ownerAlpha;
+   }
    /**
     * @en The original RenderTexture that is rendered to initially. Do not modify this RT.
     * @zh 原始渲染 RenderTexture (RT)，禁止改变此 RT。
@@ -395,14 +413,26 @@ export class PostProcessRenderContext2D {
     * The effect remains responsible for allocating and rendering that texture.
     */
    expandOutput(horizontal: number, vertical: number): { width: number; height: number } {
-      horizontal = Math.max(0, Math.ceil(horizontal));
-      vertical = Math.max(0, Math.ceil(vertical));
-      this.oriOffset.x -= horizontal;
-      this.oriOffset.y -= vertical;
-      return {
-         width: this.indirectTarget.width + horizontal * 2,
-         height: this.indirectTarget.height + vertical * 2
-      };
+      return this.expandOutputBounds(horizontal, vertical, horizontal, vertical);
+   }
+
+   /** Records asymmetric output growth and validates the target against device limits. */
+   expandOutputBounds(left: number, top: number, right: number, bottom: number): {
+      width: number; height: number; left: number; top: number; right: number; bottom: number;
+   } {
+      const margins = [left, top, right, bottom].map(value => Math.max(0, Math.ceil(value)));
+      if (margins.some(value => !Number.isFinite(value)))
+         throw new RangeError("Post-process output margins must be finite");
+      [left, top, right, bottom] = margins;
+      const width = this.indirectTarget.width + left + right;
+      const height = this.indirectTarget.height + top + bottom;
+      const maxTextureSize = LayaGL.renderEngine?.getParams(RenderParams.MAX_Texture_Size) || Number.MAX_SAFE_INTEGER;
+      if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0
+         || width > maxTextureSize || height > maxTextureSize)
+         throw new RangeError(`Post-process output ${width}x${height} exceeds device texture limit ${maxTextureSize}`);
+      this.oriOffset.x -= left;
+      this.oriOffset.y -= top;
+      return { width, height, left, top, right, bottom };
    }
 
    /**

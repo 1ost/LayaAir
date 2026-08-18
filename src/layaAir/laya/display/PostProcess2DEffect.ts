@@ -4,6 +4,8 @@ export abstract class PostProcess2DEffect {
    protected _active: boolean = true;
    protected _owner: PostProcess2D;
    destroyed = false;
+   /** True when this effect requires the stack to consume the owner's local alpha. */
+   readonly ownsOwnerAlpha: boolean = false;
    protected _singleton: boolean = false;
 
    /**

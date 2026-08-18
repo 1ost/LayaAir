@@ -74,6 +74,59 @@ for (const [module, exported] of [
         geometryCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+let filterCapability = ledger.capabilities.find(item => item.id === "api.flash.filters");
+if (!filterCapability) {
+    filterCapability = {
+        id: "api.flash.filters",
+        status: "typescript-obligation",
+        obligations: [],
+        evidence: [{
+            path: "tests/architecture/flashFiltersBridgeEvidence.test.ts",
+            test: "Flash filter bridge compiler surface and native effect ownership",
+            sha256: "",
+            capability: "api.flash.filters",
+            covers: [],
+        }],
+    };
+    ledger.capabilities.push(filterCapability);
+}
+const filterSubjects = [
+    ["src/layaAir/flash/filters/BitmapFilter.ts", "BitmapFilter", "class"],
+    ["src/layaAir/flash/filters/BitmapFilter.ts", "bitmapFilterNumberEquals", "function"],
+    ["src/layaAir/flash/filters/BlurFilter.ts", "BlurFilter", "class"],
+    ["src/layaAir/flash/filters/BlurFilter.ts", "isBlurFilter", "function"],
+    ["src/layaAir/flash/filters/ColorMatrixFilter.ts", "ColorMatrixFilter", "class"],
+    ["src/layaAir/flash/filters/ColorMatrixFilter.ts", "isColorMatrixFilter", "function"],
+    ["src/layaAir/flash/filters/DropShadowFilter.ts", "DropShadowFilter", "class"],
+    ["src/layaAir/flash/filters/DropShadowFilter.ts", "isDropShadowFilter", "function"],
+    ["src/layaAir/flash/filters/FilterProxy.ts", "FilterProxy", "class"],
+    ["src/layaAir/flash/filters/FilterRegistry.ts", "bitmapFilterEquals", "function"],
+    ["src/layaAir/flash/filters/FilterRegistry.ts", "isBitmapFilter", "function"],
+    ["src/layaAir/flash/filters/GlowFilter.ts", "GlowFilter", "class"],
+    ["src/layaAir/flash/filters/GlowFilter.ts", "isGlowFilter", "function"],
+];
+filterCapability.obligations = filterSubjects.map(([module, exported, kind]) =>
+    filterCapability.obligations.find(item => item.module === module && item.export === exported)
+    || { module, export: exported, kind, signature: "", ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
+
+const renderingFilterCapability = ledger.capabilities.find(item => item.id === "rendering.filter");
+Object.assign(renderingFilterCapability, {
+    status: "native",
+    artifacts: [{
+        path: "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
+        export: "FlashBlurEffect2D",
+        sha256: "",
+    }],
+    evidence: [{
+        path: "tests/architecture/flashFiltersBridgeEvidence.test.ts",
+        test: "Flash filter bridge compiler surface and native effect ownership",
+        sha256: "",
+        capability: "rendering.filter",
+        covers: [],
+    }],
+});
+delete renderingFilterCapability.blockingReason;
+
 const options = compilerOptions();
 const program = ts.createProgram({ rootNames: discoverCode(root), options });
 const checker = program.getTypeChecker();
@@ -168,6 +221,30 @@ function updateSurface(obligation) {
         const declarationKinds = (member.declarations || []).map(item => ts.SyntaxKind[item.kind]);
         const accessorKinds = [declarationKinds.includes("GetAccessor") ? "get" : null,
             declarationKinds.includes("SetAccessor") ? "set" : null].filter(Boolean);
+        let signature = logicalCompilerSignature(root, checker.typeToString(
+            checker.getTypeOfSymbolAtLocation(member, memberDeclaration), memberDeclaration, ts.TypeFormatFlags.NoTruncation));
+        const localAccessors = declaration.members.filter(item =>
+            (ts.isGetAccessorDeclaration(item) || ts.isSetAccessorDeclaration(item))
+            && item.name.getText() === member.name);
+        const getterDeclaration = localAccessors.find(ts.isGetAccessorDeclaration)
+            || member.declarations?.find(ts.isGetAccessorDeclaration);
+        const setterDeclaration = localAccessors.find(ts.isSetAccessorDeclaration)
+            || member.declarations?.find(ts.isSetAccessorDeclaration);
+        if (getterDeclaration && setterDeclaration && setterDeclaration.parameters.length === 1) {
+            const getterCall = checker.getSignatureFromDeclaration(getterDeclaration);
+            const getterType = getterCall && checker.getReturnTypeOfSignature(getterCall);
+            const setterType = checker.getTypeAtLocation(setterDeclaration.parameters[0]);
+            const getterSignature = getterDeclaration.type
+                ? logicalCompilerSignature(root, getterDeclaration.type.getText())
+                : getterType && logicalCompilerSignature(root,
+                    checker.typeToString(getterType, getterDeclaration, ts.TypeFormatFlags.NoTruncation));
+            const setterSignature = setterDeclaration.parameters[0].type
+                ? logicalCompilerSignature(root, setterDeclaration.parameters[0].type.getText())
+                : logicalCompilerSignature(root,
+                    checker.typeToString(setterType, setterDeclaration, ts.TypeFormatFlags.NoTruncation));
+            if (getterSignature && getterSignature !== setterSignature)
+                signature = `get ${getterSignature}; set ${setterSignature}`;
+        }
         return {
             abstract: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword),
             kind: accessorKinds.length ? accessorKinds.join("+")
@@ -175,13 +252,17 @@ function updateSurface(obligation) {
             name: member.name, scope,
             optional: Boolean(member.flags & ts.SymbolFlags.Optional || memberDeclaration.questionToken),
             readonly: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ReadonlyKeyword),
-            signature: logicalCompilerSignature(root, checker.typeToString(
-                checker.getTypeOfSymbolAtLocation(member, memberDeclaration), memberDeclaration, ts.TypeFormatFlags.NoTruncation)),
+            signature,
         };
     });
     obligation.members = [...collect(instanceType, "instance"), ...collect(classType, "static")]
         .sort((a, b) => `${a.scope}:${a.name}`.localeCompare(`${b.scope}:${b.name}`));
-    obligation.constructors = classType.getConstructSignatures().map(signature => logicalCompilerSignature(root,
+    const classModifiers = ts.getModifiers(declaration) || [];
+    const declaredConstructors = declaration.members.filter(ts.isConstructorDeclaration);
+    const isNonConstructibleClass = classModifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword)
+        || declaredConstructors.some(constructor => (ts.getModifiers(constructor) || []).some(modifier =>
+            modifier.kind === ts.SyntaxKind.PrivateKeyword || modifier.kind === ts.SyntaxKind.ProtectedKeyword));
+    obligation.constructors = isNonConstructibleClass ? [] : classType.getConstructSignatures().map(signature => logicalCompilerSignature(root,
         checker.signatureToString(signature, declaration, ts.TypeFormatFlags.NoTruncation, ts.SignatureKind.Construct))).sort();
     obligation.indexSignatures = [["number", instanceType.getNumberIndexType()], ["string", instanceType.getStringIndexType()]]
         .filter(([, type]) => Boolean(type)).map(([key, type]) => ({

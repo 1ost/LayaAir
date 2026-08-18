@@ -4,6 +4,8 @@ import { isFlashPoint, Point } from "../geom/Point";
 import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
 import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
+import { BitmapFilter } from "../filters/BitmapFilter";
+import { isBitmapFilter } from "../filters/FilterRegistry";
 
 const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
 const DISPLAY_OBJECT_VALUES = new WeakSet<object>();
@@ -25,6 +27,32 @@ export class DisplayObject extends LayaSprite implements IEventDispatcher {
         DISPLAY_OBJECT_VALUES.add(this);
     }
 
+    /** Flash returns detached arrays containing detached filter values. */
+    override get filters(): BitmapFilter[] {
+        const values = super.filters;
+        if (!values) return [];
+        const detached: BitmapFilter[] = [];
+        for (let index = 0; index < values.length; index++) {
+            const value = values[index];
+            if (!isBitmapFilter(value)) throw new TypeError("Flash DisplayObject contains a non-Flash filter");
+            detached.push(value.clone());
+        }
+        return detached;
+    }
+    override set filters(value: BitmapFilter[] | null) {
+        if (value == null) {
+            super.filters = null;
+            return;
+        }
+        if (!Array.isArray(value)) throw new TypeError("DisplayObject.filters must be an Array");
+        const detached: BitmapFilter[] = [];
+        for (let index = 0; index < value.length; index++) {
+            const filter = value[index];
+            if (!isBitmapFilter(filter)) throw new TypeError(`DisplayObject.filters[${index}] must be a concrete native BitmapFilter`);
+            detached.push(filter.clone());
+        }
+        super.filters = detached;
+    }
     globalToLocal(point: Point): Point;
     globalToLocal(point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint;
     globalToLocal(point: Point | LayaPoint, createNewPoint = false, globalNode?: LayaSprite): Point | LayaPoint {

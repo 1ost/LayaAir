@@ -12,7 +12,8 @@
     "flash.geom",
     "flash.text",
     "flash.net",
-    "flash.utils"
+    "flash.utils",
+    "flash.filters"
   ],
   "capabilityLedger": "docTool/architecture/authored-content-capabilities.json",
   "capabilitySchema": "laya-authored-content-capabilities@1",
@@ -76,7 +77,8 @@
     "api.flash.geom",
     "api.flash.text",
     "api.flash.net",
-    "api.flash.utils"
+    "api.flash.utils",
+    "api.flash.filters"
   ],
   "statuses": [
     "native",

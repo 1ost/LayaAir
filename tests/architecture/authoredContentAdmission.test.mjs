@@ -535,6 +535,12 @@ test("the universal Flash API bridge is distinct from authored-asset compatibili
             "src/layaAir/flash/display/DisplayObject.ts": "export class DisplayObject { traits = 0; }",
         }));
     });
+    await t.test("BitmapFilter is a closed source boundary", t => {
+        failure(fixture(t, {
+            "src/layaAir/flash/filters/BitmapFilter.ts": "export abstract class BitmapFilter {}",
+            "src/layaAir/flash/filters/UserFilter.ts": "import { BitmapFilter } from './BitmapFilter'; export class UserFilter extends BitmapFilter {}",
+        }), /BitmapFilter is a closed Flash value base/);
+    });
     await t.test("singular AVM Trait class is forbidden", t => {
         failure(fixture(t, {
             "src/layaAir/flash/display/Trait.ts": "export class Trait {}",

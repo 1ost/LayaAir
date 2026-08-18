@@ -46,8 +46,39 @@ try {
             .update(authorityText.replace(/\r\n?/g, "\n"), "utf8").digest("hex");
         if (actualHash !== expectedHash) throw new Error("Flash runtime type predicate authority hash drift");
         const authority = JSON.parse(authorityText);
+        const expectedSourceQNames = [
+            "flash.display.Bitmap",
+            "flash.display.BitmapData",
+            "flash.display.DisplayObject",
+            "flash.display.DisplayObjectContainer",
+            "flash.display.Graphics",
+            "flash.display.InteractiveObject",
+            "flash.display.MovieClip",
+            "flash.display.Shape",
+            "flash.display.SimpleButton",
+            "flash.display.Sprite",
+            "flash.events.ErrorEvent",
+            "flash.events.Event",
+            "flash.events.EventDispatcher",
+            "flash.events.FocusEvent",
+            "flash.events.IOErrorEvent",
+            "flash.events.KeyboardEvent",
+            "flash.events.MouseEvent",
+            "flash.events.TextEvent",
+            "flash.events.TimerEvent",
+            "flash.filters.BlurFilter",
+            "flash.filters.ColorMatrixFilter",
+            "flash.filters.DropShadowFilter",
+            "flash.filters.GlowFilter",
+            "flash.geom.Point",
+            "flash.geom.Rectangle",
+            "flash.net.URLRequest",
+            "flash.text.TextField",
+        ];
+        const actualSourceQNames = authority.types.map(entry => entry.sourceQName);
         if (authority.schema !== "laya-flash-runtime-type-predicates@1"
-            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 23)
+            || authority.hashMode !== "canonical-lf-utf8"
+            || JSON.stringify(actualSourceQNames) !== JSON.stringify(expectedSourceQNames))
             throw new Error("Flash runtime type predicate authority is incomplete");
         const rootBarrel = await readFile(join(root, "src/layaAir/flash/index.ts"), "utf8");
         for (const entry of authority.types) {
@@ -60,8 +91,9 @@ try {
                 throw new Error(`Flash runtime type predicate authority drift: ${entry.sourceQName}`);
             if (rootBarrel.includes(entry.predicateExport))
                 throw new Error(`Flash runtime predicate leaked through root barrel: ${entry.predicateExport}`);
-            if (!source.includes(`export function ${entry.predicateExport}(`)
-                || !source.includes("new WeakSet<object>()") || !source.includes(".add(this)"))
+            const privateNominalMint = source.includes("new WeakSet<object>()") && source.includes(".add(this)")
+                || source.includes("new WeakMap<object,") && source.includes(".set(this,");
+            if (!source.includes(`export function ${entry.predicateExport}(`) || !privateNominalMint)
                 throw new Error(`Flash runtime nominal proof is not privately minted: ${entry.sourceQName}`);
         }
         const files = [
