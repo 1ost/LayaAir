@@ -74,6 +74,7 @@ try {
             "flash.geom.Rectangle",
             "flash.net.URLRequest",
             "flash.text.TextField",
+            "flash.utils.Timer",
         ];
         const actualSourceQNames = authority.types.map(entry => entry.sourceQName);
         if (authority.schema !== "laya-flash-runtime-type-predicates@1"

@@ -420,6 +420,22 @@
         "flash.display.DisplayObject"
       ],
       "moduleSha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+    },
+    {
+      "sourceQName": "flash.utils.Timer",
+      "targetCapabilityId": "api.flash.utils",
+      "targetModule": "src/layaAir/flash/utils/Timer.ts",
+      "constructorExport": "Timer",
+      "constructorSignature": "typeof Timer",
+      "constructSignatures": [
+        "new (delay: number, repeatCount?: number): Timer"
+      ],
+      "predicateExport": "isFlashTimer",
+      "predicateSignature": "(value: unknown) => value is Timer",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
     }
   ]
 }

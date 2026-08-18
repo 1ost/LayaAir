@@ -10,7 +10,7 @@ import type { BlurFilter, isBlurFilter } from "../../src/layaAir/flash/filters/B
 import type { ColorMatrixFilter, isColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFilter.ts";
 import type { DropShadowFilter, isDropShadowFilter } from "../../src/layaAir/flash/filters/DropShadowFilter.ts";
 import type { FilterProxy } from "../../src/layaAir/flash/filters/FilterProxy.ts";
-import type { bitmapFilterEquals, isBitmapFilter } from "../../src/layaAir/flash/filters/FilterRegistry.ts";
+import type { ConcreteBitmapFilter, bitmapFilterEquals, isBitmapFilter } from "../../src/layaAir/flash/filters/FilterRegistry.ts";
 import type { GlowFilter, isGlowFilter } from "../../src/layaAir/flash/filters/GlowFilter.ts";
 import type { FlashBlurEffect2D } from "../../src/layaAir/laya/display/effect2d/FlashFilterEffects.ts";
 
@@ -20,6 +20,7 @@ test("Flash filter bridge compiler surface and native effect ownership", () => {
         typeof BlurFilter, typeof isBlurFilter, typeof ColorMatrixFilter, typeof isColorMatrixFilter,
         typeof DropShadowFilter, typeof isDropShadowFilter, typeof GlowFilter, typeof isGlowFilter,
         typeof bitmapFilterEquals, typeof isBitmapFilter,
+        ConcreteBitmapFilter,
         typeof FilterProxy, typeof FlashBlurEffect2D,
     ] extends readonly unknown[] ? DisplayObject extends { filters: BitmapFilter[] } ? boolean : never : never));
 });

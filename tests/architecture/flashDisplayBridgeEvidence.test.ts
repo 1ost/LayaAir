@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
-import type { DisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer.ts";
-import type { FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary.ts";
-import type { Graphics } from "../../src/layaAir/flash/display/Graphics.ts";
+import type { DisplayObject, isFlashDisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
+import type { DisplayObjectContainer, isFlashDisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer.ts";
+import type { FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary.ts";
+import type { Graphics, isFlashGraphics } from "../../src/layaAir/flash/display/Graphics.ts";
 import type { IBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { isFlashBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
-import type { InteractiveObject } from "../../src/layaAir/flash/display/InteractiveObject.ts";
-import type { MovieClip } from "../../src/layaAir/flash/display/MovieClip.ts";
-import type { AnimatorClip2DTimeline } from "../../src/layaAir/flash/display/NativeMovieClipTimeline.ts";
-import type { SimpleButton } from "../../src/layaAir/flash/display/SimpleButton.ts";
-import type { Shape } from "../../src/layaAir/flash/display/Shape.ts";
-import type { Sprite } from "../../src/layaAir/flash/display/Sprite.ts";
-import type { Bitmap } from "../../src/layaAir/flash/display/Bitmap.ts";
-import type { BitmapData } from "../../src/layaAir/flash/display/BitmapData.ts";
+import type { InteractiveObject, isFlashInteractiveObject, resolveFlashFocusOwner } from "../../src/layaAir/flash/display/InteractiveObject.ts";
+import type { FlashFrameReference, MovieClip, isFlashMovieClip } from "../../src/layaAir/flash/display/MovieClip.ts";
+import type { AnimatorClip2DTimeline, NativeMovieClipTimeline } from "../../src/layaAir/flash/display/NativeMovieClipTimeline.ts";
+import type { SimpleButton, isFlashSimpleButton } from "../../src/layaAir/flash/display/SimpleButton.ts";
+import type { Shape, isFlashShape } from "../../src/layaAir/flash/display/Shape.ts";
+import type { Sprite, isFlashSprite } from "../../src/layaAir/flash/display/Sprite.ts";
+import type { Bitmap, isFlashBitmap } from "../../src/layaAir/flash/display/Bitmap.ts";
+import type { BitmapData, acquireBitmapDataTexture, isFlashBitmapData, observeBitmapData } from "../../src/layaAir/flash/display/BitmapData.ts";
 import type { BitmapDataChannel } from "../../src/layaAir/flash/display/BitmapDataChannel.ts";
 import type { PixelSnapping } from "../../src/layaAir/flash/display/PixelSnapping.ts";
 
@@ -22,5 +22,10 @@ test("Flash display bridge compiler surface", () => {
         typeof FlashStageBoundary,
         typeof Graphics, IBitmapDrawable, typeof isFlashBitmapDrawable, typeof MovieClip, typeof AnimatorClip2DTimeline,
         typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
-        typeof BitmapDataChannel, typeof PixelSnapping] extends readonly unknown[] ? boolean : never));
+        typeof BitmapDataChannel, typeof PixelSnapping,
+        typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof isFlashBitmapData, typeof observeBitmapData,
+        typeof isFlashDisplayObject, typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
+        typeof isFlashGraphics, typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,
+        FlashFrameReference, typeof isFlashMovieClip, NativeMovieClipTimeline,
+        typeof isFlashShape, typeof isFlashSimpleButton, typeof isFlashSprite] extends readonly unknown[] ? boolean : never));
 });

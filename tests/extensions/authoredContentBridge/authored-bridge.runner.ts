@@ -32,6 +32,7 @@ import { isFlashMouseEvent } from "../../../src/layaAir/flash/events/MouseEvent"
 import { isFlashTextEvent } from "../../../src/layaAir/flash/events/TextEvent";
 import { isFlashTimerEvent } from "../../../src/layaAir/flash/events/TimerEvent";
 import { isFlashURLRequest } from "../../../src/layaAir/flash/net/URLRequest";
+import { isFlashTimer } from "../../../src/layaAir/flash/utils/Timer";
 import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
@@ -53,7 +54,7 @@ import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
     ErrorEvent, FlashStageBoundary, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
-    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TimerEvent,
+    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent,
     AntiAliasType, CSMSettings, GridFitType,
     TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
     Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
@@ -108,7 +109,7 @@ ILaya.systemTimer = {
 test("A12 capability ledger owns exact Flash declarations, members, signatures and hashes", () => {
     const path = join(process.cwd(), "docTool/architecture/authored-content-capabilities.json");
     const ledger = JSON.parse(readFileSync(path, "utf8"));
-    for (const namespace of ["display", "events", "geom", "net", "text"]) {
+    for (const namespace of ["display", "events", "geom", "net", "text", "utils"]) {
         const capability = ledger.capabilities.find((item: any) => item.id === `api.flash.${namespace}`);
         assert.equal(capability.status, "typescript-obligation");
         assert.ok(capability.obligations.length > 0);
@@ -146,6 +147,7 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     const ioError = new IOErrorEvent(IOErrorEvent.IO_ERROR);
     const keyboard = new KeyboardEvent(KeyboardEvent.KEY_DOWN);
     const timer = new TimerEvent(TimerEvent.TIMER);
+    const timerDispatcher = new Timer(1);
     const request = new URLRequest();
 
     assert.deepEqual([
@@ -173,7 +175,8 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     assert.equal(isFlashEventDispatcher(event), false);
     assert.deepEqual([isFlashShape(shape), isFlashGraphics(graphics), isFlashBitmapDrawable(shape)], [true, true, true]);
     assert.deepEqual([isFlashErrorEvent(error), isFlashErrorEvent(ioError), isFlashIOErrorEvent(ioError)], [true, true, true]);
-    assert.deepEqual([isFlashKeyboardEvent(keyboard), isFlashTimerEvent(timer), isFlashURLRequest(request)], [true, true, true]);
+    assert.deepEqual([isFlashKeyboardEvent(keyboard), isFlashTimerEvent(timer), isFlashURLRequest(request),
+        isFlashTimer(timerDispatcher)], [true, true, true, true]);
 
     const adversaries: Array<[(value: unknown) => boolean, new (...args: any[]) => object, object]> = [
         [isFlashDisplayObject, DisplayObject, display],
@@ -194,6 +197,7 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
         [isFlashIOErrorEvent, IOErrorEvent, ioError],
         [isFlashKeyboardEvent, KeyboardEvent, keyboard],
         [isFlashTimerEvent, TimerEvent, timer],
+        [isFlashTimer, Timer, timerDispatcher],
         [isFlashURLRequest, URLRequest, request],
     ];
     for (const [predicate, constructor, genuine] of adversaries) {

@@ -30,6 +30,7 @@ export { Rectangle } from "./geom/Rectangle";
 export * from "./text/TextField";
 export * from "./text/TextFormat";
 export { URLRequest, navigateToURL } from "./net/URLRequest";
+export { Timer } from "./utils/Timer";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";
 export { BlurFilter } from "./filters/BlurFilter";

@@ -268,6 +268,37 @@ test("admitted dispositions require concrete artifacts, symbols, and evidence", 
         });
         assertAuthoredContentAdmission(root);
     });
+    for (const obligationCase of [
+        { kind: "interface", implementation: "export interface PublicContract { readonly value: string; }", exportName: "PublicContract" },
+        { kind: "type", implementation: "export type PublicAlias = { readonly value: string };", exportName: "PublicAlias" },
+    ]) await t.test(`resolved ${obligationCase.kind} obligation is kind and signature exact`, async t => {
+        const evidence = `import assert from "node:assert/strict";\nimport test from "node:test";\nimport type { ${obligationCase.exportName} } from "../src/extensions/authoredContent/typed.ts";\ntest("typed ${obligationCase.kind}", () => { assert.ok(true as boolean satisfies (${obligationCase.exportName} extends object ? boolean : never)); });\n`;
+        const obligation = {
+            module: "src/extensions/authoredContent/typed.ts",
+            export: obligationCase.exportName,
+            kind: obligationCase.kind,
+            signature: "any",
+            sha256: digest(obligationCase.implementation),
+        };
+        const files = declared => ({
+            [policy.capabilityLedger]: ledgerWith("binding.typed-handler", {
+                status: "typescript-obligation",
+                obligations: [declared],
+                evidence: [{ path: "tests/typed.test.mjs", test: `typed ${obligationCase.kind}`, sha256: digest(evidence), capability: "binding.typed-handler", covers: [digest(obligationCase.implementation)] }],
+            }),
+            "src/extensions/authoredContent/typed.ts": obligationCase.implementation,
+            "tests/typed.test.mjs": evidence,
+        });
+        assertAuthoredContentAdmission(fixture(t, files(obligation)));
+        await t.test("rejects a forged kind", inner => {
+            const forged = { ...obligation, kind: obligationCase.kind === "type" ? "interface" : "type" };
+            failure(fixture(inner, files(forged)), /kind: expected exact/);
+        });
+        await t.test("rejects signature drift", inner => {
+            const forged = { ...obligation, signature: "unknown" };
+            failure(fixture(inner, files(forged)), /signature: expected exact compiler signature/);
+        });
+    });
     await t.test("compiler signatures use repository-relative logical module paths", () => {
         const suffix = '/src/extensions/index").TextField';
         const first = logicalCompilerSignature("D:/worktrees/first", `() => import("D:/worktrees/first${suffix}`);
@@ -602,7 +633,7 @@ test("the universal Flash API bridge is distinct from authored-asset compatibili
     });
     await t.test("reachable bridge files require exact capability ownership", t => {
         failure(fixture(t, {
-            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', input: ['flash/display/**/*.*'] }];",
+            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', globalName: 'LayaFlash', input: ['flash/display/**/*.*'] }];",
             "src/layaAir/flash/display/Unowned.ts": "export class Sprite {}",
         }), /not hash\/surface-owned/);
     });
@@ -653,12 +684,12 @@ test("the universal Flash API bridge is distinct from authored-asset compatibili
         delete capability.blockingReason;
         failure(fixture(t, {
             [policy.capabilityLedger]: JSON.stringify(ledger),
-            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', input: ['flash/display/**/*.*'] }];",
+            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', globalName: 'LayaFlash', input: ['flash/display/**/*.*'] }];",
             "src/layaAir/flash/display/Sprite.ts": implementation,
             "tests/flash-display.test.mjs": evidence,
         }), /public Flash API export FlashMovieClip lacks/);
         failure(fixture(t, {
-            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', input: ['flash/index.ts'] }];",
+            "scripts/config.mjs": "export const allBundles = [{ name: 'flash', globalName: 'LayaFlash', input: ['flash/index.ts'] }];",
             "src/layaAir/flash/index.ts": "export class UnpinnedFlashApi {}",
         }), /root barrel may contain only export-from/);
     });
@@ -846,6 +877,14 @@ test("package exports, dependency fields, and transitive production reachability
             "scripts/config.mjs": "export const allBundles = [{ name: 'authored', input: ['extensions/authoredContent/**/*.*'] }];",
             "src/extensions/authoredContent/index.ts": "export {};",
         }), /production reachability includes editor-only/);
+    });
+    await t.test("Flash bundle requires a collision-free global namespace", t => {
+        for (const config of [
+            "export const allBundles = [{ name: 'flash', input: ['flash/**/*.ts'] }];",
+            "export const allBundles = [{ name: 'flash', globalName: 'Laya', input: ['flash/**/*.ts'] }];",
+            "const globalName = 'LayaFlash'; export const allBundles = [{ name: 'flash', globalName, input: ['flash/**/*.ts'] }];",
+        ])
+            failure(fixture(t, { "scripts/config.mjs": config }), /collision-free LayaFlash global|globalName must be one literal identifier|statically named property/);
     });
     await t.test("computed bundle inputs fail closed", t => {
         failure(fixture(t, {

@@ -116,6 +116,9 @@ async function buildBundles() {
     }
 
     for (let bundleDef of bundles) {
+        const globalName = bundleDef.globalName || 'Laya';
+        if (bundleDef.name === 'flash' && globalName !== 'LayaFlash')
+            throw new Error("flash bundle must use the collision-free LayaFlash global");
         let files = await glob(bundleDef.input.map(e => "./layaAir/" + e), { cwd: path.join(process.cwd(), "./src"), realpath: false });
         files.sort();
         files = files.filter(ele => ele.endsWith(".ts"))
@@ -149,7 +152,7 @@ async function buildBundles() {
             file: outFile,
             format: 'iife',
             esModule: false,
-            name: 'Laya',
+            name: globalName,
             globals: {
                 'Laya': 'Laya'
             },
@@ -163,10 +166,20 @@ async function buildBundles() {
         await bundle.write(outputOption);
 
         let content = await fs.promises.readFile(outFile, "utf-8");
-        content = content.replace(/var Laya = \(function \(exports.*\)/, "window.Laya = (function (exports)");
-        content = content.replace(/}\)\({}, Laya\);/, "})({});");
-        content = content.replace(/Laya\$1\./g, "exports.");
-        content = content.replace(/\(this.Laya = this.Laya \|\| {}, Laya\)/, "(window.Laya = window.Laya || {}, Laya)");
+        if (globalName === 'Laya') {
+            content = content.replace(/var Laya = \(function \(exports.*\)/, "window.Laya = (function (exports)");
+            content = content.replace(/}\)\({}, Laya\);/, "})({});");
+            content = content.replace(/Laya\$1\./g, "exports.");
+            content = content.replace(/\(this.Laya = this.Laya \|\| {}, Laya\)/, "(window.Laya = window.Laya || {}, Laya)");
+        } else {
+            const rollupAttachment = `(this.${globalName} = this.${globalName} || {}, Laya)`;
+            const browserAttachment = `(window.${globalName} = window.${globalName} || {}, Laya)`;
+            if (!content.includes(rollupAttachment))
+                throw new Error(`${bundleDef.name} bundle lacks its exact ${globalName} global attachment`);
+            content = content.replace(rollupAttachment, browserAttachment);
+            if (content.includes("window.Laya = (function") || content.includes("(window.Laya = window.Laya || {}, Laya)"))
+                throw new Error(`${bundleDef.name} bundle would overwrite the core Laya global`);
+        }
         await fs.promises.writeFile(outFile, content);
 
         if (bundleDef.copy)
@@ -201,6 +214,7 @@ async function buildDeclarations() {
     let emitResult = proj.emitToMemory({ emitOnlyDtsFiles: true });
 
     const dtsContents = [];
+    const flashDtsContents = [];
     const dtsContentsTop = [];
     const SyntaxKind = ts.SyntaxKind;
 
@@ -260,9 +274,27 @@ async function buildDeclarations() {
         if (!file.filePath.endsWith("d.ts"))
             continue;
 
+        const normalizedFilePath = file.filePath.replaceAll("\\", "/");
+        const inFlashNamespace = normalizedFilePath.includes("/flash/");
         let inNamespace = !file.filePath.endsWith("Laya.d.ts") && !file.filePath.endsWith("Laya3D.d.ts");
         let code = file.text;
         let declarationFile = ts.createSourceFile(file.filePath, code, ts.ScriptTarget.Latest, true);
+        const flashImportAliases = new Map();
+        if (inFlashNamespace) {
+            for (const statement of declarationFile.statements) {
+                if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)
+                    || !statement.importClause?.namedBindings
+                    || !ts.isNamedImports(statement.importClause.namedBindings))
+                    continue;
+                const moduleName = statement.moduleSpecifier.text.replaceAll("\\", "/");
+                const coreImport = moduleName.includes("/laya/") || moduleName.endsWith("/ILaya")
+                    || moduleName.endsWith("/Config");
+                for (const element of statement.importClause.namedBindings.elements) {
+                    const importedName = element.propertyName?.text || element.name.text;
+                    flashImportAliases.set(element.name.text, coreImport ? `Laya.${importedName}` : importedName);
+                }
+            }
+        }
 
         function visitNode(node) {
             if (node.kind == SyntaxKind.ImportDeclaration || node.kind == SyntaxKind.ImportEqualsDeclaration) { //删除所有import语句
@@ -284,6 +316,22 @@ async function buildDeclarations() {
                     return " Laya." + code;
                 else if (code.startsWith("glTF."))
                     return " " + code.substring(5);
+            } else if (inFlashNamespace && ts.isImportTypeNode(node)
+                && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)
+                && node.qualifier) {
+                const moduleName = node.argument.literal.text.replaceAll("\\", "/");
+                const targetNamespace = moduleName.includes("/laya/") || moduleName.endsWith("/ILaya")
+                    || moduleName.endsWith("/Config") ? "Laya" : "";
+                const typeArguments = node.typeArguments?.length
+                    ? `<${node.typeArguments.map(argument => argument.getText(declarationFile)).join(", ")}>` : "";
+                const qualifier = targetNamespace ? `${targetNamespace}.${node.qualifier.getText(declarationFile)}`
+                    : node.qualifier.getText(declarationFile);
+                return declarationFile.text.slice(node.pos, node.getStart(declarationFile))
+                    + `${node.isTypeOf ? "typeof " : ""}${qualifier}${typeArguments}`;
+            } else if (inFlashNamespace && ts.isIdentifier(node) && flashImportAliases.has(node.text)
+                && node.parent?.name !== node) {
+                return declarationFile.text.slice(node.pos, node.getStart(declarationFile))
+                    + flashImportAliases.get(node.text);
             }
             //console.log(node.kind, node.parent?.kind, node.text);
         }
@@ -292,7 +340,10 @@ async function buildDeclarations() {
         if (content.length == 0)
             continue;
 
-        if (inNamespace) {
+        if (inFlashNamespace) {
+            let lines = content.split("\n");
+            flashDtsContents.push(lines.map(l => "    " + l).join("\n"));
+        } else if (inNamespace) {
             let lines = content.split("\n");
             dtsContents.push(lines.map(l => "    " + l).join("\n"));
         } else
@@ -309,6 +360,42 @@ async function buildDeclarations() {
     code = ts.createPrinter().printFile(declarationFile);
 
     fs.writeFileSync("./build/types/LayaAir.d.ts", code);
+
+    let flashCode = "declare namespace LayaFlash {\n\n" +
+        flashDtsContents.join("\n\n") +
+        "\n\n}";
+    const flashDeclarationFile = ts.createSourceFile("./build/types/LayaFlash.d.ts", flashCode,
+        ts.ScriptTarget.Latest, true);
+    flashCode = ts.createPrinter().printFile(flashDeclarationFile);
+    fs.writeFileSync("./build/types/LayaFlash.d.ts", flashCode);
+    if (flashDtsContents.length === 0 || /declare namespace Laya\s*\{/.test(flashCode))
+        throw new Error("Flash declarations must be present only in the LayaFlash namespace");
+
+    const referencedCoreNames = [...new Set([...flashCode.matchAll(/\bLaya\.([A-Za-z_$][A-Za-z0-9_$]*)/g)]
+        .map(match => match[1]))].sort();
+    const validationShimPath = "./build/types/.LayaFlash.core-shim.d.ts";
+    const validationShim = "declare namespace Laya {\n" + referencedCoreNames
+        .map(name => `    type ${name} = any; const ${name}: any;`).join("\n") + "\n}";
+    fs.writeFileSync(validationShimPath, validationShim);
+    try {
+        const declarationProgram = ts.createProgram({
+            rootNames: [validationShimPath, "./build/types/LayaFlash.d.ts"],
+            options: { noEmit: true, skipLibCheck: false, target: ts.ScriptTarget.ES2020,
+                lib: ["lib.es2020.d.ts", "lib.dom.d.ts"], types: [] }
+        });
+        const declarationDiagnostics = ts.getPreEmitDiagnostics(declarationProgram);
+        if (declarationDiagnostics.length > 0) {
+            const host = {
+                getCanonicalFileName: fileName => fileName,
+                getCurrentDirectory: () => process.cwd(),
+                getNewLine: () => "\n"
+            };
+            throw new Error("generated Flash declaration validation failed:\n" +
+                ts.formatDiagnosticsWithColorAndContext(declarationDiagnostics, host));
+        }
+    } finally {
+        fs.unlinkSync(validationShimPath);
+    }
 
     shellExec("npx", ["copyfiles", '-f', './src/layaAir/tslibs/*.*', './build/types']);
 

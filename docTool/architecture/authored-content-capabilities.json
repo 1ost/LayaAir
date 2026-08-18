@@ -158,7 +158,7 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "f50dc6078e7bbcdf89203a22bdd48f85514f992f0d5ba14a939edc1ca609ec6b",
+          "sha256": "c86e880556ec7ea0d444222c2a354bb0f32ad2988669edaebbfd6ab336bd0446",
           "capability": "rendering.filter",
           "covers": [
             "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
@@ -18597,13 +18597,139 @@
           "indexSignatures": [],
           "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/Bitmap.ts",
+          "export": "isFlashBitmap",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Bitmap",
+          "sha256": "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5"
+        },
+        {
+          "module": "src/layaAir/flash/display/BitmapData.ts",
+          "export": "acquireBitmapDataTexture",
+          "kind": "function",
+          "signature": "(value: BitmapData, smoothing: boolean) => Texture | null",
+          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+        },
+        {
+          "module": "src/layaAir/flash/display/BitmapData.ts",
+          "export": "isFlashBitmapData",
+          "kind": "function",
+          "signature": "(value: unknown) => value is BitmapData",
+          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+        },
+        {
+          "module": "src/layaAir/flash/display/BitmapData.ts",
+          "export": "observeBitmapData",
+          "kind": "function",
+          "signature": "(value: BitmapData, listener: InvalidationListener) => () => void",
+          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "isFlashDisplayObject",
+          "kind": "function",
+          "signature": "(value: unknown) => value is DisplayObject",
+          "sha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
+          "export": "isFlashDisplayObjectContainer",
+          "kind": "function",
+          "signature": "(value: unknown) => value is DisplayObjectContainer",
+          "sha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27"
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
+          "export": "FlashStageBootstrap",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc"
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
+          "export": "FlashStageBootstrapOptions",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc"
+        },
+        {
+          "module": "src/layaAir/flash/display/Graphics.ts",
+          "export": "isFlashGraphics",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Graphics",
+          "sha256": "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
+        },
+        {
+          "module": "src/layaAir/flash/display/IBitmapDrawable.ts",
+          "export": "IBitmapDrawable",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2"
+        },
+        {
+          "module": "src/layaAir/flash/display/InteractiveObject.ts",
+          "export": "isFlashInteractiveObject",
+          "kind": "function",
+          "signature": "(value: unknown) => value is InteractiveObject",
+          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5"
+        },
+        {
+          "module": "src/layaAir/flash/display/InteractiveObject.ts",
+          "export": "resolveFlashFocusOwner",
+          "kind": "function",
+          "signature": "(value: unknown) => InteractiveObject | null",
+          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5"
+        },
+        {
+          "module": "src/layaAir/flash/display/MovieClip.ts",
+          "export": "FlashFrameReference",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba"
+        },
+        {
+          "module": "src/layaAir/flash/display/MovieClip.ts",
+          "export": "isFlashMovieClip",
+          "kind": "function",
+          "signature": "(value: unknown) => value is MovieClip",
+          "sha256": "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba"
+        },
+        {
+          "module": "src/layaAir/flash/display/NativeMovieClipTimeline.ts",
+          "export": "NativeMovieClipTimeline",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b"
+        },
+        {
+          "module": "src/layaAir/flash/display/Shape.ts",
+          "export": "isFlashShape",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Shape",
+          "sha256": "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21"
+        },
+        {
+          "module": "src/layaAir/flash/display/SimpleButton.ts",
+          "export": "isFlashSimpleButton",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SimpleButton",
+          "sha256": "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a"
+        },
+        {
+          "module": "src/layaAir/flash/display/Sprite.ts",
+          "export": "isFlashSprite",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Sprite",
+          "sha256": "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "424f84f5ddc4ed3ae6a0521a21a89c43358c3946f5c66a7f4a0733c3d2a3e698",
+          "sha256": "31dc6d7b064381ef9a491d076e7f6bff64ee08c5550c6499b353d82d23cc0dbe",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -19043,13 +19169,27 @@
           "indexSignatures": [],
           "sha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/geom/Point.ts",
+          "export": "isFlashPoint",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Point",
+          "sha256": "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Rectangle.ts",
+          "export": "isFlashRectangle",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Rectangle",
+          "sha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
           "test": "Flash geometry bridge compiler surface",
-          "sha256": "a1835c83b56a0105cdbf1cc83bb3a57a03cd320feb769c1c2987a04a13c6baf0",
+          "sha256": "310c5232b55e96360bc3c8c773a42b65c0155e546d4a9fe11abd80a38643874b",
           "capability": "api.flash.geom",
           "covers": [
             "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
@@ -23385,13 +23525,97 @@
               "signature": "Event"
             }
           ]
+        },
+        {
+          "module": "src/layaAir/flash/events/ErrorEvent.ts",
+          "export": "isFlashErrorEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ErrorEvent",
+          "sha256": "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f"
+        },
+        {
+          "module": "src/layaAir/flash/events/Event.ts",
+          "export": "isFlashEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Event",
+          "sha256": "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd"
+        },
+        {
+          "module": "src/layaAir/flash/events/EventDispatcher.ts",
+          "export": "IEventDispatcher",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc"
+        },
+        {
+          "module": "src/layaAir/flash/events/EventDispatcher.ts",
+          "export": "isFlashEventDispatcher",
+          "kind": "function",
+          "signature": "(value: unknown) => value is EventDispatcher",
+          "sha256": "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc"
+        },
+        {
+          "module": "src/layaAir/flash/events/FlashEventRouter.ts",
+          "export": "FlashEventListener",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc"
+        },
+        {
+          "module": "src/layaAir/flash/events/FlashEventRouter.ts",
+          "export": "NativeEventHost",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc"
+        },
+        {
+          "module": "src/layaAir/flash/events/FocusEvent.ts",
+          "export": "isFlashFocusEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is FocusEvent",
+          "sha256": "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25"
+        },
+        {
+          "module": "src/layaAir/flash/events/IOErrorEvent.ts",
+          "export": "isFlashIOErrorEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is IOErrorEvent",
+          "sha256": "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d"
+        },
+        {
+          "module": "src/layaAir/flash/events/KeyboardEvent.ts",
+          "export": "isFlashKeyboardEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is KeyboardEvent",
+          "sha256": "fe4066d6474a605e7ff3b686c59d59f4d184afdf0a6070a54922327e42e1d884"
+        },
+        {
+          "module": "src/layaAir/flash/events/MouseEvent.ts",
+          "export": "isFlashMouseEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is MouseEvent",
+          "sha256": "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c"
+        },
+        {
+          "module": "src/layaAir/flash/events/TextEvent.ts",
+          "export": "isFlashTextEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is TextEvent",
+          "sha256": "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273"
+        },
+        {
+          "module": "src/layaAir/flash/events/TimerEvent.ts",
+          "export": "isFlashTimerEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is TimerEvent",
+          "sha256": "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashEventsBridgeEvidence.test.ts",
           "test": "Flash events bridge compiler surface",
-          "sha256": "f6fe3a7f5fcdcb24b6e02933904cfc6a906d81db7f11847372252ce39361ca01",
+          "sha256": "9f3b68b046579b0b2ea35a80bbcb76bfa2e150914e6081c478740f0270816415",
           "capability": "api.flash.events",
           "covers": [
             "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25",
@@ -26830,13 +27054,27 @@
           "kind": "function",
           "signature": "(request: URLRequest, target: string) => void",
           "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+        },
+        {
+          "module": "src/layaAir/flash/net/URLRequest.ts",
+          "export": "URLRequestHeader",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+        },
+        {
+          "module": "src/layaAir/flash/net/URLRequest.ts",
+          "export": "isFlashURLRequest",
+          "kind": "function",
+          "signature": "(value: unknown) => value is URLRequest",
+          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashNetBridgeEvidence.test.ts",
           "test": "Flash net bridge compiler surface",
-          "sha256": "b1a686a8e48be5a1e8aefecd371549d42e3b6cc3c04af7484a857d6c020883ce",
+          "sha256": "100bf3a1f05890358fa8af7eb2e6d8d9c2f953ca1026893a2890a79c6dd1aba2",
           "capability": "api.flash.net",
           "covers": [
             "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
@@ -26846,8 +27084,217 @@
     },
     {
       "id": "api.flash.utils",
-      "status": "blocking",
-      "blockingReason": "The universal source-visible utilities API bridge is not yet admitted on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/utils/Timer.ts",
+          "export": "Timer",
+          "kind": "class",
+          "signature": "typeof Timer",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentCount",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "delay",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "repeatCount",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "reset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "running",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "start",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (delay: number, repeatCount?: number): Timer"
+          ],
+          "indexSignatures": [],
+          "sha256": "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/utils/Timer.ts",
+          "export": "isFlashTimer",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Timer",
+          "sha256": "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
+          "test": "Flash utils Timer compiler and scheduler surface",
+          "sha256": "1ee9e8a85bc4475f6d18dda3903145019cbd8f71ef733e3d358eaf7e2e608d7a",
+          "capability": "api.flash.utils",
+          "covers": [
+            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
+          ]
+        }
+      ]
     },
     {
       "id": "api.flash.filters",
@@ -27623,6 +28070,13 @@
           "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
         },
         {
+          "module": "src/layaAir/flash/filters/FilterRegistry.ts",
+          "export": "ConcreteBitmapFilter",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+        },
+        {
           "module": "src/layaAir/flash/filters/GlowFilter.ts",
           "export": "GlowFilter",
           "kind": "class",
@@ -27815,7 +28269,7 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "f50dc6078e7bbcdf89203a22bdd48f85514f992f0d5ba14a939edc1ca609ec6b",
+          "sha256": "c86e880556ec7ea0d444222c2a354bb0f32ad2988669edaebbfd6ab336bd0446",
           "capability": "api.flash.filters",
           "covers": [
             "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",

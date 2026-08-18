@@ -31,6 +31,7 @@
     "test:flash-filters": "node scripts/testFlashFilters.mjs",
     "test:flash-filters:types": "tsc -p tests/flashFilters/tsconfig.json --pretty false",
     "test:flash-filters:gpu": "node scripts/testFlashFiltersGpu.mjs",
+    "test:flash-timer": "node scripts/testFlashTimer.mjs",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

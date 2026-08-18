@@ -15,25 +15,57 @@ if (ledger.hashMode !== "canonical-lf-utf8")
     throw new Error("Capability ledger must declare hashMode canonical-lf-utf8");
 
 const eventCapability = ledger.capabilities.find(item => item.id === "api.flash.events");
-for (const [module, exported] of [
+for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/events/FocusEvent.ts", "FocusEvent"],
     ["src/layaAir/flash/events/IMEEvent.ts", "IMEEvent"],
     ["src/layaAir/flash/events/TextEvent.ts", "TextEvent"],
+    ["src/layaAir/flash/events/ErrorEvent.ts", "isFlashErrorEvent", "function"],
+    ["src/layaAir/flash/events/Event.ts", "isFlashEvent", "function"],
+    ["src/layaAir/flash/events/EventDispatcher.ts", "IEventDispatcher", "interface"],
+    ["src/layaAir/flash/events/EventDispatcher.ts", "isFlashEventDispatcher", "function"],
+    ["src/layaAir/flash/events/FlashEventRouter.ts", "FlashEventListener", "type"],
+    ["src/layaAir/flash/events/FlashEventRouter.ts", "NativeEventHost", "interface"],
+    ["src/layaAir/flash/events/FocusEvent.ts", "isFlashFocusEvent", "function"],
+    ["src/layaAir/flash/events/IOErrorEvent.ts", "isFlashIOErrorEvent", "function"],
+    ["src/layaAir/flash/events/KeyboardEvent.ts", "isFlashKeyboardEvent", "function"],
+    ["src/layaAir/flash/events/MouseEvent.ts", "isFlashMouseEvent", "function"],
+    ["src/layaAir/flash/events/TextEvent.ts", "isFlashTextEvent", "function"],
+    ["src/layaAir/flash/events/TimerEvent.ts", "isFlashTimerEvent", "function"],
 ]) {
     if (!eventCapability.obligations.some(item => item.module === module && item.export === exported))
-        eventCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+        eventCapability.obligations.push({ module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
 }
 
 const displayCapability = ledger.capabilities.find(item => item.id === "api.flash.display");
-for (const [module, exported] of [
+for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBoundary"],
     ["src/layaAir/flash/display/Bitmap.ts", "Bitmap"],
     ["src/layaAir/flash/display/BitmapData.ts", "BitmapData"],
     ["src/layaAir/flash/display/BitmapDataChannel.ts", "BitmapDataChannel"],
     ["src/layaAir/flash/display/PixelSnapping.ts", "PixelSnapping"],
+    ["src/layaAir/flash/display/Bitmap.ts", "isFlashBitmap", "function"],
+    ["src/layaAir/flash/display/BitmapData.ts", "acquireBitmapDataTexture", "function"],
+    ["src/layaAir/flash/display/BitmapData.ts", "isFlashBitmapData", "function"],
+    ["src/layaAir/flash/display/BitmapData.ts", "observeBitmapData", "function"],
+    ["src/layaAir/flash/display/DisplayObject.ts", "isFlashDisplayObject", "function"],
+    ["src/layaAir/flash/display/DisplayObjectContainer.ts", "isFlashDisplayObjectContainer", "function"],
+    ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBootstrap", "interface"],
+    ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBootstrapOptions", "interface"],
+    ["src/layaAir/flash/display/Graphics.ts", "isFlashGraphics", "function"],
+    ["src/layaAir/flash/display/IBitmapDrawable.ts", "IBitmapDrawable", "type"],
+    ["src/layaAir/flash/display/InteractiveObject.ts", "isFlashInteractiveObject", "function"],
+    ["src/layaAir/flash/display/InteractiveObject.ts", "resolveFlashFocusOwner", "function"],
+    ["src/layaAir/flash/display/MovieClip.ts", "FlashFrameReference", "type"],
+    ["src/layaAir/flash/display/MovieClip.ts", "isFlashMovieClip", "function"],
+    ["src/layaAir/flash/display/NativeMovieClipTimeline.ts", "NativeMovieClipTimeline", "interface"],
+    ["src/layaAir/flash/display/Shape.ts", "isFlashShape", "function"],
+    ["src/layaAir/flash/display/SimpleButton.ts", "isFlashSimpleButton", "function"],
+    ["src/layaAir/flash/display/Sprite.ts", "isFlashSprite", "function"],
 ]) {
     if (!displayCapability.obligations.some(item => item.module === module && item.export === exported))
-        displayCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+        displayCapability.obligations.push({ module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
 }
 
 const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
@@ -67,22 +99,47 @@ for (const [module, exported] of textSubjects) {
 }
 
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
-for (const [module, exported] of [
+for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/geom/Point.ts", "Point"],
     ["src/layaAir/flash/geom/Rectangle.ts", "Rectangle"],
+    ["src/layaAir/flash/geom/Point.ts", "isFlashPoint", "function"],
+    ["src/layaAir/flash/geom/Rectangle.ts", "isFlashRectangle", "function"],
 ]) {
     if (!geometryCapability.obligations.some(item => item.module === module && item.export === exported))
-        geometryCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+        geometryCapability.obligations.push({ module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
 }
 
 const netCapability = ledger.capabilities.find(item => item.id === "api.flash.net");
 const netSubjects = [
     ["src/layaAir/flash/net/URLRequest.ts", "URLRequest", "class"],
     ["src/layaAir/flash/net/URLRequest.ts", "navigateToURL", "function"],
+    ["src/layaAir/flash/net/URLRequest.ts", "URLRequestHeader", "interface"],
+    ["src/layaAir/flash/net/URLRequest.ts", "isFlashURLRequest", "function"],
 ];
 netCapability.obligations = netSubjects.map(([module, exported, kind]) =>
     netCapability.obligations.find(item => item.module === module && item.export === exported)
     || { module, export: exported, kind, signature: "", ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
+
+const utilsCapability = ledger.capabilities.find(item => item.id === "api.flash.utils");
+Object.assign(utilsCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/utils/Timer.ts", "Timer", "class"],
+        ["src/layaAir/flash/utils/Timer.ts", "isFlashTimer", "function"],
+    ].map(([module, exported, kind]) =>
+        utilsCapability.obligations?.find(item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashUtilsBridgeEvidence.test.ts",
+        test: "Flash utils Timer compiler and scheduler surface",
+        sha256: "",
+        capability: "api.flash.utils",
+        covers: [],
+    }],
+});
+delete utilsCapability.blockingReason;
 
 let filterCapability = ledger.capabilities.find(item => item.id === "api.flash.filters");
 if (!filterCapability) {
@@ -112,6 +169,7 @@ const filterSubjects = [
     ["src/layaAir/flash/filters/FilterProxy.ts", "FilterProxy", "class"],
     ["src/layaAir/flash/filters/FilterRegistry.ts", "bitmapFilterEquals", "function"],
     ["src/layaAir/flash/filters/FilterRegistry.ts", "isBitmapFilter", "function"],
+    ["src/layaAir/flash/filters/FilterRegistry.ts", "ConcreteBitmapFilter", "type"],
     ["src/layaAir/flash/filters/GlowFilter.ts", "GlowFilter", "class"],
     ["src/layaAir/flash/filters/GlowFilter.ts", "isGlowFilter", "function"],
 ];

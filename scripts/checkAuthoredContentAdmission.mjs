@@ -1151,14 +1151,16 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
     inspectHash(root, moduleFile, obligation.sha256, `${label}.sha256`, failures);
     const declaration = exported.valueDeclaration || exported.declarations?.find(item => !item.getSourceFile().isDeclarationFile);
     if (!declaration || declaration.getSourceFile().isDeclarationFile) {
-        failures.push(`${label}: export ${obligation.export} must resolve to a concrete implementation`);
+        failures.push(`${label}: export ${obligation.export} must resolve to a repository declaration`);
         return;
     }
     const actualKind = ts.isFunctionDeclaration(declaration) ? "function"
         : ts.isClassDeclaration(declaration) ? "class"
+            : ts.isInterfaceDeclaration(declaration) ? "interface"
+                : ts.isTypeAliasDeclaration(declaration) ? "type"
             : ts.isVariableDeclaration(declaration) && declaration.parent.flags & ts.NodeFlags.Const ? "const" : "other";
-    if (!new Set(["function", "class", "const"]).has(obligation.kind) || obligation.kind !== actualKind)
-        failures.push(`${label}.kind: expected concrete ${actualKind} export`);
+    if (!new Set(["function", "class", "const", "interface", "type"]).has(obligation.kind) || obligation.kind !== actualKind)
+        failures.push(`${label}.kind: expected exact ${actualKind} export`);
     const actualSignature = logicalCompilerSignature(root, code.checker.typeToString(
         code.checker.getTypeOfSymbolAtLocation(exported, declaration),
         declaration,
@@ -1333,6 +1335,17 @@ function productionReachability(root, files, policy, graph, packageRoots, failur
                         continue;
                     }
                     const propertiesNamed = name => element.properties.filter(property => property.name.text === name);
+                    const names = propertiesNamed("name");
+                    const bundleName = names.length === 1 ? literalText(names[0].initializer) : null;
+                    if (names.length !== 1 || bundleName === null)
+                        failures.push(`${BUILD_CONFIG}: allBundles[${bundleIndex}].name must be one literal string`);
+                    const globalNames = propertiesNamed("globalName");
+                    const globalName = globalNames.length === 1 ? literalText(globalNames[0].initializer) : null;
+                    if (globalNames.length > 1 || globalNames.length === 1
+                        && (globalName === null || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(globalName)))
+                        failures.push(`${BUILD_CONFIG}: allBundles[${bundleIndex}].globalName must be one literal identifier`);
+                    if (bundleName === "flash" && globalName !== "LayaFlash")
+                        failures.push(`${BUILD_CONFIG}: the Flash bundle must use the collision-free LayaFlash global`);
                     const addLiteralArray = (property, label) => {
                         if (!property || !ts.isArrayLiteralExpression(property.initializer)) {
                             failures.push(`${BUILD_CONFIG}: ${label} must be one literal array`);
