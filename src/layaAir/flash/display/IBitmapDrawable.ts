@@ -1,9 +1,10 @@
 import { DisplayObject, isFlashDisplayObject } from "./DisplayObject";
+import { isFlashBitmapData, type BitmapData } from "./BitmapData";
 
-/** Source type presently admitted for real Flash display nodes. Add BitmapData to this union in its own workpack. */
-export type IBitmapDrawable = DisplayObject;
+/** Exact source-visible Flash drawable union; it owns no identity separate from its members. */
+export type IBitmapDrawable = DisplayObject | BitmapData;
 
 /** @internal Plain runtime-lowering predicate; it mints no identity of its own. */
 export function isFlashBitmapDrawable(value: unknown): value is IBitmapDrawable {
-    return isFlashDisplayObject(value);
+    return isFlashDisplayObject(value) || isFlashBitmapData(value);
 }

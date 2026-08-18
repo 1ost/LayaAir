@@ -3,6 +3,36 @@
   "hashMode": "canonical-lf-utf8",
   "types": [
     {
+      "sourceQName": "flash.display.Bitmap",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Bitmap.ts",
+      "constructorExport": "Bitmap",
+      "constructorSignature": "typeof Bitmap",
+      "constructSignatures": [
+        "new (bitmapData?: BitmapData | null, pixelSnapping?: string, smoothing?: boolean): Bitmap"
+      ],
+      "predicateExport": "isFlashBitmap",
+      "predicateSignature": "(value: unknown) => value is Bitmap",
+      "heritageClosure": [
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5"
+    },
+    {
+      "sourceQName": "flash.display.BitmapData",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/BitmapData.ts",
+      "constructorExport": "BitmapData",
+      "constructorSignature": "typeof BitmapData",
+      "constructSignatures": [
+        "new (width: number, height: number, transparent?: boolean, fillColor?: number): BitmapData"
+      ],
+      "predicateExport": "isFlashBitmapData",
+      "predicateSignature": "(value: unknown) => value is BitmapData",
+      "heritageClosure": [],
+      "moduleSha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+    },
+    {
       "sourceQName": "flash.display.DisplayObject",
       "targetCapabilityId": "api.flash.display",
       "targetModule": "src/layaAir/flash/display/DisplayObject.ts",

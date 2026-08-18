@@ -19,6 +19,8 @@ import { isFlashMovieClip } from "../../../src/layaAir/flash/display/MovieClip";
 import { isFlashSimpleButton } from "../../../src/layaAir/flash/display/SimpleButton";
 import { isFlashSprite } from "../../../src/layaAir/flash/display/Sprite";
 import { isFlashShape } from "../../../src/layaAir/flash/display/Shape";
+import { isFlashBitmap } from "../../../src/layaAir/flash/display/Bitmap";
+import { isFlashBitmapData, observeBitmapData } from "../../../src/layaAir/flash/display/BitmapData";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
@@ -48,7 +50,8 @@ import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
     ErrorEvent, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
     InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TextField, TextFieldType, TimerEvent,
-    Point, Rectangle, UnsupportedFlashFeatureError, URLRequest
+    Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
+    UnsupportedFlashFeatureError, URLRequest
 } from "../../../src/layaAir/flash";
 import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
@@ -288,6 +291,200 @@ test("Point and Rectangle retain Flash value semantics on native Laya values", (
     assert.throws(() => display.localToGlobal(new Proxy(new Point(3, 4), {}) as Point), TypeError);
 });
 
+test("BitmapData preserves premultiplied Flash pixel, clipping and disposal semantics", () => {
+    assert.equal("draw" in BitmapData.prototype, false);
+    assert.equal("applyFilter" in BitmapData.prototype, false);
+    assert.equal(Object.isFrozen(BitmapDataChannel), true);
+    assert.equal(Object.isFrozen(PixelSnapping), true);
+    assert.deepEqual([BitmapDataChannel.RED, BitmapDataChannel.GREEN, BitmapDataChannel.BLUE, BitmapDataChannel.ALPHA],
+        [1, 2, 4, 8]);
+    assert.deepEqual([PixelSnapping.ALWAYS, PixelSnapping.AUTO, PixelSnapping.NEVER], ["always", "auto", "never"]);
+
+    const defaulted = new BitmapData(2, 2);
+    assert.equal(defaulted.transparent, true);
+    assert.equal(defaulted.getPixel32(0, 0), 0xffffffff);
+    const explicitUndefined = new BitmapData(1, 1, undefined, 0x00112233);
+    assert.equal(explicitUndefined.transparent, false);
+    assert.equal(explicitUndefined.getPixel32(0, 0), 0xff112233);
+    assert.equal(new BitmapData("10.5" as unknown as number, 1).width, 10);
+    assert.throws(() => new BitmapData(0, 1), RangeError);
+    assert.throws(() => new BitmapData(1, -1), RangeError);
+    assert.throws(() => new BitmapData(8192, 1), /allocation limit/);
+    assert.throws(() => new BitmapData(4096, 4096), /allocation limit/);
+
+    const premultiplied = new BitmapData(1, 1, true, 0x12345678);
+    assert.equal(premultiplied.getPixel32(0, 0), 0x12395571);
+    premultiplied.setPixel32(0, 0, 0xaabbccdd);
+    assert.equal(premultiplied.getPixel32(0, 0), 0xaabbccdc);
+    premultiplied.setPixel(0, 0, 0x00112233);
+    assert.equal(premultiplied.getPixel32(0, 0) >>> 24, 0xaa);
+    assert.equal(premultiplied.getPixel(-1, 0), 0);
+    assert.equal(premultiplied.getPixel32(1, 0), 0);
+    premultiplied.setPixel32(8, 8, 0xffffffff);
+
+    const clipped = new BitmapData(4, 3, true, 0);
+    clipped.fillRect(new Rectangle(-1.5, 0.5, 4, 2), 0xff010203);
+    assert.equal(clipped.getPixel32(0, 0), 0xff010203);
+    assert.equal(clipped.getPixel32(2, 2), 0);
+    assert.equal(clipped.getPixel32(3, 0), 0);
+    const clone = clipped.clone();
+    assert.notEqual(clone, clipped);
+    assert.deepEqual(clone.rect, clipped.rect);
+    assert.equal(clone.getPixel32(1, 0), clipped.getPixel32(1, 0));
+
+    let invalidations = 0;
+    const stop = observeBitmapData(clipped, () => invalidations++);
+    clipped.lock();
+    clipped.setPixel32(0, 0, 0xff112233);
+    clipped.setPixel32(1, 0, 0xff445566);
+    assert.equal(invalidations, 0);
+    clipped.unlock(new Rectangle(0, 0, 2, 1));
+    assert.equal(invalidations, 1);
+    clipped.dispose();
+    assert.equal(invalidations, 2);
+    assert.doesNotThrow(() => clipped.dispose());
+    assert.throws(() => clipped.getPixel32(0, 0), /disposed/);
+    assert.throws(() => clipped.width, /disposed/);
+    stop();
+});
+
+test("BitmapData channel, copyPixels, bounds and threshold operations match Flash edge behavior", () => {
+    const channelSource = new BitmapData(2, 1, false, 0xff800000);
+    const channelTarget = new BitmapData(2, 1, true, 0xff204060);
+    channelTarget.copyChannel(channelSource, new Rectangle(0, 0, 2, 1), new Point(),
+        BitmapDataChannel.RED, BitmapDataChannel.ALPHA);
+    assert.equal(channelTarget.getPixel32(0, 0) >>> 24, 0x80);
+    assert.equal(channelTarget.getPixel32(0, 0) & 0x00ffffff, 0x204060);
+    assert.throws(() => channelTarget.copyChannel({} as BitmapData, new Rectangle(), new Point(), 1, 8), TypeError);
+
+    const overlap = new BitmapData(4, 1, false, 0);
+    for (let x = 0; x < 4; x++) overlap.setPixel(x, 0, x + 1);
+    overlap.copyPixels(overlap, new Rectangle(0, 0, 3, 1), new Point(1, 0));
+    assert.deepEqual([0, 1, 2, 3].map(x => overlap.getPixel(x, 0)), [1, 1, 2, 3]);
+
+    const sourceOver = new BitmapData(1, 1, true, 0x80ff0000);
+    const opaqueDestination = new BitmapData(1, 1, false, 0xff0000ff);
+    opaqueDestination.copyPixels(sourceOver, sourceOver.rect, new Point(), null, null, false);
+    assert.equal(opaqueDestination.getPixel32(0, 0), 0xff80007f);
+    const alphaMask = new BitmapData(1, 1, true, 0x80000000);
+    const maskedCopy = new BitmapData(1, 1, true, 0);
+    maskedCopy.copyPixels(new BitmapData(1, 1, false, 0xffff0000), new Rectangle(0, 0, 1, 1),
+        new Point(), alphaMask, null, false);
+    assert.equal(maskedCopy.getPixel32(0, 0) >>> 24, 0x80);
+    const opaqueAlphaMask = new BitmapData(1, 1, false, 0);
+    const preservedSourceAlpha = new BitmapData(1, 1, true, 0);
+    preservedSourceAlpha.copyPixels(sourceOver, sourceOver.rect, new Point(), opaqueAlphaMask, null, false);
+    assert.equal(preservedSourceAlpha.getPixel32(0, 0), 0x80ff0000);
+    const maskedOpaqueDestination = new BitmapData(1, 1, false, 0xff0000ff);
+    maskedOpaqueDestination.copyPixels(new BitmapData(1, 1, false, 0xffff0000),
+        new Rectangle(0, 0, 1, 1), new Point(), alphaMask, null, false);
+    assert.equal(maskedOpaqueDestination.getPixel32(0, 0), 0xff80007f);
+
+    const bounds = new BitmapData(3, 3, true, 0);
+    bounds.setPixel32(1, 1, 0xff123456);
+    assert.deepEqual(bounds.getColorBoundsRect(0xff000000, 0, false), new Rectangle(1, 1, 1, 1));
+    assert.deepEqual(bounds.getColorBoundsRect(0, 0, true), new Rectangle(0, 0, 3, 3));
+    const opaqueBounds = new BitmapData(3, 2, false, 0xffffffff);
+    opaqueBounds.fillRect(new Rectangle(0, 0, 3, 1), 0xffff0000);
+    assert.deepEqual(opaqueBounds.getColorBoundsRect(0x00ffffff, 0x00ff0000), new Rectangle(0, 0, 3, 1));
+    const playerPmaBounds = new BitmapData(3, 3, true, 0xaabbccdd);
+    assert.deepEqual(playerPmaBounds.getColorBoundsRect(0x000000ff, 0x000000dd, true), new Rectangle());
+    const originOnly = new BitmapData(2, 2, true, 0);
+    originOnly.setPixel32(0, 0, 0xffffffff);
+    assert.deepEqual(originOnly.getColorBoundsRect(0xffffffff, 0xffffffff), new Rectangle());
+
+    const thresholdSource = new BitmapData(2, 1, true, 0);
+    thresholdSource.setPixel32(0, 0, 0x40102030);
+    thresholdSource.setPixel32(1, 0, 0xc0102030);
+    const thresholdDestination = new BitmapData(2, 1, true, 0xffffffff);
+    assert.equal(thresholdDestination.threshold(thresholdSource, thresholdSource.rect, new Point(),
+        "<", 0x80000000, 0, 0xff000000, true), 1);
+    assert.equal(thresholdDestination.getPixel32(0, 0), 0);
+    assert.equal(thresholdDestination.getPixel32(1, 0) >>> 24, 0xc0);
+
+    const opaqueThreshold = new BitmapData(1, 1, false, 0xffffffff);
+    assert.equal(opaqueThreshold.threshold(thresholdSource, new Rectangle(0, 0, 1, 1), new Point(),
+        "==", 0x40000000, 0x80112233, 0xff000000, false), 1);
+    assert.equal(opaqueThreshold.getPixel32(0, 0), 0x8009111a);
+    const playerOpaqueThreshold = new BitmapData(1, 1, false, 0xffbbccdd);
+    const playerTransparentSource = new BitmapData(1, 1, true, 0x12345678);
+    assert.equal(playerOpaqueThreshold.threshold(playerTransparentSource, playerTransparentSource.rect, new Point(),
+        "==", 0x33333333, 0xaaaaaaaa, 0x00ff0000, true), 0);
+    assert.equal(playerOpaqueThreshold.getPixel32(0, 0), 0x12040608);
+    assert.throws(() => opaqueThreshold.threshold(thresholdSource, thresholdSource.rect, new Point(),
+        "invalid", 0), /operation/);
+});
+
+test("Bitmap keeps nullable source identity, nominal type and independent render state", () => {
+    const data = new BitmapData(2, 3, true, 0xff123456);
+    const bitmap = new Bitmap(data);
+    assert.ok(bitmap instanceof DisplayObject);
+    assert.equal(isFlashBitmap(bitmap), true);
+    assert.equal(isFlashBitmap(Object.create(Bitmap.prototype)), false);
+    assert.equal(isFlashBitmapData(data), true);
+    assert.equal(isFlashBitmapData({ width: 2, height: 3 }), false);
+    assert.equal(bitmap.bitmapData, data);
+    assert.equal(bitmap.pixelSnapping, PixelSnapping.AUTO);
+    assert.equal(bitmap.smoothing, false);
+    bitmap.pixelSnapping = PixelSnapping.ALWAYS;
+    bitmap.smoothing = true;
+    assert.equal(bitmap.pixelSnapping, "always");
+    assert.equal(bitmap.smoothing, true);
+    assert.throws(() => { bitmap.pixelSnapping = "sometimes"; }, /pixelSnapping/);
+    assert.equal(bitmap.pixelSnapping, "always");
+    bitmap.bitmapData = null;
+    assert.equal(bitmap.bitmapData, null);
+    assert.throws(() => { bitmap.bitmapData = {} as BitmapData; }, TypeError);
+    bitmap.destroy();
+});
+
+test("shared BitmapData owns two sampling backings and disposes each exactly once", () => {
+    const previousTextureContext = LayaGL.textureContext;
+    let creates = 0, disposals = 0;
+    const uploads: number[][] = [];
+    LayaGL.textureContext = {
+        createTextureInternal: (_dimension: unknown, width: number, height: number) => {
+            creates++;
+            return {
+                width, height, filterMode: 0, wrapU: 0, wrapV: 0, wrapW: 0,
+                mipmap: false, mipmapCount: 1, useSRGBLoad: true, gammaCorrection: 1,
+                dispose: () => disposals++,
+            };
+        },
+        setTexturePixelsData: (_texture: unknown, pixels: Uint8Array) => uploads.push(Array.from(pixels)),
+    } as any;
+    try {
+        const data = new BitmapData(2, 2, true, 0xff010203);
+        const pointA = new Bitmap(data, PixelSnapping.AUTO, false);
+        const pointB = new Bitmap(data, PixelSnapping.ALWAYS, false);
+        assert.equal(creates, 1);
+        assert.equal(uploads.length, 1);
+        assert.equal(pointA.bitmapData, pointB.bitmapData);
+        data.setPixel32(0, 0, 0xffaabbcc);
+        assert.equal(uploads.length, 2);
+        data.lock();
+        data.setPixel32(0, 0, 0xff010101);
+        data.setPixel32(1, 1, 0xff020202);
+        const smooth = new Bitmap(data, PixelSnapping.NEVER, true);
+        assert.equal(creates, 2);
+        assert.equal(uploads.length, 3);
+        assert.deepEqual(uploads[2].slice(0, 4), [0xaa, 0xbb, 0xcc, 0xff]);
+        data.unlock();
+        assert.equal(uploads.length, 5);
+        assert.deepEqual(uploads[3].slice(0, 4), [1, 1, 1, 255]);
+        assert.deepEqual(uploads[4].slice(0, 4), [1, 1, 1, 255]);
+        data.dispose();
+        assert.equal(disposals, 2);
+        assert.equal(pointA.texture, null);
+        assert.equal(pointB.texture, null);
+        assert.equal(smooth.texture, null);
+        pointA.destroy(); pointB.destroy(); smooth.destroy();
+        assert.equal(disposals, 2);
+    } finally {
+        LayaGL.textureContext = previousTextureContext;
+    }
+});
+
 test("Event validates immutable type and listener priority", () => {
     const event = new Event("change");
     assert.equal(event.type, "change");
@@ -424,9 +621,13 @@ test("Flash Graphics owns state while preserving native command storage", () => 
 
 test("IBitmapDrawable uses central nominal identity and unattached Shape receives global enterFrame", () => {
     const shape = new Shape();
+    const bitmapData: IBitmapDrawable = new BitmapData(1, 1);
     assert.equal(isFlashBitmapDrawable(shape), true);
+    assert.equal(isFlashBitmapDrawable(bitmapData), true);
     assert.equal(isFlashBitmapDrawable({}), false);
     assert.equal(isFlashBitmapDrawable(new Proxy(shape, {})), false);
+    assert.equal(isFlashBitmapDrawable(Object.create(BitmapData.prototype)), false);
+    assert.equal(isFlashBitmapDrawable(new Proxy(bitmapData as BitmapData, {})), false);
     assert.equal(new DisplayObject().graphics instanceof Graphics, false, "base DisplayObject has no Flash Graphics seam");
     let frames = 0;
     const listener = (event: Event): void => {

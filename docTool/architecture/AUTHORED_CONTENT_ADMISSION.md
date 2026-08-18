@@ -84,6 +84,14 @@ Bridge capabilities use TypeScript obligations even when implemented over
 native engine/browser services, so native disposition cannot bypass signature,
 static/instance member, modifier, accessor, constructor, or index-surface pins.
 
+The admitted bitmap bridge owns CPU pixel storage, native texture publication,
+`BitmapDataChannel`, and the source-visible `Bitmap` state surface. It does not
+claim a renderer implementation for `PixelSnapping.AUTO` or
+`PixelSnapping.ALWAYS`; those members remain a downstream mapping hold until a
+Bitmap-specific transform-aware render path exists. `BitmapData.draw` and
+`BitmapData.applyFilter` are intentionally absent rather than throw-only
+mapped stubs, and remain separate raster/filter workpacks.
+
 Run the mandatory gates with:
 
 ```text

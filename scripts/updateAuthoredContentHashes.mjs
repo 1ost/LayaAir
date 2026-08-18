@@ -24,6 +24,17 @@ for (const [module, exported] of [
         eventCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+const displayCapability = ledger.capabilities.find(item => item.id === "api.flash.display");
+for (const [module, exported] of [
+    ["src/layaAir/flash/display/Bitmap.ts", "Bitmap"],
+    ["src/layaAir/flash/display/BitmapData.ts", "BitmapData"],
+    ["src/layaAir/flash/display/BitmapDataChannel.ts", "BitmapDataChannel"],
+    ["src/layaAir/flash/display/PixelSnapping.ts", "PixelSnapping"],
+]) {
+    if (!displayCapability.obligations.some(item => item.module === module && item.export === exported))
+        displayCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+}
+
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
 for (const [module, exported] of [
     ["src/layaAir/flash/geom/Point.ts", "Point"],

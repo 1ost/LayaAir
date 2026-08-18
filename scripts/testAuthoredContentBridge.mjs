@@ -47,7 +47,7 @@ try {
         if (actualHash !== expectedHash) throw new Error("Flash runtime type predicate authority hash drift");
         const authority = JSON.parse(authorityText);
         if (authority.schema !== "laya-flash-runtime-type-predicates@1"
-            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 21)
+            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 23)
             throw new Error("Flash runtime type predicate authority is incomplete");
         const rootBarrel = await readFile(join(root, "src/layaAir/flash/index.ts"), "utf8");
         for (const entry of authority.types) {
@@ -65,6 +65,10 @@ try {
                 throw new Error(`Flash runtime nominal proof is not privately minted: ${entry.sourceQName}`);
         }
         const files = [
+            "src/layaAir/flash/display/Bitmap.ts",
+            "src/layaAir/flash/display/BitmapData.ts",
+            "src/layaAir/flash/display/BitmapDataChannel.ts",
+            "src/layaAir/flash/display/PixelSnapping.ts",
             "src/layaAir/flash/events/FlashEventRouter.ts",
             "src/layaAir/flash/display/MovieClip.ts",
             "src/layaAir/flash/display/SimpleButton.ts",
