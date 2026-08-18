@@ -35,6 +35,36 @@ for (const [module, exported] of [
         displayCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
+const textSubjects = [
+    ["src/layaAir/flash/text/TextField.ts", "TextField"],
+    ["src/layaAir/flash/text/TextField.ts", "flashHtmlToText"],
+    ["src/layaAir/flash/text/TextField.ts", "flashTextToHtml"],
+    ["src/layaAir/flash/text/TextField.ts", "isFlashTextField"],
+    ["src/layaAir/flash/text/TextFormat.ts", "AntiAliasType"],
+    ["src/layaAir/flash/text/TextFormat.ts", "CSMSettings"],
+    ["src/layaAir/flash/text/TextFormat.ts", "FontStyle"],
+    ["src/layaAir/flash/text/TextFormat.ts", "GridFitType"],
+    ["src/layaAir/flash/text/TextFormat.ts", "isFlashCSMSettings"],
+    ["src/layaAir/flash/text/TextFormat.ts", "isFlashTextFormat"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextColorType"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextDisplayMode"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextFieldAutoSize"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextFieldType"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextFormat"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextFormatAlign"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextLineMetrics"],
+    ["src/layaAir/flash/text/TextFormat.ts", "TextRenderer"],
+];
+const textSubjectKeys = new Set(textSubjects.map(([module, exported]) => `${module}\u0000${exported}`));
+textCapability.obligations = textCapability.obligations.filter(item =>
+    !item.module.startsWith("src/layaAir/flash/text/")
+    || textSubjectKeys.has(`${item.module}\u0000${item.export}`));
+for (const [module, exported] of textSubjects) {
+    if (!textCapability.obligations.some(item => item.module === module && item.export === exported))
+        textCapability.obligations.push({ module, export: exported, kind: exported.startsWith("flash") || exported.startsWith("isFlash") ? "function" : "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+}
+
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
 for (const [module, exported] of [
     ["src/layaAir/flash/geom/Point.ts", "Point"],

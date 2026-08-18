@@ -21296,7 +21296,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "590bd0f23cb8dcd4414441b468d01f5c2398f2922b79d0e56551c55e849c04fe",
+          "sha256": "8104a71185324ff56e1f72867c16469288bce500c1c763b59bd39f268b73d45d",
           "heritage": []
         },
         {
@@ -23242,9 +23242,9 @@
             "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f",
-            "590bd0f23cb8dcd4414441b468d01f5c2398f2922b79d0e56551c55e849c04fe",
             "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
+            "8104a71185324ff56e1f72867c16469288bce500c1c763b59bd39f268b73d45d",
             "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c",
@@ -23258,38 +23258,6 @@
       "id": "api.flash.text",
       "status": "typescript-obligation",
       "obligations": [
-        {
-          "module": "src/layaAir/flash/text/TextField.ts",
-          "export": "TextFieldType",
-          "kind": "class",
-          "signature": "typeof TextFieldType",
-          "members": [
-            {
-              "abstract": false,
-              "kind": "property",
-              "name": "DYNAMIC",
-              "scope": "static",
-              "optional": false,
-              "readonly": true,
-              "signature": "\"dynamic\""
-            },
-            {
-              "abstract": false,
-              "kind": "property",
-              "name": "INPUT",
-              "scope": "static",
-              "optional": false,
-              "readonly": true,
-              "signature": "\"input\""
-            }
-          ],
-          "constructors": [
-            "new (): TextFieldType"
-          ],
-          "indexSignatures": [],
-          "sha256": "25c3e492396e1ce3ff6b0bfe940f740197c87fe3d177733485c519065fc2036b",
-          "heritage": []
-        },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
           "export": "TextField",
@@ -24109,6 +24077,24 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "antiAliasType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "appendText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "autoSize",
               "scope": "instance",
               "optional": false,
@@ -24123,6 +24109,15 @@
               "optional": false,
               "readonly": false,
               "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bottomScrollV",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
             },
             {
               "abstract": false,
@@ -24207,12 +24202,30 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "condenseWhite",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "contains",
               "scope": "instance",
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "defaultTextFormat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "TextFormat"
             },
             {
               "abstract": false,
@@ -24397,6 +24410,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "flashAutoSize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "focus",
               "scope": "instance",
               "optional": false,
@@ -24447,6 +24469,24 @@
               "optional": false,
               "readonly": false,
               "signature": "(out?: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getCharBoundaries",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(charIndex: number) => Rectangle | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getCharIndexAtPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => number"
             },
             {
               "abstract": false,
@@ -24514,6 +24554,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "getFirstCharInParagraph",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(charIndex: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "getGraphicBounds",
               "scope": "instance",
               "optional": false,
@@ -24523,11 +24572,74 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "getLineIndexAtPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getLineIndexOfChar",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(charIndex: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getLineLength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(lineIndex: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getLineMetrics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(lineIndex: number) => TextLineMetrics"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getLineOffset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(lineIndex: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getLineText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(lineIndex: number) => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "getMousePoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getParagraphLength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(charIndex: number) => number"
             },
             {
               "abstract": false,
@@ -24546,6 +24658,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(out?: Rectangle, recursive?: boolean) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getTextFormat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(beginIndex?: number, endIndex?: number) => TextFormat"
             },
             {
               "abstract": false,
@@ -24591,6 +24712,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Graphics"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "gridFitType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
             },
             {
               "abstract": false,
@@ -24702,6 +24832,15 @@
             },
             {
               "abstract": false,
+              "kind": "get",
+              "name": "length",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "loadImage",
               "scope": "instance",
@@ -24740,6 +24879,24 @@
               "abstract": false,
               "kind": "get+set",
               "name": "maxChars",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "maxScrollH",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "maxScrollV",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -24812,6 +24969,15 @@
               "abstract": false,
               "kind": "get",
               "name": "numChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "numLines",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -25071,6 +25237,24 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "replaceSelectedText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "replaceText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(beginIndex: number, endIndex: number, newText: string) => void"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "restrict",
               "scope": "instance",
@@ -25144,11 +25328,29 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "scrollH",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "scrollRect",
               "scope": "instance",
               "optional": false,
               "readonly": false,
               "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scrollV",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
             },
             {
               "abstract": false,
@@ -25270,6 +25472,24 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "setTextFormat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(format: TextFormat, beginIndex?: number, endIndex?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "sharpness",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "size",
               "scope": "instance",
               "optional": false,
@@ -25386,6 +25606,15 @@
             },
             {
               "abstract": false,
+              "kind": "get",
+              "name": "textHeight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "texture",
               "scope": "instance",
@@ -25401,6 +25630,24 @@
               "optional": false,
               "readonly": false,
               "signature": "ITextureCompositor2D"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "textWidth",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "thickness",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
             },
             {
               "abstract": false,
@@ -25605,23 +25852,755 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "25c3e492396e1ce3ff6b0bfe940f740197c87fe3d177733485c519065fc2036b",
+          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d",
           "heritage": [
             {
               "kind": "extends",
               "signature": "InteractiveObject"
             }
           ]
+        },
+        {
+          "module": "src/layaAir/flash/text/TextField.ts",
+          "export": "flashHtmlToText",
+          "kind": "function",
+          "signature": "(value: string, condenseWhite?: boolean) => string",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+        },
+        {
+          "module": "src/layaAir/flash/text/TextField.ts",
+          "export": "flashTextToHtml",
+          "kind": "function",
+          "signature": "(value: string) => string",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+        },
+        {
+          "module": "src/layaAir/flash/text/TextField.ts",
+          "export": "isFlashTextField",
+          "kind": "function",
+          "signature": "(value: unknown) => value is TextField",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "AntiAliasType",
+          "kind": "class",
+          "signature": "typeof AntiAliasType",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADVANCED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"advanced\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NORMAL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"normal\""
+            }
+          ],
+          "constructors": [
+            "new (): AntiAliasType"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "CSMSettings",
+          "kind": "class",
+          "signature": "typeof CSMSettings",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "fontSize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "insideCutoff",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "outsideCutoff",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (fontSize?: number, insideCutoff?: number, outsideCutoff?: number): CSMSettings"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "FontStyle",
+          "kind": "class",
+          "signature": "typeof FontStyle",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BOLD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"bold\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BOLD_ITALIC",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"boldItalic\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ITALIC",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"italic\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REGULAR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"regular\""
+            }
+          ],
+          "constructors": [
+            "new (): FontStyle"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "GridFitType",
+          "kind": "class",
+          "signature": "typeof GridFitType",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NONE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"none\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "PIXEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"pixel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SUBPIXEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"subpixel\""
+            }
+          ],
+          "constructors": [
+            "new (): GridFitType"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "isFlashCSMSettings",
+          "kind": "function",
+          "signature": "(value: unknown) => value is CSMSettings",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305"
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "isFlashTextFormat",
+          "kind": "function",
+          "signature": "(value: unknown) => value is TextFormat",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305"
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextColorType",
+          "kind": "class",
+          "signature": "typeof TextColorType",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DARK_COLOR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"dark\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LIGHT_COLOR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"light\""
+            }
+          ],
+          "constructors": [
+            "new (): TextColorType"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextDisplayMode",
+          "kind": "class",
+          "signature": "typeof TextDisplayMode",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CRT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"crt\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEFAULT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"default\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LCD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"lcd\""
+            }
+          ],
+          "constructors": [
+            "new (): TextDisplayMode"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextFieldAutoSize",
+          "kind": "class",
+          "signature": "typeof TextFieldAutoSize",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CENTER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"center\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LEFT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"left\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NONE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"none\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RIGHT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"right\""
+            }
+          ],
+          "constructors": [
+            "new (): TextFieldAutoSize"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextFieldType",
+          "kind": "class",
+          "signature": "typeof TextFieldType",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DYNAMIC",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"dynamic\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INPUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"input\""
+            }
+          ],
+          "constructors": [
+            "new (): TextFieldType"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextFormat",
+          "kind": "class",
+          "signature": "typeof TextFormat",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "align",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "blockIndent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "bold",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "bullet",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "color",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "font",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "indent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "italic",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "kerning",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "leading",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "leftMargin",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "letterSpacing",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "rightMargin",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "size",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "tabStops",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "underline",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            }
+          ],
+          "constructors": [
+            "new (font?: string | null, size?: number | null, color?: number | null, bold?: boolean | null, italic?: boolean | null, underline?: boolean | null, url?: string | null, target?: string | null, align?: string | null, leftMargin?: number | null, rightMargin?: number | null, indent?: number | null, leading?: number | null): TextFormat"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextFormatAlign",
+          "kind": "class",
+          "signature": "typeof TextFormatAlign",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CENTER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"center\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "END",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"end\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "JUSTIFY",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"justify\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LEFT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"left\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RIGHT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"right\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "START",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"start\""
+            }
+          ],
+          "constructors": [
+            "new (): TextFormatAlign"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextLineMetrics",
+          "kind": "class",
+          "signature": "typeof TextLineMetrics",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ascent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "descent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "leading",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (x?: number, width?: number, height?: number, ascent?: number, descent?: number, leading?: number): TextLineMetrics"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/TextFormat.ts",
+          "export": "TextRenderer",
+          "kind": "class",
+          "signature": "typeof TextRenderer",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "displayMode",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "maxLevel",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "resolveAdvancedAntiAliasing",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(fontName: string, fontStyle: string, colorType: string, fontSize: number) => CSMSettings | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setAdvancedAntiAliasingTable",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(fontName: string, fontStyle: string, colorType: string, advancedAntiAliasingTable: CSMSettings[]) => void"
+            }
+          ],
+          "constructors": [
+            "new (): TextRenderer"
+          ],
+          "indexSignatures": [],
+          "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "846d3945410ebab5288a1e56c9715bec35496e4433b24f8d6b4dee591b39b99b",
+          "sha256": "1f53e0d07606fad879b1423f07ef855b2f447b1415fd4bac0fc652fa7db1cf67",
           "capability": "api.flash.text",
           "covers": [
-            "25c3e492396e1ce3ff6b0bfe940f740197c87fe3d177733485c519065fc2036b"
+            "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+            "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
           ]
         }
       ]

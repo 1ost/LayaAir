@@ -26,6 +26,7 @@ export { BitmapDataChannel } from "./display/BitmapDataChannel";
 export { PixelSnapping } from "./display/PixelSnapping";
 export { Point } from "./geom/Point";
 export { Rectangle } from "./geom/Rectangle";
-export { TextField, TextFieldType } from "./text/TextField";
+export * from "./text/TextField";
+export * from "./text/TextFormat";
 export { URLRequest } from "./net/URLRequest";
 export * from "./events/UnsupportedFlashFeatureError";

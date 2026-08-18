@@ -2,6 +2,7 @@ import { ILaya } from "../../ILaya";
 import { Node as LayaNode } from "../../laya/display/Node";
 import { getInputEventOwner } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
+import { readTextBeforeInputPayload, readTextCompositionPayload } from "../../laya/platform/TextInputAdapter";
 import { Event, EventPhase } from "./Event";
 import { FocusEvent } from "./FocusEvent";
 import { IMEEvent } from "./IMEEvent";
@@ -182,20 +183,20 @@ export class FlashEventRouter {
             this._route(event, target);
             return;
         }
-        const event = this._projectNativeEvent(type, value, this.host);
+        const beforeInput = type === TextEvent.TEXT_INPUT
+            ? readTextBeforeInputPayload(value, this.host, LayaEvent.BEFORE_INPUT) : null;
+        const event = this._projectNativeEvent(type, value, this.host, beforeInput?.snapshot.text);
         event._prepareForDispatch(this.host);
-        if (event.cancelable && value && typeof value === "object"
-            && typeof (value as { preventDefault?: unknown }).preventDefault === "function") {
-            const control = value as { preventDefault(): void; stopPropagation?: () => void };
+        if (beforeInput) {
             event._bindNativeControl({
-                preventDefault: () => control.preventDefault(),
-                stopPropagation: () => control.stopPropagation?.()
+                preventDefault: beforeInput.preventDefault,
+                stopPropagation: beforeInput.stopPropagation,
             });
         }
         this._route(event, this.host);
     }
 
-    private _projectNativeEvent(type: string, value: unknown, target: unknown): Event {
+    private _projectNativeEvent(type: string, value: unknown, target: unknown, beforeInputText?: string): Event {
         if (MOUSE_EVENT_TYPES.has(type)) {
             if (!(value instanceof LayaEvent))
                 throw new TypeError(`Native ${type} requires a Laya Event payload`);
@@ -223,18 +224,13 @@ export class FlashEventRouter {
                 record?.shiftKey === true, keyCode as number, false);
         }
         if (type === TextEvent.TEXT_INPUT) {
-            if (!value || typeof value !== "object" || typeof (value as { text?: unknown }).text !== "string")
+            if (beforeInputText === undefined)
                 throw new TypeError("Native textInput requires exact before-input text");
-            return new TextEvent(type, true, true, (value as { text: string }).text);
+            return new TextEvent(type, true, true, beforeInputText);
         }
         if (type === IMEEvent.IME_COMPOSITION) {
-            if (!value || typeof value !== "object")
-                throw new TypeError("Native imeComposition requires composition payload");
-            const data = value as Record<string, unknown>;
-            if (typeof data.text !== "string" || !Number.isInteger(data.selectionStart)
-                || (data.selectionStart as number) < 0 || !Number.isInteger(data.selectionEnd)
-                || (data.selectionEnd as number) < (data.selectionStart as number))
-                throw new TypeError("Native imeComposition requires text and ordered nonnegative selection");
+            const data = readTextCompositionPayload(value, target, LayaEvent.COMPOSITION_UPDATE);
+            if (!data) throw new TypeError("Native imeComposition requires authenticated composition payload");
             return new IMEEvent(type, true, false, data.text, null);
         }
         return new Event(type, false, false);

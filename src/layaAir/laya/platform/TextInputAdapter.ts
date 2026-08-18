@@ -1,6 +1,6 @@
 import { ILaya, Mutable } from "../../ILaya";
 import { Laya } from "../../Laya";
-import { Input, type InputSelectionDirection, type InputSelectionState } from "../display/Input";
+import { getInputEventOwner, Input, type InputSelectionDirection, type InputSelectionState } from "../display/Input";
 import { type Stage } from "../display/Stage";
 import { Text } from "../display/Text";
 import { Event } from "../events/Event";
@@ -10,14 +10,14 @@ import { SpriteUtils } from "../utils/SpriteUtils";
 import { PAL } from "./PlatformAdapters";
 
 export interface TextBeforeInputData {
-    text: string;
-    inputType: string;
-    isComposing: boolean;
-    selectionStart: number;
-    selectionEnd: number;
-    nativeEvent: InputEvent | null;
-    defaultPrevented: boolean;
-    preventDefault(): void;
+    readonly text: string;
+    readonly inputType: string;
+    readonly isComposing: boolean;
+    readonly selectionStart: number;
+    readonly selectionEnd: number;
+    readonly nativeEvent: InputEvent | null;
+    readonly defaultPrevented: boolean;
+    readonly preventDefault: () => void;
 }
 
 export interface TextCompositionData {
@@ -25,6 +25,56 @@ export interface TextCompositionData {
     selectionStart: number;
     selectionEnd: number;
     nativeEvent: CompositionEvent;
+}
+
+interface TextCompositionDispatch {
+    readonly phase: string;
+    readonly target: Input;
+    readonly owner: unknown;
+    readonly snapshot: Readonly<TextCompositionData>;
+}
+
+const TEXT_COMPOSITION_PAYLOADS = new WeakMap<object, TextCompositionDispatch>();
+
+export interface TextBeforeInputDispatch {
+    readonly snapshot: Readonly<TextBeforeInputData>;
+    readonly preventDefault: () => void;
+    readonly stopPropagation: () => void;
+}
+
+interface TextBeforeInputAuthority {
+    readonly phase: string;
+    readonly target: Input;
+    readonly owner: unknown;
+    readonly dispatch: TextBeforeInputDispatch;
+}
+
+const TEXT_BEFORE_INPUT_PAYLOADS = new WeakMap<object, TextBeforeInputAuthority>();
+
+/** Read producer-owned before-input data and controls without touching unknown input. */
+export function readTextBeforeInputPayload(
+    value: unknown,
+    expectedTarget: unknown,
+    expectedPhase: string,
+): TextBeforeInputDispatch | null {
+    if (typeof value !== "object" || value === null) return null;
+    const authority = TEXT_BEFORE_INPUT_PAYLOADS.get(value);
+    return authority && authority.phase === expectedPhase
+        && (authority.target === expectedTarget || authority.owner === expectedTarget)
+        ? authority.dispatch : null;
+}
+
+/** Read a producer-authenticated composition snapshot without touching unknown input. */
+export function readTextCompositionPayload(
+    value: unknown,
+    expectedTarget: unknown,
+    expectedPhase: string,
+): Readonly<TextCompositionData> | null {
+    if (typeof value !== "object" || value === null) return null;
+    const dispatch = TEXT_COMPOSITION_PAYLOADS.get(value);
+    return dispatch && dispatch.phase === expectedPhase
+        && (dispatch.target === expectedTarget || dispatch.owner === expectedTarget)
+        ? dispatch.snapshot : null;
 }
 
 interface RestrictRange {
@@ -491,9 +541,8 @@ export class TextInputAdapter {
         const selection = this.updateTargetSelection(this.target);
         const dataTransfer = (ev as InputEvent & { dataTransfer?: DataTransfer | null }).dataTransfer;
         const text = ev.data ?? dataTransfer?.getData("text/plain") ?? "";
-        const payload = this.createBeforeInputData(text, ev.inputType ?? "", false, selection, ev);
-        this.target.event(Event.BEFORE_INPUT, payload);
-        if (payload.defaultPrevented && ev.cancelable)
+        const defaultPrevented = this.dispatchBeforeInput(text, ev.inputType ?? "", false, selection, ev);
+        if (defaultPrevented && ev.cancelable)
             ev.preventDefault();
     }
 
@@ -505,7 +554,7 @@ export class TextInputAdapter {
         this._compositionCommittedByBeforeInput = false;
         this._compositionSnapshot = { value: this._visEle.value, selection };
         this.target._setCompositionState(true, ev.data ?? "");
-        this.target.event(Event.COMPOSITION_START, this.compositionData(ev));
+        this.dispatchComposition(Event.COMPOSITION_START, ev);
     }
 
     protected processCompositionUpdate(ev: CompositionEvent): void {
@@ -513,7 +562,7 @@ export class TextInputAdapter {
             return;
         this.updateTargetSelection(this.target);
         this.target._setCompositionState(true, ev.data ?? "");
-        this.target.event(Event.COMPOSITION_UPDATE, this.compositionData(ev));
+        this.dispatchComposition(Event.COMPOSITION_UPDATE, ev);
     }
 
     protected processCompositionEnd(ev: CompositionEvent): void {
@@ -521,15 +570,14 @@ export class TextInputAdapter {
             return;
         const snapshot = this._compositionSnapshot;
         if (!this._compositionCommittedByBeforeInput && snapshot) {
-            const payload = this.createBeforeInputData(
+            const defaultPrevented = this.dispatchBeforeInput(
                 ev.data ?? "",
                 "insertCompositionText",
                 false,
                 snapshot.selection,
                 null,
             );
-            this.target.event(Event.BEFORE_INPUT, payload);
-            if (payload.defaultPrevented) {
+            if (defaultPrevented) {
                 this._visEle.value = snapshot.value;
                 this.setSelection(snapshot.selection.start, snapshot.selection.end, snapshot.selection.direction);
             }
@@ -537,38 +585,77 @@ export class TextInputAdapter {
         this._compositionSnapshot = null;
         this._compositionCommittedByBeforeInput = false;
         this.target._setCompositionState(false, "");
-        this.target.event(Event.COMPOSITION_END, this.compositionData(ev));
+        this.dispatchComposition(Event.COMPOSITION_END, ev);
         this._composing = false;
         this.processInputting(ev);
     }
 
-    protected createBeforeInputData(
+    private createBeforeInputData(
         text: string,
         inputType: string,
         isComposing: boolean,
         selection: InputSelectionState,
         nativeEvent: InputEvent | null,
-    ): TextBeforeInputData {
-        return {
+    ): { readonly payload: Readonly<TextBeforeInputData>, readonly dispatch: TextBeforeInputDispatch } {
+        const state = { defaultPrevented: false };
+        const preventDefault = (): void => { state.defaultPrevented = true; };
+        const payload: Readonly<TextBeforeInputData> = Object.freeze({
             text,
             inputType,
             isComposing,
             selectionStart: selection.start,
             selectionEnd: selection.end,
             nativeEvent,
-            defaultPrevented: false,
-            preventDefault() { this.defaultPrevented = true; },
-        };
+            get defaultPrevented(): boolean { return state.defaultPrevented; },
+            preventDefault,
+        });
+        const dispatch: TextBeforeInputDispatch = Object.freeze({
+            snapshot: payload,
+            preventDefault,
+            stopPropagation: (): void => { nativeEvent?.stopPropagation(); },
+        });
+        return Object.freeze({ payload, dispatch });
     }
 
-    protected compositionData(ev: CompositionEvent): TextCompositionData {
+    private dispatchBeforeInput(
+        text: string,
+        inputType: string,
+        isComposing: boolean,
+        selection: InputSelectionState,
+        nativeEvent: InputEvent | null,
+    ): boolean {
+        const target = this.target;
+        if (!target) return false;
+        const authority = this.createBeforeInputData(text, inputType, isComposing, selection, nativeEvent);
+        TEXT_BEFORE_INPUT_PAYLOADS.set(authority.payload, Object.freeze({
+            phase: Event.BEFORE_INPUT,
+            target,
+            owner: getInputEventOwner(target) ?? target,
+            dispatch: authority.dispatch,
+        }));
+        try { target.event(Event.BEFORE_INPUT, authority.payload); }
+        finally { TEXT_BEFORE_INPUT_PAYLOADS.delete(authority.payload); }
+        return authority.payload.defaultPrevented;
+    }
+
+    private dispatchComposition(phase: string, ev: CompositionEvent): void {
+        const target = this.target;
+        if (!target) return;
         const selection = this.target?._getSelectionState() ?? { start: 0, end: 0 };
-        return {
+        const snapshot: Readonly<TextCompositionData> = Object.freeze({
             text: ev.data ?? "",
             selectionStart: selection.start,
             selectionEnd: selection.end,
             nativeEvent: ev,
-        };
+        });
+        TEXT_COMPOSITION_PAYLOADS.set(snapshot, Object.freeze({
+            phase,
+            target,
+            owner: getInputEventOwner(target) ?? target,
+            snapshot,
+        }));
+        try { target.event(phase, snapshot); }
+        finally { TEXT_COMPOSITION_PAYLOADS.delete(snapshot); }
     }
 
     protected stopEvent(e: any): void {

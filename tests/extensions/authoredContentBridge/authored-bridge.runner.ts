@@ -34,12 +34,14 @@ import { isFlashURLRequest } from "../../../src/layaAir/flash/net/URLRequest";
 import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
+import { Render2DProcessor } from "../../../src/layaAir/laya/display/Render2DProcessor";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
 import { Panel } from "../../../src/layaAir/laya/ui/Panel";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
 import { InputManager } from "../../../src/layaAir/laya/events/InputManager";
 import { PAL } from "../../../src/layaAir/laya/platform/PlatformAdapters";
 import { TextInputAdapter } from "../../../src/layaAir/laya/platform/TextInputAdapter";
+import { Browser } from "../../../src/layaAir/laya/utils/Browser";
 import { HierarchyParser } from "../../../src/layaAir/laya/loaders/HierarchyParser";
 import { LayaGL } from "../../../src/layaAir/laya/layagl/LayaGL";
 import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
@@ -49,9 +51,11 @@ import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
     ErrorEvent, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
-    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TextField, TextFieldType, TimerEvent,
+    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TimerEvent,
+    AntiAliasType, CSMSettings, GridFitType,
+    TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
     Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
-    UnsupportedFlashFeatureError, URLRequest
+    UnsupportedFlashFeatureError, URLRequest, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
@@ -64,6 +68,14 @@ import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
+(Render2DProcessor as unknown as { runner: unknown }).runner = {
+    _textRender: { getFontHeight: (): number => 10 },
+};
+Browser.context = {
+    font: "10px Arial",
+    fontKerning: "normal",
+    measureText: (value: string) => ({ width: Array.from(value).length * 5 }),
+} as unknown as CanvasRenderingContext2D;
 ILaya.stage = { _graphicUpdateList: new Set(), _tranMatrixUpdateList: new Set() } as any;
 const frameCallbacks: Array<{ caller: unknown; method: Function }> = [];
 ILaya.timer = {
@@ -1395,6 +1407,259 @@ test("TextField has genuine Flash heritage and a composed native Laya input", ()
     assert.throws(() => field.type = "password", /TextField.type/);
 });
 
+test("TextField preserves nullable defaults, character ranges, replacement, and independent plain and HTML views", () => {
+    const bridgeSource = readFileSync(join(process.cwd(), "src/layaAir/flash/text/TextField.ts"), "utf8");
+    assert.doesNotMatch(bridgeSource, /\bas\s+(?:unknown\s+as\s+)?(?:Readonly<)?Record\s*</,
+        "bridge mutation and payload validation remain closed and compiler-checked");
+    const routerSource = readFileSync(join(process.cwd(), "src/layaAir/flash/events/FlashEventRouter.ts"), "utf8");
+    const textProjection = routerSource.slice(routerSource.indexOf("if (type === TextEvent.TEXT_INPUT)"),
+        routerSource.indexOf("if (type === IMEEvent.IME_COMPOSITION)"));
+    assert.doesNotMatch(textProjection, /\bas\s+|\bin\s+value\b|value\s*\[/,
+        "text-input routing consumes only the authenticated producer snapshot");
+    assert.doesNotMatch(routerSource, /\(value as \{ preventDefault\?: unknown \}\)\.preventDefault/,
+        "native cancellation is never discovered by probing unknown payloads");
+    const imeProjection = routerSource.slice(routerSource.indexOf("if (type === IMEEvent.IME_COMPOSITION)"));
+    assert.doesNotMatch(imeProjection, /\bas\s+/,
+        "IME routing consumes only the authenticated producer snapshot");
+    const producerSource = readFileSync(join(process.cwd(), "src/layaAir/laya/platform/TextInputAdapter.ts"), "utf8");
+    assert.match(producerSource, /private dispatchComposition\(/,
+        "composition payload creation cannot be overridden or used as a generic factory");
+    assert.match(producerSource, /private createBeforeInputData\(/,
+        "before-input payload creation cannot be overridden or used as a generic factory");
+    assert.match(producerSource, /private dispatchBeforeInput\(/,
+        "before-input authority exists for only one synchronous native dispatch");
+
+    const nullable = new TextFormat();
+    assert.deepEqual([
+        nullable.font, nullable.size, nullable.color, nullable.bold, nullable.italic, nullable.underline,
+        nullable.url, nullable.target, nullable.align, nullable.leftMargin, nullable.rightMargin,
+        nullable.indent, nullable.leading, nullable.blockIndent, nullable.bullet, nullable.kerning,
+        nullable.letterSpacing, nullable.tabStops,
+    ], Array(18).fill(null));
+
+    const field = new TextField();
+    const fabricated = Object.create(TextFormat.prototype) as TextFormat;
+    const proxied = new Proxy(new TextFormat(), {});
+    assert.equal(isFlashTextFormat(nullable), true);
+    assert.equal(isFlashTextFormat(fabricated), false);
+    assert.equal(isFlashTextFormat(proxied), false);
+    assert.throws(() => field.defaultTextFormat = fabricated, TypeError);
+    assert.throws(() => field.defaultTextFormat = proxied, TypeError);
+    Object.defineProperty(TextFormat, Symbol.hasInstance, { configurable: true, value: () => true });
+    try {
+        assert.throws(() => field.defaultTextFormat = {} as TextFormat, TypeError,
+            "hostile Symbol.hasInstance cannot mint an authenticated TextFormat");
+    } finally {
+        Reflect.deleteProperty(TextFormat, Symbol.hasInstance);
+    }
+    field.defaultTextFormat = new TextFormat("Arial", 12, 0xff0000, false, false, false,
+        null, null, TextFormatAlign.LEFT, 0, 0, 0, 2);
+    field.text = "alpha";
+    assert.equal(field.getTextFormat(0, field.length).color, 0xff0000);
+
+    const nextDefault = field.defaultTextFormat;
+    nextDefault.color = 0x00ff00;
+    nextDefault.italic = true;
+    field.defaultTextFormat = nextDefault;
+    assert.equal(field.getTextFormat(0, field.length).color, 0xff0000,
+        "changing defaultTextFormat does not restyle existing text");
+    field.appendText(" beta");
+    assert.equal(field.getTextFormat(5, field.length).color, 0x00ff00,
+        "appendText receives the current defaultTextFormat");
+
+    const range = new TextFormat();
+    range.bold = true;
+    range.color = 0x334455;
+    field.setTextFormat(range, 0, 2);
+    assert.equal(field.getTextFormat(0, 2).bold, true);
+    assert.equal(field.getTextFormat(0, field.length).bold, null, "mixed range properties are nullable");
+    field.replaceText(2, 5, "XY");
+    assert.equal(field.text, "alXY beta");
+    assert.equal(field.getTextFormat(2, 4).color, 0xff0000,
+        "replacement inherits the insertion range rather than the later default");
+
+    field.text = "AxyB";
+    field.setSelection(1, 3);
+    field.replaceSelectedText("\r\n");
+    assert.equal(field.text, "A\rB");
+    assert.equal(field.caretIndex, 2, "caret uses normalized UTF-16 replacement length");
+
+    field.htmlText = "<p><b>A&amp;</b><sbr>B</p>";
+    assert.equal(field.text, "A&\rB");
+    assert.equal(field.htmlText, "<p><b>A&amp;</b><sbr>B</p>");
+    field.text = "<literal>\nvalue";
+    assert.equal(field.text, "<literal>\rvalue");
+    assert.equal(field.htmlText, "&lt;literal&gt;<br>value");
+
+    const condense = new TextField();
+    condense.text = "a   b";
+    condense.condenseWhite = true;
+    assert.equal(condense.text, "a   b", "condenseWhite never reparses the independent plain-text view");
+    condense.condenseWhite = false;
+    condense.htmlText = "<b>a   b</b>";
+    condense.condenseWhite = true;
+    assert.equal(condense.text, "a   b", "condenseWhite does not retroactively reparse existing HTML");
+    condense.htmlText = "<b>a   b</b>";
+    assert.equal(condense.text, "a b", "condenseWhite applies on the next htmlText assignment");
+});
+
+test("TextField exposes deterministic line metrics, character bounds, line scroll, and explicit Flash auto-size", () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const field = new ProbeTextField();
+    field.nativeInput.fontMetricsProvider = (_font, size) => ({ ascent: size * 0.8, descent: size * 0.2, lineGap: 0 });
+    field.nativeInput.textAdvanceProvider = text => Array.from(text).map(() => 5);
+    field.multiline = true;
+    field.wordWrap = false;
+    field.size(40, 17);
+    field.defaultTextFormat = new TextFormat("Arial", 10, 0xffffff, false, false, false,
+        null, null, TextFormatAlign.LEFT, 0, 0, 0, 2);
+    field.text = "abc\rdef\rghi";
+
+    assert.equal(field.numLines, 3);
+    assert.deepEqual([field.getLineOffset(0), field.getLineLength(0), field.getLineText(0)], [0, 4, "abc\r"]);
+    const metrics = field.getLineMetrics(0);
+    assert.equal(metrics.width, 15);
+    assert.equal(metrics.leading, 2);
+    const bounds = field.getCharBoundaries(1);
+    assert.ok(bounds instanceof Rectangle);
+    assert.equal(bounds?.width, 5);
+    assert.equal(field.getCharBoundaries(3), null, "paragraph separators have no glyph bounds");
+    assert.equal(field.getCharIndexAtPoint(bounds!.x + 1, bounds!.y + 1), 1);
+    assert.equal(field.getLineIndexOfChar(5), 1);
+    assert.equal(field.getFirstCharInParagraph(5), 4);
+    assert.equal(field.getParagraphLength(5), 4);
+    assert.ok(field.maxScrollV > 1);
+    let scrollEvents = 0;
+    field.addEventListener(Event.SCROLL, () => scrollEvents++);
+    field.scrollV = field.maxScrollV;
+    assert.equal(field.scrollV, field.maxScrollV);
+    assert.equal(field.bottomScrollV, 3);
+    assert.equal(scrollEvents, 1);
+
+    const right = field.x + field.width;
+    field.flashAutoSize = TextFieldAutoSize.RIGHT;
+    assert.equal(field.flashAutoSize, TextFieldAutoSize.RIGHT);
+    assert.equal(field.autoSize, false, "Flash auto-size never mutates inherited Sprite.autoSize");
+    assert.equal(field.x + field.width, right, "RIGHT auto-size retains the right edge");
+    assert.throws(() => field.flashAutoSize = "true", /TextFieldAutoSize/);
+
+    for (const mode of [TextFieldAutoSize.LEFT, TextFieldAutoSize.CENTER, TextFieldAutoSize.RIGHT]) {
+        const wrapped = new ProbeTextField();
+        wrapped.nativeInput.fontMetricsProvider = (_font, size) => ({ ascent: size * 0.8, descent: size * 0.2, lineGap: 0 });
+        wrapped.nativeInput.textAdvanceProvider = text => Array.from(text).map(() => 5);
+        wrapped.wordWrap = true;
+        wrapped.multiline = true;
+        wrapped.x = 17;
+        wrapped.size(30, 12);
+        wrapped.text = "wrapped text";
+        wrapped.flashAutoSize = mode;
+        assert.equal(wrapped.width, 30, `${mode} word-wrapped auto-size preserves authored width`);
+        assert.equal(wrapped.x, 17, `${mode} word-wrapped auto-size preserves x`);
+        assert.ok(wrapped.height > 12, `${mode} word-wrapped auto-size grows height`);
+    }
+});
+
+test("TextField applies retained paragraph formats per range without global-style leakage", () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const field = new ProbeTextField();
+    field.nativeInput.fontMetricsProvider = (_font, size) => ({ ascent: size * 0.8, descent: size * 0.2, lineGap: 0 });
+    field.nativeInput.textAdvanceProvider = text => Array.from(text).map(() => 5);
+    field.multiline = true;
+    field.size(100, 60);
+    field.defaultTextFormat = new TextFormat("Arial", 10, 0xffffff);
+    field.text = "abc\rdef";
+
+    const first = new TextFormat();
+    first.align = TextFormatAlign.LEFT;
+    first.leading = 1;
+    first.leftMargin = 4;
+    first.blockIndent = 2;
+    first.indent = 3;
+    const second = new TextFormat();
+    second.align = TextFormatAlign.RIGHT;
+    second.leading = 7;
+    second.leftMargin = 5;
+    second.rightMargin = 6;
+    second.blockIndent = 3;
+    second.indent = 11;
+    field.setTextFormat(first, 0, 4);
+    field.setTextFormat(second, 4, field.length);
+
+    const firstMetrics = field.getLineMetrics(0);
+    const secondMetrics = field.getLineMetrics(1);
+    assert.equal(firstMetrics.leading, 1);
+    assert.equal(secondMetrics.leading, 7);
+    assert.equal(firstMetrics.x, 11, "left margin, block indent and first-line indent affect the first paragraph");
+    assert.ok(secondMetrics.x > 60, "right alignment, margins and indent remain range-local");
+
+    const linked = new ProbeTextField();
+    const linkedFormat = new TextFormat("Arial", 10, 0xffffff);
+    linkedFormat.leftMargin = 6;
+    linkedFormat.indent = 4;
+    linkedFormat.url = "https://example.invalid/bleach";
+    linkedFormat.target = "_blank";
+    linked.defaultTextFormat = linkedFormat;
+    linked.text = "linked";
+    assert.equal(linked.nativeInput.html, true, "default url/target selects native linked HTML layout");
+    assert.equal(linked.getLineMetrics(0).x, 12, "default paragraph margins apply to assigned text");
+
+    const authoredHtml = new ProbeTextField();
+    authoredHtml.nativeInput.fontMetricsProvider = (_font, size) => ({ ascent: size * 0.8, descent: size * 0.2, lineGap: 0 });
+    authoredHtml.nativeInput.textAdvanceProvider = text => Array.from(text).map(() => 5);
+    authoredHtml.multiline = true;
+    authoredHtml.size(100, 60);
+    authoredHtml.htmlText = '<p align="right">abc</p><p align="left">def</p>';
+    assert.ok(authoredHtml.getLineMetrics(0).x > 60,
+        "range paragraph projection does not overwrite alignment authored in htmlText");
+});
+
+test("embedded advanced text maps CSM tables, grid fit, sharpness, and thickness into native rasterization", () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const fabricated = Object.create(CSMSettings.prototype) as CSMSettings;
+    const proxied = new Proxy(new CSMSettings(10, 0.3, -0.2), {});
+    assert.equal(isFlashCSMSettings(new CSMSettings()), true);
+    assert.equal(isFlashCSMSettings(fabricated), false);
+    assert.equal(isFlashCSMSettings(proxied), false);
+    assert.throws(() => TextRenderer.setAdvancedAntiAliasingTable(
+        "Fabricated", "regular", TextColorType.LIGHT_COLOR, [fabricated]), TypeError);
+    assert.throws(() => TextRenderer.setAdvancedAntiAliasingTable(
+        "Proxied", "regular", TextColorType.LIGHT_COLOR, [proxied]), TypeError);
+    Object.defineProperty(CSMSettings, Symbol.hasInstance, { configurable: true, value: () => true });
+    try {
+        assert.throws(() => TextRenderer.setAdvancedAntiAliasingTable(
+            "Hostile", "regular", TextColorType.LIGHT_COLOR, [{} as CSMSettings]), TypeError,
+            "hostile Symbol.hasInstance cannot mint authenticated CSMSettings");
+    } finally {
+        Reflect.deleteProperty(CSMSettings, Symbol.hasInstance);
+    }
+    TextRenderer.setAdvancedAntiAliasingTable("FixtureCSM", "regular", TextColorType.LIGHT_COLOR, [
+        new CSMSettings(10, 0.30, -0.20),
+        new CSMSettings(20, 0.20, -0.10),
+    ]);
+    const field = new ProbeTextField();
+    field.defaultTextFormat = new TextFormat("FixtureCSM", 15, 0xffffff);
+    field.text = "advanced";
+    field.embedFonts = true;
+    field.antiAliasType = AntiAliasType.ADVANCED;
+    field.gridFitType = GridFitType.PIXEL;
+    field.sharpness = 50;
+    field.thickness = 80;
+    const settings = field.nativeInput.rasterizationSettings;
+    assert.equal(settings.coverageMode, "linear-cutoff");
+    assert.equal(settings.gridFit, GridFitType.PIXEL);
+    assert.ok(settings.outsideCutoff! < settings.insideCutoff!);
+    field.antiAliasType = AntiAliasType.NORMAL;
+    assert.equal(field.nativeInput.rasterizationSettings, null);
+    assert.throws(() => field.antiAliasType = "lcd", /AntiAliasType/);
+    assert.throws(() => field.gridFitType = "quarter", /GridFitType/);
+});
+
 test("native focus, input and IME events project exact Flash-shaped payloads", () => {
     class ProbeTextField extends TextField {
         get nativeInput(): LayaInput { return this._nativeTextInput; }
@@ -1412,37 +1677,38 @@ test("native focus, input and IME events project exact Flash-shaped payloads", (
     });
     field.addEventListener(IMEEvent.IME_COMPOSITION, event => ime.push(event as IMEEvent));
     field.nativeInput.event(LayaEvent.FOCUS);
-    const beforeInput = {
-        text: "inserted", inputType: "insertText", isComposing: false,
-        selectionStart: 0, selectionEnd: 0, nativeEvent: null as unknown, defaultPrevented: false,
-        preventDefault(): void { this.defaultPrevented = true; }
+    const invalidErrors: unknown[] = [];
+    const previousError = console.error; console.error = value => invalidErrors.push(value);
+    let getterReads = 0;
+    const getterPayload = {
+        get text(): string { getterReads++; throw new Error("payload getter must not run"); },
+        get selectionStart(): number { getterReads++; throw new Error("payload getter must not run"); },
+        get selectionEnd(): number { getterReads++; throw new Error("payload getter must not run"); },
     };
-    field.nativeInput.event(LayaEvent.BEFORE_INPUT, beforeInput);
-    assert.equal(beforeInput.defaultPrevented, true, "Flash cancellation reaches Laya before mutation");
-    field.nativeInput.event(LayaEvent.COMPOSITION_START, {
-        text: "に", selectionStart: 1, selectionEnd: 1, nativeEvent: { data: "に" }
+    let proxyTraps = 0;
+    const hostileProxy = new Proxy({}, {
+        has(): boolean { proxyTraps++; throw new Error("payload has trap must not run"); },
+        get(): never { proxyTraps++; throw new Error("payload get trap must not run"); },
+        getOwnPropertyDescriptor(): never { proxyTraps++; throw new Error("payload descriptor trap must not run"); },
     });
-    field.nativeInput.event(LayaEvent.COMPOSITION_UPDATE, {
-        text: "日本", selectionStart: 2, selectionEnd: 2, nativeEvent: { data: "日本" }
-    });
-    field.nativeInput.event(LayaEvent.COMPOSITION_END, {
-        text: "日本語", selectionStart: 3, selectionEnd: 3, nativeEvent: { data: "日本語" }
-    });
+    try {
+        field.nativeInput.event(LayaEvent.BEFORE_INPUT, getterPayload);
+        field.nativeInput.event(LayaEvent.BEFORE_INPUT, hostileProxy);
+        field.nativeInput.event(LayaEvent.COMPOSITION_START, getterPayload);
+        field.nativeInput.event(LayaEvent.COMPOSITION_START, hostileProxy);
+        field.nativeInput.event(LayaEvent.COMPOSITION_UPDATE, getterPayload);
+        field.nativeInput.event(LayaEvent.COMPOSITION_UPDATE, hostileProxy);
+    } finally { console.error = previousError; }
     field.nativeInput.event(LayaEvent.BLUR);
     assert.deepEqual(focus.map(event => event.type), [FocusEvent.FOCUS_IN, FocusEvent.FOCUS_OUT]);
     assert.ok(focus.every(event => event.target === field && event.bubbles));
-    assert.deepEqual(text.map(event => [event.text, event.cancelable]), [["inserted", true]]);
-    assert.deepEqual(ime.map(event => [event.text, event.imeClient]), [
-        ["に", null], ["日本", null], ["日本語", null]
-    ]);
-    const invalidErrors: unknown[] = [];
-    const previousError = console.error; console.error = value => invalidErrors.push(value);
-    try {
-        field.nativeInput.event(LayaEvent.COMPOSITION_START, {
-            text: "invalid", selectionStart: -1, selectionEnd: 0, nativeEvent: null
-        });
-    } finally { console.error = previousError; }
-    assert.match(String(invalidErrors[0]), /selection/);
+    assert.deepEqual(text, [], "fabricated before-input objects cannot enter Flash routing");
+    assert.deepEqual(ime, []);
+    assert.equal(getterReads, 0, "text and IME admission never evaluate hostile accessors");
+    assert.equal(proxyTraps, 0, "text and IME admission never evaluate hostile Proxy traps");
+    assert.equal(invalidErrors.length, 6);
+    assert.equal(invalidErrors.filter(error => /exact before-input text/.test(String(error))).length, 2);
+    assert.equal(invalidErrors.filter(error => /authenticated composition payload/.test(String(error))).length, 4);
 });
 
 test("real InputManager hit activates composed TextInputAdapter and keeps Flash target outer", async () => {
@@ -1521,9 +1787,18 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
         const flashClicks: MouseEvent[] = [];
         const changes: Event[] = [];
         const compositions: IMEEvent[] = [];
+        const textInputs: TextEvent[] = [];
+        let cancelNextInput = true;
         field.addEventListener(MouseEvent.CLICK, event => flashClicks.push(event as MouseEvent));
         field.addEventListener(Event.CHANGE, event => changes.push(event));
         field.addEventListener(IMEEvent.IME_COMPOSITION, event => compositions.push(event as IMEEvent));
+        field.addEventListener(TextEvent.TEXT_INPUT, event => {
+            textInputs.push(event as TextEvent);
+            if (cancelNextInput) {
+                cancelNextInput = false;
+                event.preventDefault();
+            }
+        });
         const pointer = (type: string, x = 20, y = 18) => ({ type, pageX: x, pageY: y, clientX: x, clientY: y,
             button: 0, buttons: type === "mousedown" ? 1 : 0, cancelable: true, preventDefault() {} }) as globalThis.MouseEvent;
         const click = async (x: number, y: number): Promise<void> => {
@@ -1542,8 +1817,35 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
         assert.equal(flashClicks.length, 1);
         assert.equal(flashClicks[0].target, field, "Flash source target is the outer TextField");
         assert.equal(changes.length, 0, "focus and click do not fabricate a change");
+        const crossInputField = new ProbeTextField();
+        crossInputField.addEventListener(TextEvent.TEXT_INPUT, () => undefined);
+        let capturedBeforeInput: unknown = null;
+        let attackedBeforeInput = false;
+        field.nativeInput.on(LayaEvent.BEFORE_INPUT, field, (payload: unknown) => {
+            capturedBeforeInput = payload;
+            if (attackedBeforeInput) return;
+            attackedBeforeInput = true;
+            crossInputField.nativeInput.event(LayaEvent.BEFORE_INPUT, payload);
+        });
+        const beforeInputReplayErrors: unknown[] = [];
+        const previousBeforeInputError = console.error;
+        console.error = value => beforeInputReplayErrors.push(value);
+        try {
+            adapter.browserEdit("BLOCKED");
+            field.nativeInput.event(LayaEvent.BEFORE_INPUT, capturedBeforeInput);
+        } finally {
+            console.error = previousBeforeInputError;
+            crossInputField.destroy(true);
+        }
+        assert.equal(field.text, "", "Flash textInput cancellation reaches the browser edit before mutation");
+        assert.equal(changes.length, 0, "cancelled browser input produces no change generation");
+        assert.deepEqual(textInputs.map(event => event.text), ["BLOCKED"]);
+        assert.equal(beforeInputReplayErrors.length, 2,
+            "cross-field and stale before-input payload replays fail closed");
+        assert.ok(beforeInputReplayErrors.every(error => /exact before-input text/.test(String(error))));
         adapter.browserEdit("ABC");
         assert.equal(field.text, "ABC");
+        assert.deepEqual(textInputs.map(event => event.text), ["BLOCKED", "ABC"]);
         assert.equal(changes.length, 1, "real Laya INPUT becomes outer Flash change after mutation");
         assert.equal(changes[0].target, field);
         await click(250, 100);
@@ -1564,7 +1866,29 @@ test("real InputManager hit activates composed TextInputAdapter and keeps Flash 
 
         field.restrict = null;
         await click(20, 18);
-        adapter.browserComposition("に", "日本", "日本語");
+        const crossField = new ProbeTextField();
+        let capturedComposition: unknown = null;
+        let attackedActivePayload = false;
+        field.nativeInput.on(LayaEvent.COMPOSITION_START, field, (payload: unknown) => {
+            capturedComposition = payload;
+            if (attackedActivePayload) return;
+            attackedActivePayload = true;
+            crossField.nativeInput.event(LayaEvent.COMPOSITION_START, payload);
+            field.nativeInput.event(LayaEvent.COMPOSITION_END, payload);
+        });
+        const replayErrors: unknown[] = [];
+        const previousError = console.error;
+        console.error = value => replayErrors.push(value);
+        try {
+            adapter.browserComposition("に", "日本", "日本語");
+            field.nativeInput.event(LayaEvent.COMPOSITION_START, capturedComposition);
+        } finally {
+            console.error = previousError;
+            crossField.destroy(true);
+        }
+        assert.equal(replayErrors.length, 3,
+            "cross-field, wrong-phase and stale composition payload replays fail closed");
+        assert.ok(replayErrors.every(error => /authenticated composition payload/.test(String(error))));
         assert.deepEqual(compositions.map(event => event.text), ["に", "日本", "日本語"]);
         assert.equal(field.nativeInput.composing, false);
         assert.equal(field.nativeInput.compositionText, "");
