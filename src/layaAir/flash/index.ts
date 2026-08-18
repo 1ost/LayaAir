@@ -11,5 +11,7 @@ export * from "./display/Sprite";
 export * from "./display/SimpleButton";
 export * from "./display/MovieClip";
 export * from "./display/NativeMovieClipTimeline";
+export { Point } from "./geom/Point";
+export { Rectangle } from "./geom/Rectangle";
 export * from "./text/TextField";
 export * from "./events/UnsupportedFlashFeatureError";

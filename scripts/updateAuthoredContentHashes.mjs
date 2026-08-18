@@ -20,6 +20,15 @@ for (const [module, exported] of [
         eventCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
+for (const [module, exported] of [
+    ["src/layaAir/flash/geom/Point.ts", "Point"],
+    ["src/layaAir/flash/geom/Rectangle.ts", "Rectangle"],
+]) {
+    if (!geometryCapability.obligations.some(item => item.module === module && item.export === exported))
+        geometryCapability.obligations.push({ module, export: exported, kind: "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+}
+
 const options = compilerOptions();
 const program = ts.createProgram({ rootNames: discoverCode(root), options });
 const checker = program.getTypeChecker();

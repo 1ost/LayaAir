@@ -39,7 +39,7 @@ timeline.frames-labels timeline.property-track timeline.nested-symbol timeline.m
 binding.event binding.typed-handler localization.text localization.media localization.layout
 identity.persistent patch.semantic reimport.three-way
 native.prefab native.scene native.animation-clip native.animation-controller publish.atlas source.executable-code
-api.flash.display api.flash.events api.flash.text api.flash.net api.flash.utils
+api.flash.display api.flash.events api.flash.geom api.flash.text api.flash.net api.flash.utils
 `.trim().split(/\s+/));
 const REQUIRED_POLICY_VALUES = Object.freeze({
     schema: "laya-authored-content-admission-policy@1",
@@ -54,7 +54,7 @@ const REQUIRED_POLICY_VALUES = Object.freeze({
     runtimeIdentity: "Laya.AuthoredTimelineClip",
     currentDocumentSchema: "neutral-authored-content@1",
 });
-const REQUIRED_FLASH_NAMESPACES = ["flash.display", "flash.events", "flash.text", "flash.net", "flash.utils"];
+const REQUIRED_FLASH_NAMESPACES = ["flash.display", "flash.events", "flash.geom", "flash.text", "flash.net", "flash.utils"];
 const REQUIRED_STATUSES = ["native", "declarative", "typescript-obligation", "evidence", "blocking"];
 
 function normalize(value) {

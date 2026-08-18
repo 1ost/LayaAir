@@ -572,8 +572,8 @@ test("the universal Flash API bridge is distinct from authored-asset compatibili
     });
     await t.test("new Flash namespace must be declared and ledgered", t => {
         failure(fixture(t, {
-            "src/layaAir/flash/geom/Point.ts": "export class Point {}",
-        }), /undeclared Flash API namespace flash\.geom/);
+            "src/layaAir/flash/sensors/Accelerometer.ts": "export class Accelerometer {}",
+        }), /undeclared Flash API namespace flash\.sensors/);
     });
     await t.test("camel-case Flash namespace and root barrel are supported when ledgered", t => {
         const extendedPolicy = clone(policy);

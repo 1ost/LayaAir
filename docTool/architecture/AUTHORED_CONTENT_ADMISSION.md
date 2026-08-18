@@ -18,8 +18,8 @@ by the native runtime.
 
 This clean break does not remove the source-visible Flash API used by
 transpiled application TypeScript. `src/layaAir/flash` is a separate universal
-bridge for the `flash.display`, `flash.events`, `flash.text`, `flash.net`, and
-`flash.utils` namespaces. Those adapters preserve API names, signatures, and
+bridge for the `flash.display`, `flash.events`, `flash.geom`, `flash.text`,
+`flash.net`, and `flash.utils` namespaces. Those adapters preserve API names, signatures, and
 observable behavior over native LayaAir/browser services. They are not authored
 asset readers and may not contain ABC/AVM execution, QName, cinit, trait, or
 admission machinery. These five namespaces are the required minimum, not a

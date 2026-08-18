@@ -7,6 +7,11 @@ import { AnimationClip2D } from "../../../src/layaAir/laya/components/AnimationC
 import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorClip2D";
 import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
+import { Point as LayaPoint } from "../../../src/layaAir/laya/maths/Point";
+import { Rectangle as LayaRectangle } from "../../../src/layaAir/laya/maths/Rectangle";
+import { isFlashDisplayObject } from "../../../src/layaAir/flash/display/DisplayObject";
+import { isFlashPoint } from "../../../src/layaAir/flash/geom/Point";
+import { isFlashRectangle } from "../../../src/layaAir/flash/geom/Rectangle";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
@@ -24,7 +29,7 @@ import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, Event, EventDispatcher, EventPhase, InteractiveObject, MovieClip,
     FocusEvent, IMEEvent, MouseEvent, SimpleButton, TextEvent, TextField, TextFieldType,
-    UnsupportedFlashFeatureError
+    Point, Rectangle, UnsupportedFlashFeatureError
 } from "../../../src/layaAir/flash";
 import {
     LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
@@ -57,7 +62,7 @@ ILaya.systemTimer = {
 test("A12 capability ledger owns exact Flash declarations, members, signatures and hashes", () => {
     const path = join(process.cwd(), "docTool/architecture/authored-content-capabilities.json");
     const ledger = JSON.parse(readFileSync(path, "utf8"));
-    for (const namespace of ["display", "events", "text"]) {
+    for (const namespace of ["display", "events", "geom", "text"]) {
         const capability = ledger.capabilities.find((item: any) => item.id === `api.flash.${namespace}`);
         assert.equal(capability.status, "typescript-obligation");
         assert.ok(capability.obligations.length > 0);
@@ -74,6 +79,124 @@ test("A12 capability ledger owns exact Flash declarations, members, signatures a
         assert.deepEqual(capability.evidence[0].covers,
             [...new Set(capability.obligations.map((item: any) => item.sha256))].sort());
     }
+});
+
+test("Point and Rectangle retain Flash value semantics on native Laya values", () => {
+    const point = new Point(3, 4);
+    assert.equal(point.length, 5);
+    assert.equal(point.toString(), "(x=3, y=4)");
+    assert.equal(Point.distance(point, new Point()), 5);
+    assert.deepEqual(Point.interpolate(new Point(-2, 1), new Point(2, 3), 0.25), new Point(1, 2.5));
+    const polar = Point.polar(2, Math.PI / 2);
+    assert.ok(Math.abs(polar.x) < 1e-12);
+    assert.equal(polar.y, 2);
+    assert.deepEqual(point.add(new Point(-1, 2)), new Point(2, 6));
+    assert.deepEqual(point.subtract(new Point(-1, 2)), new Point(4, 2));
+    assert.equal(point.equals(point.clone()), true);
+    const copiedPoint = new Point();
+    copiedPoint.copyFrom(point);
+    copiedPoint.offset(5, 6);
+    copiedPoint.normalize(10);
+    assert.ok(Math.abs(copiedPoint.length - 10) < 1e-12);
+    copiedPoint.setTo(7, 8);
+    assert.deepEqual(copiedPoint, new Point(7, 8));
+    assert.throws(() => Point.distance(null as Point, point), TypeError);
+    assert.throws(() => Point.distance({ x: 3, y: 4 } as Point, point), TypeError);
+    assert.throws(() => point.add(new Rectangle() as unknown as Point), TypeError);
+    class PointSubclass extends Point {}
+    assert.equal(Point.distance(new PointSubclass(3, 4), new Point()), 5);
+    assert.equal(isFlashPoint(new PointSubclass()), true);
+    assert.equal(isFlashPoint({ x: 0, y: 0 }), false);
+    assert.deepEqual(new Point("3" as unknown as number, "4" as unknown as number), point);
+
+    const rectangle = new Rectangle(10, 20, 30, 40);
+    assert.equal(rectangle.left, 10);
+    assert.equal(rectangle.top, 20);
+    assert.equal(rectangle.right, 40);
+    assert.equal(rectangle.bottom, 60);
+    assert.deepEqual(rectangle.clone(), rectangle);
+    rectangle.inflate(2, 3);
+    assert.deepEqual(rectangle, new Rectangle(8, 17, 34, 46));
+    assert.equal(rectangle.contains(8, 17), true);
+    assert.equal(rectangle.contains(42, 63), false);
+    assert.equal(rectangle.containsPoint(new Point(20, 30)), true);
+    assert.equal(rectangle.containsRect(new Rectangle(20, 30, 10, 5)), true);
+    assert.deepEqual(rectangle.intersection(new Rectangle(20, 30, 10, 5)), new Rectangle(20, 30, 10, 5));
+    assert.deepEqual(rectangle.intersection(new Rectangle(100, 100, 1, 1)), new Rectangle());
+    assert.equal(rectangle.intersects(new Rectangle(42, 17, 1, 1)), false);
+    assert.deepEqual(new Rectangle(0, 0, 10, 10).union(new Rectangle(8, 9, 4, 3)), new Rectangle(0, 0, 12, 12));
+    const changed = rectangle.clone();
+    changed.left = 0;
+    changed.top = 1;
+    changed.right = 7;
+    changed.bottom = 9;
+    assert.deepEqual(changed.topLeft, new Point(0, 1));
+    assert.deepEqual(changed.bottomRight, new Point(7, 9));
+    changed.topLeft = new Point(2, 3);
+    changed.bottomRight = new Point(8, 10);
+    changed.size = new Point(12, 13);
+    assert.deepEqual(changed, new Rectangle(2, 3, 12, 13));
+    changed.inflatePoint(new Point(1, 2));
+    changed.offsetPoint(new Point(3, 4));
+    assert.deepEqual(changed, new Rectangle(4, 5, 14, 17));
+    const copiedRectangle = new Rectangle();
+    copiedRectangle.copyFrom(changed);
+    assert.equal(copiedRectangle.equals(changed), true);
+    copiedRectangle.offset(1, 2);
+    copiedRectangle.setTo(1, 2, 3, 4);
+    assert.equal(copiedRectangle.toString(), "(x=1, y=2, w=3, h=4)");
+    copiedRectangle.setEmpty();
+    assert.equal(copiedRectangle.isEmpty(), true);
+    assert.throws(() => rectangle.intersection(null as Rectangle), TypeError);
+    assert.throws(() => rectangle.intersection({ x: 1, y: 2, width: 3, height: 4 } as Rectangle), TypeError);
+    assert.throws(() => rectangle.containsPoint(new Rectangle() as unknown as Point), TypeError);
+    class RectangleSubclass extends Rectangle {}
+    assert.equal(rectangle.containsRect(new RectangleSubclass(20, 30, 10, 5)), true);
+    assert.equal(isFlashRectangle(new RectangleSubclass()), true);
+    assert.equal(isFlashRectangle({ x: 0, y: 0, width: 0, height: 0 }), false);
+    assert.deepEqual(new Rectangle("1" as unknown as number, "2" as unknown as number,
+        "3" as unknown as number, "4" as unknown as number), new Rectangle(1, 2, 3, 4));
+
+    const display = new DisplayObject();
+    display.pos(10, 20);
+    const local = new Point(3, 4);
+    const global = display.localToGlobal(local);
+    assert.ok(global instanceof Point);
+    assert.notEqual(global, local);
+    assert.deepEqual(global, new Point(13, 24));
+    assert.deepEqual(display.globalToLocal(global), local);
+
+    const nativeInPlace = new LayaPoint(3, 4);
+    assert.equal(display.localToGlobal(nativeInPlace), nativeInPlace);
+    assert.deepEqual(nativeInPlace, new LayaPoint(13, 24));
+    const nativeCopiedInput = new LayaPoint(3, 4);
+    const nativeCopied = display.localToGlobal(nativeCopiedInput, true);
+    assert.ok(nativeCopied instanceof LayaPoint);
+    assert.notEqual(nativeCopied, nativeCopiedInput);
+    assert.deepEqual(nativeCopiedInput, new LayaPoint(3, 4));
+    assert.deepEqual(nativeCopied, new LayaPoint(13, 24));
+    assert.equal(display.globalToLocal(nativeCopied), nativeCopied);
+    assert.deepEqual(nativeCopied, new LayaPoint(3, 4));
+    assert.throws(() => display.localToGlobal({ x: 3, y: 4 } as Point), TypeError);
+    assert.throws(() => display.localToGlobal(Object.create(Point.prototype) as Point), TypeError);
+    assert.throws(() => display.localToGlobal(new Proxy(new Point(3, 4), {}) as Point), TypeError);
+
+    const root = new DisplayObject();
+    const targetCoordinates = new DisplayObject();
+    const bounded = new DisplayObject();
+    root.addChild(targetCoordinates);
+    root.addChild(bounded);
+    targetCoordinates.pos(5, 6);
+    bounded.pos(10, 20);
+    bounded.setSelfBounds(new LayaRectangle(0, 0, 2, 3));
+    assert.equal(isFlashDisplayObject(bounded), true);
+    assert.deepEqual(bounded.getBounds(targetCoordinates), new Rectangle(5, 14, 2, 3));
+    assert.deepEqual(bounded.getBounds(bounded), new Rectangle(0, 0, 2, 3));
+    const nativeBounds = new LayaRectangle();
+    assert.equal(bounded.getBounds(nativeBounds), nativeBounds);
+    assert.deepEqual(nativeBounds, new LayaRectangle(10, 20, 2, 3));
+    assert.throws(() => bounded.getBounds(null as DisplayObject), TypeError);
+    assert.throws(() => bounded.getBounds(Object.create(DisplayObject.prototype) as DisplayObject), TypeError);
 });
 
 test("Event validates immutable type and listener priority", () => {

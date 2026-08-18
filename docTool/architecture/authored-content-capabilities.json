@@ -1356,7 +1356,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -1482,7 +1482,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -1617,7 +1617,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -2362,7 +2362,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
+          "sha256": "cad70f5d6a05f4dcedf72ba39ce528ba4aa9d593d1d2ca9976e398530209ce18",
           "heritage": [
             {
               "kind": "extends",
@@ -3485,7 +3485,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -3611,7 +3611,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -3746,7 +3746,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -5637,7 +5637,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -5763,7 +5763,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -5898,7 +5898,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -7852,7 +7852,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -7978,7 +7978,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -8140,7 +8140,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -10176,7 +10176,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -10302,7 +10302,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -10446,7 +10446,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -12382,7 +12382,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -12508,7 +12508,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -12643,7 +12643,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -13441,12 +13441,445 @@
           "capability": "api.flash.display",
           "covers": [
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
-            "258facd88d59020e8a983896a5d1b731b2f6f2eac16e10cb295f5dfb7c23284c",
             "7a6eef8afaeedf5ee9e27fcd4ec04f2e88212b2860bf1940c495ade79635a549",
             "9c01500de4bafc7ed15eb57abbe24db94d576f99705c29151b720df36deac447",
             "a04d753ab9d2c5db8dfc7294344076e1ef13877679eb6790fd92d8ee8180ae47",
             "a4c95c1f8f696bf76c0e985acedfd70a7e92e06db95b1bffe9c145a6d371dbdf",
+            "cad70f5d6a05f4dcedf72ba39ce528ba4aa9d593d1d2ca9976e398530209ce18",
             "e0b0b32fef990d50df0141ca566c76e8a27c960ea87c314c115c2d139d82b7e3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api.flash.geom",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/geom/Point.ts",
+          "export": "Point",
+          "kind": "class",
+          "signature": "typeof Point",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "add",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(v: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copyFrom",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sourcePoint: Point) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(toCompare: Point) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "length",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "normalize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(thickness: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(dx: number, dy: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setTo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(xa: number, ya: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "subtract",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(v: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "distance",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(pt1: Point, pt2: Point) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "interpolate",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(pt1: Point, pt2: Point, f: number) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "polar",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(length: number, angle: number) => Point"
+            }
+          ],
+          "constructors": [
+            "new (x?: number, y?: number): Point"
+          ],
+          "indexSignatures": [],
+          "sha256": "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/geom/Rectangle.ts",
+          "export": "Rectangle",
+          "kind": "class",
+          "signature": "typeof Rectangle",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "bottom",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "bottomRight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "contains",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "containsPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "containsRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(rect: Rectangle) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copyFrom",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sourceRect: Rectangle) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(toCompare: Rectangle) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "inflate",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(dx: number, dy: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "inflatePoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "intersection",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(toIntersect: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "intersects",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(toIntersect: Rectangle) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isEmpty",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "left",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(dx: number, dy: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offsetPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "right",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setEmpty",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setTo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(xa: number, ya: number, widtha: number, heighta: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "size",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Point"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "top",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "topLeft",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "union",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(toUnion: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (x?: number, y?: number, width?: number, height?: number): Rectangle"
+          ],
+          "indexSignatures": [],
+          "sha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
+          "heritage": []
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+          "test": "Flash geometry bridge compiler surface",
+          "sha256": "a1835c83b56a0105cdbf1cc83bb3a57a03cd320feb769c1c2987a04a13c6baf0",
+          "capability": "api.flash.geom",
+          "covers": [
+            "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
+            "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2"
           ]
         }
       ]
@@ -17196,7 +17629,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -17322,7 +17755,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,
@@ -17466,7 +17899,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(point: Point, createNewPoint?: boolean, globalNode?: Sprite) => Point"
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
             },
             {
               "abstract": false,

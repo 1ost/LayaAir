@@ -9,6 +9,7 @@
   "flashApiNamespaces": [
     "flash.display",
     "flash.events",
+    "flash.geom",
     "flash.text",
     "flash.net",
     "flash.utils"
@@ -72,6 +73,7 @@
     "source.executable-code",
     "api.flash.display",
     "api.flash.events",
+    "api.flash.geom",
     "api.flash.text",
     "api.flash.net",
     "api.flash.utils"
