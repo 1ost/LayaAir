@@ -16,6 +16,7 @@ export { Sprite } from "./display/Sprite";
 export { Graphics } from "./display/Graphics";
 export type { IBitmapDrawable } from "./display/IBitmapDrawable";
 export { Shape } from "./display/Shape";
+export { FlashStageBoundary } from "./display/FlashStageBoundary";
 export { SimpleButton } from "./display/SimpleButton";
 export { MovieClip } from "./display/MovieClip";
 export type { FlashFrameReference } from "./display/MovieClip";

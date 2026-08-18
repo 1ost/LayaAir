@@ -13,16 +13,17 @@ export function isFlashInteractiveObject(value: unknown): value is InteractiveOb
     return typeof value === "object" && value !== null && INTERACTIVE_OBJECT_VALUES.has(value);
 }
 
-function focusOwner(value: unknown): InteractiveObject | null {
+/** @internal Resolves a native focus target to its canonical Flash owner. */
+export function resolveFlashFocusOwner(value: unknown): InteractiveObject | null {
     const owner = getInputEventOwner(value) ?? value;
-    return owner instanceof InteractiveObject ? owner : null;
+    return isFlashInteractiveObject(owner) ? owner : null;
 }
 
 function tabCandidates(stage: LayaNode): InteractiveObject[] {
     const ordered: Array<{ value: InteractiveObject, order: number }> = [];
     let order = 0;
     const visit = (node: LayaNode): void => {
-        if (node instanceof InteractiveObject && node.tabEnabled && node.activeInHierarchy) {
+        if (isFlashInteractiveObject(node) && node.tabEnabled && node.activeInHierarchy) {
             if (node.tabIndex < 0)
                 throw new Error(`Tab-enabled InteractiveObject '${node.name}' requires an explicit nonnegative tabIndex`);
             ordered.push({ value: node, order: order++ });
@@ -52,7 +53,7 @@ function installFocusTraversal(stage: LayaNode): void {
             throw error;
         }
         if (candidates.length === 0) return;
-        const current = focusOwner((stage as unknown as { focus?: LayaNode | null }).focus);
+        const current = resolveFlashFocusOwner((stage as unknown as { focus?: LayaNode | null }).focus);
         const currentIndex = current ? candidates.indexOf(current) : -1;
         const direction = native.shiftKey ? -1 : 1;
         const nextIndex = currentIndex < 0

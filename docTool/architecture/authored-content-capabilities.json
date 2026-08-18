@@ -9306,7 +9306,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "9c08e0387489372ace4fff8b5e45e34bf53c91be0db69f3ef45395b4873881f8",
+          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5",
           "heritage": [
             {
               "kind": "extends",
@@ -18459,25 +18459,164 @@
           "indexSignatures": [],
           "sha256": "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
+          "export": "FlashStageBoundary",
+          "kind": "class",
+          "signature": "typeof FlashStageBoundary",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "configure",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, options: FlashStageBootstrapOptions) => FlashStageBootstrap"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispose",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getBootstrap",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => FlashStageBootstrap"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getFocus",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => InteractiveObject | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getFrameRate",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getHeight",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getWidth",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parseLoaderParameters",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(search: string) => FlashStageLoaderParameters"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setFocus",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, value: InteractiveObject | null) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setFrameRate",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stageOf",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => LayaStage | null"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "f4e9405b67d32ba31cd4113ac0d4cf673abbe88dbd69bfde73dd0c05881a2c3c",
+          "sha256": "424f84f5ddc4ed3ae6a0521a21a89c43358c3946f5c66a7f4a0733c3d2a3e698",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
             "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b",
+            "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
-            "9c08e0387489372ace4fff8b5e45e34bf53c91be0db69f3ef45395b4873881f8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
+            "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
             "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5",
             "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba",
             "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a",
@@ -21313,7 +21452,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "8104a71185324ff56e1f72867c16469288bce500c1c763b59bd39f268b73d45d",
+          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc",
           "heritage": []
         },
         {
@@ -23257,11 +23396,11 @@
           "covers": [
             "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25",
             "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273",
+            "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f",
             "7bb2c368a32a6aa256d88c0f90495f5089bbf3d01f345d2e832521016775190f",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
-            "8104a71185324ff56e1f72867c16469288bce500c1c763b59bd39f268b73d45d",
             "848f6039b5c9a397d82f1f9a1de667c100dbc3099bed688422bea826285bb23d",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c",

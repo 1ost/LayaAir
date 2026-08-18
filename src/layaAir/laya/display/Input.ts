@@ -4,6 +4,12 @@ import { PAL } from "../platform/PlatformAdapters";
 import type { Node } from "./Node";
 
 const INPUT_EVENT_OWNERS = new WeakMap<Input, Node>();
+const INPUT_VALUES = new WeakSet<object>();
+
+/** Read-only constructor proof for native Laya Input instances. @internal */
+export function isLayaInput(value: unknown): value is Input {
+    return typeof value === "object" && value !== null && INPUT_VALUES.has(value);
+}
 
 /**
  * Binds a composed Input to the ancestor that owns its source-visible event
@@ -12,7 +18,7 @@ const INPUT_EVENT_OWNERS = new WeakMap<Input, Node>();
  * @internal
  */
 export function setInputEventOwner(input: Input, owner: Node | null): void {
-    if (!(input instanceof Input)) throw new TypeError("Input event owner requires a Laya Input");
+    if (!isLayaInput(input)) throw new TypeError("Input event owner requires a canonical Laya Input");
     if (owner === null) {
         INPUT_EVENT_OWNERS.delete(input);
         return;
@@ -25,7 +31,7 @@ export function setInputEventOwner(input: Input, owner: Node | null): void {
 
 /** Returns a still-valid composed event owner without changing native hit ownership. @internal */
 export function getInputEventOwner(value: unknown): Node | null {
-    if (!(value instanceof Input)) return null;
+    if (!isLayaInput(value)) return null;
     const owner = INPUT_EVENT_OWNERS.get(value);
     if (!owner) return null;
     let ancestor = value.parent;
@@ -164,6 +170,7 @@ export class Input extends Text {
 
     constructor() {
         super();
+        INPUT_VALUES.add(this);
 
         this._width = 100;
         this._height = 20;

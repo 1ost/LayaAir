@@ -26,6 +26,7 @@ for (const [module, exported] of [
 
 const displayCapability = ledger.capabilities.find(item => item.id === "api.flash.display");
 for (const [module, exported] of [
+    ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBoundary"],
     ["src/layaAir/flash/display/Bitmap.ts", "Bitmap"],
     ["src/layaAir/flash/display/BitmapData.ts", "BitmapData"],
     ["src/layaAir/flash/display/BitmapDataChannel.ts", "BitmapDataChannel"],

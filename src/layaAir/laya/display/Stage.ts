@@ -28,6 +28,14 @@ import { TextRenderConfig } from "../webgl/text/TextRenderConfig";
 import { StatElement } from "../layagl/StatisticsContext";
 import { Render } from "../renders/Render";
 
+const STAGE_VALUES = new WeakSet<object>();
+
+/** Read-only constructor proof for native Laya Stage instances. @internal */
+export function isLayaStage(value: unknown): value is Stage {
+    return typeof value === "object" && value !== null
+        && STAGE_VALUES.has(value) && Object.getPrototypeOf(value) === Stage.prototype;
+}
+
 /**
  * @en Stage is the root node of the display list. All display objects are shown on the stage. It can be accessed through the Laya.stage singleton.
  * Stage provides several adaptation modes. Different adaptation modes will produce different canvas sizes. The larger the canvas, the greater the rendering pressure, so it's important to choose an appropriate adaptation scheme.
@@ -236,6 +244,7 @@ export class Stage extends Sprite {
      * */
     constructor() {
         super();
+        if (new.target === Stage) STAGE_VALUES.add(this);
 
         this.mouseEnabled = true;
         this.hitTestPrior = true;

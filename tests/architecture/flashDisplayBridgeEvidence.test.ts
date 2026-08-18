@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
 import type { DisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer.ts";
+import type { FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary.ts";
 import type { Graphics } from "../../src/layaAir/flash/display/Graphics.ts";
 import type { IBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { isFlashBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
@@ -18,6 +19,7 @@ import type { PixelSnapping } from "../../src/layaAir/flash/display/PixelSnappin
 
 test("Flash display bridge compiler surface", () => {
     assert.ok(true as boolean satisfies ([typeof DisplayObject, typeof DisplayObjectContainer, typeof InteractiveObject,
+        typeof FlashStageBoundary,
         typeof Graphics, IBitmapDrawable, typeof isFlashBitmapDrawable, typeof MovieClip, typeof AnimatorClip2DTimeline,
         typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
         typeof BitmapDataChannel, typeof PixelSnapping] extends readonly unknown[] ? boolean : never));

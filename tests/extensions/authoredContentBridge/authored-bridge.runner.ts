@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { Config } from "../../../src/layaAir/Config";
 import { ILaya } from "../../../src/layaAir/ILaya";
 import { AnimationClip2D } from "../../../src/layaAir/laya/components/AnimationClip2D";
 import { AnimatorClip2D } from "../../../src/layaAir/laya/components/AnimatorClip2D";
-import { Input as LayaInput } from "../../../src/layaAir/laya/display/Input";
+import { Input as LayaInput, setInputEventOwner } from "../../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { Point as LayaPoint } from "../../../src/layaAir/laya/maths/Point";
 import { isFlashPoint } from "../../../src/layaAir/flash/geom/Point";
@@ -44,13 +45,14 @@ import { TextInputAdapter } from "../../../src/layaAir/laya/platform/TextInputAd
 import { Browser } from "../../../src/layaAir/laya/utils/Browser";
 import { HierarchyParser } from "../../../src/layaAir/laya/loaders/HierarchyParser";
 import { LayaGL } from "../../../src/layaAir/laya/layagl/LayaGL";
+import { Render } from "../../../src/layaAir/laya/renders/Render";
 import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
-    ErrorEvent, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
+    ErrorEvent, FlashStageBoundary, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
     InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, TimerEvent,
     AntiAliasType, CSMSettings, GridFitType,
     TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
@@ -656,6 +658,215 @@ test("IBitmapDrawable uses central nominal identity and unattached Shape receive
     shape.addEventListener(Event.ENTER_FRAME, listener);
     shape.destroy();
     assert.equal(frameCallbacks.length, 0, "destroy releases the global frame hook");
+});
+
+test("explicit Stage boundary preserves attachment, numeric FPS, focus and bootstrap policy", () => {
+    const previousStage = ILaya.stage;
+    const previousFPS = Config.FPS;
+    const previousInterval = Render.frameInterval;
+    const previousCanvas = Browser.mainCanvas;
+    const textInputAdapter = (PAL as any).textInput;
+    const previousTextInputTarget = textInputAdapter.target;
+    const previousTextInputBegin = textInputAdapter.begin;
+    const previousTextInputEnd = textInputAdapter.end;
+    const stage = new Stage() as any;
+    stage.width = 1024;
+    stage.height = 768;
+    stage.alignH = "center";
+    stage.alignV = "middle";
+    stage.scaleMode = "showall";
+    stage.frameRate = "fast";
+    stage.focus = null;
+    Browser.mainCanvas = { source: { oncontextmenu: null } } as any;
+    textInputAdapter.begin = function (target: unknown): void {
+        this.target = target;
+        stage.focus = target;
+    };
+    textInputAdapter.end = function (): void {
+        if (stage.focus === this.target) stage.focus = null;
+        this.target = null;
+    };
+    const previousHasInstance = Object.getOwnPropertyDescriptor(Stage, Symbol.hasInstance);
+    const previousInputHasInstance = Object.getOwnPropertyDescriptor(LayaInput, Symbol.hasInstance);
+    try {
+        Object.defineProperty(Stage, Symbol.hasInstance, { configurable: true, value: () => true });
+        Object.defineProperty(LayaInput, Symbol.hasInstance, { configurable: true, value: () => true });
+        const derivedCounters = { width: 0, focus: 0, configure: 0 };
+        class DerivedStage extends Stage {
+            constructor() {
+                super();
+                Object.defineProperties(this, {
+                    width: {
+                        configurable: true,
+                        get: () => { derivedCounters.width++; return 1; },
+                    },
+                    focus: {
+                        configurable: true,
+                        get: () => { derivedCounters.focus++; return null; },
+                        set: () => { derivedCounters.focus++; },
+                    },
+                    alignH: {
+                        configurable: true,
+                        get: () => { derivedCounters.configure++; return "left"; },
+                        set: () => { derivedCounters.configure++; },
+                    },
+                    alignV: {
+                        configurable: true,
+                        get: () => { derivedCounters.configure++; return "top"; },
+                        set: () => { derivedCounters.configure++; },
+                    },
+                    scaleMode: {
+                        configurable: true,
+                        get: () => { derivedCounters.configure++; return "noscale"; },
+                        set: () => { derivedCounters.configure++; },
+                    },
+                });
+            }
+        }
+        const derivedStage = new DerivedStage();
+        ILaya.stage = derivedStage;
+        assert.throws(() => FlashStageBoundary.getWidth(derivedStage), /live canonical Laya Stage/);
+        assert.throws(() => FlashStageBoundary.setFocus(derivedStage, null), /live canonical Laya Stage/);
+        assert.throws(() => FlashStageBoundary.configure(derivedStage, {
+            align: "TL", scaleMode: "noScale", quality: "best", showDefaultContextMenu: false,
+            loaderParameters: FlashStageBoundary.parseLoaderParameters("locale=en_US")
+        }), /live canonical Laya Stage/);
+        assert.deepEqual(derivedCounters, { width: 0, focus: 0, configure: 0 },
+            "Stage boundary rejects a branded-subclass attempt before hostile member access");
+        const fakeStage = new LayaSprite() as any;
+        fakeStage.alignH = "fake";
+        let proxyTraps = 0;
+        const stageProxy = new Proxy(stage, {
+            get(): never { proxyTraps++; throw new Error("Stage Proxy trap"); }
+        });
+        for (const impostor of [fakeStage, Object.create(Stage.prototype), stageProxy]) {
+            ILaya.stage = impostor;
+            const fps = Config.FPS;
+            const interval = Render.frameInterval;
+            assert.throws(() => FlashStageBoundary.setFrameRate(impostor, 24), /live canonical Laya Stage/);
+            assert.throws(() => FlashStageBoundary.configure(impostor, {
+                align: "TL", scaleMode: "noScale", quality: "best", showDefaultContextMenu: false,
+                loaderParameters: FlashStageBoundary.parseLoaderParameters("locale=en_US")
+            }), /live canonical Laya Stage/);
+            assert.deepEqual([Config.FPS, Render.frameInterval, fakeStage.alignH,
+                (Browser.mainCanvas.source as any).oncontextmenu], [fps, interval, "fake", null],
+                "unbranded current-singleton rejection is side-effect-free");
+        }
+        assert.equal(proxyTraps, 0, "native Stage authentication never interrogates a Proxy");
+
+        ILaya.stage = stage;
+        const child = new Sprite();
+        assert.equal(FlashStageBoundary.stageOf(child), null, "unattached Flash nodes have null Stage");
+        stage.addChild(child);
+        assert.equal(FlashStageBoundary.stageOf(child), stage);
+        assert.deepEqual([FlashStageBoundary.getWidth(stage), FlashStageBoundary.getHeight(stage)], [1024, 768]);
+
+        FlashStageBoundary.setFrameRate(stage, 33);
+        assert.equal(FlashStageBoundary.getFrameRate(stage), 33);
+        assert.equal(Render.frameInterval, 1000 / 33);
+        assert.equal(stage.frameRate, "fast", "numeric Flash FPS never overwrites Laya's throttle property");
+        assert.throws(() => FlashStageBoundary.setFrameRate(stage, 0), /between 0\.01 and 1000/);
+        assert.throws(() => FlashStageBoundary.setFrameRate(stage, 1001), /between 0\.01 and 1000/);
+
+        const focus = new InteractiveObject();
+        stage.addChild(focus);
+        assert.throws(() => setInputEventOwner({} as LayaInput, focus), /canonical Laya Input/,
+            "hostile Input Symbol.hasInstance cannot forge the composed-owner registry");
+        FlashStageBoundary.setFocus(stage, focus);
+        assert.equal(FlashStageBoundary.getFocus(stage), focus);
+        stage.removeChild(focus);
+        assert.equal(FlashStageBoundary.getFocus(stage), null, "detached focus is normalized to null");
+        assert.equal(stage.focus, null, "detached native focus is cleared");
+        stage.addChild(focus);
+        FlashStageBoundary.setFocus(stage, focus);
+        FlashStageBoundary.setFocus(stage, null);
+        assert.equal(FlashStageBoundary.getFocus(stage), null);
+        assert.throws(() => FlashStageBoundary.setFocus(stage, new InteractiveObject()), /must be attached/);
+
+        const textFocus = new TextField();
+        textFocus.type = TextFieldType.INPUT;
+        stage.addChild(textFocus);
+        FlashStageBoundary.setFocus(stage, textFocus);
+        assert.notEqual(stage.focus, textFocus, "native focus remains on the composed Input");
+        assert.equal(FlashStageBoundary.getFocus(stage), textFocus,
+            "authenticated native Input ownership round-trips to the outer TextField");
+        stage.removeChild(textFocus);
+        assert.equal(FlashStageBoundary.getFocus(stage), null,
+            "detached composed TextField focus normalizes through its outer owner");
+        assert.equal(textInputAdapter.target, null, "detached TextField releases the native input adapter");
+        stage.addChild(textFocus);
+        FlashStageBoundary.setFocus(stage, textFocus);
+        FlashStageBoundary.setFocus(stage, null);
+        assert.equal(FlashStageBoundary.getFocus(stage), null);
+
+        const parameters = FlashStageBoundary.parseLoaderParameters("?locale=en_US&__proto__=literal");
+        let getterCalls = 0;
+        const getterParameters = Object.defineProperty({}, "locale", {
+            enumerable: true,
+            get(): string { getterCalls++; return "hostile"; }
+        });
+        assert.throws(() => FlashStageBoundary.configure(stage, {
+            align: "TL", scaleMode: "noScale", quality: "best",
+            showDefaultContextMenu: false, loaderParameters: getterParameters as any
+        }), /authenticated search parser/);
+        assert.equal(getterCalls, 0, "bootstrap never evaluates loader-parameter getters");
+        let parameterProxyTraps = 0;
+        const proxyParameters = new Proxy(parameters, {
+            ownKeys(): ArrayLike<string | symbol> { parameterProxyTraps++; throw new Error("trap"); },
+            getOwnPropertyDescriptor(): PropertyDescriptor | undefined { parameterProxyTraps++; throw new Error("trap"); },
+            get(): unknown { parameterProxyTraps++; throw new Error("trap"); }
+        });
+        assert.throws(() => FlashStageBoundary.configure(stage, {
+            align: "TL", scaleMode: "noScale", quality: "best",
+            showDefaultContextMenu: false, loaderParameters: proxyParameters as any
+        }), /authenticated search parser/);
+        assert.equal(parameterProxyTraps, 0, "bootstrap never interrogates an unbranded Proxy");
+        assert.throws(() => FlashStageBoundary.parseLoaderParameters("locale=en&locale=de"), /duplicated/);
+
+        const tMainBootstrap = FlashStageBoundary.configure(stage, {
+            align: "TL", scaleMode: "noScale", quality: "best",
+            showDefaultContextMenu: false, loaderParameters: parameters
+        });
+        assert.equal(tMainBootstrap.quality, "best", "maintained TMain StageQuality.BEST is preserved");
+        const bootstrap = FlashStageBoundary.configure(stage, {
+            align: "TL", scaleMode: "noScale", quality: "high",
+            showDefaultContextMenu: false, loaderParameters: parameters
+        });
+        assert.equal(bootstrap.quality, "high", "maintained TApplication StageQuality.HIGH is preserved");
+        assert.deepEqual([stage._alignH, stage._alignV, stage._scaleMode], ["left", "top", "noscale"],
+            "Flash bootstrap maps onto native Stage adaptation state");
+        assert.equal(Object.getPrototypeOf(bootstrap.loaderParameters), null);
+        assert.equal(bootstrap.loaderParameters.__proto__, "literal");
+        assert.equal(Object.isFrozen(bootstrap.loaderParameters), true);
+        assert.equal((Browser.mainCanvas.source as any).oncontextmenu(), false);
+        assert.equal(FlashStageBoundary.getBootstrap(stage), bootstrap, "bootstrap identity is stable");
+        assert.throws(() => FlashStageBoundary.configure(stage, { ...bootstrap,
+            loaderParameters: FlashStageBoundary.parseLoaderParameters("locale=de_DE") }), /immutable/);
+
+        let activated = 0;
+        const onActivate = (event: Event): void => {
+            activated++;
+            assert.equal(event.type, Event.ACTIVATE);
+            assert.equal(event.target, stage);
+        };
+        FlashStageBoundary.addEventListener(stage, Event.ACTIVATE, onActivate);
+        stage.event(LayaEvent.FOCUS);
+        assert.equal(activated, 1);
+        FlashStageBoundary.removeEventListener(stage, Event.ACTIVATE, onActivate);
+        FlashStageBoundary.dispose(stage);
+    } finally {
+        ILaya.stage = previousStage;
+        Config.FPS = previousFPS;
+        Render.frameInterval = previousInterval;
+        Browser.mainCanvas = previousCanvas;
+        textInputAdapter.target = previousTextInputTarget;
+        textInputAdapter.begin = previousTextInputBegin;
+        textInputAdapter.end = previousTextInputEnd;
+        if (previousHasInstance) Object.defineProperty(Stage, Symbol.hasInstance, previousHasInstance);
+        else delete (Stage as any)[Symbol.hasInstance];
+        if (previousInputHasInstance) Object.defineProperty(LayaInput, Symbol.hasInstance, previousInputHasInstance);
+        else delete (LayaInput as any)[Symbol.hasInstance];
+    }
 });
 
 test("priority, duplicate identity, cancellation and removal preserve Flash behavior", () => {
