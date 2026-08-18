@@ -7,6 +7,12 @@ export const EventPhase = Object.freeze({
 export type EventPhase = (typeof EventPhase)[keyof typeof EventPhase];
 
 const EVENT_TYPE = /^[^\u0000-\u001f\u007f]{1,128}$/;
+const EVENT_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash events. */
+export function isFlashEvent(value: unknown): value is Event {
+    return typeof value === "object" && value !== null && EVENT_VALUES.has(value);
+}
 
 /** Source-shaped `flash.events.Event`; transport and display ownership remain native Laya. */
 export class Event {
@@ -52,6 +58,7 @@ export class Event {
         this._type = type;
         this._bubbles = !!bubbles;
         this._cancelable = !!cancelable;
+        EVENT_VALUES.add(this);
     }
 
     get type(): string { return this._type; }

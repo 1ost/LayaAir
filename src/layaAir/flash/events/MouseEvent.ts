@@ -4,6 +4,13 @@ import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 import { Event } from "./Event";
 
+const MOUSE_EVENT_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash mouse events. */
+export function isFlashMouseEvent(value: unknown): value is MouseEvent {
+    return typeof value === "object" && value !== null && MOUSE_EVENT_VALUES.has(value);
+}
+
 function finiteOrNaN(value: number, label: string): number {
     if (typeof value !== "number" || (!Number.isFinite(value) && !Number.isNaN(value)))
         throw new TypeError(`${label} must be finite or NaN`);
@@ -55,6 +62,7 @@ export class MouseEvent extends Event {
         this.clickCount = clickCount;
         this.stageX = finiteOrNaN(stageX, "MouseEvent.stageX");
         this.stageY = finiteOrNaN(stageY, "MouseEvent.stageY");
+        MOUSE_EVENT_VALUES.add(this);
     }
 
     override clone(): MouseEvent {

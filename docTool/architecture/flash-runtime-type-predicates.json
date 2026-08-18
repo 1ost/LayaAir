@@ -1,0 +1,228 @@
+{
+  "schema": "laya-flash-runtime-type-predicates@1",
+  "hashMode": "canonical-lf-utf8",
+  "types": [
+    {
+      "sourceQName": "flash.display.DisplayObject",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/DisplayObject.ts",
+      "constructorExport": "DisplayObject",
+      "constructorSignature": "typeof DisplayObject",
+      "constructSignatures": [
+        "new (): DisplayObject"
+      ],
+      "predicateExport": "isFlashDisplayObject",
+      "predicateSignature": "(value: unknown) => value is DisplayObject",
+      "heritageClosure": [],
+      "moduleSha256": "cbbc442ae50c6359921dbf2604dd37fd2051213e334de6cb51e5c3435b15b31a"
+    },
+    {
+      "sourceQName": "flash.display.DisplayObjectContainer",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/DisplayObjectContainer.ts",
+      "constructorExport": "DisplayObjectContainer",
+      "constructorSignature": "typeof DisplayObjectContainer",
+      "constructSignatures": [
+        "new (): DisplayObjectContainer"
+      ],
+      "predicateExport": "isFlashDisplayObjectContainer",
+      "predicateSignature": "(value: unknown) => value is DisplayObjectContainer",
+      "heritageClosure": [
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27"
+    },
+    {
+      "sourceQName": "flash.display.InteractiveObject",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/InteractiveObject.ts",
+      "constructorExport": "InteractiveObject",
+      "constructorSignature": "typeof InteractiveObject",
+      "constructSignatures": [
+        "new (): InteractiveObject"
+      ],
+      "predicateExport": "isFlashInteractiveObject",
+      "predicateSignature": "(value: unknown) => value is InteractiveObject",
+      "heritageClosure": [
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "9c08e0387489372ace4fff8b5e45e34bf53c91be0db69f3ef45395b4873881f8"
+    },
+    {
+      "sourceQName": "flash.display.MovieClip",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/MovieClip.ts",
+      "constructorExport": "MovieClip",
+      "constructorSignature": "typeof MovieClip",
+      "constructSignatures": [
+        "new (): MovieClip"
+      ],
+      "predicateExport": "isFlashMovieClip",
+      "predicateSignature": "(value: unknown) => value is MovieClip",
+      "heritageClosure": [
+        "flash.display.Sprite",
+        "flash.display.DisplayObjectContainer",
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba"
+    },
+    {
+      "sourceQName": "flash.display.SimpleButton",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/SimpleButton.ts",
+      "constructorExport": "SimpleButton",
+      "constructorSignature": "typeof SimpleButton",
+      "constructSignatures": [
+        "new (upState?: DisplayObject | null, overState?: DisplayObject | null, downState?: DisplayObject | null, hitTestState?: DisplayObject | null): SimpleButton"
+      ],
+      "predicateExport": "isFlashSimpleButton",
+      "predicateSignature": "(value: unknown) => value is SimpleButton",
+      "heritageClosure": [
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a"
+    },
+    {
+      "sourceQName": "flash.display.Sprite",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Sprite.ts",
+      "constructorExport": "Sprite",
+      "constructorSignature": "typeof Sprite",
+      "constructSignatures": [
+        "new (): Sprite"
+      ],
+      "predicateExport": "isFlashSprite",
+      "predicateSignature": "(value: unknown) => value is Sprite",
+      "heritageClosure": [
+        "flash.display.DisplayObjectContainer",
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "be3a2a8e0b45d0652be933c019f6c2628a7b0257664b5062d5f88fb5e22d11b9"
+    },
+    {
+      "sourceQName": "flash.events.Event",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/Event.ts",
+      "constructorExport": "Event",
+      "constructorSignature": "typeof Event",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean): Event"
+      ],
+      "predicateExport": "isFlashEvent",
+      "predicateSignature": "(value: unknown) => value is Event",
+      "heritageClosure": [],
+      "moduleSha256": "dd4ea0569d4e53401bd71750a00074054a8642fae571ef70c0299dfc7f4780bd"
+    },
+    {
+      "sourceQName": "flash.events.EventDispatcher",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/EventDispatcher.ts",
+      "constructorExport": "EventDispatcher",
+      "constructorSignature": "typeof EventDispatcher",
+      "constructSignatures": [
+        "new (target?: IEventDispatcher | null): EventDispatcher"
+      ],
+      "predicateExport": "isFlashEventDispatcher",
+      "predicateSignature": "(value: unknown) => value is EventDispatcher",
+      "heritageClosure": [],
+      "moduleSha256": "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc"
+    },
+    {
+      "sourceQName": "flash.events.FocusEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/FocusEvent.ts",
+      "constructorExport": "FocusEvent",
+      "constructorSignature": "typeof FocusEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, relatedObject?: unknown, shiftKey?: boolean, keyCode?: number, isRelatedObjectInaccessible?: boolean): FocusEvent"
+      ],
+      "predicateExport": "isFlashFocusEvent",
+      "predicateSignature": "(value: unknown) => value is FocusEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "0a9f37a684cf6877464e2ba75d5005d89e2c4e4890c126cbe0e7d89987aeac25"
+    },
+    {
+      "sourceQName": "flash.events.MouseEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/MouseEvent.ts",
+      "constructorExport": "MouseEvent",
+      "constructorSignature": "typeof MouseEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, localX?: number, localY?: number, relatedObject?: unknown, ctrlKey?: boolean, altKey?: boolean, shiftKey?: boolean, buttonDown?: boolean, delta?: number, _commandKey?: boolean, _controlKey?: boolean, clickCount?: number, stageX?: number, stageY?: number): MouseEvent"
+      ],
+      "predicateExport": "isFlashMouseEvent",
+      "predicateSignature": "(value: unknown) => value is MouseEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "cd767e58758f82d296aa21212bf3ca76e31fa17b5fb5fee156ef3701e33c9e6c"
+    },
+    {
+      "sourceQName": "flash.events.TextEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/TextEvent.ts",
+      "constructorExport": "TextEvent",
+      "constructorSignature": "typeof TextEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string): TextEvent"
+      ],
+      "predicateExport": "isFlashTextEvent",
+      "predicateSignature": "(value: unknown) => value is TextEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "18c91544ea9466086466c0a7c0afc925fd2f8be2da00736617d4d59c99624273"
+    },
+    {
+      "sourceQName": "flash.geom.Point",
+      "targetCapabilityId": "api.flash.geom",
+      "targetModule": "src/layaAir/flash/geom/Point.ts",
+      "constructorExport": "Point",
+      "constructorSignature": "typeof Point",
+      "constructSignatures": [
+        "new (x?: number, y?: number): Point"
+      ],
+      "predicateExport": "isFlashPoint",
+      "predicateSignature": "(value: unknown) => value is Point",
+      "heritageClosure": [],
+      "moduleSha256": "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2"
+    },
+    {
+      "sourceQName": "flash.geom.Rectangle",
+      "targetCapabilityId": "api.flash.geom",
+      "targetModule": "src/layaAir/flash/geom/Rectangle.ts",
+      "constructorExport": "Rectangle",
+      "constructorSignature": "typeof Rectangle",
+      "constructSignatures": [
+        "new (x?: number, y?: number, width?: number, height?: number): Rectangle"
+      ],
+      "predicateExport": "isFlashRectangle",
+      "predicateSignature": "(value: unknown) => value is Rectangle",
+      "heritageClosure": [],
+      "moduleSha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6"
+    },
+    {
+      "sourceQName": "flash.text.TextField",
+      "targetCapabilityId": "api.flash.text",
+      "targetModule": "src/layaAir/flash/text/TextField.ts",
+      "constructorExport": "TextField",
+      "constructorSignature": "typeof TextField",
+      "constructSignatures": [
+        "new (): TextField"
+      ],
+      "predicateExport": "isFlashTextField",
+      "predicateSignature": "(value: unknown) => value is TextField",
+      "heritageClosure": [
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "25c3e492396e1ce3ff6b0bfe940f740197c87fe3d177733485c519065fc2036b"
+    }
+  ]
+}

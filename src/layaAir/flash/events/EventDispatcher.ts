@@ -2,6 +2,13 @@ import { EventDispatcher as LayaEventDispatcher } from "../../laya/events/EventD
 import { FlashEventListener, FlashEventRouter } from "./FlashEventRouter";
 import { Event } from "./Event";
 
+const EVENT_DISPATCHER_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash event dispatchers. */
+export function isFlashEventDispatcher(value: unknown): value is EventDispatcher {
+    return typeof value === "object" && value !== null && EVENT_DISPATCHER_VALUES.has(value);
+}
+
 export interface IEventDispatcher {
     addEventListener(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean): void;
     removeEventListener(type: string, listener: FlashEventListener, useCapture?: boolean): void;
@@ -17,6 +24,7 @@ export class EventDispatcher extends LayaEventDispatcher implements IEventDispat
 
     constructor(target: IEventDispatcher | null = null) {
         super();
+        EVENT_DISPATCHER_VALUES.add(this);
         this._flashTarget = target ?? this;
     }
 

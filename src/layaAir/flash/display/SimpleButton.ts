@@ -19,6 +19,12 @@ type LayaNode = Node;
 const BUTTON_STATE_SLOTS: readonly ButtonStateSlot[] = ["_upState", "_overState", "_downState", "_hitTestState"];
 const buttonTransactions = new WeakMap<object, ButtonStateTransaction>();
 const buttonRevisions = new WeakMap<object, number>();
+const SIMPLE_BUTTON_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash buttons. */
+export function isFlashSimpleButton(value: unknown): value is SimpleButton {
+    return typeof value === "object" && value !== null && SIMPLE_BUTTON_VALUES.has(value);
+}
 const nextButtonRevision = (button: object): number => {
     const revision = (buttonRevisions.get(button) ?? 0) + 1;
     buttonRevisions.set(button, revision);
@@ -256,6 +262,7 @@ export class SimpleButton extends InteractiveObject {
     constructor(upState: DisplayObject | null = null, overState: DisplayObject | null = null,
         downState: DisplayObject | null = null, hitTestState: DisplayObject | null = null) {
         super();
+        SIMPLE_BUTTON_VALUES.add(this);
         this.mouseEnabled = true;
         this.mouseThrough = false;
         this.on(LayaEvent.MOUSE_OVER, this, this._showOverState);

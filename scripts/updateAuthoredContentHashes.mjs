@@ -6,7 +6,11 @@ import { logicalCompilerSignature } from "./checkAuthoredContentAdmission.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const ledgerPath = path.join(root, "docTool/architecture/authored-content-capabilities.json");
+const runtimeTypeAuthorityRelative = "docTool/architecture/flash-runtime-type-predicates.json";
+const runtimeTypeAuthorityPath = path.join(root, runtimeTypeAuthorityRelative);
+const runtimeTypeAuthorityHashPath = path.join(root, "docTool/architecture/flash-runtime-type-predicates.sha256");
 const ledger = JSON.parse(fs.readFileSync(ledgerPath, "utf8"));
+const runtimeTypeAuthority = JSON.parse(fs.readFileSync(runtimeTypeAuthorityPath, "utf8"));
 if (ledger.hashMode !== "canonical-lf-utf8")
     throw new Error("Capability ledger must declare hashMode canonical-lf-utf8");
 
@@ -33,6 +37,8 @@ const options = compilerOptions();
 const program = ts.createProgram({ rootNames: discoverCode(root), options });
 const checker = program.getTypeChecker();
 
+updateRuntimeTypeAuthority();
+
 for (const capability of ledger.capabilities) {
     const admitted = [...(capability.artifacts || []), ...(capability.obligations || [])];
     for (const obligation of capability.obligations || []) updateSurface(obligation);
@@ -45,6 +51,9 @@ for (const capability of ledger.capabilities) {
     }
 }
 fs.writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+fs.writeFileSync(runtimeTypeAuthorityPath, `${JSON.stringify(runtimeTypeAuthority, null, 2)}\n`);
+fs.writeFileSync(runtimeTypeAuthorityHashPath,
+    `${canonicalHash(runtimeTypeAuthorityRelative)}  flash-runtime-type-predicates.json\n`);
 console.log("Updated authored-content hashes using canonical-lf-utf8.");
 
 function canonicalHash(relative) {
@@ -137,4 +146,51 @@ function updateSurface(obligation) {
         .filter(([, type]) => Boolean(type)).map(([key, type]) => ({
             key, signature: logicalCompilerSignature(root, checker.typeToString(type, declaration, ts.TypeFormatFlags.NoTruncation))
         }));
+}
+
+function updateRuntimeTypeAuthority() {
+    if (runtimeTypeAuthority.schema !== "laya-flash-runtime-type-predicates@1"
+        || runtimeTypeAuthority.hashMode !== "canonical-lf-utf8"
+        || !Array.isArray(runtimeTypeAuthority.types))
+        throw new Error("Flash runtime type authority has the wrong schema");
+
+    const resolved = runtimeTypeAuthority.types.map(entry => {
+        const source = program.getSourceFile(path.join(root, entry.targetModule));
+        const moduleSymbol = source && checker.getSymbolAtLocation(source);
+        const exports = moduleSymbol && checker.getExportsOfModule(moduleSymbol);
+        const constructorSymbol = exports?.find(symbol => symbol.name === entry.constructorExport);
+        const predicateSymbol = exports?.find(symbol => symbol.name === entry.predicateExport);
+        const constructorDeclaration = constructorSymbol?.valueDeclaration;
+        const predicateDeclaration = predicateSymbol?.valueDeclaration;
+        if (!constructorSymbol || !constructorDeclaration || !ts.isClassDeclaration(constructorDeclaration)
+            || !predicateSymbol || !predicateDeclaration || !ts.isFunctionDeclaration(predicateDeclaration))
+            throw new Error(`Missing exact runtime type exports for ${entry.sourceQName}`);
+        return { entry, constructorSymbol, constructorDeclaration, predicateSymbol, predicateDeclaration };
+    });
+    const qnameBySymbol = new Map(resolved.map(item => [item.constructorSymbol, item.entry.sourceQName]));
+    const byQName = new Map(resolved.map(item => [item.entry.sourceQName, item]));
+    const closure = (qname, seen = new Set()) => {
+        if (seen.has(qname)) throw new Error(`Cyclic Flash runtime heritage at ${qname}`);
+        seen.add(qname);
+        const item = byQName.get(qname);
+        const baseTypes = checker.getDeclaredTypeOfSymbol(item.constructorSymbol).getBaseTypes() || [];
+        const direct = baseTypes.map(type => qnameBySymbol.get(type.getSymbol())).filter(Boolean);
+        if (direct.length > 1) throw new Error(`Ambiguous Flash runtime heritage at ${qname}`);
+        return direct.length === 0 ? [] : [direct[0], ...closure(direct[0], seen)];
+    };
+
+    for (const item of resolved) {
+        const classType = checker.getTypeOfSymbolAtLocation(item.constructorSymbol, item.constructorDeclaration);
+        item.entry.constructorSignature = logicalCompilerSignature(root, checker.typeToString(
+            classType, item.constructorDeclaration, ts.TypeFormatFlags.NoTruncation));
+        item.entry.constructSignatures = classType.getConstructSignatures().map(signature => logicalCompilerSignature(root,
+            checker.signatureToString(signature, item.constructorDeclaration,
+                ts.TypeFormatFlags.NoTruncation, ts.SignatureKind.Construct))).sort();
+        item.entry.predicateSignature = logicalCompilerSignature(root, checker.typeToString(
+            checker.getTypeOfSymbolAtLocation(item.predicateSymbol, item.predicateDeclaration),
+            item.predicateDeclaration, ts.TypeFormatFlags.NoTruncation));
+        item.entry.heritageClosure = closure(item.entry.sourceQName);
+        item.entry.moduleSha256 = canonicalHash(item.entry.targetModule);
+    }
+    runtimeTypeAuthority.types.sort((left, right) => left.sourceQName.localeCompare(right.sourceQName));
 }

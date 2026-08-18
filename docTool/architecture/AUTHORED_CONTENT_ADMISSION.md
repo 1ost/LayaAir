@@ -22,10 +22,17 @@ bridge for the `flash.display`, `flash.events`, `flash.geom`, `flash.text`,
 `flash.net`, and `flash.utils` namespaces. Those adapters preserve API names, signatures, and
 observable behavior over native LayaAir/browser services. They are not authored
 asset readers and may not contain ABC/AVM execution, QName, cinit, trait, or
-admission machinery. These five namespaces are the required minimum, not a
+admission machinery. These six namespaces are the required minimum, not a
 closed universe: every additional `flash.*` namespace must be declared and add
 its own `api.flash.*` capability row before code can ship. Bridge capability
 rows require engine-owned symbols and evidence before the bridge can ship.
+
+Runtime `as`/`is` checks consume the closed, hash-pinned constructor-to-predicate
+authority in `docTool/architecture/flash-runtime-type-predicates.json`. Each
+entry names one canonical class module, its read-only class-specific predicate,
+and its complete Flash heritage closure. Predicates are backed by module-private
+brands populated only by construction; the Flash root barrel does not export
+predicates, and no registrar, adoption hook, or caller-controlled mint API exists.
 
 The native runtime has one neutral identity, `Laya.AuthoredTimelineClip`, and
 one current document schema, `neutral-authored-content@1`. If a runtime class

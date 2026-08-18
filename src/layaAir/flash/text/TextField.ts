@@ -4,6 +4,13 @@ import { IMEEvent } from "../events/IMEEvent";
 import { DisplayObject } from "../display/DisplayObject";
 import { InteractiveObject } from "../display/InteractiveObject";
 
+const TEXT_FIELD_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash text fields. */
+export function isFlashTextField(value: unknown): value is TextField {
+    return typeof value === "object" && value !== null && TEXT_FIELD_VALUES.has(value);
+}
+
 export class TextFieldType {
     static readonly DYNAMIC = "dynamic";
     static readonly INPUT = "input";
@@ -29,6 +36,7 @@ export class TextField extends InteractiveObject {
 
     constructor() {
         super();
+        TEXT_FIELD_VALUES.add(this);
         this._nativeInput.name = "__flashTextInput";
         this._nativeInput.mouseEnabled = true;
         this._nativeInput.type = LayaInput.TYPE_TEXT;

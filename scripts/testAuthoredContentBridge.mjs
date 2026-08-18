@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -37,6 +38,32 @@ try {
         throw result.error;
     process.exitCode = result.status ?? 1;
     if (process.exitCode === 0) {
+        const authorityRelative = "docTool/architecture/flash-runtime-type-predicates.json";
+        const authorityText = await readFile(join(root, authorityRelative), "utf8");
+        const expectedHash = (await readFile(join(root,
+            "docTool/architecture/flash-runtime-type-predicates.sha256"), "utf8")).trim().split(/\s+/)[0];
+        const actualHash = crypto.createHash("sha256")
+            .update(authorityText.replace(/\r\n?/g, "\n"), "utf8").digest("hex");
+        if (actualHash !== expectedHash) throw new Error("Flash runtime type predicate authority hash drift");
+        const authority = JSON.parse(authorityText);
+        if (authority.schema !== "laya-flash-runtime-type-predicates@1"
+            || authority.hashMode !== "canonical-lf-utf8" || authority.types.length !== 14)
+            throw new Error("Flash runtime type predicate authority is incomplete");
+        const rootBarrel = await readFile(join(root, "src/layaAir/flash/index.ts"), "utf8");
+        for (const entry of authority.types) {
+            const source = await readFile(join(root, entry.targetModule), "utf8");
+            const moduleHash = crypto.createHash("sha256")
+                .update(source.replace(/\r\n?/g, "\n"), "utf8").digest("hex");
+            if (moduleHash !== entry.moduleSha256 || !entry.constructorSignature
+                || !Array.isArray(entry.constructSignatures) || entry.constructSignatures.length !== 1
+                || !entry.predicateSignature.includes("unknown") || !entry.predicateSignature.includes(" is "))
+                throw new Error(`Flash runtime type predicate authority drift: ${entry.sourceQName}`);
+            if (rootBarrel.includes(entry.predicateExport))
+                throw new Error(`Flash runtime predicate leaked through root barrel: ${entry.predicateExport}`);
+            if (!source.includes(`export function ${entry.predicateExport}(`)
+                || !source.includes("new WeakSet<object>()") || !source.includes(".add(this)"))
+                throw new Error(`Flash runtime nominal proof is not privately minted: ${entry.sourceQName}`);
+        }
         const files = [
             "src/layaAir/flash/events/FlashEventRouter.ts",
             "src/layaAir/flash/display/MovieClip.ts",

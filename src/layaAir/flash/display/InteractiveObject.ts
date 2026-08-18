@@ -6,6 +6,12 @@ import { Event as LayaEvent } from "../../laya/events/Event";
 import { DisplayObject } from "./DisplayObject";
 
 const FOCUS_MANAGERS = new WeakSet<object>();
+const INTERACTIVE_OBJECT_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash interactive objects. */
+export function isFlashInteractiveObject(value: unknown): value is InteractiveObject {
+    return typeof value === "object" && value !== null && INTERACTIVE_OBJECT_VALUES.has(value);
+}
 
 function focusOwner(value: unknown): InteractiveObject | null {
     const owner = getInputEventOwner(value) ?? value;
@@ -89,6 +95,7 @@ export class InteractiveObject extends DisplayObject {
 
     constructor() {
         super();
+        INTERACTIVE_OBJECT_VALUES.add(this);
         this.mouseEnabled = true;
         this.on(LayaEvent.DISPLAY, this, () => installFocusTraversal(ILaya.stage));
         if (ILaya.stage) installFocusTraversal(ILaya.stage);

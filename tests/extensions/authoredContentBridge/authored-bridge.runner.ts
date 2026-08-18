@@ -10,6 +10,18 @@ import { Node as LayaNode } from "../../../src/layaAir/laya/display/Node";
 import { Point as LayaPoint } from "../../../src/layaAir/laya/maths/Point";
 import { isFlashPoint } from "../../../src/layaAir/flash/geom/Point";
 import { isFlashRectangle } from "../../../src/layaAir/flash/geom/Rectangle";
+import { isFlashDisplayObject } from "../../../src/layaAir/flash/display/DisplayObject";
+import { isFlashDisplayObjectContainer } from "../../../src/layaAir/flash/display/DisplayObjectContainer";
+import { isFlashInteractiveObject } from "../../../src/layaAir/flash/display/InteractiveObject";
+import { isFlashMovieClip } from "../../../src/layaAir/flash/display/MovieClip";
+import { isFlashSimpleButton } from "../../../src/layaAir/flash/display/SimpleButton";
+import { isFlashSprite } from "../../../src/layaAir/flash/display/Sprite";
+import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
+import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
+import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
+import { isFlashMouseEvent } from "../../../src/layaAir/flash/events/MouseEvent";
+import { isFlashTextEvent } from "../../../src/layaAir/flash/events/TextEvent";
+import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
@@ -25,8 +37,8 @@ import { NoRenderDeviceFactory } from "../../../src/layaAir/laya/RenderDriver/No
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
-    AnimatorClip2DTimeline, DisplayObject, Event, EventDispatcher, EventPhase, InteractiveObject, MovieClip,
-    FocusEvent, IMEEvent, MouseEvent, SimpleButton, TextEvent, TextField, TextFieldType,
+    AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
+    InteractiveObject, MovieClip, Sprite, FocusEvent, IMEEvent, MouseEvent, SimpleButton, TextEvent, TextField, TextFieldType,
     Point, Rectangle, UnsupportedFlashFeatureError
 } from "../../../src/layaAir/flash";
 import {
@@ -76,6 +88,66 @@ test("A12 capability ledger owns exact Flash declarations, members, signatures a
         }
         assert.deepEqual(capability.evidence[0].covers,
             [...new Set(capability.obligations.map((item: any) => item.sha256))].sort());
+    }
+});
+
+test("class-specific nominal predicates preserve exact Flash heritage without minting", () => {
+    const display = new DisplayObject();
+    const interactive = new InteractiveObject();
+    const container = new DisplayObjectContainer();
+    const sprite = new Sprite();
+    const movie = new MovieClip();
+    const button = new SimpleButton();
+    const textField = new TextField();
+    const event = new Event("nominal");
+    const focus = new FocusEvent(FocusEvent.FOCUS_IN);
+    const mouse = new MouseEvent(MouseEvent.CLICK);
+    const text = new TextEvent(TextEvent.TEXT_INPUT);
+    const dispatcher = new EventDispatcher();
+
+    assert.deepEqual([
+        isFlashDisplayObject(display), isFlashDisplayObject(interactive), isFlashDisplayObject(container),
+        isFlashDisplayObject(sprite), isFlashDisplayObject(movie), isFlashDisplayObject(button), isFlashDisplayObject(textField),
+    ], [true, true, true, true, true, true, true]);
+    assert.deepEqual([
+        isFlashInteractiveObject(display), isFlashInteractiveObject(interactive), isFlashInteractiveObject(container),
+        isFlashInteractiveObject(sprite), isFlashInteractiveObject(movie), isFlashInteractiveObject(button),
+        isFlashInteractiveObject(textField),
+    ], [false, true, true, true, true, true, true]);
+    assert.deepEqual([
+        isFlashDisplayObjectContainer(container), isFlashDisplayObjectContainer(sprite),
+        isFlashDisplayObjectContainer(movie), isFlashDisplayObjectContainer(button),
+    ], [true, true, true, false]);
+    assert.deepEqual([isFlashSprite(sprite), isFlashSprite(movie), isFlashSprite(button)], [true, true, false]);
+    assert.deepEqual([isFlashMovieClip(movie), isFlashMovieClip(sprite)], [true, false]);
+    assert.deepEqual([isFlashSimpleButton(button), isFlashSimpleButton(interactive)], [true, false]);
+    assert.deepEqual([isFlashTextField(textField), isFlashTextField(interactive)], [true, false]);
+    assert.deepEqual([isFlashEvent(event), isFlashEvent(focus), isFlashEvent(mouse), isFlashEvent(text)],
+        [true, true, true, true]);
+    assert.deepEqual([isFlashFocusEvent(focus), isFlashMouseEvent(mouse), isFlashTextEvent(text)], [true, true, true]);
+    assert.deepEqual([isFlashFocusEvent(event), isFlashMouseEvent(focus), isFlashTextEvent(mouse)], [false, false, false]);
+    assert.equal(isFlashEventDispatcher(dispatcher), true);
+    assert.equal(isFlashEventDispatcher(event), false);
+
+    const adversaries: Array<[(value: unknown) => boolean, new (...args: any[]) => object, object]> = [
+        [isFlashDisplayObject, DisplayObject, display],
+        [isFlashDisplayObjectContainer, DisplayObjectContainer, container],
+        [isFlashInteractiveObject, InteractiveObject, interactive],
+        [isFlashMovieClip, MovieClip, movie],
+        [isFlashSimpleButton, SimpleButton, button],
+        [isFlashSprite, Sprite, sprite],
+        [isFlashEvent, Event, event],
+        [isFlashEventDispatcher, EventDispatcher, dispatcher],
+        [isFlashFocusEvent, FocusEvent, focus],
+        [isFlashMouseEvent, MouseEvent, mouse],
+        [isFlashTextEvent, TextEvent, text],
+        [isFlashTextField, TextField, textField],
+    ];
+    for (const [predicate, constructor, genuine] of adversaries) {
+        assert.equal(predicate({}), false);
+        assert.equal(predicate(Object.create(constructor.prototype)), false);
+        assert.equal(predicate(new Proxy(genuine, {})), false);
+        assert.equal(predicate(null), false);
     }
 });
 

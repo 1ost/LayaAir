@@ -6,6 +6,12 @@ import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
 
 const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
+const DISPLAY_OBJECT_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for the canonical Flash display base. */
+export function isFlashDisplayObject(value: unknown): value is DisplayObject {
+    return typeof value === "object" && value !== null && DISPLAY_OBJECT_VALUES.has(value);
+}
 function events(value: DisplayObject): FlashEventRouter {
     let router = DISPLAY_EVENTS.get(value);
     if (!router) DISPLAY_EVENTS.set(value, router = new FlashEventRouter(value));
@@ -14,6 +20,11 @@ function events(value: DisplayObject): FlashEventRouter {
 
 /** Flash display source shape backed by a real Laya Sprite. */
 export class DisplayObject extends LayaSprite implements IEventDispatcher {
+    constructor() {
+        super();
+        DISPLAY_OBJECT_VALUES.add(this);
+    }
+
     globalToLocal(point: Point): Point;
     globalToLocal(point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint;
     globalToLocal(point: Point | LayaPoint, createNewPoint = false, globalNode?: LayaSprite): Point | LayaPoint {

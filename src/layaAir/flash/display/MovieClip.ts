@@ -5,6 +5,12 @@ import { Sprite } from "./Sprite";
 
 export type FlashFrameReference = number | string;
 const LABEL = /^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/;
+const MOVIE_CLIP_VALUES = new WeakSet<object>();
+
+/** @internal Read-only nominal proof for canonical Flash movie clips. */
+export function isFlashMovieClip(value: unknown): value is MovieClip {
+    return typeof value === "object" && value !== null && MOVIE_CLIP_VALUES.has(value);
+}
 
 function validateTimeline(timeline: NativeMovieClipTimeline): void {
     if (!timeline || !Number.isSafeInteger(timeline.totalFrames) || timeline.totalFrames < 1)
@@ -35,6 +41,11 @@ function validateLabels(value: Record<string, number>, totalFrames: number): Rea
 export class MovieClip extends Sprite {
     private _nativeTimeline: NativeMovieClipTimeline | null = null;
     private _flashFrameLabels: Readonly<Record<string, number>> = Object.freeze(Object.create(null));
+
+    constructor() {
+        super();
+        MOVIE_CLIP_VALUES.add(this);
+    }
 
     get flashFrameLabels(): Readonly<Record<string, number>> { return this._flashFrameLabels; }
     get currentFrame(): number { return this._requireTimeline().currentFrame + 1; }
