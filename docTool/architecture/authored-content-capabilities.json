@@ -18990,13 +18990,149 @@
           "indexSignatures": [],
           "sha256": "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/StageQuality.ts",
+          "export": "StageQuality",
+          "kind": "class",
+          "signature": "typeof StageQuality",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BEST",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"best\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HIGH",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"high\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HIGH_16X16",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"16x16\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HIGH_16X16_LINEAR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"16x16linear\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HIGH_8X8",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"8x8\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HIGH_8X8_LINEAR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"8x8linear\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LOW",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"low\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MEDIUM",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"medium\""
+            }
+          ],
+          "constructors": [
+            "new (): StageQuality"
+          ],
+          "indexSignatures": [],
+          "sha256": "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/StageScaleMode.ts",
+          "export": "StageScaleMode",
+          "kind": "class",
+          "signature": "typeof StageScaleMode",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXACT_FIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exactFit\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NO_BORDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"noBorder\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NO_SCALE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"noScale\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SHOW_ALL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"showAll\""
+            }
+          ],
+          "constructors": [
+            "new (): StageScaleMode"
+          ],
+          "indexSignatures": [],
+          "sha256": "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "5f628e1369a7a495bfb3f63509b9b98fe8622bb5fa4ec2a0c880a37ff1ce9d59",
+          "sha256": "e01c5d09e30c71cb898f213c247545d83af339d3d5203a278a6ced9e6af5128e",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -19009,6 +19145,8 @@
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
+            "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
+            "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
@@ -27240,15 +27378,57 @@
           "indexSignatures": [],
           "sha256": "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/FontType.ts",
+          "export": "FontType",
+          "kind": "class",
+          "signature": "typeof FontType",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEVICE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"device\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EMBEDDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"embedded\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EMBEDDED_CFF",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"embeddedCFF\""
+            }
+          ],
+          "constructors": [
+            "new (): FontType"
+          ],
+          "indexSignatures": [],
+          "sha256": "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "1f53e0d07606fad879b1423f07ef855b2f447b1415fd4bac0fc652fa7db1cf67",
+          "sha256": "706f3ef922440ef7e167d85416b060490e360ae91373a4c0e5d308906219e00e",
           "capability": "api.flash.text",
           "covers": [
+            "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
             "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
           ]
@@ -27338,15 +27518,57 @@
           "kind": "function",
           "signature": "(value: unknown) => value is URLRequest",
           "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+        },
+        {
+          "module": "src/layaAir/flash/net/URLLoaderDataFormat.ts",
+          "export": "URLLoaderDataFormat",
+          "kind": "class",
+          "signature": "typeof URLLoaderDataFormat",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BINARY",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"binary\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"text\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "VARIABLES",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"variables\""
+            }
+          ],
+          "constructors": [
+            "new (): URLLoaderDataFormat"
+          ],
+          "indexSignatures": [],
+          "sha256": "488e2283709ccc98f16c469803d33b793e54e27e5e270937f6365259b925f341",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashNetBridgeEvidence.test.ts",
           "test": "Flash net bridge compiler surface",
-          "sha256": "100bf3a1f05890358fa8af7eb2e6d8d9c2f953ca1026893a2890a79c6dd1aba2",
+          "sha256": "243a17269ff115b7db0f883b78df96167eaed601603caa92f891611ad33fba63",
           "capability": "api.flash.net",
           "covers": [
+            "488e2283709ccc98f16c469803d33b793e54e27e5e270937f6365259b925f341",
             "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
           ]
         }
@@ -27552,16 +27774,49 @@
           "kind": "function",
           "signature": "(value: unknown) => value is Timer",
           "sha256": "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
+        },
+        {
+          "module": "src/layaAir/flash/utils/Endian.ts",
+          "export": "Endian",
+          "kind": "class",
+          "signature": "typeof Endian",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BIG_ENDIAN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"bigEndian\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LITTLE_ENDIAN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"littleEndian\""
+            }
+          ],
+          "constructors": [
+            "new (): Endian"
+          ],
+          "indexSignatures": [],
+          "sha256": "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils Timer compiler and scheduler surface",
-          "sha256": "1ee9e8a85bc4475f6d18dda3903145019cbd8f71ef733e3d358eaf7e2e608d7a",
+          "sha256": "c3abec5034deabbb5d7e30265ca05c0a6548b8ce7ad83caad18bae6d0eed68f5",
           "capability": "api.flash.utils",
           "covers": [
-            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
+            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
+            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
           ]
         }
       ]
@@ -28621,7 +28876,7 @@
         {
           "path": "tests/architecture/flashConstantsBridgeEvidence.test.ts",
           "test": "Flash string constant compiler and runtime surface",
-          "sha256": "8cfe121c7a8e290a2d8c42a31942847544341a428eddc8585a9091f9dc58c090",
+          "sha256": "f5c6f851345b1c765a8979fd0eb81db2b0c1102731990ba6f09400059ba0485f",
           "capability": "api.flash.ui",
           "covers": [
             "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca"

@@ -47,6 +47,8 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/StageAlign.ts", "StageAlign"],
     ["src/layaAir/flash/display/GradientType.ts", "GradientType"],
     ["src/layaAir/flash/display/BlendMode.ts", "BlendMode"],
+    ["src/layaAir/flash/display/StageQuality.ts", "StageQuality"],
+    ["src/layaAir/flash/display/StageScaleMode.ts", "StageScaleMode"],
     ["src/layaAir/flash/display/Bitmap.ts", "isFlashBitmap", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "acquireBitmapDataTexture", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "isFlashBitmapData", "function"],
@@ -91,6 +93,7 @@ const textSubjects = [
     ["src/layaAir/flash/text/TextFormat.ts", "TextFormatAlign"],
     ["src/layaAir/flash/text/TextFormat.ts", "TextLineMetrics"],
     ["src/layaAir/flash/text/TextFormat.ts", "TextRenderer"],
+    ["src/layaAir/flash/text/FontType.ts", "FontType"],
 ];
 const textSubjectKeys = new Set(textSubjects.map(([module, exported]) => `${module}\u0000${exported}`));
 textCapability.obligations = textCapability.obligations.filter(item =>
@@ -119,6 +122,7 @@ const netSubjects = [
     ["src/layaAir/flash/net/URLRequest.ts", "navigateToURL", "function"],
     ["src/layaAir/flash/net/URLRequest.ts", "URLRequestHeader", "interface"],
     ["src/layaAir/flash/net/URLRequest.ts", "isFlashURLRequest", "function"],
+    ["src/layaAir/flash/net/URLLoaderDataFormat.ts", "URLLoaderDataFormat", "class"],
 ];
 netCapability.obligations = netSubjects.map(([module, exported, kind]) =>
     netCapability.obligations.find(item => item.module === module && item.export === exported)
@@ -130,6 +134,7 @@ Object.assign(utilsCapability, {
     obligations: [
         ["src/layaAir/flash/utils/Timer.ts", "Timer", "class"],
         ["src/layaAir/flash/utils/Timer.ts", "isFlashTimer", "function"],
+        ["src/layaAir/flash/utils/Endian.ts", "Endian", "class"],
     ].map(([module, exported, kind]) =>
         utilsCapability.obligations?.find(item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "",

@@ -5,6 +5,7 @@ import type { TextField, flashHtmlToText, flashTextToHtml, isFlashTextField } fr
 import type { AntiAliasType, CSMSettings, FontStyle, GridFitType, TextColorType, TextDisplayMode,
     TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextLineMetrics,
     TextRenderer, isFlashCSMSettings, isFlashTextFormat } from "../../src/layaAir/flash/text/TextFormat.ts";
+import type { FontType } from "../../src/layaAir/flash/text/FontType.ts";
 
 const BLEACH_TEXT_AUTHORITY = Object.freeze({
     commit: "a42bf2c73dce4ca0922bc603c5647a5ef0e515dd",
@@ -30,7 +31,7 @@ test("Flash text bridge compiler surface", () => {
         typeof CSMSettings, typeof TextLineMetrics, typeof TextRenderer, typeof FontStyle,
         typeof TextColorType, typeof TextDisplayMode, typeof flashHtmlToText,
         typeof flashTextToHtml, typeof isFlashTextField, typeof isFlashCSMSettings, typeof isFlashTextFormat,
-        typeof InteractiveObject] extends readonly unknown[] ? boolean : never));
+        typeof InteractiveObject, typeof FontType] extends readonly unknown[] ? boolean : never));
 });
 
 test("Flash text authority provenance", () => {
