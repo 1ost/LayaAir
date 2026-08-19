@@ -82,7 +82,7 @@
     {
       "id": "text.static-glyph-runs",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "Texture-backed StaticText publication is admitted, but source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported."
     },
     {
       "id": "text.dynamic",
@@ -29638,15 +29638,2176 @@
           "indexSignatures": [],
           "sha256": "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/text/StaticText.ts",
+          "export": "StaticText",
+          "kind": "class",
+          "signature": "typeof StaticText",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$container",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Node"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Node"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_activeHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(activeChangeScripts: any[], fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_addChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node, index?: number) => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_anchorX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_anchorY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_blendMode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BlendMode"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_cloneTo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(destObject: Node, srcRoot: Node, dstRoot: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_componentDriver",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ComponentDriver"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_conchData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "any"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_destroyComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(comp: Component) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_destroyed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_dragSupport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DragSupport"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_drawOriRT",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_extra",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "INodeExtra"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getBit",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_globalTrans",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SpriteGlobalTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_graphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Graphics"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_graphicsRenderer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "GraphicsRenderer"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_hitArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IHitArea"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_inActiveHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(activeChangeScripts: any[], fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_initialize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_initShaderData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isHeightSet",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isWidthSet",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_manualRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_maskParent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_mouseState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needGraphicsUpdate",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needUpdateSubpass",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_nodeType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_oriRenderPass",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRender2DPass"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_ownerArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_ownPostProcess",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_parse",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(data: any, spriteMap: any) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_pivotX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_pivotY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_processActive",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(active: boolean, fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_processVisible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(parentVisible?: boolean) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_removeChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_renderNode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BaseRenderNode2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_renderType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_rotation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Scene"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scrollRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBelongScene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(scene: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBit",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bit: number, value: boolean) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBitUp",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Sprite, oldIndex: number, index: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setContainer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(container: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setDisplay",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setManualRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setUnBelongScene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_shaderData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ShaderData"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skewX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skewY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skinBaseUrl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_struct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRenderStruct2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subpassUpdateFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subStruct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRenderStruct2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subStructRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SubStructRender"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_texture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Texture"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_transform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Matrix"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_updateStruct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_zOrder",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "active",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "activeInHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node>(node: T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node>(node: T, index: number) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(...args: Node[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Component>(componentType: new () => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addComponentInstance",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(component: Component) => Component"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "anchor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "anchorX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "anchorY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "autoSize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blendMode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "bubbleEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAs",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "callLater",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(method: Function, args?: any[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "readonly Node[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearSubpassFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: SubPassFlag) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearTimer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any, method: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "components",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "readonly Component[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "contains",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destroy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(destroyChild?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destroyChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "destroyed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayedInStage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayHeight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayWidth",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "dragSupport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DragSupport"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "drawCallOptimize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToCanvas",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number) => HTMLCanvas"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToRenderTexture2D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D, isDrawRenderRect?: boolean, flipY?: boolean, clearColor?: Color, renderScaleX?: number, renderScaleY?: number) => RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToTexture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D | null, isDrawRenderRect?: boolean) => Texture | RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "enableCulling",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "filters",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "findChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "frameLoop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "frameOnce",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "fromParentPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(out?: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildByName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildByPath",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Component>(componentType: new () => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getComponents",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(componentType: typeof Component) => Component[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getGraphicBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(realSize?: boolean, out?: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getMousePoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getSelfBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(out?: Rectangle, recursive?: boolean) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalScaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalScaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "globalToLocal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalTrans",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SpriteGlobalTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "graphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Graphics"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasHideFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "hideFlags",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "hitArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IHitArea"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hitTestPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "hitTestPrior",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "is3D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isAncestorOf",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "layer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "loadImage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(url: string, complete?: Handler) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "localToGlobal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "mask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "material",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "mouseEnabled",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseThrough",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "numChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onAfterDeserialize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onAwake",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onDestroy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onDisable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onEnable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parentRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(repaintPass?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "pivot",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "pivotX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "pivotY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "pos",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").StaticText; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "postProcess",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "PostProcess2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "prepareOSR",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => { root: IRenderStruct2D; subPasses: Array<IRender2DPass>; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "reCache",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node>(node: T, destroy?: boolean) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(index: number, destroy?: boolean) => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildByName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string, destroy?: boolean) => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(beginIndex?: number, endIndex?: number, destroy?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeSelf",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "renderNode2D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BaseRenderNode2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "repaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "replaceChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(newNode: Node, oldNode: Node) => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "root",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "rotation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "runCallLater",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(method: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "scale",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").StaticText; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "scene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Scene"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scrollRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node>(node: T, index: number) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setChildIndexBefore",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node, index: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setGraphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: Graphics, transferOwnership?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSelfBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bound: Rectangle) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSubpassFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: SubPassFlag) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSubRenderPassState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(enable: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "size",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(width: number, height: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "skew",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "skewX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "skewY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "Sprite_bpEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ mousedown: (event: Event) => void; mouseup: (event: Event) => void; mousemove: (event: Event) => void; mouseover: (event: Event) => void; mouseout: (evente: Event) => void; mousedrag: (event: Event) => void; mousedragend: (event: Event) => void; click: (event: Event) => void; rightmousedown: (event: Event) => void; rightmouseup: (event: Event) => void; rightclick: (event: Event) => void; doubleclick: (event: Event) => void; dragstart: (data: any) => void; dragmove: (data: any) => void; dragend: (data: any) => void; drop: (source: Sprite, data: any) => void; globalTransChanged: (type: number) => void; transformchanged: () => void; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "stackingRoot",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "stage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Stage"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "startDrag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(area?: Rectangle, hasInertia?: boolean, elasticDistance?: number, elasticBackTime?: number, data?: any, ratio?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopDrag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "tag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "text",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "texture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Texture"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "textureCompositor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ITextureCompositor2D"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "timer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Timer"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "timerLoop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean, jumpFrame?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "timerOnce",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toParentPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "transform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Matrix"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateRenderTexture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateSubRenderPassState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "viewport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "zIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "zOrder",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$authoredSerializedType",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"Sprite\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$authoredSourceType",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"StaticText\""
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_$fromAuthoredTextureGlyphs",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(width: number, height: number, glyphs: readonly NativeStaticTextGlyph[]) => StaticText"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToCanvas",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number) => HTMLCanvas"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToRenderTexture2D",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D, isDrawRenderRect?: boolean, flipY?: boolean, clearColor?: Color, renderScaleX?: number, renderScaleY?: number) => RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToTexture",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D | null, isDrawRenderRect?: boolean) => Texture | RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "fromImage",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(url: string) => Sprite"
+            }
+          ],
+          "constructors": [
+            "new (): StaticText"
+          ],
+          "indexSignatures": [],
+          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "DisplayObject"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/text/StaticText.ts",
+          "export": "NativeStaticTextGlyph",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900"
+        },
+        {
+          "module": "src/layaAir/flash/text/StaticText.ts",
+          "export": "isFlashStaticText",
+          "kind": "function",
+          "signature": "(value: unknown) => value is StaticText",
+          "members": [],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "dd938c8a96a94b07a3a4cf4710d15e0d5d3f903bf331d778212500aa4b049e2d",
+          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
           "capability": "api.flash.text",
           "covers": [
+            "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900",
             "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305"
@@ -31297,10 +33458,55 @@
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Authored device TextField configuration compiler surface",
-          "sha256": "dd938c8a96a94b07a3a4cf4710d15e0d5d3f903bf331d778212500aa4b049e2d",
+          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
             "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text.authored-static-text-texture-foundation",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "export": "AuthoredStaticGlyphConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "export": "AuthoredStaticGlyphRunConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "export": "AuthoredStaticTextConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "export": "createAuthoredStaticText",
+          "kind": "function",
+          "signature": "(configuration: AuthoredStaticTextConfiguration) => StaticText",
+          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
+          "test": "Authored texture-backed StaticText configuration compiler surface",
+          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
+          "capability": "text.authored-static-text-texture-foundation",
+          "covers": [
+            "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
           ]
         }
       ]

@@ -78,6 +78,7 @@ try {
             "flash.geom.Point",
             "flash.geom.Rectangle",
             "flash.net.URLRequest",
+            "flash.text.StaticText",
             "flash.text.TextField",
             "flash.utils.Timer",
         ];

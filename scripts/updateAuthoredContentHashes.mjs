@@ -87,6 +87,9 @@ for (const [module, exported, kind = "class"] of [
 
 const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
 const textSubjects = [
+    ["src/layaAir/flash/text/StaticText.ts", "StaticText"],
+    ["src/layaAir/flash/text/StaticText.ts", "NativeStaticTextGlyph", "interface"],
+    ["src/layaAir/flash/text/StaticText.ts", "isFlashStaticText", "function"],
     ["src/layaAir/flash/text/TextField.ts", "TextField"],
     ["src/layaAir/flash/text/TextField.ts", "flashHtmlToText"],
     ["src/layaAir/flash/text/TextField.ts", "flashTextToHtml"],
@@ -111,9 +114,12 @@ const textSubjectKeys = new Set(textSubjects.map(([module, exported]) => `${modu
 textCapability.obligations = textCapability.obligations.filter(item =>
     !item.module.startsWith("src/layaAir/flash/text/")
     || textSubjectKeys.has(`${item.module}\u0000${item.export}`));
-for (const [module, exported] of textSubjects) {
+for (const [module, exported, declaredKind] of textSubjects) {
     if (!textCapability.obligations.some(item => item.module === module && item.export === exported))
-        textCapability.obligations.push({ module, export: exported, kind: exported.startsWith("flash") || exported.startsWith("isFlash") ? "function" : "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
+        textCapability.obligations.push({ module, export: exported,
+            kind: declaredKind || (exported.startsWith("flash") || exported.startsWith("isFlash") ? "function" : "class"),
+            signature: "", ...(declaredKind === "interface" ? {} : { members: [], constructors: [], indexSignatures: [] }),
+            sha256: "" });
 }
 
 let authoredDeviceTextCapability = ledger.capabilities.find(item =>
@@ -140,6 +146,41 @@ Object.assign(authoredDeviceTextCapability, {
     }],
 });
 delete authoredDeviceTextCapability.blockingReason;
+
+let authoredStaticTextCapability = ledger.capabilities.find(item =>
+    item.id === "text.authored-static-text-texture-foundation");
+if (!authoredStaticTextCapability) {
+    authoredStaticTextCapability = { id: "text.authored-static-text-texture-foundation" };
+    ledger.capabilities.push(authoredStaticTextCapability);
+}
+Object.assign(authoredStaticTextCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticGlyphConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticGlyphRunConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticTextConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "createAuthoredStaticText", "function"],
+    ].map(([module, exported, kind]) => authoredStaticTextCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "", sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashTextBridgeEvidence.test.ts",
+        test: "Authored texture-backed StaticText configuration compiler surface",
+        sha256: "",
+        capability: "text.authored-static-text-texture-foundation",
+        covers: [],
+    }],
+});
+delete authoredStaticTextCapability.blockingReason;
+
+const broadStaticGlyphCapability = ledger.capabilities.find(item => item.id === "text.static-glyph-runs");
+Object.assign(broadStaticGlyphCapability, {
+    status: "blocking",
+    blockingReason: "Texture-backed StaticText publication is admitted, but source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported.",
+});
+delete broadStaticGlyphCapability.artifacts;
+delete broadStaticGlyphCapability.obligations;
+delete broadStaticGlyphCapability.evidence;
 
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
 for (const [module, exported, kind = "class"] of [

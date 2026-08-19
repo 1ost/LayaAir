@@ -39,6 +39,7 @@ import { isFlashUncaughtErrorEvent } from "../../../src/layaAir/flash/events/Unc
 import { isFlashURLRequest } from "../../../src/layaAir/flash/net/URLRequest";
 import { isFlashTimer } from "../../../src/layaAir/flash/utils/Timer";
 import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
+import { isFlashStaticText } from "../../../src/layaAir/flash/text/StaticText";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Render2DProcessor } from "../../../src/layaAir/laya/display/Render2DProcessor";
@@ -55,6 +56,7 @@ import { Render } from "../../../src/layaAir/laya/renders/Render";
 import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
+import { Texture } from "../../../src/layaAir/laya/resource/Texture";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
@@ -62,14 +64,14 @@ import {
     IOErrorEvent, KeyboardEvent, InteractiveObject, MouseEvent, MovieClip, ProgressEvent, SecurityErrorEvent,
     Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent, UncaughtErrorEvent,
     AntiAliasType, CSMSettings, GridFitType,
-    TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
+    StaticText, TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
     Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
     UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
-    createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
+    createAuthoredStaticText, createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
     normalizeAuthoredCodeBindingContract, registerAuthoredContentRuntime,
-    type AuthoredTextFieldConfiguration,
+    type AuthoredStaticTextConfiguration, type AuthoredTextFieldConfiguration,
 } from "../../../src/extensions/authoredContent/runtime";
 import {
     AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
@@ -2168,6 +2170,75 @@ test("authored TextField validation fails before publication and preserves prior
     assert.throws(() => createAuthoredTextField(accessor), /width must be an own data property/);
     assert.equal(getterReads, 0, "validation does not execute authored accessors");
     published.destroy(true);
+});
+
+test("texture-backed StaticText preserves Flash identity, authored bounds and exact mapped text", () => {
+    const glyphA = new Texture();
+    glyphA.sourceWidth = 8; glyphA.sourceHeight = 10;
+    (glyphA as any)._bitmap = { _addReference(): void {}, _removeReference(): void {} };
+    const unknownGlyph = new Texture();
+    unknownGlyph.sourceWidth = 7; unknownGlyph.sourceHeight = 10;
+    (unknownGlyph as any)._bitmap = { _addReference(): void {}, _removeReference(): void {} };
+    const configuration: AuthoredStaticTextConfiguration = {
+        sourceId: 41, x: 12, y: -3, width: 40, height: 14,
+        runs: [{
+            color: "#12AB34", alpha: 0.75,
+            glyphs: [
+                { texture: glyphA, character: "A", x: 1, y: 2, width: 8, height: 10 },
+                { texture: null, character: " ", x: 9, y: 2, width: 4, height: 10 },
+                { texture: unknownGlyph, character: null, x: 13, y: 2, width: 7, height: 10 },
+                { texture: null, character: "\u{1F5E1}", x: 20, y: 2, width: 10, height: 10 },
+            ],
+        }],
+    };
+    const value = createAuthoredStaticText(configuration);
+    const displayProbe: DisplayObject = value;
+    assert.ok(value instanceof StaticText);
+    assert.ok(value instanceof DisplayObject);
+    assert.ok(value instanceof LayaSprite);
+    assert.equal(isFlashStaticText(value), true);
+    assert.equal(isFlashDisplayObject(value), true);
+    assert.equal(value.text, "A \u{1F5E1}", "unmapped glyphs render without invented Unicode text");
+    assert.deepEqual([value.name, value.x, value.y, value.width, value.height, value.visible, value.mouseEnabled],
+        ["symbol41", 12, -3, 40, 14, true, false]);
+    assert.deepEqual([StaticText._$authoredSourceType, StaticText._$authoredSerializedType],
+        ["StaticText", "Sprite"], "the runtime preserves source and native serialized identities");
+    const root = new DisplayObject(); root.addChild(value);
+    assert.deepEqual([value.parent, value.root, displayProbe], [root, root, value]);
+    const parentBounds = value.getBounds();
+    assert.deepEqual([parentBounds.x, parentBounds.y, parentBounds.width, parentBounds.height], [13, -1, 19, 10],
+        "normal Laya bounds reflect the actual native glyph geometry in parent coordinates");
+    const commands = value.graphics.cmds!;
+    assert.equal(commands.length, 2, "only texture-bearing glyphs create native draw commands");
+    assert.deepEqual(commands.map(command => [command.cmdID, (command as any).x, (command as any).y,
+        (command as any).width, (command as any).height, (command as any).alpha]), [
+        ["DrawTextureCmd", 1, 2, 8, 10, 0.75],
+        ["DrawTextureCmd", 13, 2, 7, 10, 0.75],
+    ]);
+    (configuration.runs[0].glyphs[0] as { character: string | null }).character = "Z";
+    assert.equal(value.text, "A \u{1F5E1}", "published text is detached from mutable caller data");
+    assert.throws(() => { (value as any).text = "forged"; }, /getter|read only|setting getter-only/);
+    value.visible = false;
+    assert.equal(value.visible, false);
+});
+
+test("StaticText validation is atomic and rejects accessors, malformed scalars and texture impostors", () => {
+    const base: AuthoredStaticTextConfiguration = {
+        sourceId: 1, x: 0, y: 0, width: 10, height: 10,
+        runs: [{ color: "#FFFFFF", alpha: 1,
+            glyphs: [{ texture: null, character: "A", x: 0, y: 0, width: 4, height: 8 }] }],
+    };
+    const stable = createAuthoredStaticText(base);
+    assert.throws(() => createAuthoredStaticText({ ...base, runs: [{ ...base.runs[0],
+        glyphs: [{ ...base.runs[0].glyphs[0], character: "AB" }] }] }), /one Unicode scalar/);
+    assert.throws(() => createAuthoredStaticText({ ...base, runs: [{ ...base.runs[0],
+        glyphs: [{ ...base.runs[0].glyphs[0], texture: {} as Texture }] }] }), /native Laya Texture/);
+    let reads = 0;
+    const accessor = { ...base } as any;
+    Object.defineProperty(accessor, "runs", { enumerable: true, get(): unknown { reads++; return []; } });
+    assert.throws(() => createAuthoredStaticText(accessor), /runs must be an own data property/);
+    assert.equal(reads, 0);
+    assert.deepEqual([stable.text, stable.name, stable.width, stable.height], ["A", "symbol1", 10, 10]);
 });
 
 test("TextField preserves nullable defaults, character ranges, replacement, and independent plain and HTML views", () => {

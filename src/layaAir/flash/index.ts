@@ -41,6 +41,7 @@ export { StageScaleMode } from "./display/StageScaleMode";
 export { Point } from "./geom/Point";
 export { Rectangle } from "./geom/Rectangle";
 export * from "./text/TextField";
+export { StaticText } from "./text/StaticText";
 export * from "./text/TextFormat";
 export { FontType } from "./text/FontType";
 export { URLRequest, navigateToURL } from "./net/URLRequest";
