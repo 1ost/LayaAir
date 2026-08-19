@@ -18478,6 +18478,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "claimViewport",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stage: LayaStage, initialViewport: FlashStageViewport) => FlashStageViewportOwner"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "configure",
               "scope": "static",
               "optional": false,
@@ -18595,7 +18604,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
+          "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030",
           "heritage": []
         },
         {
@@ -18645,14 +18654,14 @@
           "export": "FlashStageBootstrap",
           "kind": "interface",
           "signature": "any",
-          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc"
+          "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageBootstrapOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc"
+          "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -19126,13 +19135,27 @@
           "indexSignatures": [],
           "sha256": "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
+          "export": "FlashStageViewport",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030"
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
+          "export": "FlashStageViewportOwner",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "e01c5d09e30c71cb898f213c247545d83af339d3d5203a278a6ced9e6af5128e",
+          "sha256": "bad26a5c1261d0137dcb59da19476caadad8ea526235aacbda344d892ec0eabf",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -19148,8 +19171,8 @@
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
+            "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
-            "f2a28f5c6426284437407ef9b412c186c389de1df78ec43b314f64ad21a18ccc",
             "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
             "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba",

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { DisplayObject, isFlashDisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
 import type { DisplayObjectContainer, isFlashDisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer.ts";
-import type { FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary.ts";
+import type {
+    FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageBoundary,
+    FlashStageViewport, FlashStageViewportOwner
+} from "../../src/layaAir/flash/display/FlashStageBoundary.ts";
 import type { Graphics, isFlashGraphics } from "../../src/layaAir/flash/display/Graphics.ts";
 import type { IBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { isFlashBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
@@ -25,6 +28,7 @@ import type { StageScaleMode } from "../../src/layaAir/flash/display/StageScaleM
 test("Flash display bridge compiler surface", () => {
     assert.ok(true as boolean satisfies ([typeof DisplayObject, typeof DisplayObjectContainer, typeof InteractiveObject,
         typeof FlashStageBoundary,
+        FlashStageViewport, FlashStageViewportOwner,
         typeof Graphics, IBitmapDrawable, typeof isFlashBitmapDrawable, typeof MovieClip, typeof AnimatorClip2DTimeline,
         typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
         typeof BitmapDataChannel, typeof PixelSnapping,

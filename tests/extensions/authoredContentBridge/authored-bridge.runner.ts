@@ -913,6 +913,7 @@ test("explicit Stage boundary preserves attachment, numeric FPS, focus and boots
         assert.equal(FlashStageBoundary.stageOf(child), null, "unattached Flash nodes have null Stage");
         stage.addChild(child);
         assert.equal(FlashStageBoundary.stageOf(child), stage);
+        FlashStageBoundary.claimViewport(stage, { width: 1024, height: 768 });
         assert.deepEqual([FlashStageBoundary.getWidth(stage), FlashStageBoundary.getHeight(stage)], [1024, 768]);
 
         FlashStageBoundary.setFrameRate(stage, 33);
@@ -1020,6 +1021,138 @@ test("explicit Stage boundary preserves attachment, numeric FPS, focus and boots
         else delete (Stage as any)[Symbol.hasInstance];
         if (previousInputHasInstance) Object.defineProperty(LayaInput, Symbol.hasInstance, previousInputHasInstance);
         else delete (LayaInput as any)[Symbol.hasInstance];
+    }
+});
+
+test("Stage viewport ownership publishes one validated atomic pair through the Laya boundary", () => {
+    const previousStage = ILaya.stage;
+    try {
+        const stage = new Stage() as any;
+        ILaya.stage = stage;
+        const reads: string[] = [];
+        const snapshots: Array<[number, number, boolean, boolean, unknown, unknown]> = [];
+        FlashStageBoundary.addEventListener(stage, Event.RESIZE, event => snapshots.push([
+            FlashStageBoundary.getWidth(stage), FlashStageBoundary.getHeight(stage),
+            event.bubbles, event.cancelable, event.target, event.currentTarget
+        ]));
+
+        const owner = FlashStageBoundary.claimViewport(stage, {
+            get width() { reads.push("width"); return 1250; },
+            get height() { reads.push("height"); return 650; }
+        });
+        assert.deepEqual(reads, ["width", "height"], "initial dimensions are snapshotted exactly once in order");
+        assert.deepEqual([owner.stageWidth, owner.stageHeight], [1250, 650]);
+        assert.deepEqual([FlashStageBoundary.getWidth(stage), FlashStageBoundary.getHeight(stage)], [1250, 650]);
+        assert.deepEqual(snapshots, [], "initial design viewport is published silently");
+
+        let duplicateReads = 0;
+        assert.throws(() => FlashStageBoundary.claimViewport(stage, {
+            get width() { duplicateReads++; return 1920; },
+            get height() { duplicateReads++; return 1080; }
+        }), /already has a viewport owner/);
+        assert.equal(duplicateReads, 0, "duplicate rejection precedes caller-controlled reads");
+
+        owner.resizeViewport(1366, 768);
+        owner.resizeViewport(1366, 768);
+        assert.deepEqual(snapshots, [[1366, 768, false, false, stage, stage]],
+            "one non-bubbling RESIZE observes the complete committed pair");
+
+        const invalid: Array<[number, number]> = [
+            [-1, 768], [1366, -1], [1366.5, 768], [1366, 768.5],
+            [Number.NaN, 768], [1366, Number.POSITIVE_INFINITY],
+            [Number.MAX_SAFE_INTEGER + 1, 768]
+        ];
+        for (const pair of invalid) assert.throws(() => owner.resizeViewport(...pair), RangeError);
+        assert.deepEqual([owner.stageWidth, owner.stageHeight, snapshots.length], [1366, 768, 1],
+            "invalid changes publish neither half nor an event");
+
+        const resizeDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(owner), "resizeViewport");
+        const widthDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(owner), "stageWidth");
+        const heightDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(owner), "stageHeight");
+        assert.equal(typeof resizeDescriptor?.value, "function");
+        for (const descriptor of [widthDescriptor, heightDescriptor]) {
+            assert.equal(typeof descriptor?.get, "function");
+            assert.equal(descriptor?.set, undefined);
+        }
+        assert.deepEqual(Reflect.ownKeys(owner), [], "owner carries no public backing state");
+        assert.equal(Reflect.ownKeys(stage).some(key => /stage(?:Width|Height)|viewport/i.test(String(key))), false,
+            "native Stage carries no Flash viewport backing state");
+        assert.throws(() => Reflect.apply(resizeDescriptor?.value, {}, [1600, 900]), /exact engine-issued owner/);
+        assert.deepEqual([owner.stageWidth, owner.stageHeight, snapshots.length], [1366, 768, 1]);
+
+        const failure = new Error("fixture RESIZE listener failure");
+        const throwing = (): never => { throw failure; };
+        FlashStageBoundary.addEventListener(stage, Event.RESIZE, throwing, false, 10);
+        assert.throws(() => owner.resizeViewport(1440, 900), error => error === failure);
+        assert.deepEqual([owner.stageWidth, owner.stageHeight], [1440, 900],
+            "listener failure cannot roll back a committed pair");
+        FlashStageBoundary.removeEventListener(stage, Event.RESIZE, throwing);
+
+        stage.destroy(false);
+        assert.throws(() => owner.resizeViewport(Number.NaN, -1), /live canonical Laya Stage/,
+            "destroyed Stage rejection precedes viewport input validation");
+        assert.deepEqual([owner.stageWidth, owner.stageHeight], [1440, 900],
+            "destroy preserves the last committed private pair");
+    } finally {
+        ILaya.stage = previousStage;
+    }
+});
+
+test("Stage viewport claim resists reentrant getters and failed initialization", () => {
+    const previousStage = ILaya.stage;
+    try {
+        const reentrantStage = new Stage() as any;
+        ILaya.stage = reentrantStage;
+        const reads: string[] = [];
+        let winner: ReturnType<typeof FlashStageBoundary.claimViewport> | undefined;
+        assert.throws(() => FlashStageBoundary.claimViewport(reentrantStage, {
+            get width() {
+                reads.push("outer-width");
+                winner = FlashStageBoundary.claimViewport(reentrantStage, { width: 320, height: 200 });
+                return 1250;
+            },
+            get height() { reads.push("outer-height"); return 650; }
+        }), /already has a viewport owner/);
+        assert.deepEqual(reads, ["outer-width", "outer-height"]);
+        assert.ok(winner);
+        assert.deepEqual([winner.stageWidth, winner.stageHeight], [320, 200]);
+        winner.resizeViewport(640, 400);
+        assert.deepEqual([FlashStageBoundary.getWidth(reentrantStage),
+            FlashStageBoundary.getHeight(reentrantStage)], [640, 400]);
+
+        const throwingStage = new Stage() as any;
+        ILaya.stage = throwingStage;
+        const failure = new Error("fixture viewport height failure");
+        const failureReads: string[] = [];
+        assert.throws(() => FlashStageBoundary.claimViewport(throwingStage, {
+            get width() { failureReads.push("width"); return 1024; },
+            get height(): number { failureReads.push("height"); throw failure; }
+        }), error => error === failure);
+        assert.deepEqual(failureReads, ["width", "height"]);
+        assert.throws(() => FlashStageBoundary.getWidth(throwingStage), /has not been claimed/);
+        const recovered = FlashStageBoundary.claimViewport(throwingStage, { width: 1024, height: 576 });
+        assert.deepEqual([recovered.stageWidth, recovered.stageHeight], [1024, 576]);
+
+        const destroyedStage = new Stage() as any;
+        ILaya.stage = destroyedStage;
+        assert.throws(() => FlashStageBoundary.claimViewport(destroyedStage, {
+            get width() { return 1280; },
+            get height() { destroyedStage.destroy(false); return 720; }
+        }), /live canonical Laya Stage/);
+        assert.throws(() => FlashStageBoundary.getWidth(destroyedStage), /live canonical Laya Stage/);
+
+        const replacedStage = new Stage() as any;
+        const replacement = new Stage() as any;
+        ILaya.stage = replacedStage;
+        assert.throws(() => FlashStageBoundary.claimViewport(replacedStage, {
+            get width() { ILaya.stage = replacement; return 800; },
+            get height() { return 600; }
+        }), /live canonical Laya Stage/);
+        ILaya.stage = replacedStage;
+        const replacementSafe = FlashStageBoundary.claimViewport(replacedStage, { width: 800, height: 600 });
+        assert.deepEqual([replacementSafe.stageWidth, replacementSafe.stageHeight], [800, 600]);
+    } finally {
+        ILaya.stage = previousStage;
     }
 });
 

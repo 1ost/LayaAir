@@ -57,6 +57,8 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/DisplayObjectContainer.ts", "isFlashDisplayObjectContainer", "function"],
     ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBootstrap", "interface"],
     ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBootstrapOptions", "interface"],
+    ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageViewport", "interface"],
+    ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageViewportOwner", "interface"],
     ["src/layaAir/flash/display/Graphics.ts", "isFlashGraphics", "function"],
     ["src/layaAir/flash/display/IBitmapDrawable.ts", "IBitmapDrawable", "type"],
     ["src/layaAir/flash/display/InteractiveObject.ts", "isFlashInteractiveObject", "function"],

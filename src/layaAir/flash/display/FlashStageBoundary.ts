@@ -17,6 +17,15 @@ type FocusSeam = { _applyNativeFocus(value: boolean): void };
 const STAGE_ROUTERS = new WeakMap<object, FlashEventRouter>();
 const STAGE_BOOTSTRAPS = new WeakMap<object, FlashStageBootstrap>();
 const LOADER_PARAMETER_VALUES = new WeakSet<object>();
+const STAGE_VIEWPORT_OWNERS = new WeakMap<object, FlashStageViewportOwner>();
+
+interface FlashStageViewportRecord {
+    readonly stage: LayaStage;
+    width: number;
+    height: number;
+}
+
+const VIEWPORT_OWNER_RECORDS = new WeakMap<object, FlashStageViewportRecord>();
 
 declare const FLASH_STAGE_LOADER_PARAMETERS: unique symbol;
 type FlashStageLoaderParameters = Readonly<Record<string, string>> & {
@@ -32,6 +41,67 @@ export interface FlashStageBootstrapOptions {
 }
 
 export interface FlashStageBootstrap extends FlashStageBootstrapOptions {}
+
+/** Immutable launch-time design viewport supplied by the application bootstrap. */
+export interface FlashStageViewport {
+    readonly width: number;
+    readonly height: number;
+}
+
+/**
+ * Opaque authority for publishing later viewport changes. The engine issues
+ * exactly one owner for a live Stage; viewport state never resides on the
+ * public Stage or owner object.
+ */
+export interface FlashStageViewportOwner {
+    readonly stageWidth: number;
+    readonly stageHeight: number;
+    resizeViewport(width: number, height: number): void;
+}
+
+function requireCurrentStage(stage: LayaStage): LayaStage {
+    if (stage !== ILaya.stage || !isLayaStage(stage) || stage.destroyed)
+        throw new TypeError("Flash Stage boundary requires the live canonical Laya Stage");
+    return stage;
+}
+
+function requireViewportDimension(value: number, name: "width" | "height"): number {
+    if (!Number.isSafeInteger(value) || value < 0)
+        throw new RangeError(`Flash Stage viewport ${name} must be a non-negative safe integer`);
+    return value;
+}
+
+function requireViewportOwner(value: unknown): FlashStageViewportRecord {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null)
+        throw new TypeError("Flash Stage viewport changes require the exact engine-issued owner");
+    const record = VIEWPORT_OWNER_RECORDS.get(value as object);
+    if (!record || STAGE_VIEWPORT_OWNERS.get(record.stage as object) !== value)
+        throw new TypeError("Flash Stage viewport changes require the exact engine-issued owner");
+    return record;
+}
+
+class EngineFlashStageViewportOwner implements FlashStageViewportOwner {
+    constructor(stage: LayaStage, width: number, height: number) {
+        VIEWPORT_OWNER_RECORDS.set(this, { stage, width, height });
+    }
+
+    get stageWidth(): number { return requireViewportOwner(this).width; }
+    get stageHeight(): number { return requireViewportOwner(this).height; }
+
+    resizeViewport(width: number, height: number): void {
+        const record = requireViewportOwner(this);
+        requireCurrentStage(record.stage);
+        const nextWidth = requireViewportDimension(width, "width");
+        const nextHeight = requireViewportDimension(height, "height");
+        if (nextWidth === record.width && nextHeight === record.height) return;
+
+        // Publish the complete pair before dispatch. Listener failures never
+        // roll back committed viewport state.
+        record.width = nextWidth;
+        record.height = nextHeight;
+        FlashStageBoundary.dispatchEvent(record.stage, new Event(Event.RESIZE, false, false));
+    }
+}
 
 /**
  * Explicit source-to-native Stage boundary. It never subclasses Stage and
@@ -116,12 +186,41 @@ export class FlashStageBoundary {
 
     static getWidth(stage: LayaStage): number {
         this._requireCurrent(stage);
-        return stage.width;
+        return this._viewportRecord(stage).width;
     }
 
     static getHeight(stage: LayaStage): number {
         this._requireCurrent(stage);
-        return stage.height;
+        return this._viewportRecord(stage).height;
+    }
+
+    /**
+     * Claims the Stage design viewport before authored content is attached.
+     * Duplicate and reentrant claims are rejected before any publication.
+     */
+    static claimViewport(stage: LayaStage, initialViewport: FlashStageViewport): FlashStageViewportOwner {
+        this._requireCurrent(stage);
+        if (STAGE_VIEWPORT_OWNERS.has(stage as object))
+            throw new Error("Flash Stage already has a viewport owner");
+        if (!initialViewport || typeof initialViewport !== "object")
+            throw new TypeError("Flash Stage initial viewport must be an object");
+
+        // Snapshot each potentially hostile getter exactly once, then validate
+        // the pair without publishing either half.
+        const width = initialViewport.width;
+        const height = initialViewport.height;
+        const nextWidth = requireViewportDimension(width, "width");
+        const nextHeight = requireViewportDimension(height, "height");
+
+        // A getter may destroy/replace the Stage or install a competing owner.
+        // Re-authenticate all authority after the last caller-controlled read.
+        this._requireCurrent(stage);
+        if (STAGE_VIEWPORT_OWNERS.has(stage as object))
+            throw new Error("Flash Stage already has a viewport owner");
+
+        const owner = new EngineFlashStageViewportOwner(stage, nextWidth, nextHeight);
+        STAGE_VIEWPORT_OWNERS.set(stage as object, owner);
+        return owner;
     }
 
     static configure(stage: LayaStage, options: FlashStageBootstrapOptions): FlashStageBootstrap {
@@ -202,9 +301,16 @@ export class FlashStageBoundary {
     }
 
     private static _requireCurrent(stage: LayaStage): LayaStage {
-        if (stage !== ILaya.stage || !isLayaStage(stage) || stage.destroyed)
-            throw new TypeError("Flash Stage boundary requires the live canonical Laya Stage");
-        return stage;
+        return requireCurrentStage(stage);
+    }
+
+    private static _viewportRecord(stage: LayaStage): FlashStageViewportRecord {
+        const owner = STAGE_VIEWPORT_OWNERS.get(stage as object);
+        if (!owner) throw new Error("Flash Stage viewport has not been claimed");
+        const record = VIEWPORT_OWNER_RECORDS.get(owner as object);
+        if (!record || record.stage !== stage)
+            throw new Error("Flash Stage viewport authority is unavailable");
+        return record;
     }
 
     private static _requireParameters(value: FlashStageLoaderParameters): FlashStageLoaderParameters {
