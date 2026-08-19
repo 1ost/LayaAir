@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,7 +11,10 @@ import {
     canonicalJson,
     compareRgbaCaptures,
     createRgbaCapture,
+    parsePixelGoldenReceipt,
+    parsePixelGoldenReceiptBytes,
     parseRgbaCapture,
+    parseRgbaCaptureBytes,
     serializePixelGoldenReceipt,
     serializeRgbaCapture,
 } from "../../scripts/authoredPixelGolden.mjs";
@@ -31,6 +35,15 @@ function environment(changes = {}) {
 
 function capture(pixels = [0, 0, 0, 0, 10, 20, 30, 255], changes = {}) {
     return createRgbaCapture({ width: 2, height: 1, rgba: Uint8Array.from(pixels), environment: environment(), ...changes });
+}
+
+function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function rehashReceipt(receipt) {
+    const { receiptSha256: _oldHash, ...body } = receipt;
+    return { ...body, receiptSha256: crypto.createHash("sha256").update(canonicalJson(body)).digest("hex") };
 }
 
 test("canonical straight-RGBA captures have stable pixel, body, and artifact identities", () => {
@@ -76,7 +89,44 @@ test("exact captures pass with zero metrics and a deterministic authenticated re
     assert.deepEqual(receipt.policy, EXACT_PIXEL_POLICY);
     assert.match(receipt.source.artifactSha256, /^[a-f0-9]{64}$/);
     assert.equal(serializePixelGoldenReceipt(receipt), canonicalJson(receipt));
+    assert.deepEqual(parsePixelGoldenReceipt(canonicalJson(receipt)), receipt);
+    assert.deepEqual(parsePixelGoldenReceiptBytes(Buffer.from(canonicalJson(receipt))), receipt);
     assert.deepEqual(receipt, compareRgbaCaptures(source, capture()));
+});
+
+test("capture and receipt byte parsers reject invalid UTF-8 and byte-normalized identities", () => {
+    const captureBytes = Buffer.from(serializeRgbaCapture(capture()));
+    const receiptBytes = Buffer.from(serializePixelGoldenReceipt(compareRgbaCaptures(capture(), capture())));
+    for (const [bytes, parse] of [[captureBytes, parseRgbaCaptureBytes], [receiptBytes, parsePixelGoldenReceiptBytes]]) {
+        const invalid = Buffer.concat([bytes.subarray(0, bytes.length - 2), Buffer.from([0xff, 0x0a])]);
+        assert.throws(() => parse(invalid), /not valid UTF-8/);
+        const bom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), bytes]);
+        assert.throws(() => parse(bom), /exact BOM-free UTF-8|valid JSON/);
+    }
+});
+
+test("receipt validation rejects missing, unknown, ill-typed, and inconsistent rehashed shapes", () => {
+    const exact = compareRgbaCaptures(capture(), capture());
+    const drift = compareRgbaCaptures(capture(), capture([1, 0, 0, 0, 10, 20, 30, 255]));
+    const cases = [];
+    const missing = clone(exact); delete missing.source; cases.push(missing);
+    cases.push({ ...clone(exact), unknown: true });
+    cases.push({ ...clone(exact), schema: "not-a-laya-receipt" });
+    cases.push({ ...clone(exact), source: { artifactSha256: zeroHash } });
+    cases.push({ ...clone(exact), dimensions: { source: { width: 2, height: 1 }, candidate: { width: 2, height: 1 } } });
+    cases.push({ ...clone(exact), environmentSha256: { source: zeroHash, candidate: zeroHash } });
+    cases.push({ ...clone(exact), metrics: null });
+    cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), differingPixelRatio: 0.5 } });
+    cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), channelTotalDelta: { r: 1, g: 0, b: 0, a: 0 } } });
+    cases.push({ ...clone(drift), diffBounds: { x: 2, y: 0, width: 1, height: 1 } });
+    cases.push({ ...clone(drift), mismatchReasons: ["maxDifferingPixels", "maxDifferingPixels"] });
+    cases.push({ ...clone(drift), passed: true });
+    cases.push({ ...clone(exact), mismatchReasons: ["environment"], passed: false });
+    for (const malformed of cases) {
+        const rehashed = rehashReceipt(malformed);
+        assert.throws(() => serializePixelGoldenReceipt(rehashed));
+    }
+    assert.throws(() => serializePixelGoldenReceipt({ ...clone(exact), receiptSha256: zeroHash }), /does not authenticate/);
 });
 
 test("straight-RGBA differences report exact metrics and the minimal pixel bounds", () => {
@@ -130,6 +180,7 @@ test("policies are explicit, bounded, and cannot conceal an environment mismatch
     };
     assert.equal(compareRgbaCaptures(capture(), capture([255, 255, 255, 255, 255, 255, 255, 255]), permissive).passed, true);
     assert.throws(() => compareRgbaCaptures(capture(), capture(), { ...permissive, maxChannelDelta: 256 }), /at most 255/);
+    assert.throws(() => compareRgbaCaptures(capture(), capture(), { ...permissive, maxRootMeanSquareChannelDelta: 256 }), /at most 255/);
     assert.throws(() => compareRgbaCaptures(capture(), capture(), { ...permissive, untracked: 1 }), /exactly/);
 });
 
@@ -173,4 +224,30 @@ test("the CLI rejects noncanonical input and unknown or duplicate options withou
     const duplicate = spawnSync(process.execPath, [cli, "compare", "--source", source, "--source", source, "--candidate", source, "--receipt", receipt], { encoding: "utf8" });
     assert.equal(duplicate.status, 2);
     assert.match(duplicate.stderr, /Duplicate option/);
+});
+
+test("the CLI fatally rejects invalid UTF-8 in captures, environments, and policies", t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-pixel-golden-utf8-"));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const invalid = path.join(root, "invalid.json");
+    const rgba = path.join(root, "frame.rgba");
+    const output = path.join(root, "output.json");
+    fs.writeFileSync(invalid, Buffer.from([0x7b, 0xff, 0x7d, 0x0a]));
+    fs.writeFileSync(rgba, Buffer.from([0, 0, 0, 0]));
+    const captureResult = spawnSync(process.execPath, [cli, "capture", "--rgba", rgba, "--width", "1", "--height", "1", "--environment", invalid, "--output", output], { encoding: "utf8" });
+    assert.equal(captureResult.status, 2);
+    assert.match(captureResult.stderr, /not valid UTF-8/);
+    assert.equal(fs.existsSync(output), false);
+
+    const compareResult = spawnSync(process.execPath, [cli, "compare", "--source", invalid, "--candidate", invalid, "--receipt", output], { encoding: "utf8" });
+    assert.equal(compareResult.status, 2);
+    assert.match(compareResult.stderr, /not valid UTF-8/);
+    assert.equal(fs.existsSync(output), false);
+
+    const canonicalCapture = path.join(root, "capture.json");
+    fs.writeFileSync(canonicalCapture, serializeRgbaCapture(createRgbaCapture({ width: 1, height: 1, rgba: new Uint8Array(4), environment: environment() })));
+    const policyResult = spawnSync(process.execPath, [cli, "compare", "--source", canonicalCapture, "--candidate", canonicalCapture, "--receipt", output, "--policy", invalid], { encoding: "utf8" });
+    assert.equal(policyResult.status, 2);
+    assert.match(policyResult.stderr, /not valid UTF-8/);
+    assert.equal(fs.existsSync(output), false);
 });

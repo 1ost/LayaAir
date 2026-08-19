@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { TextDecoder } from "node:util";
 import { fileURLToPath } from "node:url";
 
 export const AUTHORED_RGBA_CAPTURE_SCHEMA = "laya-authored-rgba-capture@1";
@@ -24,10 +25,35 @@ const BACKEND_KEYS = ["adapter", "api", "driver"];
 const FONT_KEYS = ["manifestSha256", "rasterizer"];
 const PLATFORM_KEYS = ["architecture", "devicePixelRatio", "os"];
 const POLICY_KEYS = Object.keys(EXACT_PIXEL_POLICY).sort();
+const RECEIPT_KEYS = [
+    "candidate", "diffBounds", "dimensions", "environmentSha256", "metrics",
+    "mismatchReasons", "passed", "policy", "receiptSha256", "schema", "source",
+];
+const IDENTITY_KEYS = ["artifactSha256", "captureSha256", "rgbaSha256"];
+const METRIC_KEYS = [
+    "channelMaxDelta", "channelTotalDelta", "differingPixelRatio", "differingPixels",
+    "maxChannelDelta", "meanAbsoluteChannelDelta", "rootMeanSquareChannelDelta", "totalChannelDelta",
+];
+const CHANNEL_KEYS = ["a", "b", "g", "r"];
+const MISMATCH_REASON_ORDER = [
+    "dimensions", "environment", "maxDifferingPixels", "maxDifferingPixelRatio",
+    "maxChannelDelta", "maxMeanAbsoluteChannelDelta", "maxRootMeanSquareChannelDelta",
+];
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function sha256(bytes) {
     return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+function decodeExactUtf8(bytes, label) {
+    if (!(bytes instanceof Uint8Array)) throw new TypeError(`${label} must be bytes.`);
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+    catch (error) { throw new TypeError(`${label} is not valid UTF-8: ${error.message}`); }
+    if (!Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).equals(Buffer.from(text, "utf8"))) {
+        throw new Error(`${label} is not exact BOM-free UTF-8.`);
+    }
+    return text;
 }
 
 function assertPlainObject(value, label) {
@@ -183,6 +209,10 @@ export function parseRgbaCapture(text, label = "capture artifact") {
     return capture;
 }
 
+export function parseRgbaCaptureBytes(bytes, label = "capture artifact") {
+    return parseRgbaCapture(decodeExactUtf8(bytes, label), label);
+}
+
 function validatePolicy(policy) {
     assertPlainObject(policy, "policy");
     assertExactKeys(policy, POLICY_KEYS, "policy");
@@ -190,10 +220,172 @@ function validatePolicy(policy) {
     for (const key of POLICY_KEYS.filter(key => key !== "maxDifferingPixels")) {
         if (!Number.isFinite(policy[key]) || policy[key] < 0) throw new TypeError(`policy.${key} must be a non-negative finite number.`);
     }
-    if (policy.maxDifferingPixelRatio > 1 || policy.maxChannelDelta > 255) {
-        throw new RangeError("pixel ratio must be at most 1 and channel delta at most 255.");
+    if (policy.maxDifferingPixelRatio > 1 || policy.maxChannelDelta > 255
+        || policy.maxMeanAbsoluteChannelDelta > 255 || policy.maxRootMeanSquareChannelDelta > 255) {
+        throw new RangeError("pixel ratio must be at most 1 and channel metrics at most 255.");
     }
     return canonicalValue(policy, "policy");
+}
+
+function assertNonNegativeFinite(value, label) {
+    if (!Number.isFinite(value) || value < 0) throw new TypeError(`${label} must be a non-negative finite number.`);
+}
+
+function validateIdentity(identity, label) {
+    assertPlainObject(identity, label);
+    assertExactKeys(identity, IDENTITY_KEYS, label);
+    for (const key of IDENTITY_KEYS) assertSha256(identity[key], `${label}.${key}`);
+}
+
+function assertMetricSafeDimensions(dimensions, label) {
+    const maximumTotalDelta = dimensions.width * dimensions.height * 4 * 255;
+    if (!Number.isSafeInteger(maximumTotalDelta)) {
+        throw new RangeError(`${label} is too large for exact integer pixel metrics.`);
+    }
+}
+
+function validateDimensions(dimensions) {
+    assertPlainObject(dimensions, "receipt.dimensions");
+    const keys = Object.keys(dimensions).sort();
+    if (keys.length === 2 && keys[0] === "height" && keys[1] === "width") {
+        assertUnsignedInteger(dimensions.width, "receipt.dimensions.width", { positive: true });
+        assertUnsignedInteger(dimensions.height, "receipt.dimensions.height", { positive: true });
+        assertMetricSafeDimensions(dimensions, "receipt.dimensions");
+        return { matches: true, width: dimensions.width, height: dimensions.height };
+    }
+    assertExactKeys(dimensions, ["candidate", "source"], "receipt.dimensions");
+    for (const side of ["source", "candidate"]) {
+        assertPlainObject(dimensions[side], `receipt.dimensions.${side}`);
+        assertExactKeys(dimensions[side], ["height", "width"], `receipt.dimensions.${side}`);
+        assertUnsignedInteger(dimensions[side].width, `receipt.dimensions.${side}.width`, { positive: true });
+        assertUnsignedInteger(dimensions[side].height, `receipt.dimensions.${side}.height`, { positive: true });
+        assertMetricSafeDimensions(dimensions[side], `receipt.dimensions.${side}`);
+    }
+    if (dimensions.source.width === dimensions.candidate.width && dimensions.source.height === dimensions.candidate.height) {
+        throw new Error("receipt.dimensions mismatch form requires different source and candidate dimensions.");
+    }
+    return { matches: false };
+}
+
+function validateEnvironmentIdentity(environmentSha256) {
+    if (typeof environmentSha256 === "string") {
+        assertSha256(environmentSha256, "receipt.environmentSha256");
+        return true;
+    }
+    assertPlainObject(environmentSha256, "receipt.environmentSha256");
+    assertExactKeys(environmentSha256, ["candidate", "source"], "receipt.environmentSha256");
+    assertSha256(environmentSha256.source, "receipt.environmentSha256.source");
+    assertSha256(environmentSha256.candidate, "receipt.environmentSha256.candidate");
+    if (environmentSha256.source === environmentSha256.candidate) {
+        throw new Error("receipt.environmentSha256 mismatch form requires different identities.");
+    }
+    return false;
+}
+
+function validateChannelMetrics(channels, label, maximum) {
+    assertPlainObject(channels, label);
+    assertExactKeys(channels, CHANNEL_KEYS, label);
+    for (const channel of CHANNEL_KEYS) {
+        assertUnsignedInteger(channels[channel], `${label}.${channel}`);
+        if (channels[channel] > maximum) throw new RangeError(`${label}.${channel} exceeds its image bound.`);
+    }
+}
+
+function validateMetrics(metrics, width, height) {
+    assertPlainObject(metrics, "receipt.metrics");
+    assertExactKeys(metrics, METRIC_KEYS, "receipt.metrics");
+    const pixels = width * height;
+    assertUnsignedInteger(metrics.differingPixels, "receipt.metrics.differingPixels");
+    assertUnsignedInteger(metrics.maxChannelDelta, "receipt.metrics.maxChannelDelta");
+    assertUnsignedInteger(metrics.totalChannelDelta, "receipt.metrics.totalChannelDelta");
+    if (metrics.differingPixels > pixels || metrics.maxChannelDelta > 255
+        || metrics.totalChannelDelta > pixels * 4 * 255) {
+        throw new RangeError("receipt.metrics exceeds its image or channel bounds.");
+    }
+    for (const key of ["differingPixelRatio", "meanAbsoluteChannelDelta", "rootMeanSquareChannelDelta"]) {
+        assertNonNegativeFinite(metrics[key], `receipt.metrics.${key}`);
+    }
+    if (metrics.differingPixelRatio > 1 || metrics.meanAbsoluteChannelDelta > 255
+        || metrics.rootMeanSquareChannelDelta > 255) {
+        throw new RangeError("receipt.metrics normalized values exceed their natural bounds.");
+    }
+    if (metrics.differingPixelRatio !== metrics.differingPixels / pixels) {
+        throw new Error("receipt.metrics.differingPixelRatio is inconsistent with differingPixels.");
+    }
+    validateChannelMetrics(metrics.channelMaxDelta, "receipt.metrics.channelMaxDelta", 255);
+    validateChannelMetrics(metrics.channelTotalDelta, "receipt.metrics.channelTotalDelta", pixels * 255);
+    if (Object.values(metrics.channelTotalDelta).reduce((sum, value) => sum + value, 0) !== metrics.totalChannelDelta
+        || Math.max(...Object.values(metrics.channelMaxDelta)) !== metrics.maxChannelDelta) {
+        throw new Error("receipt channel metrics are inconsistent with aggregate metrics.");
+    }
+}
+
+function validateDiffBounds(diffBounds, metrics, width, height) {
+    if (diffBounds === null) {
+        if (metrics.differingPixels !== 0) throw new Error("receipt.diffBounds is required when pixels differ.");
+        return;
+    }
+    assertPlainObject(diffBounds, "receipt.diffBounds");
+    assertExactKeys(diffBounds, ["height", "width", "x", "y"], "receipt.diffBounds");
+    assertUnsignedInteger(diffBounds.x, "receipt.diffBounds.x");
+    assertUnsignedInteger(diffBounds.y, "receipt.diffBounds.y");
+    assertUnsignedInteger(diffBounds.width, "receipt.diffBounds.width", { positive: true });
+    assertUnsignedInteger(diffBounds.height, "receipt.diffBounds.height", { positive: true });
+    if (metrics.differingPixels === 0 || diffBounds.x + diffBounds.width > width || diffBounds.y + diffBounds.height > height) {
+        throw new RangeError("receipt.diffBounds is inconsistent with the image or pixel metrics.");
+    }
+}
+
+function expectedThresholdReasons(metrics, policy) {
+    const reasons = [];
+    if (metrics.differingPixels > policy.maxDifferingPixels) reasons.push("maxDifferingPixels");
+    if (metrics.differingPixelRatio > policy.maxDifferingPixelRatio) reasons.push("maxDifferingPixelRatio");
+    if (metrics.maxChannelDelta > policy.maxChannelDelta) reasons.push("maxChannelDelta");
+    if (metrics.meanAbsoluteChannelDelta > policy.maxMeanAbsoluteChannelDelta) reasons.push("maxMeanAbsoluteChannelDelta");
+    if (metrics.rootMeanSquareChannelDelta > policy.maxRootMeanSquareChannelDelta) reasons.push("maxRootMeanSquareChannelDelta");
+    return reasons;
+}
+
+export function validatePixelGoldenReceipt(receipt) {
+    assertPlainObject(receipt, "receipt");
+    assertExactKeys(receipt, RECEIPT_KEYS, "receipt");
+    if (receipt.schema !== AUTHORED_PIXEL_GOLDEN_RECEIPT_SCHEMA) {
+        throw new TypeError(`receipt.schema must be ${AUTHORED_PIXEL_GOLDEN_RECEIPT_SCHEMA}.`);
+    }
+    validateIdentity(receipt.source, "receipt.source");
+    validateIdentity(receipt.candidate, "receipt.candidate");
+    const dimensions = validateDimensions(receipt.dimensions);
+    const environmentMatches = validateEnvironmentIdentity(receipt.environmentSha256);
+    const policy = validatePolicy(receipt.policy);
+    if (!Array.isArray(receipt.mismatchReasons)) throw new TypeError("receipt.mismatchReasons must be an array.");
+    let previousReasonIndex = -1;
+    for (const reason of receipt.mismatchReasons) {
+        const index = MISMATCH_REASON_ORDER.indexOf(reason);
+        if (index < 0 || index <= previousReasonIndex) throw new Error("receipt.mismatchReasons must be unique and in canonical order.");
+        previousReasonIndex = index;
+    }
+    if (typeof receipt.passed !== "boolean" || receipt.passed !== (receipt.mismatchReasons.length === 0)) {
+        throw new Error("receipt.passed must exactly reflect mismatchReasons.");
+    }
+    const structuralReasons = [];
+    if (!dimensions.matches) structuralReasons.push("dimensions");
+    if (!environmentMatches) structuralReasons.push("environment");
+    if (!dimensions.matches) {
+        if (receipt.metrics !== null || receipt.diffBounds !== null) {
+            throw new Error("dimension-mismatch receipts cannot contain pixel metrics or diff bounds.");
+        }
+    } else {
+        validateMetrics(receipt.metrics, dimensions.width, dimensions.height);
+        validateDiffBounds(receipt.diffBounds, receipt.metrics, dimensions.width, dimensions.height);
+        structuralReasons.push(...expectedThresholdReasons(receipt.metrics, policy));
+    }
+    if (canonicalJson(structuralReasons) !== canonicalJson(receipt.mismatchReasons)) {
+        throw new Error("receipt.mismatchReasons is inconsistent with dimensions, environment, metrics, or policy.");
+    }
+    assertSha256(receipt.receiptSha256, "receipt.receiptSha256");
+    const { receiptSha256, ...body } = receipt;
+    if (sha256(canonicalJson(body)) !== receiptSha256) throw new Error("receipt.receiptSha256 does not authenticate the receipt body.");
+    return receipt;
 }
 
 function artifactIdentity(capture) {
@@ -296,11 +488,22 @@ export function compareRgbaCaptures(sourceCapture, candidateCapture, policy = EX
 }
 
 export function serializePixelGoldenReceipt(receipt) {
-    assertPlainObject(receipt, "receipt");
-    assertSha256(receipt.receiptSha256, "receipt.receiptSha256");
-    const { receiptSha256, ...body } = receipt;
-    if (sha256(canonicalJson(body)) !== receiptSha256) throw new Error("receipt.receiptSha256 does not authenticate the receipt body.");
+    validatePixelGoldenReceipt(receipt);
     return canonicalJson(receipt);
+}
+
+export function parsePixelGoldenReceipt(text, label = "pixel golden receipt artifact") {
+    if (typeof text !== "string") throw new TypeError(`${label} must be UTF-8 text.`);
+    let receipt;
+    try { receipt = JSON.parse(text); }
+    catch (error) { throw new SyntaxError(`${label} is not valid JSON: ${error.message}`); }
+    validatePixelGoldenReceipt(receipt);
+    if (text !== canonicalJson(receipt)) throw new Error(`${label} is not in canonical JSON form.`);
+    return receipt;
+}
+
+export function parsePixelGoldenReceiptBytes(bytes, label = "pixel golden receipt artifact") {
+    return parsePixelGoldenReceipt(decodeExactUtf8(bytes, label), label);
 }
 
 function writeFileAtomic(destination, content) {
@@ -333,7 +536,7 @@ function parseOptions(args, allowed) {
 }
 
 function readCanonicalJson(file, label) {
-    const text = fs.readFileSync(file, "utf8");
+    const text = decodeExactUtf8(fs.readFileSync(file), label);
     let value;
     try { value = JSON.parse(text); }
     catch (error) { throw new SyntaxError(`${label} is not valid JSON: ${error.message}`); }
@@ -353,8 +556,8 @@ export function runAuthoredPixelGoldenCli(args) {
     }
     if (command === "compare") {
         const options = parseOptions(rest, ["source", "candidate", "receipt", "policy"]);
-        const source = parseRgbaCapture(fs.readFileSync(options.source, "utf8"), "source capture artifact");
-        const candidate = parseRgbaCapture(fs.readFileSync(options.candidate, "utf8"), "candidate capture artifact");
+        const source = parseRgbaCaptureBytes(fs.readFileSync(options.source), "source capture artifact");
+        const candidate = parseRgbaCaptureBytes(fs.readFileSync(options.candidate), "candidate capture artifact");
         const policy = options.policy ? readCanonicalJson(options.policy, "pixel policy artifact") : EXACT_PIXEL_POLICY;
         const receipt = compareRgbaCaptures(source, candidate, policy);
         writeFileAtomic(options.receipt, serializePixelGoldenReceipt(receipt));
