@@ -27829,17 +27829,181 @@
           "indexSignatures": [],
           "sha256": "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/utils/ByteArray.ts",
+          "export": "ByteArray",
+          "kind": "class",
+          "signature": "typeof ByteArray",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "buffer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ArrayBuffer"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bytesAvailable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clear",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "endian",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "length",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "position",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readUnsignedByte",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readUnsignedInt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readUnsignedShort",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readUTFBytes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(length?: number) => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "uncompressZlib",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(host?: ZlibDecompressionHost, signal?: AbortSignal) => Promise<void>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "writeByte",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "writeShort",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "writeUnsignedInt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "writeUTFBytes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: string) => void"
+            }
+          ],
+          "constructors": [
+            "new (input?: ByteArrayInput): ByteArray"
+          ],
+          "indexSignatures": [],
+          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/utils/ByteArray.ts",
+          "export": "ByteArrayInput",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
+        },
+        {
+          "module": "src/layaAir/flash/utils/ByteArray.ts",
+          "export": "ZlibDecompressionHost",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
-          "test": "Flash utils Timer compiler and scheduler surface",
-          "sha256": "c3abec5034deabbb5d7e30265ca05c0a6548b8ce7ad83caad18bae6d0eed68f5",
+          "test": "Flash utils compiler and runtime surface",
+          "sha256": "4adf83a171cc77617c248edecca1c763617bd2f9a9e9fad3ba57ae3be218db77",
           "capability": "api.flash.utils",
           "covers": [
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
-            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
+            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025",
+            "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
           ]
         }
       ]

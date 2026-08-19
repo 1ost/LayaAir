@@ -42,6 +42,8 @@ export { URLRequest, navigateToURL } from "./net/URLRequest";
 export { URLLoaderDataFormat } from "./net/URLLoaderDataFormat";
 export { Timer } from "./utils/Timer";
 export { Endian } from "./utils/Endian";
+export { ByteArray } from "./utils/ByteArray";
+export type { ByteArrayInput, ZlibDecompressionHost } from "./utils/ByteArray";
 export { MouseCursor } from "./ui/MouseCursor";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";
