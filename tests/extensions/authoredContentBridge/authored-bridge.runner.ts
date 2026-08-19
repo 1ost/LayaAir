@@ -2201,8 +2201,8 @@ test("texture-backed StaticText preserves Flash identity, authored bounds and ex
     assert.equal(value.text, "A \u{1F5E1}", "unmapped glyphs render without invented Unicode text");
     assert.deepEqual([value.name, value.x, value.y, value.width, value.height, value.visible, value.mouseEnabled],
         ["symbol41", 12, -3, 40, 14, true, false]);
-    assert.deepEqual([StaticText._$authoredSourceType, StaticText._$authoredSerializedType],
-        ["StaticText", "Sprite"], "the runtime preserves source and native serialized identities");
+    assert.deepEqual(["_$authoredSourceType" in StaticText, "_$authoredSerializedType" in StaticText], [false, false],
+        "native prefab serialization remains an explicit HOLD rather than an unverified identity claim");
     const root = new DisplayObject(); root.addChild(value);
     assert.deepEqual([value.parent, value.root, displayProbe], [root, root, value]);
     const parentBounds = value.getBounds();
@@ -2210,6 +2210,8 @@ test("texture-backed StaticText preserves Flash identity, authored bounds and ex
         "normal Laya bounds reflect the actual native glyph geometry in parent coordinates");
     const commands = value.graphics.cmds!;
     assert.equal(commands.length, 2, "only texture-bearing glyphs create native draw commands");
+    assert.deepEqual([glyphA.referenceCount, unknownGlyph.referenceCount], [1, 1],
+        "each native draw command owns exactly one texture reference");
     assert.deepEqual(commands.map(command => [command.cmdID, (command as any).x, (command as any).y,
         (command as any).width, (command as any).height, (command as any).alpha]), [
         ["DrawTextureCmd", 1, 2, 8, 10, 0.75],
@@ -2217,12 +2219,29 @@ test("texture-backed StaticText preserves Flash identity, authored bounds and ex
     ]);
     (configuration.runs[0].glyphs[0] as { character: string | null }).character = "Z";
     assert.equal(value.text, "A \u{1F5E1}", "published text is detached from mutable caller data");
-    assert.throws(() => { (value as any).text = "forged"; }, /getter|read only|setting getter-only/);
+    const ownText = Object.getOwnPropertyDescriptor(value, "text")!;
+    const prototypeText = Object.getOwnPropertyDescriptor(StaticText.prototype, "text")!;
+    assert.deepEqual([ownText.configurable, ownText.enumerable, typeof ownText.get, typeof ownText.set],
+        [false, false, "function", "function"]);
+    assert.throws(() => ownText.get!.call({}), /canonical StaticText receiver/);
+    assert.throws(() => prototypeText.get!.call({}), /canonical StaticText receiver/);
+    assert.throws(() => prototypeText.get!.call(Object.create(StaticText.prototype)), /canonical StaticText receiver/);
+    const proxied = new Proxy(value, {});
+    assert.equal(isFlashStaticText(proxied), false);
+    assert.throws(() => proxied.text, /canonical StaticText receiver/);
+    assert.throws(() => { (value as any).text = "forged"; }, /read-only/);
+    assert.throws(() => Object.defineProperty(value, "text", { value: "forged" }), /redefine|configurable/);
     value.visible = false;
     assert.equal(value.visible, false);
+    const graphics = value.graphics;
+    value.destroy(true);
+    assert.deepEqual([value.destroyed, graphics.cmds.length, glyphA.referenceCount, unknownGlyph.referenceCount],
+        [true, 0, 0, 0], "destroy recovers every DrawTextureCmd and releases every texture reference exactly once");
+    assert.throws(() => ownText.get!.call(value), /unavailable after destroy/);
 });
 
 test("StaticText validation is atomic and rejects accessors, malformed scalars and texture impostors", () => {
+    assert.throws(() => new (StaticText as any)(), /created only by LayaAir authored content/);
     const base: AuthoredStaticTextConfiguration = {
         sourceId: 1, x: 0, y: 0, width: 10, height: 10,
         runs: [{ color: "#FFFFFF", alpha: 1,

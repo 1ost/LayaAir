@@ -855,8 +855,9 @@ function inspectCapabilityLedger(root, policy, code, failures) {
     const blockingIds = [];
     const evidenceFiles = new Set();
     const bridgeOwnership = new Map();
+    const flashSourceOwnership = new Map();
     if (!ledger)
-        return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership };
+        return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership, flashSourceOwnership };
     if (ledger.schema !== policy.capabilitySchema)
         failures.push(`${policy.capabilityLedger}: schema must be ${policy.capabilitySchema}`);
     if (ledger.runtimeIdentity !== policy.runtimeIdentity)
@@ -869,7 +870,7 @@ function inspectCapabilityLedger(root, policy, code, failures) {
         failures.push(`${policy.capabilityLedger}: productionReady is derived and must not be asserted in the ledger`);
     if (!Array.isArray(ledger.capabilities)) {
         failures.push(`${policy.capabilityLedger}: capabilities must be an array`);
-        return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership };
+        return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership, flashSourceOwnership };
     }
     const seen = new Set();
     for (const capability of ledger.capabilities) {
@@ -933,6 +934,17 @@ function inspectCapabilityLedger(root, policy, code, failures) {
                         coveredHashes.push(obligation.sha256);
                     if (typeof obligation?.module === "string" && typeof obligation?.export === "string")
                         expectedSubjects.push({ module: normalize(obligation.module), export: obligation.export });
+                    if (typeof obligation?.module === "string" && typeof obligation?.export === "string") {
+                        const moduleFile = normalize(obligation.module);
+                        if (isWithin(moduleFile, policy.flashApiBridgeRoot)) {
+                            if (!flashSourceOwnership.has(id))
+                                flashSourceOwnership.set(id, new Map());
+                            const modules = flashSourceOwnership.get(id);
+                            if (!modules.has(moduleFile))
+                                modules.set(moduleFile, new Set());
+                            modules.get(moduleFile).add(obligation.export);
+                        }
+                    }
                     if (id.startsWith("api.flash.") && typeof obligation?.module === "string") {
                         const namespace = id.slice("api.flash.".length);
                         const moduleFile = normalize(obligation.module);
@@ -966,7 +978,7 @@ function inspectCapabilityLedger(root, policy, code, failures) {
     for (const id of requiredIds)
         if (!seen.has(id))
             failures.push(`${policy.capabilityLedger}: missing required capability ${id}`);
-    return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership };
+    return { blockingIds, requiredIds, evidenceFiles, bridgeOwnership, flashSourceOwnership };
 }
 
 function inspectHashedPaths(root, value, label, failures) {
@@ -1529,7 +1541,7 @@ export function inspectAuthoredContentAdmission(rootDirectory) {
     if (bridgeReachable && bridgeBlocking.length > 0)
         failures.push(`Flash API bridge is production-reachable while bridge capabilities remain blocking: ${bridgeBlocking.sort().join(", ")}`);
     const ownedBridgeExports = new Map();
-    for (const modules of ledger.bridgeOwnership.values())
+    for (const modules of ledger.flashSourceOwnership.values())
         for (const [file, exports] of modules)
             if (!ownedBridgeExports.has(file))
                 ownedBridgeExports.set(file, new Set(exports));
@@ -1538,6 +1550,14 @@ export function inspectAuthoredContentAdmission(rootDirectory) {
                     ownedBridgeExports.get(file).add(name);
     const reachableBridgeFiles = [...reachable].filter(file => roleForFile(file, policy) === "flash-api"
         && CODE_EXTENSIONS.has(path.extname(file).toLowerCase()));
+    const publicBridgeExports = new Map();
+    for (const modules of ledger.bridgeOwnership.values())
+        for (const [file, exports] of modules)
+            if (!publicBridgeExports.has(file))
+                publicBridgeExports.set(file, new Set(exports));
+            else
+                for (const name of exports)
+                    publicBridgeExports.get(file).add(name);
     for (const file of reachableBridgeFiles) {
         const local = file.slice(policy.flashApiBridgeRoot.length + 1);
         const rootBarrel = !local.includes("/") && /^(?:index|ModuleDef)\.[cm]?[jt]sx?$/i.test(local);
@@ -1551,7 +1571,7 @@ export function inspectAuthoredContentAdmission(rootDirectory) {
                 const declarations = resolvedExport.declarations || [];
                 const owned = declarations.some(declaration => {
                     const ownerFile = relative(root, declaration.getSourceFile().fileName);
-                    return ownedBridgeExports.get(ownerFile)?.has(exported.name);
+                    return publicBridgeExports.get(ownerFile)?.has(exported.name);
                 });
                 if (!owned)
                     failures.push(`${file}: re-exported Flash API ${exported.name} is not owned by an exact namespace obligation`);

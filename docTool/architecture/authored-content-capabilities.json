@@ -82,7 +82,7 @@
     {
       "id": "text.static-glyph-runs",
       "status": "blocking",
-      "blockingReason": "Texture-backed StaticText publication is admitted, but source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported."
+      "blockingReason": "Texture-backed StaticText publication is admitted, but native prefab serialization, source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported."
     },
     {
       "id": "text.dynamic",
@@ -31708,33 +31708,6 @@
             },
             {
               "abstract": false,
-              "kind": "property",
-              "name": "_$authoredSerializedType",
-              "scope": "static",
-              "optional": false,
-              "readonly": true,
-              "signature": "\"Sprite\""
-            },
-            {
-              "abstract": false,
-              "kind": "property",
-              "name": "_$authoredSourceType",
-              "scope": "static",
-              "optional": false,
-              "readonly": true,
-              "signature": "\"StaticText\""
-            },
-            {
-              "abstract": false,
-              "kind": "method",
-              "name": "_$fromAuthoredTextureGlyphs",
-              "scope": "static",
-              "optional": false,
-              "readonly": false,
-              "signature": "(width: number, height: number, glyphs: readonly NativeStaticTextGlyph[]) => StaticText"
-            },
-            {
-              "abstract": false,
               "kind": "method",
               "name": "drawToCanvas",
               "scope": "static",
@@ -31771,10 +31744,10 @@
             }
           ],
           "constructors": [
-            "new (): StaticText"
+            "new (token: typeof STATIC_TEXT_TOKEN): StaticText"
           ],
           "indexSignatures": [],
-          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900",
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2",
           "heritage": [
             {
               "kind": "extends",
@@ -31784,33 +31757,26 @@
         },
         {
           "module": "src/layaAir/flash/text/StaticText.ts",
-          "export": "NativeStaticTextGlyph",
-          "kind": "interface",
-          "signature": "any",
-          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900"
-        },
-        {
-          "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "isFlashStaticText",
           "kind": "function",
           "signature": "(value: unknown) => value is StaticText",
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900"
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
+          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
           "capability": "api.flash.text",
           "covers": [
-            "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900",
             "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
-            "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305"
+            "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
+            "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
           ]
         }
       ]
@@ -33458,7 +33424,7 @@
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Authored device TextField configuration compiler surface",
-          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
+          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
           "capability": "text.authored-device-field-configuration",
           "covers": [
             "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
@@ -33471,42 +33437,42 @@
       "status": "typescript-obligation",
       "obligations": [
         {
-          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "AuthoredStaticGlyphConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
         },
         {
-          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "AuthoredStaticGlyphRunConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
         },
         {
-          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "AuthoredStaticTextConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
         },
         {
-          "module": "src/extensions/authoredContent/runtime/AuthoredStaticText.ts",
+          "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "createAuthoredStaticText",
           "kind": "function",
           "signature": "(configuration: AuthoredStaticTextConfiguration) => StaticText",
-          "sha256": "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Authored texture-backed StaticText configuration compiler surface",
-          "sha256": "d14588f4aaefc113b66f5b842f759f04849e214bfd06e207441c1c3beb4a350b",
+          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
           "capability": "text.authored-static-text-texture-foundation",
           "covers": [
-            "39a4a33c37acdc457e372967099a82dc19dd51ca0f052adf749f1a03bcc0bbd3"
+            "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
           ]
         }
       ]

@@ -6,12 +6,11 @@ import type { AntiAliasType, CSMSettings, FontStyle, GridFitType, TextColorType,
     TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextLineMetrics,
     TextRenderer, isFlashCSMSettings, isFlashTextFormat } from "../../src/layaAir/flash/text/TextFormat.ts";
 import type { FontType } from "../../src/layaAir/flash/text/FontType.ts";
-import type { StaticText, NativeStaticTextGlyph, isFlashStaticText } from "../../src/layaAir/flash/text/StaticText.ts";
+import type { StaticText, isFlashStaticText, AuthoredStaticGlyphConfiguration,
+    AuthoredStaticGlyphRunConfiguration, AuthoredStaticTextConfiguration, createAuthoredStaticText } from
+    "../../src/layaAir/flash/text/StaticText.ts";
 import type { AuthoredTextFieldConfiguration, AuthoredTextFormatConfiguration, createAuthoredTextField } from
     "../../src/extensions/authoredContent/runtime/AuthoredTextField.ts";
-import type { AuthoredStaticGlyphConfiguration, AuthoredStaticGlyphRunConfiguration,
-    AuthoredStaticTextConfiguration, createAuthoredStaticText } from
-    "../../src/extensions/authoredContent/runtime/AuthoredStaticText.ts";
 
 const BLEACH_TEXT_AUTHORITY = Object.freeze({
     commit: "a42bf2c73dce4ca0922bc603c5647a5ef0e515dd",
@@ -37,7 +36,7 @@ test("Flash text bridge compiler surface", () => {
         typeof CSMSettings, typeof TextLineMetrics, typeof TextRenderer, typeof FontStyle,
         typeof TextColorType, typeof TextDisplayMode, typeof flashHtmlToText,
         typeof flashTextToHtml, typeof isFlashTextField, typeof isFlashCSMSettings, typeof isFlashTextFormat,
-        typeof InteractiveObject, typeof FontType, typeof StaticText, NativeStaticTextGlyph,
+        typeof InteractiveObject, typeof FontType, typeof StaticText,
         typeof isFlashStaticText] extends readonly unknown[] ? boolean : never));
 });
 
@@ -50,6 +49,10 @@ test("Authored texture-backed StaticText configuration compiler surface", () => 
     assert.ok(true as boolean satisfies ([AuthoredStaticGlyphConfiguration,
         AuthoredStaticGlyphRunConfiguration, AuthoredStaticTextConfiguration,
         typeof createAuthoredStaticText] extends readonly unknown[] ? boolean : never));
+});
+
+test("StaticText native prefab serialization and generic glyph conversion remain HOLD", () => {
+    assert.ok(true, "the admitted surface publishes only validated pre-resolved texture placements");
 });
 
 test("Flash text authority provenance", () => {

@@ -495,14 +495,14 @@
       "constructorExport": "StaticText",
       "constructorSignature": "typeof StaticText",
       "constructSignatures": [
-        "new (): StaticText"
+        "new (token: typeof STATIC_TEXT_TOKEN): StaticText"
       ],
       "predicateExport": "isFlashStaticText",
       "predicateSignature": "(value: unknown) => value is StaticText",
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "0d97621bd8a47bc9ad5a2f5f810faa54945161a0edafb36ce590406f9423d900"
+      "moduleSha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
     },
     {
       "sourceQName": "flash.text.TextField",

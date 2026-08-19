@@ -88,7 +88,6 @@ for (const [module, exported, kind = "class"] of [
 const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
 const textSubjects = [
     ["src/layaAir/flash/text/StaticText.ts", "StaticText"],
-    ["src/layaAir/flash/text/StaticText.ts", "NativeStaticTextGlyph", "interface"],
     ["src/layaAir/flash/text/StaticText.ts", "isFlashStaticText", "function"],
     ["src/layaAir/flash/text/TextField.ts", "TextField"],
     ["src/layaAir/flash/text/TextField.ts", "flashHtmlToText"],
@@ -156,10 +155,10 @@ if (!authoredStaticTextCapability) {
 Object.assign(authoredStaticTextCapability, {
     status: "typescript-obligation",
     obligations: [
-        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticGlyphConfiguration", "interface"],
-        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticGlyphRunConfiguration", "interface"],
-        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "AuthoredStaticTextConfiguration", "interface"],
-        ["src/extensions/authoredContent/runtime/AuthoredStaticText.ts", "createAuthoredStaticText", "function"],
+        ["src/layaAir/flash/text/StaticText.ts", "AuthoredStaticGlyphConfiguration", "interface"],
+        ["src/layaAir/flash/text/StaticText.ts", "AuthoredStaticGlyphRunConfiguration", "interface"],
+        ["src/layaAir/flash/text/StaticText.ts", "AuthoredStaticTextConfiguration", "interface"],
+        ["src/layaAir/flash/text/StaticText.ts", "createAuthoredStaticText", "function"],
     ].map(([module, exported, kind]) => authoredStaticTextCapability.obligations?.find(
         item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "", sha256: "" }),
@@ -176,7 +175,7 @@ delete authoredStaticTextCapability.blockingReason;
 const broadStaticGlyphCapability = ledger.capabilities.find(item => item.id === "text.static-glyph-runs");
 Object.assign(broadStaticGlyphCapability, {
     status: "blocking",
-    blockingReason: "Texture-backed StaticText publication is admitted, but source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported.",
+    blockingReason: "Texture-backed StaticText publication is admitted, but native prefab serialization, source glyph extraction, embedded-font semantics, outline conversion and generic glyph-run emission remain explicitly unsupported.",
 });
 delete broadStaticGlyphCapability.artifacts;
 delete broadStaticGlyphCapability.obligations;
