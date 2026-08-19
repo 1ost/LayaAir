@@ -22,6 +22,7 @@
     "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
     "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
     "check:authored-content-hashes": "node scripts/updateAuthoredContentHashes.mjs --check",
+    "test:authored-content-hash-updater": "node --test tests/architecture/authoredContentHashUpdater.test.mjs",
     "test:websocket": "node scripts/testWebSocketCore.mjs",
     "test:websocket:types": "tsc -p tests/net/tsconfig.json --pretty false",
     "test:authored-image-publish": "node --experimental-strip-types --test tests/authoredImagePublish/authored-image-publish.test.mjs",

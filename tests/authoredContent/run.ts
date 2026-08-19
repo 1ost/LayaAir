@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { AnimationClip2D } from "../../src/layaAir/laya/components/AnimationClip2D";
 import { Byte } from "../../src/layaAir/laya/utils/Byte";
 import { ILaya } from "../../src/layaAir/ILaya";
@@ -11,6 +14,16 @@ import { XflBundleSourceAdapter } from "../../src/extensions/authoredContent/off
 import { normalizeNeutralAuthoredContent } from "../../src/extensions/authoredContent/core/NeutralAuthoredContentIR";
 import { NativeAnimationClip2DWriter } from "../../src/extensions/authoredContent/emit/NativeAnimationClip2DWriter";
 import { NativeLayaEmitter } from "../../src/extensions/authoredContent/emit/NativeLayaEmitter";
+import {
+    NativeAssetImporterTransaction,
+    NativeAssetTransactionEvent,
+    NativeAssetTransactionHost
+} from "../../src/extensions/authoredContent/emit/NativeAssetImporterTransaction";
+import {
+    captureEditorSubAssetState,
+    EditorSubAssetIdentity,
+    restoreEditorSubAssetState
+} from "../../src/extensions/authoredContent/emit/EditorSubAssetState";
 import {
     prepareNativeLayaHierarchy,
     prepareNativeLayaAuthoredContentBundle,
@@ -151,8 +164,12 @@ function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
                     kind: "image",
                     depth: 7,
                     resourceId: "hero",
+                    x: 4,
+                    y: 5,
                     width: 32,
                     height: 16,
+                    alpha: 0.75,
+                    visible: false,
                     children: []
                 }]
             }]
@@ -164,6 +181,55 @@ function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
 function sha256(bytes: Uint8Array): string {
     return createHash("sha256").update(bytes).digest("hex");
 }
+
+function bitmapNativeHierarchy(): Record<string, any> {
+    return {
+        name: "Root",
+        "_$ver": 1,
+        "_$type": "Sprite",
+        "_$child": [{
+            zOrder: 10,
+            name: "nestedSymbol",
+            "_$type": "Sprite",
+            "_$child": [{
+                skin: "res://hero-asset",
+                zOrder: 7,
+                name: "heroImage",
+                "_$type": "Image",
+                x: 4,
+                y: 5,
+                width: 32,
+                height: 16,
+                alpha: 0.75,
+                visible: false
+            }]
+        }, {
+            zOrder: 20,
+            name: "frontLayer",
+            "_$type": "Sprite"
+        }]
+    };
+}
+
+function bitmapBundlePreparation(payload: Uint8Array) {
+    return {
+        content: normalizeNeutralAuthoredContent(bitmapHierarchyDocument(payload)),
+        hierarchy: bitmapNativeHierarchy(),
+        prefabPath: "bitmap-hierarchy.lh",
+        timelinePath: "bitmap-hierarchy.mc",
+        timelineAssetId: "timeline-asset",
+        timelineBytes: new Uint8Array([7, 8, 9]),
+        resourceAssetIds: new Map([["hero", "hero-asset"]]),
+        resourcePayloads: new Map([["hero", payload]]),
+        sha256
+    };
+}
+
+const nativeTransactionHost: NativeAssetTransactionHost = {
+    fs: fs as unknown as NativeAssetTransactionHost["fs"],
+    path,
+    sha256
+};
 
 async function main(): Promise<void> {
     await test("XFL bundle adapter validates and scales immutable manifest content", () => {
@@ -267,39 +333,8 @@ async function main(): Promise<void> {
     await test("canonical native bundle authenticates resource closure and emits deterministic .lh bytes", async () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const content = normalizeNeutralAuthoredContent(bitmapHierarchyDocument(payload));
-        const hierarchy = {
-            name: "Root",
-            "_$ver": 1,
-            "_$type": "Sprite",
-            "_$child": [{
-                zOrder: 10,
-                name: "nestedSymbol",
-                "_$type": "Sprite",
-                "_$child": [{
-                    skin: "res://hero-asset",
-                    zOrder: 7,
-                    name: "heroImage",
-                    "_$type": "Image",
-                    width: 32,
-                    height: 16
-                }]
-            }, {
-                zOrder: 20,
-                name: "frontLayer",
-                "_$type": "Sprite"
-            }]
-        };
-        const preparation = {
-            content,
-            hierarchy,
-            prefabPath: "bitmap-hierarchy.lh",
-            timelinePath: "bitmap-hierarchy.mc",
-            timelineAssetId: "timeline-asset",
-            timelineBytes: new Uint8Array([7, 8, 9]),
-            resourceAssetIds: new Map([["hero", "hero-asset"]]),
-            resourcePayloads: new Map([["hero", payload]]),
-            sha256
-        };
+        const preparation = bitmapBundlePreparation(payload);
+        const hierarchy = preparation.hierarchy;
         const first = await prepareNativeLayaAuthoredContentBundle(preparation);
         const second = await prepareNativeLayaAuthoredContentBundle(preparation);
         const firstPrefab = first.files.find(file => file.kind === "prefab")!;
@@ -317,37 +352,339 @@ async function main(): Promise<void> {
             () => prepareNativeLayaAuthoredContentBundle(wrongPayload),
             "AUTHORED_CONTENT_RESOURCE_HASH_MISMATCH"
         );
+
+        const image = (hierarchy._$child[0] as any)._$child[0];
+        const driftCases = [
+            ["x", 400, "AUTHORED_CONTENT_NATIVE_X_MISMATCH"],
+            ["y", 500, "AUTHORED_CONTENT_NATIVE_Y_MISMATCH"],
+            ["width", 3200, "AUTHORED_CONTENT_NATIVE_WIDTH_MISMATCH"],
+            ["height", 1600, "AUTHORED_CONTENT_NATIVE_HEIGHT_MISMATCH"],
+            ["alpha", 0.25, "AUTHORED_CONTENT_NATIVE_ALPHA_MISMATCH"],
+            ["visible", true, "AUTHORED_CONTENT_NATIVE_VISIBLE_MISMATCH"]
+        ] as const;
+        for (const [field, driftedValue, diagnostic] of driftCases) {
+            const driftedHierarchy = JSON.parse(JSON.stringify(hierarchy));
+            driftedHierarchy._$child[0]._$child[0][field] = driftedValue;
+            assertThrows(
+                () => prepareNativeLayaHierarchy(content, driftedHierarchy, "timeline-asset", new Map([["hero", "hero-asset"]])),
+                diagnostic
+            );
+            const driftedRoot = JSON.parse(JSON.stringify(hierarchy));
+            driftedRoot[field] = field === "visible" ? false : field === "alpha" ? 0.5 : 1;
+            assertThrows(
+                () => prepareNativeLayaHierarchy(content, driftedRoot, "timeline-asset", new Map([["hero", "hero-asset"]])),
+                diagnostic
+            );
+        }
+
+        const allTransformsDrifted = JSON.parse(JSON.stringify(hierarchy));
+        Object.assign(allTransformsDrifted._$child[0]._$child[0], {
+            x: image.x + 1,
+            y: image.y + 1,
+            width: image.width + 1,
+            height: image.height + 1,
+            alpha: 0.5,
+            visible: !image.visible
+        });
+        assertThrows(
+            () => prepareNativeLayaHierarchy(content, allTransformsDrifted, "timeline-asset", new Map([["hero", "hero-asset"]])),
+            "AUTHORED_CONTENT_NATIVE_X_MISMATCH"
+        );
+
+        const nullDefaultTransform = JSON.parse(JSON.stringify(hierarchy));
+        nullDefaultTransform._$child[1].x = null;
+        assertThrows(
+            () => prepareNativeLayaHierarchy(content, nullDefaultTransform, "timeline-asset", new Map([["hero", "hero-asset"]])),
+            "AUTHORED_CONTENT_NATIVE_X_MISMATCH"
+        );
     });
 
     await test("native bundle transaction stages all files before commit and rolls back failures", async () => {
-        const files = [
-            { path: "a.lh", kind: "prefab" as const, bytes: new Uint8Array([1]) },
-            { path: "b.mc", kind: "timeline" as const, bytes: new Uint8Array([2]) }
-        ];
+        const bundle = await prepareNativeLayaAuthoredContentBundle(
+            bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+        );
         const successEvents: string[] = [];
         await writeNativeLayaAuthoredContentTransaction(
-            { schema: "laya-native-authored-content-bundle@1", files },
+            bundle,
             {
                 async stage(path) { successEvents.push(`stage:${path}`); },
                 async commit() { successEvents.push("commit"); },
                 async rollback() { successEvents.push("rollback"); }
             }
         );
-        assert(successEvents.join(",") === "stage:a.lh,stage:b.mc,commit", "transaction committed before complete staging");
+        assert(
+            successEvents.join(",") === "stage:bitmap-hierarchy.lh,stage:bitmap-hierarchy.mc,stage:resources/hero.png,commit",
+            "transaction committed before complete staging"
+        );
 
         const failureEvents: string[] = [];
         await assertRejects(() => writeNativeLayaAuthoredContentTransaction(
-            { schema: "laya-native-authored-content-bundle@1", files },
+            bundle,
             {
                 async stage(path) {
                     failureEvents.push(`stage:${path}`);
-                    if (path === "b.mc") throw new Error("stage failure");
+                    if (path === "bitmap-hierarchy.mc") throw new Error("stage failure");
                 },
                 async commit() { failureEvents.push("commit"); },
                 async rollback() { failureEvents.push("rollback"); }
             }
         ), "stage failure");
-        assert(failureEvents.join(",") === "stage:a.lh,stage:b.mc,rollback", "failed transaction was not rolled back without commit");
+        assert(
+            failureEvents.join(",") === "stage:bitmap-hierarchy.lh,stage:bitmap-hierarchy.mc,rollback",
+            "failed transaction was not rolled back without commit"
+        );
+    });
+
+    await test("post-prepare byte mutation is rejected before any native file is staged", async () => {
+        for (const kind of ["prefab", "timeline", "image"] as const) {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const file = bundle.files.find(candidate => candidate.kind === kind)!;
+            file.bytes[0] ^= 0xff;
+            let staged = 0;
+            await assertRejects(
+                () => writeNativeLayaAuthoredContentTransaction(bundle, {
+                    async stage() { staged++; },
+                    async commit() { throw new Error("commit must not run"); },
+                    async rollback() { throw new Error("rollback must not run"); }
+                }),
+                "AUTHORED_CONTENT_NATIVE_BUNDLE_BYTES_MUTATED"
+            );
+            assert(staged === 0, `${kind} mutation staged unauthenticated bytes`);
+        }
+    });
+
+    await test("real importer transaction restores every target after each commit-boundary failure", async () => {
+        const boundaries: NativeAssetTransactionEvent[] = [
+            "before-target-verify",
+            "after-backup",
+            "before-install",
+            "after-install"
+        ];
+        for (const boundary of boundaries) {
+            const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-boundary-"));
+            try {
+                const bundle = await prepareNativeLayaAuthoredContentBundle(
+                    bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+                );
+                const targets = new Map(bundle.files.map(file => [
+                    file.path,
+                    path.join(root, "outputs", ...file.path.split("/"))
+                ]));
+                const originals = new Map<string, Uint8Array>();
+                let value = 40;
+                for (const target of targets.values()) {
+                    const bytes = new Uint8Array([value++]);
+                    originals.set(target, bytes);
+                    fs.mkdirSync(path.dirname(target), { recursive: true });
+                    fs.writeFileSync(target, bytes);
+                }
+                const transaction = new NativeAssetImporterTransaction(
+                    path.join(root, "temp"),
+                    targets,
+                    context => {
+                        if (context.event === boundary && context.relativePath === "bitmap-hierarchy.mc")
+                            throw new Error(`injected ${boundary}`);
+                    },
+                    nativeTransactionHost
+                );
+                await assertRejects(
+                    () => writeNativeLayaAuthoredContentTransaction(bundle, transaction),
+                    `injected ${boundary}`
+                );
+                for (const [target, expected] of originals) {
+                    const actual = fs.readFileSync(target);
+                    assert(actual.length === expected.length && actual.every((byte, index) => byte === expected[index]),
+                        `${boundary} left a partial target at ${target}`);
+                }
+                assert(!fs.existsSync(transaction.recoveryPath), `${boundary} left recovery evidence after complete rollback`);
+            }
+            finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
+        }
+    });
+
+    await test("real importer rollback is best-effort and retains aggregate recovery evidence", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-rollback-"));
+        try {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const targets = new Map(bundle.files.map(file => [
+                file.path,
+                path.join(root, "outputs", ...file.path.split("/"))
+            ]));
+            for (const target of targets.values()) {
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, new Uint8Array([9]));
+            }
+            const rollbackEvents: string[] = [];
+            const transaction = new NativeAssetImporterTransaction(
+                path.join(root, "temp"),
+                targets,
+                context => {
+                    if (context.event.startsWith("before-rollback"))
+                        rollbackEvents.push(`${context.event}:${context.relativePath}`);
+                    if (context.event === "after-install" && context.relativePath === "bitmap-hierarchy.mc")
+                        throw new Error("injected commit failure");
+                    if (context.event === "before-rollback-remove" && context.relativePath === "bitmap-hierarchy.mc")
+                        throw new Error("injected rollback removal failure");
+                },
+                nativeTransactionHost
+            );
+            let received: any;
+            try {
+                await writeNativeLayaAuthoredContentTransaction(bundle, transaction);
+            }
+            catch (error) {
+                received = error;
+            }
+            assert(received?.message.includes("AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_FAILED"),
+                "rollback failure did not surface as aggregate recovery failure");
+            assert(Array.isArray(received.errors) && received.errors.length === 2,
+                "original and rollback failures were not both retained");
+            assert(rollbackEvents.includes("before-rollback-remove:bitmap-hierarchy.lh"),
+                "rollback aborted instead of continuing to the earlier installed target");
+            assert(rollbackEvents.includes("before-rollback-restore:bitmap-hierarchy.lh"),
+                "rollback aborted instead of attempting every backup restore");
+            assert(fs.readFileSync(targets.get("bitmap-hierarchy.lh")!)[0] === 9,
+                "unaffected target was not restored after another rollback action failed");
+            assert(fs.existsSync(transaction.recoveryPath), "incomplete rollback did not retain recovery evidence");
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    await test("real importer fails closed when a target is recreated during commit", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-recreate-"));
+        try {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const targets = new Map(bundle.files.map(file => [
+                file.path,
+                path.join(root, "outputs", ...file.path.split("/"))
+            ]));
+            for (const target of targets.values()) {
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, new Uint8Array([7]));
+            }
+            const recreated = new Uint8Array([0xde, 0xad]);
+            const transaction = new NativeAssetImporterTransaction(
+                path.join(root, "temp"),
+                targets,
+                context => {
+                    if (context.event === "before-install" && context.relativePath === "bitmap-hierarchy.mc")
+                        fs.writeFileSync(context.target, recreated, { flag: "wx" });
+                },
+                nativeTransactionHost
+            );
+            let received: any;
+            try {
+                await writeNativeLayaAuthoredContentTransaction(bundle, transaction);
+            }
+            catch (error) {
+                received = error;
+            }
+            assert(received?.message.includes("AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_FAILED"),
+                "target recreation did not fail with retained recovery authority");
+            assert(fs.readFileSync(targets.get("bitmap-hierarchy.lh")!)[0] === 7,
+                "target recreation prevented rollback of an earlier committed file");
+            const current = fs.readFileSync(targets.get("bitmap-hierarchy.mc")!);
+            assert(current.length === recreated.length && current.every((byte, index) => byte === recreated[index]),
+                "rollback overwrote or deleted a concurrently recreated target");
+            assert(fs.existsSync(transaction.recoveryPath), "target recreation did not retain backup recovery evidence");
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    await test("real importer rejects target byte drift after the initial snapshot", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-drift-"));
+        try {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const targets = new Map(bundle.files.map(file => [
+                file.path,
+                path.join(root, "outputs", ...file.path.split("/"))
+            ]));
+            for (const target of targets.values()) {
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, new Uint8Array([6]));
+            }
+            const transaction = new NativeAssetImporterTransaction(
+                path.join(root, "temp"),
+                targets,
+                context => {
+                    if (context.event === "before-target-verify" && context.relativePath === "bitmap-hierarchy.mc")
+                        fs.writeFileSync(context.target, new Uint8Array([8]));
+                },
+                nativeTransactionHost
+            );
+            await assertRejects(
+                () => writeNativeLayaAuthoredContentTransaction(bundle, transaction),
+                "AUTHORED_CONTENT_NATIVE_TRANSACTION_FILE_AUTHORITY_MISMATCH"
+            );
+            assert(fs.readFileSync(targets.get("bitmap-hierarchy.lh")!)[0] === 6,
+                "target drift prevented rollback of an earlier committed file");
+            assert(fs.readFileSync(targets.get("bitmap-hierarchy.mc")!)[0] === 8,
+                "target drift was overwritten instead of failing closed");
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    await test("failed import can restore exact prior editor identities and bytes", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-editor-state-restore-"));
+        try {
+            const outputRoot = path.join(root, "outputs");
+            let registered: EditorSubAssetIdentity[] = [
+                { id: "prefab", fileName: "old.lh", fullPath: path.join(outputRoot, "old.lh") },
+                { id: "timeline", fileName: "old.mc", fullPath: path.join(outputRoot, "old.mc") },
+            ];
+            fs.mkdirSync(outputRoot, { recursive: true });
+            fs.writeFileSync(registered[0].fullPath, new Uint8Array([1, 2]));
+            fs.writeFileSync(registered[1].fullPath, new Uint8Array([3, 4]));
+            const snapshot = await captureEditorSubAssetState(registered, nativeTransactionHost);
+            const library = {
+                clearLibrary() {
+                    for (const asset of registered)
+                        fs.rmSync(asset.fullPath, { force: true });
+                    registered = [];
+                },
+                createSubAsset(fileName: string, id?: string) {
+                    const asset = { id: id!, fileName, fullPath: path.join(outputRoot, ...fileName.split("/")) };
+                    registered.push(asset);
+                    return asset;
+                }
+            };
+
+            library.clearLibrary();
+            const partial = library.createSubAsset("new.lh", "prefab");
+            fs.writeFileSync(partial.fullPath, new Uint8Array([9]));
+            await restoreEditorSubAssetState(
+                library,
+                snapshot,
+                path.join(root, "editor-recovery"),
+                nativeTransactionHost
+            );
+            assert(registered.map(asset => `${asset.id}:${asset.fileName}`).join(",") === "prefab:old.lh,timeline:old.mc",
+                "editor subasset identities were not restored exactly");
+            assert([...fs.readFileSync(path.join(outputRoot, "old.lh"))].join(",") === "1,2",
+                "prior prefab bytes were not restored");
+            assert([...fs.readFileSync(path.join(outputRoot, "old.mc"))].join(",") === "3,4",
+                "prior timeline bytes were not restored");
+            assert(!fs.existsSync(partial.fullPath), "partial new editor output survived state restoration");
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
     });
 
     await test("normalization collisions are rejected", () => {

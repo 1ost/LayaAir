@@ -4,6 +4,12 @@ import path from "node:path";
 import ts from "typescript";
 import { logicalCompilerSignature } from "./checkAuthoredContentAdmission.mjs";
 
+const supportedArguments = new Set(["--check"]);
+for (const argument of process.argv.slice(2)) {
+    if (!supportedArguments.has(argument))
+        throw new Error(`Unsupported argument: ${argument}`);
+}
+const checkOnly = process.argv.includes("--check");
 const root = path.resolve(import.meta.dirname, "..");
 const ledgerPath = path.join(root, "docTool/architecture/authored-content-capabilities.json");
 const runtimeTypeAuthorityRelative = "docTool/architecture/flash-runtime-type-predicates.json";

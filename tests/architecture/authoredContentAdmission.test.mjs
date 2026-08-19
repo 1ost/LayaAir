@@ -54,7 +54,7 @@ function fixture(t, changes = {}) {
                 build: "npm run check:authored-content-admission && npm run verify:authored-content-capabilities && node scripts/buildEngine.mjs",
                 "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
                 "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-                "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+                "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
             },
         }, null, 2),
         ...changes,
@@ -820,7 +820,7 @@ test("package exports, dependency fields, and transitive production reachability
                     build: "npm run check:authored-content-admission && npm run verify:authored-content-capabilities && node scripts/buildEngine.mjs",
                     "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
                     "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-                    "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+                    "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
                 },
                 exports: { ".": `./${file}` },
             };
@@ -834,7 +834,7 @@ test("package exports, dependency fields, and transitive production reachability
                 build: "npm run check:authored-content-admission && npm run verify:authored-content-capabilities && node scripts/buildEngine.mjs",
                 "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
                 "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-                "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+                "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
             },
             exports: { ".": "./src/layaAir/internal/entry.js" },
         };
@@ -855,7 +855,7 @@ test("package exports, dependency fields, and transitive production reachability
                     build: "npm run check:authored-content-admission && npm run verify:authored-content-capabilities && node scripts/buildEngine.mjs",
                     "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
                     "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-                    "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+                    "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
                 },
                 exports,
             };
@@ -1027,6 +1027,17 @@ test("mandatory scripts cannot be detached from the normal build", async t => {
         };
         failure(fixture(t, { "package.json": JSON.stringify(manifest) }), /build must be exactly/);
     });
+    await t.test("capability verification cannot bypass expected generated hashes", t => {
+        const manifest = {
+            scripts: {
+                build: "npm run check:authored-content-admission && npm run verify:authored-content-capabilities && node scripts/buildEngine.mjs",
+                "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
+                "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
+                "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+            },
+        };
+        failure(fixture(t, { "package.json": JSON.stringify(manifest) }), /mandatory verify:authored-content-capabilities/);
+    });
     await t.test("echoed or swallowed gates cannot imitate wiring", t => {
         for (const build of [
             "echo npm run check:authored-content-admission && node scripts/buildEngine.mjs",
@@ -1037,7 +1048,7 @@ test("mandatory scripts cannot be detached from the normal build", async t => {
                     build,
                     "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
                     "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-                    "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+                    "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
                 },
             };
             failure(fixture(t, { "package.json": JSON.stringify(manifest) }), /build must be exactly/);

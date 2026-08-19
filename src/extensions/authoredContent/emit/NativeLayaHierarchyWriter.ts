@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto";
 import {
     NeutralAuthoredContentIR,
     NeutralAuthoredNode
@@ -87,10 +88,16 @@ export async function prepareNativeLayaAuthoredContentBundle(
     const paths = files.map(file => file.path);
     if (new Set(paths.map(path => path.toLocaleLowerCase("en-US"))).size !== paths.length)
         fail("AUTHORED_CONTENT_NATIVE_OUTPUT_COLLISION", "Native output paths collide.");
-    return Object.freeze({
+    const bundle = Object.freeze({
         schema: "laya-native-authored-content-bundle@1" as const,
         files: Object.freeze(files.map(file => Object.freeze(file)))
     });
+    sealedBundleAuthorities.set(bundle, Object.freeze(bundle.files.map(file => Object.freeze({
+        path: file.path,
+        byteLength: file.bytes.byteLength,
+        sha256: hashBytes(file.bytes)
+    }))));
+    return bundle;
 }
 
 /** Stages every byte before commit and always rolls back an incomplete transaction. */
@@ -101,6 +108,20 @@ export async function writeNativeLayaAuthoredContentTransaction(
     if (!transaction || typeof transaction.stage !== "function"
         || typeof transaction.commit !== "function" || typeof transaction.rollback !== "function")
         fail("AUTHORED_CONTENT_NATIVE_TRANSACTION_REQUIRED", "A complete transactional output host is required.");
+    const authority = sealedBundleAuthorities.get(bundle);
+    if (!authority || authority.length !== bundle.files.length)
+        fail("AUTHORED_CONTENT_NATIVE_BUNDLE_AUTHORITY_REQUIRED", "The native bundle was not prepared by the authenticated writer.");
+    for (let index = 0; index < bundle.files.length; index++) {
+        const file = bundle.files[index];
+        const expected = authority[index];
+        if (file.path !== expected.path || file.bytes.byteLength !== expected.byteLength
+            || hashBytes(file.bytes) !== expected.sha256) {
+            fail(
+                "AUTHORED_CONTENT_NATIVE_BUNDLE_BYTES_MUTATED",
+                `Prepared native file '${expected.path}' drifted before staging.`
+            );
+        }
+    }
     let committed = false;
     try {
         for (const file of bundle.files)
@@ -113,8 +134,11 @@ export async function writeNativeLayaAuthoredContentTransaction(
             try {
                 await transaction.rollback();
             }
-            catch {
-                // Preserve the original staging/commit failure as the authority.
+            catch (rollbackError) {
+                throw aggregateFailure(
+                    "AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_FAILED",
+                    [error, rollbackError]
+                );
             }
         }
         throw error;
@@ -164,6 +188,12 @@ function validateHierarchyNode(
     const expectedName = source.name ?? source.linkage;
     if (value.name !== expectedName)
         fail("AUTHORED_CONTENT_NATIVE_INSTANCE_NAME_MISMATCH", `${path} expected instance '${expectedName}'.`);
+    validateEffectiveNodeField(source, value, path, "x", 0);
+    validateEffectiveNodeField(source, value, path, "y", 0);
+    validateEffectiveNodeField(source, value, path, "width", 0);
+    validateEffectiveNodeField(source, value, path, "height", 0);
+    validateEffectiveNodeField(source, value, path, "alpha", 1);
+    validateEffectiveNodeField(source, value, path, "visible", true);
     if (!root) {
         if (value.zOrder !== undefined && value.zOrder !== source.depth)
             fail("AUTHORED_CONTENT_NATIVE_DEPTH_MISMATCH", `${path} expected zOrder ${source.depth}; received ${String(value.zOrder)}.`);
@@ -186,6 +216,41 @@ function validateHierarchyNode(
             fail("AUTHORED_CONTENT_NATIVE_CHILD_INVALID", `${path}._$child[${index}] is not a hierarchy node.`);
         validateHierarchyNode(child, childValue as Record<string, unknown>, resourceAssetIds, `${path}/${child.name ?? child.linkage}`, false);
     });
+}
+
+function hashBytes(value: Uint8Array): string {
+    return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function aggregateFailure(message: string, errors: ReadonlyArray<unknown>): Error & { readonly errors: ReadonlyArray<unknown> } {
+    return Object.assign(new Error(message), { errors: Object.freeze([...errors]) });
+}
+
+interface SealedBundleFileAuthority {
+    readonly path: string;
+    readonly byteLength: number;
+    readonly sha256: string;
+}
+
+const sealedBundleAuthorities = new WeakMap<NativeAuthoredContentBundle, ReadonlyArray<SealedBundleFileAuthority>>();
+
+type AuthenticatedNodeField = "x" | "y" | "width" | "height" | "alpha" | "visible";
+
+function validateEffectiveNodeField(
+    source: NeutralAuthoredNode,
+    value: Record<string, unknown>,
+    path: string,
+    field: AuthenticatedNodeField,
+    nativeDefault: number | boolean
+): void {
+    const expected = source[field] ?? nativeDefault;
+    const received = value[field] === undefined ? nativeDefault : value[field];
+    if (received !== expected) {
+        fail(
+            `AUTHORED_CONTENT_NATIVE_${field.toUpperCase()}_MISMATCH`,
+            `${path} expected ${field} ${String(expected)}; received ${String(received)}.`
+        );
+    }
 }
 
 function assertExactKeys<T>(map: ReadonlyMap<string, T>, expected: ReadonlyArray<string>, label: string): void {

@@ -1496,7 +1496,7 @@ function inspectMandatoryScripts(root, failures) {
     const scripts = manifest.scripts;
     const check = "node scripts/checkAuthoredContentAdmission.mjs";
     const test = "node --test tests/architecture/authoredContentAdmission.test.mjs";
-    const verify = "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence";
+    const verify = "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence";
     if (scripts?.["check:authored-content-admission"] !== check)
         failures.push(`${ROOT_PACKAGE}: mandatory check:authored-content-admission script must be '${check}'`);
     if (scripts?.["test:authored-content-admission"] !== test)

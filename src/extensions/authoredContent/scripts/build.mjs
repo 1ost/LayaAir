@@ -46,7 +46,9 @@ const expectedOutputs = [
     "core/NeutralAuthoredContentIR.js",
     "core/SourceAdapter.js",
     "editorResources/authored-content-source.svg",
+    "emit/EditorSubAssetState.js",
     "emit/NativeAnimationClip2DWriter.js",
+    "emit/NativeAssetImporterTransaction.js",
     "emit/NativeLayaHierarchyWriter.js",
     "emit/NativeLayaEmitter.js",
     "package.json"
