@@ -456,6 +456,49 @@ Object.assign(browserCapability, {
     }],
 });
 delete browserCapability.blockingReason;
+const authoredBitmapHierarchySubjects = {
+    normalize: ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "normalizeNeutralAuthoredContent", "function"],
+    parseXml: ["src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts", "parseSwfAuthoredContentXml", "function"],
+    prepareHierarchy: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "prepareNativeLayaHierarchy", "function"],
+    canonicalHierarchy: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "canonicalLayaHierarchyBytes", "function"],
+    prepareBundle: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "prepareNativeLayaAuthoredContentBundle", "function"],
+    writeTransaction: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "writeNativeLayaAuthoredContentTransaction", "function"],
+};
+const admitAuthoredBitmapHierarchy = (id, keys) => {
+    const capability = ledger.capabilities.find(item => item.id === id);
+    if (!capability) throw new Error(`Missing authored-content capability ${id}`);
+    Object.assign(capability, {
+        status: "typescript-obligation",
+        obligations: keys.map(key => {
+            const [module, exported, kind] = authoredBitmapHierarchySubjects[key];
+            return capability.obligations?.find(item => item.module === module && item.export === exported)
+                || { module, export: exported, kind, signature: "", sha256: "" };
+        }),
+        evidence: [{
+            path: "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+            test: "Authenticated bitmap hierarchy compiler surface",
+            sha256: "",
+            capability: id,
+            covers: [],
+        }],
+    });
+    delete capability.blockingReason;
+};
+admitAuthoredBitmapHierarchy("library.symbol-linkage", ["normalize", "prepareHierarchy"]);
+admitAuthoredBitmapHierarchy("library.imported-assets", ["parseXml", "prepareBundle"]);
+admitAuthoredBitmapHierarchy("display.hierarchy", ["normalize", "prepareHierarchy"]);
+admitAuthoredBitmapHierarchy("display.instance-name", ["normalize", "prepareHierarchy"]);
+admitAuthoredBitmapHierarchy("media.bitmap", ["parseXml", "prepareBundle"]);
+admitAuthoredBitmapHierarchy("native.prefab", ["prepareHierarchy", "canonicalHierarchy", "prepareBundle", "writeTransaction"]);
+
+Object.assign(ledger.capabilities.find(item => item.id === "display.place-remove-depth"), {
+    status: "blocking",
+    blockingReason: "Authenticated static placement depth is supported, but frame-driven place and remove semantics are not implemented."
+});
+Object.assign(ledger.capabilities.find(item => item.id === "timeline.nested-symbol"), {
+    status: "blocking",
+    blockingReason: "Static nested symbol hierarchy is supported, but independently clocked nested timeline playback is not implemented."
+});
 
 if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters.GradientBevelFilter")) {
     runtimeTypeAuthority.types.push({

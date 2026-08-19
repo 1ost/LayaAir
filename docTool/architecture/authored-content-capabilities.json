@@ -11,28 +11,136 @@
     },
     {
       "id": "library.symbol-linkage",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "normalizeNeutralAuthoredContent",
+          "kind": "function",
+          "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
+          "sha256": "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaHierarchy",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "library.symbol-linkage",
+          "covers": [
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848",
+            "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+          ]
+        }
+      ]
     },
     {
       "id": "library.imported-assets",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts",
+          "export": "parseSwfAuthoredContentXml",
+          "kind": "function",
+          "signature": "(text: string, settings?: AuthoredContentImportSettings) => NeutralAuthoredContentIR",
+          "sha256": "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaAuthoredContentBundle",
+          "kind": "function",
+          "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "library.imported-assets",
+          "covers": [
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+          ]
+        }
+      ]
     },
     {
       "id": "display.hierarchy",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "normalizeNeutralAuthoredContent",
+          "kind": "function",
+          "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
+          "sha256": "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaHierarchy",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "display.hierarchy",
+          "covers": [
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848",
+            "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+          ]
+        }
+      ]
     },
     {
       "id": "display.place-remove-depth",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "Authenticated static placement depth is supported, but frame-driven place and remove semantics are not implemented."
     },
     {
       "id": "display.instance-name",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "normalizeNeutralAuthoredContent",
+          "kind": "function",
+          "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
+          "sha256": "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaHierarchy",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "display.instance-name",
+          "covers": [
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848",
+            "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f"
+          ]
+        }
+      ]
     },
     {
       "id": "geometry.shape-path",
@@ -56,8 +164,35 @@
     },
     {
       "id": "media.bitmap",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts",
+          "export": "parseSwfAuthoredContentXml",
+          "kind": "function",
+          "signature": "(text: string, settings?: AuthoredContentImportSettings) => NeutralAuthoredContentIR",
+          "sha256": "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaAuthoredContentBundle",
+          "kind": "function",
+          "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "media.bitmap",
+          "covers": [
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+          ]
+        }
+      ]
     },
     {
       "id": "media.font",
@@ -259,7 +394,7 @@
     {
       "id": "timeline.nested-symbol",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "Static nested symbol hierarchy is supported, but independently clocked nested timeline playback is not implemented."
     },
     {
       "id": "timeline.morph-ratio",
@@ -318,8 +453,48 @@
     },
     {
       "id": "native.prefab",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaHierarchy",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "canonicalLayaHierarchyBytes",
+          "kind": "function",
+          "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaAuthoredContentBundle",
+          "kind": "function",
+          "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "writeNativeLayaAuthoredContentTransaction",
+          "kind": "function",
+          "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
+          "sha256": "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredBitmapHierarchyEvidence.test.ts",
+          "test": "Authenticated bitmap hierarchy compiler surface",
+          "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
+          "capability": "native.prefab",
+          "covers": [
+            "6b60cce4c22f7458b11ef7387350cd230b48464bfefa64d03a53118580238848"
+          ]
+        }
+      ]
     },
     {
       "id": "native.scene",

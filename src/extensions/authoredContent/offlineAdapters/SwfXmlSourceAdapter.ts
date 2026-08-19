@@ -15,33 +15,45 @@ export class SwfXmlSourceAdapter implements SourceAdapter {
     }
 
     parseText(text: string, settings: AuthoredContentImportSettings = {}): NeutralAuthoredContentIR {
-        rejectIgnoredLexicalContent(text);
-        let documentElement: Laya.XML;
-        try {
-            documentElement = new Laya.XML(text);
-        }
-        catch (error) {
-            throw new Error(`AUTHORED_CONTENT_SWF_XML_INVALID: ${String(error)}`);
-        }
-        if (documentElement.name !== "swf-authored-content" || documentElement.getAttrString("version") !== "1")
-            throw new Error("AUTHORED_CONTENT_SWF_XML_SCHEMA_UNSUPPORTED: Expected swf-authored-content version 1.");
-        assertElementGrammar(documentElement, ["version", "id"], ["node", "timeline"], "swf-authored-content");
-        const nodeElement = exactlyOneChild(documentElement, "node");
-        const timelineElement = exactlyOneChild(documentElement, "timeline");
-        const content = {
-            schema: NEUTRAL_AUTHORED_CONTENT_SCHEMA,
-            documentId: requiredAttribute(documentElement, "id"),
-            root: parseNode(nodeElement),
-            timeline: parseTimeline(timelineElement)
-        };
-        return normalizeNeutralAuthoredContent(content, settings.scale ?? 1);
+        return parseSwfAuthoredContentXml(text, settings);
     }
+}
+
+/** Public, hash-bound offline converter seam used by the LayaAir IDE importer. */
+export function parseSwfAuthoredContentXml(
+    text: string,
+    settings: AuthoredContentImportSettings = {}
+): NeutralAuthoredContentIR {
+    rejectIgnoredLexicalContent(text);
+    let documentElement: Laya.XML;
+    try {
+        documentElement = new Laya.XML(text);
+    }
+    catch (error) {
+        throw new Error(`AUTHORED_CONTENT_SWF_XML_INVALID: ${String(error)}`);
+    }
+    if (documentElement.name !== "swf-authored-content" || documentElement.getAttrString("version") !== "1")
+        throw new Error("AUTHORED_CONTENT_SWF_XML_SCHEMA_UNSUPPORTED: Expected swf-authored-content version 1.");
+    assertElementGrammar(documentElement, ["version", "id"], ["resources", "node", "timeline"], "swf-authored-content");
+    const nodeElement = exactlyOneChild(documentElement, "node");
+    const timelineElement = exactlyOneChild(documentElement, "timeline");
+    const resourceContainers = documentElement.elements("resources");
+    if (resourceContainers.length > 1)
+        throw new Error(`AUTHORED_CONTENT_SWF_XML_ELEMENT_COUNT: Expected at most one resources; received ${resourceContainers.length}.`);
+    const content = {
+        schema: NEUTRAL_AUTHORED_CONTENT_SCHEMA,
+        documentId: requiredAttribute(documentElement, "id"),
+        resources: resourceContainers.length === 0 ? [] : parseResources(resourceContainers[0]),
+        root: parseNode(nodeElement),
+        timeline: parseTimeline(timelineElement)
+    };
+    return normalizeNeutralAuthoredContent(content, settings.scale ?? 1);
 }
 
 function parseNode(element: Laya.XML): Record<string, unknown> {
     assertElementGrammar(
         element,
-        ["linkage", "kind", "name", "x", "y", "width", "height", "alpha", "visible", "text", "fontSize", "color"],
+        ["linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "text", "fontSize", "color", "resourceId"],
         ["node"],
         "node"
     );
@@ -52,6 +64,7 @@ function parseNode(element: Laya.XML): Record<string, unknown> {
         children: element.elements("node").map(parseNode)
     };
     copyStringAttribute(element, node, "name");
+    copyNumberAttribute(element, node, "depth");
     copyNumberAttribute(element, node, "x");
     copyNumberAttribute(element, node, "y");
     copyNumberAttribute(element, node, "width");
@@ -61,7 +74,27 @@ function parseNode(element: Laya.XML): Record<string, unknown> {
     copyStringAttribute(element, node, "text");
     copyNumberAttribute(element, node, "fontSize");
     copyStringAttribute(element, node, "color");
+    copyStringAttribute(element, node, "resourceId");
     return node;
+}
+
+function parseResources(element: Laya.XML): ReadonlyArray<Record<string, unknown>> {
+    assertElementGrammar(element, [], ["resource"], "resources");
+    return element.elements("resource").map((resource, index) => {
+        assertElementGrammar(
+            resource,
+            ["id", "sourcePath", "mediaType", "byteLength", "sha256"],
+            [],
+            `resources/resource[${index}]`
+        );
+        return {
+            id: requiredAttribute(resource, "id"),
+            sourcePath: requiredAttribute(resource, "sourcePath"),
+            mediaType: requiredAttribute(resource, "mediaType"),
+            byteLength: numberAttribute(resource, "byteLength"),
+            sha256: requiredAttribute(resource, "sha256")
+        };
+    });
 }
 
 function parseTimeline(element: Laya.XML): Record<string, unknown> {

@@ -47,6 +47,7 @@ const expectedOutputs = [
     "core/SourceAdapter.js",
     "editorResources/authored-content-source.svg",
     "emit/NativeAnimationClip2DWriter.js",
+    "emit/NativeLayaHierarchyWriter.js",
     "emit/NativeLayaEmitter.js",
     "package.json"
 ].sort();

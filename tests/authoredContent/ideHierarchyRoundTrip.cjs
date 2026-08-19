@@ -14,11 +14,18 @@ const ENGINE_TYPE_BINDINGS_MODULE = 93471;
 const ENGINE_TYPES_MODULE = 44898;
 const SERIALIZE_UTIL_MODULE = 78276;
 
-exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, NativeLayaEmitter, NativeAnimationClip2DWriter) {
+exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(
+    content,
+    NativeLayaEmitter,
+    NativeAnimationClip2DWriter,
+    bitmapContent,
+    prepareNativeLayaHierarchy
+) {
     const ideResources = resolveIdeResources();
     const archivePath = path.join(ideResources, "app.asar");
     const corePath = path.join(ideResources, "engine", "libs", "laya.core.js");
     const d3Path = path.join(ideResources, "engine", "libs", "laya.d3.js");
+    const uiPath = path.join(ideResources, "engine", "libs", "laya.ui.js");
     const noRenderPath = path.join(ideResources, "engine", "libs", "laya.no-render.js");
     const archive = readAsar(archivePath);
     const manifest = JSON.parse(archive.read("package.json"));
@@ -32,7 +39,7 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, Na
     try {
         globalThis.window = globalThis;
         globalThis.document = {};
-        for (const libraryPath of [corePath, d3Path, noRenderPath]) {
+        for (const libraryPath of [corePath, d3Path, uiPath, noRenderPath]) {
             delete require.cache[require.resolve(libraryPath)];
             require(libraryPath);
         }
@@ -42,6 +49,10 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, Na
             _componentDriver: { _toDestroys: new Set() }
         };
         globalThis.Laya.ILaya.systemTimer = {
+            callLater() {},
+            runCallLater() {}
+        };
+        globalThis.Laya.ILaya.timer = {
             callLater() {},
             runCallLater() {}
         };
@@ -107,6 +118,9 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, Na
         const fileBoundary = JSON.parse(JSON.stringify(hierarchy));
         const errors = [];
         const loaderStub = {
+            async load() {
+                return null;
+            },
             getRes(url, type) {
                 if (url === "timeline")
                     return clip;
@@ -146,6 +160,49 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(content, Na
         assert(serializeErrors.length === 0, `AUTHORED_CONTENT_SERIALIZE_UTIL_ERRORS: ${serializeErrors.join("; ")}`);
         assert(decoded instanceof globalThis.Laya.Node, "AUTHORED_CONTENT_SERIALIZE_UTIL_NODE_INVALID");
         assert(decoded.name === "SerializeUtilProbe", "AUTHORED_CONTENT_SERIALIZE_UTIL_NAME_LOST");
+
+        if (bitmapContent) {
+            assert(typeof prepareNativeLayaHierarchy === "function", "AUTHORED_CONTENT_BITMAP_HIERARCHY_WRITER_MISSING");
+            const bitmapClip = NativeLayaEmitter.createTimeline(bitmapContent);
+            const bitmapRoot = NativeLayaEmitter.createPrefabRoot(
+                bitmapContent,
+                "bitmap-timeline",
+                bitmapClip,
+                new Map([["hero", "hero-asset"]])
+            );
+            assert(bitmapRoot.getChildAt(0).name === "nestedSymbol", "AUTHORED_CONTENT_BITMAP_DEPTH_ORDER_LOST");
+            assert(bitmapRoot.getChildAt(0).zOrder === 10, "AUTHORED_CONTENT_BITMAP_PARENT_DEPTH_LOST");
+            const bitmapImage = bitmapRoot.getChildAt(0).getChildAt(0);
+            assert(bitmapImage instanceof globalThis.Laya.Image, "AUTHORED_CONTENT_EMITTER_CHILD_NOT_IMAGE");
+            assert(bitmapImage.name === "heroImage", "AUTHORED_CONTENT_BITMAP_INSTANCE_NAME_LOST");
+            assert(bitmapImage.zOrder === 7, "AUTHORED_CONTENT_BITMAP_DEPTH_LOST");
+            assert(bitmapImage.skin === "res://hero-asset", "AUTHORED_CONTENT_BITMAP_RESOURCE_IDENTITY_LOST");
+
+            const rawBitmapHierarchy = HierarchyWriter.write(bitmapRoot, { creatingPrefab: true });
+            const bitmapHierarchy = prepareNativeLayaHierarchy(
+                bitmapContent,
+                rawBitmapHierarchy,
+                "bitmap-timeline",
+                new Map([["hero", "hero-asset"]])
+            );
+            assert(bitmapHierarchy._$child[0]._$child[0]._$type === "Image", "AUTHORED_CONTENT_LH_IMAGE_CHILD_MISSING");
+            assert(bitmapHierarchy._$child[0]._$child[0].skin === "res://hero-asset", "AUTHORED_CONTENT_LH_IMAGE_SKIN_MISSING");
+            assert(bitmapHierarchy._$preloads.join(",") === "hero-asset,bitmap-timeline", "AUTHORED_CONTENT_LH_RESOURCE_CLOSURE_MISSING");
+            const bitmapClipType = globalThis.Laya.Loader.getURLInfo("bitmap-timeline.mc");
+            globalThis.Laya.Loader._cacheRes("bitmap-timeline", bitmapClip, bitmapClipType.typeId, bitmapClipType.main);
+            const bitmapErrors = [];
+            const parsedBitmapRoots = ideRequire(HIERARCHY_PARSER_MODULE).HierarchyParser.parse(
+                JSON.parse(JSON.stringify(bitmapHierarchy)),
+                {},
+                bitmapErrors
+            );
+            assert(bitmapErrors.length === 0, `AUTHORED_CONTENT_BITMAP_LH_PARSE_ERRORS: ${bitmapErrors.join("; ")}`);
+            assert(parsedBitmapRoots[0].getChildAt(0).getChildAt(0) instanceof globalThis.Laya.Image, "AUTHORED_CONTENT_PARSED_IMAGE_MISSING");
+            assert(parsedBitmapRoots[0].getChildAt(0).getChildAt(0).name === "heroImage", "AUTHORED_CONTENT_PARSED_IMAGE_NAME_LOST");
+            parsedBitmapRoots[0].destroy();
+            bitmapRoot.destroy();
+            bitmapClip.destroy();
+        }
 
         decoded.destroy();
         parsedRoots[0].destroy();

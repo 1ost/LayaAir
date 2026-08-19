@@ -21,8 +21,11 @@ export class XflBundleSourceAdapter implements SourceAdapter {
         catch (error) {
             throw new Error(`AUTHORED_CONTENT_XFL_BUNDLE_INVALID_JSON: ${String(error)}`);
         }
-        if (!value || typeof value !== "object" || (value as any).format !== "xflbundle@1")
+        if (!value || typeof value !== "object" || Array.isArray(value) || (value as any).format !== "xflbundle@1")
             throw new Error("AUTHORED_CONTENT_XFL_BUNDLE_SCHEMA_UNSUPPORTED: Expected 'xflbundle@1'.");
+        const unsupported = Object.keys(value).filter(key => key !== "format" && key !== "content").sort();
+        if (unsupported.length !== 0)
+            throw new Error(`AUTHORED_CONTENT_XFL_BUNDLE_FIELD_UNSUPPORTED: ${unsupported.join(", ")}`);
         return normalizeNeutralAuthoredContent((value as any).content, settings.scale ?? 1);
     }
 }

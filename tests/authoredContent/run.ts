@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { AnimationClip2D } from "../../src/layaAir/laya/components/AnimationClip2D";
 import { Byte } from "../../src/layaAir/laya/utils/Byte";
+import { ILaya } from "../../src/layaAir/ILaya";
 import { Keyframe2D } from "../../src/layaAir/laya/components/KeyFrame2D";
 import { KeyframeNode2D } from "../../src/layaAir/laya/components/KeyframeNode2D";
 import { KeyframeNodeList2D } from "../../src/layaAir/laya/components/KeyframeNodeList2D";
@@ -9,22 +11,64 @@ import { XflBundleSourceAdapter } from "../../src/extensions/authoredContent/off
 import { normalizeNeutralAuthoredContent } from "../../src/extensions/authoredContent/core/NeutralAuthoredContentIR";
 import { NativeAnimationClip2DWriter } from "../../src/extensions/authoredContent/emit/NativeAnimationClip2DWriter";
 import { NativeLayaEmitter } from "../../src/extensions/authoredContent/emit/NativeLayaEmitter";
+import {
+    prepareNativeLayaHierarchy,
+    prepareNativeLayaAuthoredContentBundle,
+    writeNativeLayaAuthoredContentTransaction
+} from "../../src/extensions/authoredContent/emit/NativeLayaHierarchyWriter";
 const { runIdeHierarchyRoundTrip } = require("./ideHierarchyRoundTrip.cjs") as {
     runIdeHierarchyRoundTrip(
         content: ReturnType<typeof normalizeNeutralAuthoredContent>,
         emitter: typeof NativeLayaEmitter,
-        writer: typeof NativeAnimationClip2DWriter
+        writer: typeof NativeAnimationClip2DWriter,
+        bitmapContent?: ReturnType<typeof normalizeNeutralAuthoredContent>,
+        hierarchyWriter?: typeof prepareNativeLayaHierarchy
     ): void;
 };
 
+class TestSprite {
+    name = "";
+    x = 0;
+    y = 0;
+    width = 0;
+    height = 0;
+    alpha = 1;
+    visible = true;
+    zOrder = 0;
+    readonly children: TestSprite[] = [];
+    addChild<T extends TestSprite>(child: T): T { this.children.push(child); return child; }
+    getChildAt(index: number): TestSprite { return this.children[index]; }
+    addComponent<T>(Component: new () => T): T { return new Component(); }
+    destroy(): void { this.children.length = 0; }
+}
+class TestText extends TestSprite {
+    text = "";
+    fontSize = 12;
+    color = "#000000";
+}
+class TestImage extends TestSprite {
+    _skin = "";
+    get skin(): string { return this._skin; }
+    set skin(value: string) { this._skin = value; }
+}
+class TestAnimatorClip2D {
+    clip?: AnimationClip2D;
+    autoPlay = false;
+}
+
 (globalThis as any).Laya = {
     AnimationClip2D,
+    AnimatorClip2D: TestAnimatorClip2D,
     Byte,
+    Image: TestImage,
     Keyframe2D,
     KeyframeNode2D,
     KeyframeNodeList2D,
+    Sprite: TestSprite,
+    Text: TestText,
     XML
 };
+(ILaya as any).loader = { clearRes() {} };
 
 let passed = 0;
 
@@ -76,6 +120,51 @@ function sourceDocument(): Record<string, unknown> {
     };
 }
 
+function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
+    return {
+        schema: "neutral-authored-content@1",
+        documentId: "bitmap-hierarchy",
+        resources: [{
+            id: "hero",
+            sourcePath: "images/hero.png",
+            mediaType: "image/png",
+            byteLength: payload.byteLength,
+            sha256: sha256(payload)
+        }],
+        root: {
+            linkage: "Root",
+            kind: "container",
+            children: [{
+                linkage: "Front",
+                name: "frontLayer",
+                kind: "container",
+                depth: 20,
+                children: []
+            }, {
+                linkage: "Nested",
+                name: "nestedSymbol",
+                kind: "container",
+                depth: 10,
+                children: [{
+                    linkage: "HeroBitmap",
+                    name: "heroImage",
+                    kind: "image",
+                    depth: 7,
+                    resourceId: "hero",
+                    width: 32,
+                    height: 16,
+                    children: []
+                }]
+            }]
+        },
+        timeline: { frameRate: 30, duration: 0, loop: false, tracks: [] }
+    };
+}
+
+function sha256(bytes: Uint8Array): string {
+    return createHash("sha256").update(bytes).digest("hex");
+}
+
 async function main(): Promise<void> {
     await test("XFL bundle adapter validates and scales immutable manifest content", () => {
         const adapter = new XflBundleSourceAdapter();
@@ -104,6 +193,161 @@ async function main(): Promise<void> {
         assert(content.documentId === "sample-ui", "document ID was not parsed");
         assert(content.root.children[0].text === "Hello", "text node was not parsed");
         assert(content.timeline.tracks[0].keyframes[1].value === 50, "timeline was not parsed");
+    });
+
+    await test("authenticated image resources and authored depth normalize into exact nested hierarchy order", () => {
+        const payload = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+        const content = normalizeNeutralAuthoredContent(bitmapHierarchyDocument(payload));
+        assert(content.resources.length === 1, "image resource closure was lost");
+        assert(content.resources[0].outputPath === "resources/hero.png", "image output path is not canonical");
+        assert(content.root.children.map(child => child.name).join(",") === "nestedSymbol,frontLayer", "children were not ordered by exact authored depth");
+        assert(content.root.children[0].depth === 10, "authored parent depth was lost");
+        assert(content.root.children[0].children[0].depth === 7, "nested authored depth was lost");
+        assert(content.root.children[0].children[0].resourceId === "hero", "nested bitmap binding was lost");
+    });
+
+    await test("SWF XML adapter carries authenticated image identity without resource bytes", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const xml = [
+            '<swf-authored-content version="1" id="bitmap">',
+            '  <resources>',
+            `    <resource id="hero" sourcePath="images/hero.png" mediaType="image/png" byteLength="4" sha256="${sha256(payload)}"/>`,
+            '  </resources>',
+            '  <node linkage="Root" kind="container">',
+            '    <node linkage="Hero" name="heroImage" kind="image" depth="5" resourceId="hero" width="4" height="4"/>',
+            '  </node>',
+            '  <timeline frameRate="30" duration="0" loop="false"/>',
+            '</swf-authored-content>'
+        ].join("\n");
+        const content = new SwfXmlSourceAdapter().parseText(xml);
+        assert(content.resources[0].sha256 === sha256(payload), "resource hash identity was not parsed");
+        assert(content.root.children[0].kind === "image", "native image node was not parsed");
+        assert(content.root.children[0].name === "heroImage", "image instance name was not parsed");
+    });
+
+    await test("bitmap hierarchy fails closed on ambiguous depth, resource closure, and undeclared fields", () => {
+        const payload = new Uint8Array([1, 2, 3]);
+        const mixed = bitmapHierarchyDocument(payload) as any;
+        delete mixed.root.children[0].depth;
+        assertThrows(() => normalizeNeutralAuthoredContent(mixed), "AUTHORED_CONTENT_MIXED_DEPTH_AUTHORITY");
+
+        const unknown = bitmapHierarchyDocument(payload) as any;
+        unknown.root.children[1].children[0].resourceId = "missing";
+        assertThrows(() => normalizeNeutralAuthoredContent(unknown), "AUTHORED_CONTENT_IMAGE_RESOURCE_UNKNOWN");
+
+        const unused = bitmapHierarchyDocument(payload) as any;
+        unused.resources.push({ ...unused.resources[0], id: "unused", sourcePath: "images/unused.png" });
+        assertThrows(() => normalizeNeutralAuthoredContent(unused), "AUTHORED_CONTENT_RESOURCE_UNREFERENCED");
+
+        const undeclared = bitmapHierarchyDocument(payload) as any;
+        undeclared.root.children[0].filters = [];
+        assertThrows(() => normalizeNeutralAuthoredContent(undeclared), "AUTHORED_CONTENT_FIELD_UNSUPPORTED");
+    });
+
+    await test("native emitter creates real Image nodes with exact depth, ordering, and resource identity", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const content = normalizeNeutralAuthoredContent(bitmapHierarchyDocument(payload));
+        const clip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(content, "timeline-asset", clip, new Map([["hero", "hero-asset"]]));
+        try {
+            assert(root.getChildAt(0).name === "nestedSymbol", "native child order did not follow authored depth");
+            assert(root.getChildAt(0).zOrder === 10, "native parent zOrder lost authored depth");
+            const image = root.getChildAt(0).getChildAt(0);
+            assert(image instanceof TestImage, "bitmap did not emit through the native Laya.Image seam");
+            assert(image.name === "heroImage", "native image instance name was lost");
+            assert(image.zOrder === 7, "native nested image depth was lost");
+            assert(image.skin === "res://hero-asset", "native image resource binding was lost");
+        }
+        finally {
+            root.destroy();
+            clip.destroy();
+        }
+    });
+
+    await test("canonical native bundle authenticates resource closure and emits deterministic .lh bytes", async () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const content = normalizeNeutralAuthoredContent(bitmapHierarchyDocument(payload));
+        const hierarchy = {
+            name: "Root",
+            "_$ver": 1,
+            "_$type": "Sprite",
+            "_$child": [{
+                zOrder: 10,
+                name: "nestedSymbol",
+                "_$type": "Sprite",
+                "_$child": [{
+                    skin: "res://hero-asset",
+                    zOrder: 7,
+                    name: "heroImage",
+                    "_$type": "Image",
+                    width: 32,
+                    height: 16
+                }]
+            }, {
+                zOrder: 20,
+                name: "frontLayer",
+                "_$type": "Sprite"
+            }]
+        };
+        const preparation = {
+            content,
+            hierarchy,
+            prefabPath: "bitmap-hierarchy.lh",
+            timelinePath: "bitmap-hierarchy.mc",
+            timelineAssetId: "timeline-asset",
+            timelineBytes: new Uint8Array([7, 8, 9]),
+            resourceAssetIds: new Map([["hero", "hero-asset"]]),
+            resourcePayloads: new Map([["hero", payload]]),
+            sha256
+        };
+        const first = await prepareNativeLayaAuthoredContentBundle(preparation);
+        const second = await prepareNativeLayaAuthoredContentBundle(preparation);
+        const firstPrefab = first.files.find(file => file.kind === "prefab")!;
+        const secondPrefab = second.files.find(file => file.kind === "prefab")!;
+        assert(first.files.map(file => file.path).join(",") === "bitmap-hierarchy.lh,bitmap-hierarchy.mc,resources/hero.png", "bundle file closure/order drifted");
+        assert(firstPrefab.bytes.every((value, index) => value === secondPrefab.bytes[index]), "canonical .lh bytes were not deterministic");
+        const parsed = JSON.parse(new TextDecoder().decode(firstPrefab.bytes));
+        assert(parsed._$child[0].name === "nestedSymbol", "canonical .lh child ordering drifted");
+        assert(parsed._$child[0]._$child[0].skin === "res://hero-asset", "canonical .lh image binding drifted");
+        assert(parsed._$authoredContent.resources[0].sha256 === sha256(payload), "canonical .lh resource authentication metadata drifted");
+        assert(parsed._$preloads.join(",") === "hero-asset,timeline-asset", "native preload closure drifted");
+
+        const wrongPayload = { ...preparation, resourcePayloads: new Map([["hero", new Uint8Array([9, 9, 9, 9])]]) };
+        await assertRejects(
+            () => prepareNativeLayaAuthoredContentBundle(wrongPayload),
+            "AUTHORED_CONTENT_RESOURCE_HASH_MISMATCH"
+        );
+    });
+
+    await test("native bundle transaction stages all files before commit and rolls back failures", async () => {
+        const files = [
+            { path: "a.lh", kind: "prefab" as const, bytes: new Uint8Array([1]) },
+            { path: "b.mc", kind: "timeline" as const, bytes: new Uint8Array([2]) }
+        ];
+        const successEvents: string[] = [];
+        await writeNativeLayaAuthoredContentTransaction(
+            { schema: "laya-native-authored-content-bundle@1", files },
+            {
+                async stage(path) { successEvents.push(`stage:${path}`); },
+                async commit() { successEvents.push("commit"); },
+                async rollback() { successEvents.push("rollback"); }
+            }
+        );
+        assert(successEvents.join(",") === "stage:a.lh,stage:b.mc,commit", "transaction committed before complete staging");
+
+        const failureEvents: string[] = [];
+        await assertRejects(() => writeNativeLayaAuthoredContentTransaction(
+            { schema: "laya-native-authored-content-bundle@1", files },
+            {
+                async stage(path) {
+                    failureEvents.push(`stage:${path}`);
+                    if (path === "b.mc") throw new Error("stage failure");
+                },
+                async commit() { failureEvents.push("commit"); },
+                async rollback() { failureEvents.push("rollback"); }
+            }
+        ), "stage failure");
+        assert(failureEvents.join(",") === "stage:a.lh,stage:b.mc,rollback", "failed transaction was not rolled back without commit");
     });
 
     await test("normalization collisions are rejected", () => {
@@ -264,7 +508,8 @@ async function main(): Promise<void> {
         );
         assert(importerSource.includes('createSubAsset(`${baseName}.lh`, "prefab")'), "missing prefab semantic ID");
         assert(importerSource.includes('createSubAsset(`${baseName}.mc`, "timeline")'), "missing timeline semantic ID");
-        assert(!/sha|hash|random|uuid/i.test(importerSource), "semantic IDs must not use hashing or allocation fallbacks");
+        const subAssetCalls = importerSource.match(/createSubAsset\([^\n]+/g) ?? [];
+        assert(!subAssetCalls.some(call => /sha|hash|random|uuid/i.test(call)), "semantic IDs must not use hashing or allocation fallbacks");
     });
 
     await test("import and preview use only the native hierarchy path", () => {
@@ -277,8 +522,12 @@ async function main(): Promise<void> {
             "importer does not serialize the native prefab with HierarchyWriter"
         );
         assert(
-            importerSource.includes("hierarchy._$authoredContent = NativeLayaEmitter.createMetadata(content, timeline.id)"),
-            "importer does not persist the generated-accessor metadata seam"
+            importerSource.includes("prepareNativeLayaAuthoredContentBundle({"),
+            "importer does not authenticate and canonicalize the native hierarchy bundle"
+        );
+        assert(
+            importerSource.includes("writeNativeLayaAuthoredContentTransaction("),
+            "importer does not stage the complete native bundle transaction"
         );
         assert(
             importerSource.includes("Laya.Loader.HIERARCHY"),
@@ -300,7 +549,9 @@ async function main(): Promise<void> {
         runIdeHierarchyRoundTrip(
             normalizeNeutralAuthoredContent(sourceDocument()),
             NativeLayaEmitter,
-            NativeAnimationClip2DWriter
+            NativeAnimationClip2DWriter,
+            normalizeNeutralAuthoredContent(bitmapHierarchyDocument(new Uint8Array([1, 2, 3, 4]))),
+            prepareNativeLayaHierarchy
         );
     });
 
@@ -311,6 +562,17 @@ function assertThrows(run: () => void, code: string): void {
     let message = "";
     try {
         run();
+    }
+    catch (error) {
+        message = String(error);
+    }
+    assert(message.includes(code), `expected ${code}, received ${message}`);
+}
+
+async function assertRejects(run: () => Promise<unknown>, code: string): Promise<void> {
+    let message = "";
+    try {
+        await run();
     }
     catch (error) {
         message = String(error);

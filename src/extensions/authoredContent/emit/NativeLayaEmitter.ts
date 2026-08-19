@@ -8,11 +8,13 @@ export class NativeLayaEmitter {
     static createPrefabRoot(
         content: NeutralAuthoredContentIR,
         timelineAssetId: string,
-        clip: Laya.AnimationClip2D
+        clip: Laya.AnimationClip2D,
+        resourceAssetIds: ReadonlyMap<string, string> = new Map()
     ): Laya.Sprite {
         if (!timelineAssetId)
             throw new Error("AUTHORED_CONTENT_TIMELINE_ID_REQUIRED");
-        const root = this.createNode(content.root);
+        this.assertResourceBindings(content, resourceAssetIds);
+        const root = this.createNode(content.root, resourceAssetIds);
         clip._setCreateURL(`res://${timelineAssetId}`, timelineAssetId);
         const AnimatorComponent = Laya.AnimatorClip2D as unknown as new () => Laya.Component;
         const animator = root.addComponent(AnimatorComponent) as unknown as Laya.AnimatorClip2D;
@@ -54,13 +56,47 @@ export class NativeLayaEmitter {
             documentId: content.documentId,
             rootLinkageClass: content.root.linkage,
             timelineAssetId,
+            resources: content.resources.map(resource => ({
+                id: resource.id,
+                assetId: resource.id,
+                outputPath: resource.outputPath,
+                mediaType: resource.mediaType,
+                byteLength: resource.byteLength,
+                sha256: resource.sha256
+            })),
             nodes
         };
     }
 
-    private static createNode(source: NeutralAuthoredNode): Laya.Sprite {
-        const node = source.kind === "text" ? new Laya.Text() : new Laya.Sprite();
+    static createMetadataWithResourceBindings(
+        content: NeutralAuthoredContentIR,
+        timelineAssetId: string,
+        resourceAssetIds: ReadonlyMap<string, string>
+    ): NativeAuthoredContentMetadata {
+        this.assertResourceBindings(content, resourceAssetIds);
+        const metadata = this.createMetadata(content, timelineAssetId);
+        return {
+            ...metadata,
+            resources: metadata.resources.map(resource => ({
+                ...resource,
+                assetId: resourceAssetIds.get(resource.id)!
+            }))
+        };
+    }
+
+    private static createNode(
+        source: NeutralAuthoredNode,
+        resourceAssetIds: ReadonlyMap<string, string>
+    ): Laya.Sprite {
+        if (source.kind === "image" && typeof Laya.Image !== "function")
+            throw new Error("AUTHORED_CONTENT_NATIVE_IMAGE_CLASS_MISSING");
+        const node = source.kind === "text"
+            ? new Laya.Text()
+            : source.kind === "image"
+                ? new Laya.Image()
+                : new Laya.Sprite();
         node.name = source.name ?? source.linkage;
+        if (source.depth !== undefined) node.zOrder = source.depth;
         if (source.x !== undefined) node.x = source.x;
         if (source.y !== undefined) node.y = source.y;
         if (source.width !== undefined) node.width = source.width;
@@ -72,8 +108,31 @@ export class NativeLayaEmitter {
             if (source.fontSize !== undefined) node.fontSize = source.fontSize;
             if (source.color !== undefined) node.color = source.color;
         }
-        source.children.forEach(child => node.addChild(this.createNode(child)));
+        if (source.kind === "image") {
+            // The output resource is staged only after the whole bundle has
+            // authenticated. Preserve its native Image skin identity without
+            // starting a speculative loader request during conversion.
+            (node as any)._skin = `res://${resourceAssetIds.get(source.resourceId!)}`;
+        }
+        source.children.forEach(child => node.addChild(this.createNode(child, resourceAssetIds)));
         return node;
+    }
+
+    private static assertResourceBindings(
+        content: NeutralAuthoredContentIR,
+        resourceAssetIds: ReadonlyMap<string, string>
+    ): void {
+        if (resourceAssetIds.size !== content.resources.length)
+            throw new Error("AUTHORED_CONTENT_NATIVE_RESOURCE_BINDING_CLOSURE");
+        for (const resource of content.resources) {
+            const assetId = resourceAssetIds.get(resource.id);
+            if (typeof assetId !== "string" || assetId.length === 0 || assetId.indexOf("\0") >= 0)
+                throw new Error(`AUTHORED_CONTENT_NATIVE_RESOURCE_BINDING_MISSING: ${resource.id}`);
+        }
+        for (const id of resourceAssetIds.keys()) {
+            if (!content.resources.some(resource => resource.id === id))
+                throw new Error(`AUTHORED_CONTENT_NATIVE_RESOURCE_BINDING_UNKNOWN: ${id}`);
+        }
     }
 
     private static createTrack(
@@ -128,7 +187,8 @@ export class NativeLayaEmitter {
                 animatorOwnerPath,
                 linkageClass: node.linkage,
                 instanceName,
-                kind: node.kind
+                kind: node.kind,
+                depth: node.depth
             });
             nativeOwnerPaths.set(semanticPath.join("/"), animatorOwnerPath);
             node.children.forEach(child => visit(child, semanticPath, nativePath, false));
@@ -144,7 +204,17 @@ export interface NativeAuthoredContentNodeMetadata {
     readonly animatorOwnerPath: ReadonlyArray<string>;
     readonly linkageClass: string;
     readonly instanceName: string;
-    readonly kind: "container" | "text";
+    readonly kind: "container" | "image" | "text";
+    readonly depth?: number;
+}
+
+export interface NativeAuthoredContentResourceMetadata {
+    readonly id: string;
+    readonly assetId: string;
+    readonly outputPath: string;
+    readonly mediaType: "image/jpeg" | "image/png";
+    readonly byteLength: number;
+    readonly sha256: string;
 }
 
 export interface NativeAuthoredContentMetadata {
@@ -152,6 +222,7 @@ export interface NativeAuthoredContentMetadata {
     readonly documentId: string;
     readonly rootLinkageClass: string;
     readonly timelineAssetId: string;
+    readonly resources: ReadonlyArray<NativeAuthoredContentResourceMetadata>;
     readonly nodes: ReadonlyArray<NativeAuthoredContentNodeMetadata>;
 }
 
