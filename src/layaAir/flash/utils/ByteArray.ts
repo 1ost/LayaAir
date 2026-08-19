@@ -1,4 +1,5 @@
 import { Byte } from "../../laya/utils/Byte";
+import { OutOfRangeError } from "../../laya/utils/Error";
 import { Endian } from "./Endian";
 
 export type ByteArrayInput = ArrayBufferLike | ArrayBufferView;
@@ -46,10 +47,14 @@ const WEB_ZLIB_HOST: ZlibDecompressionHost = Object.freeze({
  * The constructor and `buffer` getter always copy. Callers cannot mutate the
  * bridge through an input view or a returned ArrayBuffer. Compression is an
  * explicit asynchronous host boundary because browsers have no truthful
- * synchronous zlib primitive.
+ * synchronous zlib primitive. The default host rejects when the Web
+ * DecompressionStream API is absent; callers may explicitly inject another
+ * host, but the bridge never selects a silent fallback.
  */
 export class ByteArray {
     private _bytes: Byte;
+    private _decompressing = false;
+    private _mutationGeneration = 0;
 
     constructor(input?: ByteArrayInput) {
         this._bytes = new Byte();
@@ -70,8 +75,10 @@ export class ByteArray {
 
     set length(value: number) {
         const length = checkedIndex(value, "ByteArray.length");
+        if (length === this._bytes.length) return;
         this._bytes.length = length;
         if (this._bytes.pos > length) this._bytes.pos = length;
+        this._mutationGeneration++;
     }
 
     get bytesAvailable(): number {
@@ -83,7 +90,10 @@ export class ByteArray {
     }
 
     set position(value: number) {
-        this._bytes.pos = checkedIndex(value, "ByteArray.position");
+        const position = checkedIndex(value, "ByteArray.position");
+        if (position === this._bytes.pos) return;
+        this._bytes.pos = position;
+        this._mutationGeneration++;
     }
 
     get endian(): string {
@@ -93,59 +103,108 @@ export class ByteArray {
     set endian(value: string) {
         if (value !== Endian.BIG_ENDIAN && value !== Endian.LITTLE_ENDIAN)
             throw new RangeError(`Unsupported ByteArray endian: ${String(value)}`);
+        if (value === this._bytes.endian) return;
         this._bytes.endian = value;
+        this._mutationGeneration++;
     }
 
     clear(): void {
+        if (this._bytes.length === 0 && this._bytes.pos === 0) return;
         this._bytes.clear();
+        this._mutationGeneration++;
     }
 
     readUnsignedByte(): number {
-        return this._bytes.readUint8();
+        const value = this._bytes.readUint8();
+        this._mutationGeneration++;
+        return value;
     }
 
     readUnsignedShort(): number {
-        return this._bytes.readUint16();
+        const value = this._bytes.readUint16();
+        this._mutationGeneration++;
+        return value;
     }
 
     readUnsignedInt(): number {
-        return this._bytes.readUint32();
+        const value = this._bytes.readUint32();
+        this._mutationGeneration++;
+        return value;
     }
 
+    /**
+     * Decodes exactly `length` bytes with the WHATWG UTF-8 replacement policy.
+     * NUL is preserved. Truncated or malformed sequences become U+FFFD and do
+     * not consume bytes beyond the requested slice.
+     */
     readUTFBytes(length: number = this.bytesAvailable): string {
         const exactLength = checkedIndex(length, "ByteArray.readUTFBytes length");
-        return this._bytes.readUTFBytes(exactLength);
+        const start = this._bytes.pos;
+        if (exactLength > this.bytesAvailable)
+            throw new OutOfRangeError(start + exactLength);
+        if (exactLength === 0) return "";
+        const source = new Uint8Array(this._bytes.buffer, start, exactLength);
+        const value = new TextDecoder("utf-8", { fatal: false }).decode(source);
+        this._bytes.pos = start + exactLength;
+        this._mutationGeneration++;
+        return value;
     }
 
     writeByte(value: number): void {
         this._bytes.writeByte(value);
+        this._mutationGeneration++;
     }
 
     writeShort(value: number): void {
         this._bytes.writeInt16(value);
+        this._mutationGeneration++;
     }
 
     writeUnsignedInt(value: number): void {
         this._bytes.writeUint32(value);
+        this._mutationGeneration++;
     }
 
     writeUTFBytes(value: string): void {
+        const start = this._bytes.pos;
         this._bytes.writeUTFBytes(value);
+        if (this._bytes.pos !== start) this._mutationGeneration++;
     }
 
     /**
      * Atomically replaces this instance with zlib-decoded bytes. The receiver
-     * is unchanged on host failure, malformed data, or cancellation.
+     * is unchanged on host failure, malformed data, or cancellation. Only one
+     * decompression may own an instance at a time; overlapping calls reject
+     * before invoking their host instead of racing for last-completion-wins.
+     * Any intervening cursor, endian, length, read, or write mutation
+     * invalidates the older operation before it can commit.
      */
     async uncompressZlib(host: ZlibDecompressionHost = WEB_ZLIB_HOST, signal?: AbortSignal): Promise<void> {
+        if (this._decompressing)
+            throw new Error("ByteArray zlib decompression is already in progress");
         if (!host || typeof host.decompressZlib !== "function")
             throw new TypeError("A ZlibDecompressionHost is required");
-        throwIfAborted(signal);
-        const compressed = new Uint8Array(this.buffer);
-        const output = await host.decompressZlib(compressed, signal);
-        throwIfAborted(signal);
-        const replacement = new ByteArray(copyInput(output));
-        replacement.endian = this.endian;
-        this._bytes = replacement._bytes;
+        this._decompressing = true;
+        const generation = this._mutationGeneration;
+        try {
+            throwIfAborted(signal);
+            const compressed = new Uint8Array(this.buffer);
+            let output: ByteArrayInput;
+            try {
+                output = await host.decompressZlib(compressed, signal);
+            } catch (error) {
+                throwIfAborted(signal);
+                throw error;
+            }
+            throwIfAborted(signal);
+            if (this._mutationGeneration !== generation)
+                throw new Error("ByteArray mutated while zlib decompression was in progress");
+            const replacement = new ByteArray(copyInput(output));
+            replacement.endian = this.endian;
+            this._bytes = replacement._bytes;
+            this._mutationGeneration++;
+        } finally {
+            this._decompressing = false;
+        }
     }
 }

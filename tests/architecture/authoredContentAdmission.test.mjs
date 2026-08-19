@@ -111,6 +111,15 @@ test("the consolidated base records every unresolved capability as an explicit b
     assert.deepEqual(result.syntheticBlockingCapabilities, []);
 });
 
+test("the canonical hash updater is idempotent and read-only in check mode", () => {
+    const result = spawnSync(process.execPath,
+        [path.join(repositoryRoot, "scripts/updateAuthoredContentHashes.mjs"), "--check"],
+        { cwd: repositoryRoot, encoding: "utf8", timeout: 120000 });
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /canonical and idempotent/);
+});
+
 test("a complete blocked planning fixture passes without claiming production readiness", t => {
     const root = fixture(t);
     const result = assertAuthoredContentAdmission(root);
@@ -253,6 +262,30 @@ test("admitted dispositions require concrete artifacts, symbols, and evidence", 
             "tests/transform.test.mjs": evidence,
         });
         failure(root, /must bind proof to rendering\.transform|must exactly bind/);
+    });
+    await t.test("evidence coverage hashes require canonical sorted unique order", async t => {
+        const firstArtifact = "export const firstTransformEvidence = true;";
+        const secondArtifact = "export const secondTransformEvidence = true;";
+        const evidence = `import assert from "node:assert/strict";\nimport test from "node:test";\nimport { firstTransformEvidence } from "../src/layaAir/laya/display/FirstTransformEvidence.ts";\nimport { secondTransformEvidence } from "../src/layaAir/laya/display/SecondTransformEvidence.ts";\ntest("canonical coverage", () => { assert.deepEqual([firstTransformEvidence, secondTransformEvidence], [true, true]); });\n`;
+        const hashes = [digest(firstArtifact), digest(secondArtifact)].sort();
+        const files = covers => ({
+            [policy.capabilityLedger]: ledgerWith("rendering.transform", {
+                status: "native",
+                artifacts: [
+                    { path: "src/layaAir/laya/display/FirstTransformEvidence.ts", export: "firstTransformEvidence", sha256: digest(firstArtifact) },
+                    { path: "src/layaAir/laya/display/SecondTransformEvidence.ts", export: "secondTransformEvidence", sha256: digest(secondArtifact) },
+                ],
+                evidence: [{ path: "tests/transform.test.mjs", test: "canonical coverage", sha256: digest(evidence), capability: "rendering.transform", covers }],
+            }),
+            "src/layaAir/laya/display/FirstTransformEvidence.ts": firstArtifact,
+            "src/layaAir/laya/display/SecondTransformEvidence.ts": secondArtifact,
+            "tests/transform.test.mjs": evidence,
+        });
+        assertAuthoredContentAdmission(fixture(t, files(hashes)));
+        await t.test("rejects insertion order", inner =>
+            failure(fixture(inner, files([...hashes].reverse())), /must be sorted, unique/));
+        await t.test("rejects duplicates", inner =>
+            failure(fixture(inner, files([...hashes, hashes[0]])), /must be sorted, unique/));
     });
     await t.test("resolved TypeScript obligation", t => {
         const implementation = "export function bindTypedHandler(): void {}";

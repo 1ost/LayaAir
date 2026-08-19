@@ -954,8 +954,8 @@ function inspectCapabilityLedger(root, policy, code, failures) {
         const expectedCoverage = [...new Set(coveredHashes)].sort();
         for (const [index, item] of evidence.entries()) {
             if (!Array.isArray(item.covers) || item.covers.some(hash => typeof hash !== "string")
-                || JSON.stringify([...new Set(item.covers)].sort()) !== JSON.stringify(expectedCoverage))
-                failures.push(`${id}.evidence[${index}].covers: must exactly bind the admitted artifact/obligation hashes`);
+                || JSON.stringify(item.covers) !== JSON.stringify(expectedCoverage))
+                failures.push(`${id}.evidence[${index}].covers: must be sorted, unique, and exactly bind the admitted artifact/obligation hashes`);
             for (const subject of expectedSubjects) {
                 const imported = item.analysis?.subjectImports.find(candidate => candidate.module === subject.module && candidate.export === subject.export);
                 if (!imported || !item.analysis.usedKeys.has(imported.key))

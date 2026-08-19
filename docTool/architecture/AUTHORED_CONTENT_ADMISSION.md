@@ -55,7 +55,7 @@ these dispositions:
 Admitted artifacts and TypeScript obligations are SHA-256 bound. TypeScript
 obligations also pin the compiler-resolved symbol kind, exact signature, and
 public class member surface. Evidence is SHA-256 bound to one capability and
-the exact implementation hashes it covers. Its named `node:test` case must be
+the exact implementation hashes it covers in sorted, unique order. Its named `node:test` case must be
 top-level, executable, and assertion-bearing; skipped, unreachable, empty, or
 unrelated tests are rejected. Each code artifact/obligation must be imported by
 its declared export and exercised in the assertion's evaluated subject. The

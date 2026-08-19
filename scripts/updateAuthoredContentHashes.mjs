@@ -162,13 +162,16 @@ Object.assign(utilsCapability, {
         ["src/layaAir/flash/utils/Timer.ts", "Timer", "class"],
         ["src/layaAir/flash/utils/Timer.ts", "isFlashTimer", "function"],
         ["src/layaAir/flash/utils/Endian.ts", "Endian", "class"],
+        ["src/layaAir/flash/utils/ByteArray.ts", "ByteArray", "class"],
+        ["src/layaAir/flash/utils/ByteArray.ts", "ByteArrayInput", "type"],
+        ["src/layaAir/flash/utils/ByteArray.ts", "ZlibDecompressionHost", "interface"],
     ].map(([module, exported, kind]) =>
         utilsCapability.obligations?.find(item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "",
             ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
     evidence: [{
         path: "tests/architecture/flashUtilsBridgeEvidence.test.ts",
-        test: "Flash utils Timer compiler and scheduler surface",
+        test: "Flash utils compiler and runtime surface",
         sha256: "",
         capability: "api.flash.utils",
         covers: [],
@@ -268,11 +271,24 @@ for (const capability of ledger.capabilities) {
         evidence.covers = coverage;
     }
 }
-fs.writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
-fs.writeFileSync(runtimeTypeAuthorityPath, `${JSON.stringify(runtimeTypeAuthority, null, 2)}\n`);
-fs.writeFileSync(runtimeTypeAuthorityHashPath,
-    `${canonicalHash(runtimeTypeAuthorityRelative)}  flash-runtime-type-predicates.json\n`);
-console.log("Updated authored-content hashes using canonical-lf-utf8.");
+const ledgerOutput = `${JSON.stringify(ledger, null, 2)}\n`;
+const runtimeTypeAuthorityOutput = `${JSON.stringify(runtimeTypeAuthority, null, 2)}\n`;
+const runtimeTypeAuthorityHashOutput =
+    `${canonicalTextHash(runtimeTypeAuthorityOutput)}  flash-runtime-type-predicates.json\n`;
+const outputs = [
+    [ledgerPath, ledgerOutput],
+    [runtimeTypeAuthorityPath, runtimeTypeAuthorityOutput],
+    [runtimeTypeAuthorityHashPath, runtimeTypeAuthorityHashOutput],
+];
+if (process.argv.includes("--check")) {
+    const drift = outputs.filter(([file, output]) => canonicalText(fs.readFileSync(file, "utf8")) !== canonicalText(output));
+    if (drift.length > 0)
+        throw new Error(`Authored-content generated output is stale: ${drift.map(([file]) => path.relative(root, file)).join(", ")}`);
+    console.log("Authored-content hash output is canonical and idempotent.");
+} else {
+    for (const [file, output] of outputs) fs.writeFileSync(file, output);
+    console.log("Updated authored-content hashes using canonical-lf-utf8.");
+}
 
 function canonicalHash(relative) {
     const file = path.resolve(root, relative);
@@ -280,7 +296,15 @@ function canonicalHash(relative) {
     const bytes = fs.readFileSync(file);
     const text = bytes.toString("utf8");
     if (!Buffer.from(text, "utf8").equals(bytes)) throw new Error(`Not valid UTF-8: ${relative}`);
-    return crypto.createHash("sha256").update(text.replace(/\r\n?/g, "\n"), "utf8").digest("hex");
+    return canonicalTextHash(text);
+}
+
+function canonicalText(value) {
+    return value.replace(/\r\n?/g, "\n");
+}
+
+function canonicalTextHash(value) {
+    return crypto.createHash("sha256").update(canonicalText(value), "utf8").digest("hex");
 }
 
 function compilerOptions() {

@@ -124,8 +124,10 @@ test("A12 capability ledger owns exact Flash declarations, members, signatures a
                 assert.ok(Array.isArray(obligation.indexSignatures));
             }
         }
+        const insertionOrder = capability.obligations.map((item: any) => item.sha256).reverse();
+        if (insertionOrder.length > 0) insertionOrder.push(insertionOrder[0]);
         assert.deepEqual(capability.evidence[0].covers,
-            [...new Set(capability.obligations.map((item: any) => item.sha256))].sort());
+            [...new Set(insertionOrder)].sort(), "covers must be canonical regardless insertion order or duplicates");
     }
 });
 

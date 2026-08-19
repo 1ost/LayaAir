@@ -27976,7 +27976,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128",
+          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283",
           "heritage": []
         },
         {
@@ -27984,14 +27984,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
+          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
+          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283"
         }
       ],
       "evidence": [
@@ -28001,9 +28001,9 @@
           "sha256": "4adf83a171cc77617c248edecca1c763617bd2f9a9e9fad3ba57ae3be218db77",
           "capability": "api.flash.utils",
           "covers": [
+            "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
-            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025",
-            "0dd3a8aa3899e327ac6a88627b6626a87269969de90057a48be211de91d05128"
+            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
           ]
         }
       ]

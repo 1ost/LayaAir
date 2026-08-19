@@ -64,6 +64,22 @@ test("UTF-8 and unsigned bytes preserve exact cursor movement", () => {
     assert.equal(bytes.position, 1);
 });
 
+test("readUTFBytes preserves NUL and never overreads a truncated multibyte slice", () => {
+    const nul = new ByteArray(new Uint8Array([0x41, 0x00, 0x42]));
+    assert.equal(nul.readUTFBytes(3), "A\0B");
+    assert.deepEqual([nul.position, nul.bytesAvailable], [3, 0]);
+
+    const truncated = new ByteArray(new Uint8Array([0xe2, 0x82, 0x41]));
+    assert.equal(truncated.readUTFBytes(2), "\ufffd");
+    assert.deepEqual([truncated.position, truncated.bytesAvailable], [2, 1]);
+    assert.equal(truncated.readUTFBytes(1), "A");
+    assert.equal(truncated.position, 3);
+
+    truncated.position = 2;
+    assert.throws(() => truncated.readUTFBytes(2), OutOfRangeError);
+    assert.equal(truncated.position, 2, "out-of-range UTF reads must not move the cursor");
+});
+
 test("constructor and buffer getter both have a copy policy", () => {
     const source = new Uint8Array([9, 8, 7, 6]);
     const bytes = new ByteArray(source.subarray(1, 3));
@@ -142,4 +158,51 @@ test("cancellation is forwarded and cannot partially commit output", async () =>
     }, lateAbort.signal);
     await assert.rejects(late, error => error === lateAbort.signal.reason);
     assert.deepEqual(bytesOf(bytes), [5, 6, 7]);
+});
+
+test("a reverse-completion overlap cannot race for last completion", async () => {
+    const bytes = new ByteArray(new Uint8Array([1, 2, 3]));
+    let finishFirst!: (value: ArrayBuffer) => void;
+    const firstHost: ZlibDecompressionHost = {
+        decompressZlib(): Promise<ArrayBuffer> {
+            return new Promise(resolve => { finishFirst = resolve; });
+        }
+    };
+    let finishOverlapping: ((value: ArrayBuffer) => void) | undefined;
+    const first = bytes.uncompressZlib(firstHost);
+    await assert.rejects(bytes.uncompressZlib({
+        decompressZlib(): Promise<ArrayBuffer> {
+            return new Promise(resolve => { finishOverlapping = resolve; });
+        }
+    }), /already in progress/);
+    assert.equal(finishOverlapping, undefined, "the later host must not acquire completion ownership");
+    assert.deepEqual(bytesOf(bytes), [1, 2, 3]);
+
+    finishFirst(new Uint8Array([4, 5]).buffer);
+    await first;
+    assert.deepEqual(bytesOf(bytes), [4, 5]);
+    await bytes.uncompressZlib({
+        async decompressZlib(): Promise<ArrayBuffer> { return new Uint8Array([6]).buffer; }
+    });
+    assert.deepEqual(bytesOf(bytes), [6], "ownership must release after completion");
+});
+
+test("receiver mutation invalidates an older decompression commit", async () => {
+    const bytes = new ByteArray(new Uint8Array([1, 2, 3]));
+    let finish!: (value: ArrayBuffer) => void;
+    const pending = bytes.uncompressZlib({
+        decompressZlib(): Promise<ArrayBuffer> {
+            return new Promise(resolve => { finish = resolve; });
+        }
+    });
+    bytes.position = bytes.length;
+    bytes.writeByte(9);
+    finish(new Uint8Array([4, 5]).buffer);
+    await assert.rejects(pending, /mutated while zlib decompression was in progress/);
+    assert.deepEqual([bytesOf(bytes), bytes.position], [[1, 2, 3, 9], 4]);
+
+    await bytes.uncompressZlib({
+        async decompressZlib(): Promise<ArrayBuffer> { return new Uint8Array([7]).buffer; }
+    });
+    assert.deepEqual(bytesOf(bytes), [7], "failed stale ownership must release for a later operation");
 });
