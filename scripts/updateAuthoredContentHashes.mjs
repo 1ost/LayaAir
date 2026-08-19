@@ -49,6 +49,9 @@ for (const [module, exported, kind = "class"] of [
 
 const displayCapability = ledger.capabilities.find(item => item.id === "api.flash.display");
 for (const [module, exported, kind = "class"] of [
+    ["src/layaAir/flash/display/FlashDisplayRootBoundary.ts", "FlashDisplayRootBoundary"],
+    ["src/layaAir/flash/display/FlashDisplayRootBoundary.ts", "FlashDisplayRootLease", "interface"],
+    ["src/layaAir/flash/display/FlashDisplayRootBoundary.ts", "FlashDisplayRootOptions", "interface"],
     ["src/layaAir/flash/display/FlashStageBoundary.ts", "FlashStageBoundary"],
     ["src/layaAir/flash/display/Bitmap.ts", "Bitmap"],
     ["src/layaAir/flash/display/BitmapData.ts", "BitmapData"],

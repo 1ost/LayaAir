@@ -25,6 +25,8 @@ export { FlashStageBoundary } from "./display/FlashStageBoundary";
 export type {
     FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageViewport, FlashStageViewportOwner
 } from "./display/FlashStageBoundary";
+export { FlashDisplayRootBoundary } from "./display/FlashDisplayRootBoundary";
+export type { FlashDisplayRootLease, FlashDisplayRootOptions } from "./display/FlashDisplayRootBoundary";
 export { SimpleButton } from "./display/SimpleButton";
 export { MovieClip } from "./display/MovieClip";
 export type { FlashFrameReference } from "./display/MovieClip";
