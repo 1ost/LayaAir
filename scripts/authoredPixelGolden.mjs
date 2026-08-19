@@ -292,6 +292,22 @@ function validateChannelMetrics(channels, label, maximum) {
     }
 }
 
+function channelSquaredBounds(sampleCount, total, maximum) {
+    if (total === 0) return { minimum: 0, maximum: 0 };
+    if (sampleCount === 1) return { minimum: maximum * maximum, maximum: maximum * maximum };
+    const remainingTotal = total - maximum;
+    const remainingSlots = sampleCount - 1;
+    const evenValue = Math.floor(remainingTotal / remainingSlots);
+    const largerValueCount = remainingTotal % remainingSlots;
+    const minimum = maximum * maximum
+        + largerValueCount * (evenValue + 1) * (evenValue + 1)
+        + (remainingSlots - largerValueCount) * evenValue * evenValue;
+    const maximumValueCount = Math.floor(total / maximum);
+    const remainder = total % maximum;
+    const maximumSquared = maximumValueCount * maximum * maximum + remainder * remainder;
+    return { minimum, maximum: maximumSquared };
+}
+
 function validateMetrics(metrics, width, height) {
     assertPlainObject(metrics, "receipt.metrics");
     assertExactKeys(metrics, METRIC_KEYS, "receipt.metrics");
@@ -344,12 +360,13 @@ function validateMetrics(metrics, width, height) {
         }
     }
     const channelMaximumSum = Object.values(metrics.channelMaxDelta).reduce((sum, value) => sum + value, 0);
-    const minimumSquaredFromChannelMaxima = Object.values(metrics.channelMaxDelta)
-        .reduce((sum, value) => sum + value * value, 0);
-    const maximumSquaredFromChannels = CHANNEL_KEYS.reduce((sum, channel) =>
-        sum + metrics.channelTotalDelta[channel] * metrics.channelMaxDelta[channel], 0);
+    const squaredBounds = CHANNEL_KEYS.map(channel => channelSquaredBounds(
+        metrics.differingPixels, metrics.channelTotalDelta[channel], metrics.channelMaxDelta[channel],
+    ));
+    const minimumSquaredFromChannels = squaredBounds.reduce((sum, bounds) => sum + bounds.minimum, 0);
+    const maximumSquaredFromChannels = squaredBounds.reduce((sum, bounds) => sum + bounds.maximum, 0);
     if (metrics.totalChannelDelta > metrics.differingPixels * channelMaximumSum
-        || metrics.squaredChannelDelta < minimumSquaredFromChannelMaxima
+        || metrics.squaredChannelDelta < minimumSquaredFromChannels
         || metrics.squaredChannelDelta > maximumSquaredFromChannels
         || (metrics.squaredChannelDelta - metrics.totalChannelDelta) % 2 !== 0) {
         throw new Error("receipt aggregate metrics contradict per-channel maxima or integer deltas.");
