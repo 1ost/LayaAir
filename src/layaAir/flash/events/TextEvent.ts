@@ -12,7 +12,7 @@ export class TextEvent extends Event {
     static readonly LINK = "link";
     static readonly TEXT_INPUT = "textInput";
 
-    constructor(type: string, bubbles = false, cancelable = false, readonly text = "") {
+    constructor(type: string, bubbles = false, cancelable = false, public text = "") {
         super(type, bubbles, cancelable);
         if (typeof text !== "string") throw new TypeError("TextEvent.text must be a string");
         TEXT_EVENT_VALUES.add(this);

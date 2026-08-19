@@ -19789,7 +19789,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -20213,7 +20213,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -23283,7 +23283,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -23698,7 +23698,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -23949,7 +23949,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string): TextEvent"
           ],
           "indexSignatures": [],
-          "sha256": "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d",
+          "sha256": "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7",
           "heritage": [
             {
               "kind": "extends",
@@ -24032,7 +24032,7 @@
           "export": "isFlashTextEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is TextEvent",
-          "sha256": "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d"
+          "sha256": "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7"
         },
         {
           "module": "src/layaAir/flash/events/TimerEvent.ts",
@@ -25460,7 +25460,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -25911,7 +25911,7 @@
               "name": "text",
               "scope": "instance",
               "optional": false,
-              "readonly": true,
+              "readonly": false,
               "signature": "string"
             },
             {
@@ -26243,7 +26243,6 @@
             "158d1fed0fc6e316d3199fabf21c081f636193fd5be894dc302a622dade894a1",
             "22aa86d5a9e8e1dd50b73f4d250d7c86067f129b39e79fe5a02c3a115c06281f",
             "26ae97c0147433a2ac02eb79a0f3e5855a6ea7d865f4512c78e75cf220576440",
-            "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d",
             "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81",
             "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
@@ -26256,6 +26255,7 @@
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
             "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
+            "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7",
             "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
           ]
         }

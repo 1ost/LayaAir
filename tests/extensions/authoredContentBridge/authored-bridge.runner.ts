@@ -722,7 +722,7 @@ test("IOErrorEvent and TimerEvent retain used hierarchy, constants and fields", 
     assert.throws(() => timer.updateAfterEvent(), UnsupportedFlashFeatureError);
 });
 
-test("source-used generic event leaves retain Pepper value, clone and dispatch semantics", () => {
+test("source-used generic event leaves retain maintained Pepper object and dispatch semantics", () => {
     const progress = new ProgressEvent("progressMutable", true, true, 1.25, 2.5);
     progress.bytesLoaded = "9.75" as unknown as number;
     progress.bytesTotal = -4.5;
@@ -733,6 +733,10 @@ test("source-used generic event leaves retain Pepper value, clone and dispatch s
     assert.ok(Number.isNaN(new ProgressEvent("nan", false, false, Number.NaN).bytesLoaded));
     assert.equal(new ProgressEvent("infinity", false, false, 0, Number.POSITIVE_INFINITY).bytesTotal,
         Number.POSITIVE_INFINITY);
+    assert.equal(new ProgressEvent("negative-infinity", false, false,
+        Number.NEGATIVE_INFINITY).bytesLoaded, Number.NEGATIVE_INFINITY);
+    assert.equal(new ProgressEvent("above-uint", false, false,
+        4294967297).bytesLoaded, 4294967297);
 
     const http = new HTTPStatusEvent("httpMutable", true, true, 4294967297, true);
     assert.deepEqual([http.status, http.redirected], [1, true]);
@@ -742,6 +746,10 @@ test("source-used generic event leaves retain Pepper value, clone and dispatch s
     assert.equal(new HTTPStatusEvent("negative", false, false, -1.9).status, -1);
     assert.equal(new HTTPStatusEvent("overflow", false, false, 2147483648).status, -2147483648);
     assert.equal(new HTTPStatusEvent("nan", false, false, Number.NaN).status, 0);
+    assert.equal(new HTTPStatusEvent("positive-infinity", false, false,
+        Number.POSITIVE_INFINITY).status, 0);
+    assert.equal(new HTTPStatusEvent("negative-infinity", false, false,
+        Number.NEGATIVE_INFINITY).status, 0);
     assert.throws(() => { (http as unknown as { status: number }).status = 202; }, TypeError);
     assert.equal("responseURL" in http, false);
     assert.equal("responseHeaders" in http, false);
@@ -751,19 +759,27 @@ test("source-used generic event leaves retain Pepper value, clone and dispatch s
     const security = new SecurityErrorEvent("securityMutable", true, true,
         customText as unknown as string, 4294967297);
     assert.deepEqual([security.text, security.errorID], ["custom-text", 1]);
-    (security as unknown as { text: string }).text = "after";
+    security.text = "after";
     assert.throws(() => { (security as unknown as { errorID: number }).errorID = 18; }, TypeError);
     assert.deepEqual([security.clone().text, security.clone().errorID], ["after", 1]);
     const nullSecurity = new SecurityErrorEvent("nullText", false, false, null as unknown as string, -1.9);
     assert.equal(nullSecurity.text, null);
     assert.equal(nullSecurity.errorID, -1);
+    assert.equal(new SecurityErrorEvent("numericText", false, false,
+        123 as unknown as string, 7).text, "123");
+    assert.equal(new SecurityErrorEvent("nanID", false, false, "id", Number.NaN).errorID, 0);
+    assert.equal(new SecurityErrorEvent("infiniteID", false, false,
+        "id", Number.POSITIVE_INFINITY).errorID, 0);
 
     const mouse = new Sprite();
     const owner = new Sprite();
+    const replacement = new Sprite();
     const context = new ContextMenuEvent("contextMutable", true, true, mouse, owner);
+    context.mouseTarget = replacement;
+    context.contextMenuOwner = mouse;
     context.isMouseTargetInaccessible = 1 as unknown as boolean;
     const contextClone = context.clone();
-    assert.deepEqual([contextClone.mouseTarget === mouse, contextClone.contextMenuOwner === owner,
+    assert.deepEqual([contextClone.mouseTarget === replacement, contextClone.contextMenuOwner === mouse,
         contextClone.isMouseTargetInaccessible], [true, true, false]);
 
     const thrown = new Error("plain-error");
@@ -773,6 +789,25 @@ test("source-used generic event leaves retain Pepper value, clone and dispatch s
     assert.equal(uncaught.clone().error, thrown);
     assert.throws(() => { (uncaught as unknown as { error: unknown }).error = "replacement"; }, TypeError);
     assert.throws(() => { (uncaught as unknown as { errorID: number }).errorID = 99; }, TypeError);
+    uncaught.text = "replacement-text";
+    assert.equal(uncaught.text, "replacement-text");
+    const uncaughtValues: unknown[] = [
+        new ErrorEvent(ErrorEvent.ERROR, false, false, "event-text", 42),
+        "string-value",
+        { marker: "object" },
+        null,
+    ];
+    for (const [index, value] of uncaughtValues.entries()) {
+        const valueEvent = new UncaughtErrorEvent(`uncaught-${index}`, index % 2 === 1,
+            index % 2 === 0, value);
+        const valueClone = valueEvent.clone();
+        assert.equal(valueEvent.error, value);
+        assert.equal(valueClone.error, value);
+        assert.notEqual(valueClone, valueEvent);
+        assert.ok(valueClone instanceof UncaughtErrorEvent);
+        assert.equal(valueEvent.text, "");
+        assert.equal(valueEvent.errorID, 0);
+    }
 
     const target = new DisplayObject();
     const received: Event[] = [];
