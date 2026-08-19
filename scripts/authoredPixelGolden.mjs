@@ -32,7 +32,8 @@ const RECEIPT_KEYS = [
 const IDENTITY_KEYS = ["artifactSha256", "captureSha256", "rgbaSha256"];
 const METRIC_KEYS = [
     "channelMaxDelta", "channelTotalDelta", "differingPixelRatio", "differingPixels",
-    "maxChannelDelta", "meanAbsoluteChannelDelta", "rootMeanSquareChannelDelta", "totalChannelDelta",
+    "maxChannelDelta", "meanAbsoluteChannelDelta", "rootMeanSquareChannelDelta",
+    "squaredChannelDelta", "totalChannelDelta",
 ];
 const CHANNEL_KEYS = ["a", "b", "g", "r"];
 const MISMATCH_REASON_ORDER = [
@@ -297,9 +298,11 @@ function validateMetrics(metrics, width, height) {
     const pixels = width * height;
     assertUnsignedInteger(metrics.differingPixels, "receipt.metrics.differingPixels");
     assertUnsignedInteger(metrics.maxChannelDelta, "receipt.metrics.maxChannelDelta");
+    assertUnsignedInteger(metrics.squaredChannelDelta, "receipt.metrics.squaredChannelDelta");
     assertUnsignedInteger(metrics.totalChannelDelta, "receipt.metrics.totalChannelDelta");
     if (metrics.differingPixels > pixels || metrics.maxChannelDelta > 255
-        || metrics.totalChannelDelta > pixels * 4 * 255) {
+        || metrics.totalChannelDelta > pixels * 4 * 255
+        || metrics.squaredChannelDelta > pixels * 4 * 255 * 255) {
         throw new RangeError("receipt.metrics exceeds its image or channel bounds.");
     }
     for (const key of ["differingPixelRatio", "meanAbsoluteChannelDelta", "rootMeanSquareChannelDelta"]) {
@@ -312,8 +315,34 @@ function validateMetrics(metrics, width, height) {
     if (metrics.differingPixelRatio !== metrics.differingPixels / pixels) {
         throw new Error("receipt.metrics.differingPixelRatio is inconsistent with differingPixels.");
     }
+    const channelCount = pixels * 4;
+    if (metrics.meanAbsoluteChannelDelta !== metrics.totalChannelDelta / channelCount
+        || metrics.rootMeanSquareChannelDelta !== Math.sqrt(metrics.squaredChannelDelta / channelCount)) {
+        throw new Error("receipt mean or RMS is inconsistent with integer delta totals.");
+    }
+    const hasDifferences = metrics.differingPixels !== 0;
+    if (hasDifferences !== (metrics.totalChannelDelta !== 0)
+        || hasDifferences !== (metrics.squaredChannelDelta !== 0)
+        || hasDifferences !== (metrics.maxChannelDelta !== 0)) {
+        throw new Error("receipt zero/nonzero delta metrics are inconsistent with differingPixels.");
+    }
+    if (metrics.totalChannelDelta < metrics.differingPixels
+        || metrics.totalChannelDelta > metrics.differingPixels * 4 * 255
+        || metrics.squaredChannelDelta < metrics.totalChannelDelta
+        || metrics.squaredChannelDelta < metrics.maxChannelDelta * metrics.maxChannelDelta
+        || metrics.squaredChannelDelta > metrics.totalChannelDelta * metrics.maxChannelDelta) {
+        throw new Error("receipt aggregate delta metrics are internally impossible.");
+    }
     validateChannelMetrics(metrics.channelMaxDelta, "receipt.metrics.channelMaxDelta", 255);
     validateChannelMetrics(metrics.channelTotalDelta, "receipt.metrics.channelTotalDelta", pixels * 255);
+    for (const channel of CHANNEL_KEYS) {
+        const channelTotal = metrics.channelTotalDelta[channel];
+        const channelMaximum = metrics.channelMaxDelta[channel];
+        if (channelTotal > metrics.differingPixels * 255 || channelMaximum > channelTotal
+            || (channelTotal === 0) !== (channelMaximum === 0)) {
+            throw new Error(`receipt ${channel}-channel metrics are internally impossible.`);
+        }
+    }
     if (Object.values(metrics.channelTotalDelta).reduce((sum, value) => sum + value, 0) !== metrics.totalChannelDelta
         || Math.max(...Object.values(metrics.channelMaxDelta)) !== metrics.maxChannelDelta) {
         throw new Error("receipt channel metrics are inconsistent with aggregate metrics.");
@@ -331,7 +360,8 @@ function validateDiffBounds(diffBounds, metrics, width, height) {
     assertUnsignedInteger(diffBounds.y, "receipt.diffBounds.y");
     assertUnsignedInteger(diffBounds.width, "receipt.diffBounds.width", { positive: true });
     assertUnsignedInteger(diffBounds.height, "receipt.diffBounds.height", { positive: true });
-    if (metrics.differingPixels === 0 || diffBounds.x + diffBounds.width > width || diffBounds.y + diffBounds.height > height) {
+    if (metrics.differingPixels === 0 || diffBounds.width * diffBounds.height < metrics.differingPixels
+        || diffBounds.x + diffBounds.width > width || diffBounds.y + diffBounds.height > height) {
         throw new RangeError("receipt.diffBounds is inconsistent with the image or pixel metrics.");
     }
 }
@@ -435,6 +465,7 @@ function calculateMetrics(source, candidate, width, height) {
             differingPixelRatio: differingPixels / (width * height),
             maxChannelDelta,
             totalChannelDelta,
+            squaredChannelDelta,
             meanAbsoluteChannelDelta: totalChannelDelta / channelCount,
             rootMeanSquareChannelDelta: Math.sqrt(squaredChannelDelta / channelCount),
             channelTotalDelta,

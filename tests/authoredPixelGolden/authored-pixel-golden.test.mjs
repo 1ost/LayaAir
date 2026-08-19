@@ -81,6 +81,7 @@ test("exact captures pass with zero metrics and a deterministic authenticated re
         differingPixelRatio: 0,
         maxChannelDelta: 0,
         totalChannelDelta: 0,
+        squaredChannelDelta: 0,
         meanAbsoluteChannelDelta: 0,
         rootMeanSquareChannelDelta: 0,
         channelTotalDelta: { r: 0, g: 0, b: 0, a: 0 },
@@ -108,6 +109,9 @@ test("capture and receipt byte parsers reject invalid UTF-8 and byte-normalized 
 test("receipt validation rejects missing, unknown, ill-typed, and inconsistent rehashed shapes", () => {
     const exact = compareRgbaCaptures(capture(), capture());
     const drift = compareRgbaCaptures(capture(), capture([1, 0, 0, 0, 10, 20, 30, 255]));
+    const multiSource = createRgbaCapture({ width: 3, height: 2, rgba: new Uint8Array(24), environment: environment() });
+    const multiPixels = new Uint8Array(24); multiPixels[0] = 1; multiPixels[20] = 1;
+    const multiDrift = compareRgbaCaptures(multiSource, createRgbaCapture({ width: 3, height: 2, rgba: multiPixels, environment: environment() }));
     const cases = [];
     const missing = clone(exact); delete missing.source; cases.push(missing);
     cases.push({ ...clone(exact), unknown: true });
@@ -117,8 +121,22 @@ test("receipt validation rejects missing, unknown, ill-typed, and inconsistent r
     cases.push({ ...clone(exact), environmentSha256: { source: zeroHash, candidate: zeroHash } });
     cases.push({ ...clone(exact), metrics: null });
     cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), differingPixelRatio: 0.5 } });
+    cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), meanAbsoluteChannelDelta: 1 }, mismatchReasons: ["maxMeanAbsoluteChannelDelta"], passed: false });
+    cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), rootMeanSquareChannelDelta: 1 }, mismatchReasons: ["maxRootMeanSquareChannelDelta"], passed: false });
     cases.push({ ...clone(exact), metrics: { ...clone(exact.metrics), channelTotalDelta: { r: 1, g: 0, b: 0, a: 0 } } });
+    cases.push({
+        ...clone(exact),
+        metrics: {
+            ...clone(exact.metrics), differingPixels: 0, differingPixelRatio: 0,
+            maxChannelDelta: 1, totalChannelDelta: 1, squaredChannelDelta: 1,
+            meanAbsoluteChannelDelta: 1 / 8, rootMeanSquareChannelDelta: Math.sqrt(1 / 8),
+            channelTotalDelta: { r: 1, g: 0, b: 0, a: 0 }, channelMaxDelta: { r: 1, g: 0, b: 0, a: 0 },
+        },
+        mismatchReasons: ["maxChannelDelta", "maxMeanAbsoluteChannelDelta", "maxRootMeanSquareChannelDelta"],
+        passed: false,
+    });
     cases.push({ ...clone(drift), diffBounds: { x: 2, y: 0, width: 1, height: 1 } });
+    cases.push({ ...clone(multiDrift), diffBounds: { x: 0, y: 0, width: 1, height: 1 } });
     cases.push({ ...clone(drift), mismatchReasons: ["maxDifferingPixels", "maxDifferingPixels"] });
     cases.push({ ...clone(drift), passed: true });
     cases.push({ ...clone(exact), mismatchReasons: ["environment"], passed: false });
@@ -142,6 +160,7 @@ test("straight-RGBA differences report exact metrics and the minimal pixel bound
     assert.equal(receipt.metrics.differingPixelRatio, 1 / 3);
     assert.equal(receipt.metrics.maxChannelDelta, 5);
     assert.equal(receipt.metrics.totalChannelDelta, 15);
+    assert.equal(receipt.metrics.squaredChannelDelta, 55);
     assert.equal(receipt.metrics.meanAbsoluteChannelDelta, 15 / 24);
     assert.equal(receipt.metrics.rootMeanSquareChannelDelta, Math.sqrt(55 / 24));
     assert.deepEqual(receipt.metrics.channelTotalDelta, { r: 6, g: 2, b: 3, a: 4 });
