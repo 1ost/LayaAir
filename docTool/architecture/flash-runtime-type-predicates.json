@@ -164,6 +164,22 @@
       "moduleSha256": "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6"
     },
     {
+      "sourceQName": "flash.events.ContextMenuEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/ContextMenuEvent.ts",
+      "constructorExport": "ContextMenuEvent",
+      "constructorSignature": "typeof ContextMenuEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, mouseTarget?: unknown, contextMenuOwner?: unknown): ContextMenuEvent"
+      ],
+      "predicateExport": "isFlashContextMenuEvent",
+      "predicateSignature": "(value: unknown) => value is ContextMenuEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "22aa86d5a9e8e1dd50b73f4d250d7c86067f129b39e79fe5a02c3a115c06281f"
+    },
+    {
       "sourceQName": "flash.events.ErrorEvent",
       "targetCapabilityId": "api.flash.events",
       "targetModule": "src/layaAir/flash/events/ErrorEvent.ts",
@@ -225,6 +241,22 @@
       "moduleSha256": "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb"
     },
     {
+      "sourceQName": "flash.events.HTTPStatusEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/HTTPStatusEvent.ts",
+      "constructorExport": "HTTPStatusEvent",
+      "constructorSignature": "typeof HTTPStatusEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, status?: number, redirected?: boolean): HTTPStatusEvent"
+      ],
+      "predicateExport": "isFlashHTTPStatusEvent",
+      "predicateSignature": "(value: unknown) => value is HTTPStatusEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42"
+    },
+    {
       "sourceQName": "flash.events.IOErrorEvent",
       "targetCapabilityId": "api.flash.events",
       "targetModule": "src/layaAir/flash/events/IOErrorEvent.ts",
@@ -275,6 +307,40 @@
       "moduleSha256": "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70"
     },
     {
+      "sourceQName": "flash.events.ProgressEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/ProgressEvent.ts",
+      "constructorExport": "ProgressEvent",
+      "constructorSignature": "typeof ProgressEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, bytesLoaded?: number, bytesTotal?: number): ProgressEvent"
+      ],
+      "predicateExport": "isFlashProgressEvent",
+      "predicateSignature": "(value: unknown) => value is ProgressEvent",
+      "heritageClosure": [
+        "flash.events.Event"
+      ],
+      "moduleSha256": "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750"
+    },
+    {
+      "sourceQName": "flash.events.SecurityErrorEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/SecurityErrorEvent.ts",
+      "constructorExport": "SecurityErrorEvent",
+      "constructorSignature": "typeof SecurityErrorEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, errorID?: number): SecurityErrorEvent"
+      ],
+      "predicateExport": "isFlashSecurityErrorEvent",
+      "predicateSignature": "(value: unknown) => value is SecurityErrorEvent",
+      "heritageClosure": [
+        "flash.events.ErrorEvent",
+        "flash.events.TextEvent",
+        "flash.events.Event"
+      ],
+      "moduleSha256": "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b"
+    },
+    {
       "sourceQName": "flash.events.TextEvent",
       "targetCapabilityId": "api.flash.events",
       "targetModule": "src/layaAir/flash/events/TextEvent.ts",
@@ -305,6 +371,24 @@
         "flash.events.Event"
       ],
       "moduleSha256": "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81"
+    },
+    {
+      "sourceQName": "flash.events.UncaughtErrorEvent",
+      "targetCapabilityId": "api.flash.events",
+      "targetModule": "src/layaAir/flash/events/UncaughtErrorEvent.ts",
+      "constructorExport": "UncaughtErrorEvent",
+      "constructorSignature": "typeof UncaughtErrorEvent",
+      "constructSignatures": [
+        "new (type: string, bubbles?: boolean, cancelable?: boolean, error?: unknown): UncaughtErrorEvent"
+      ],
+      "predicateExport": "isFlashUncaughtErrorEvent",
+      "predicateSignature": "(value: unknown) => value is UncaughtErrorEvent",
+      "heritageClosure": [
+        "flash.events.ErrorEvent",
+        "flash.events.TextEvent",
+        "flash.events.Event"
+      ],
+      "moduleSha256": "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368"
     },
     {
       "sourceQName": "flash.filters.BlurFilter",

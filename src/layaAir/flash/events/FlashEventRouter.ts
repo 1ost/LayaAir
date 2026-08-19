@@ -4,13 +4,18 @@ import { getInputEventOwner } from "../../laya/display/Input";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { readTextBeforeInputPayload, readTextCompositionPayload } from "../../laya/platform/TextInputAdapter";
 import { Event, EventPhase } from "./Event";
+import { ContextMenuEvent } from "./ContextMenuEvent";
 import { FocusEvent } from "./FocusEvent";
+import { HTTPStatusEvent } from "./HTTPStatusEvent";
 import { IMEEvent } from "./IMEEvent";
 import { IOErrorEvent } from "./IOErrorEvent";
 import { KeyboardEvent } from "./KeyboardEvent";
 import { MouseEvent } from "./MouseEvent";
+import { ProgressEvent } from "./ProgressEvent";
+import { SecurityErrorEvent } from "./SecurityErrorEvent";
 import { TextEvent } from "./TextEvent";
 import { TimerEvent } from "./TimerEvent";
+import { UncaughtErrorEvent } from "./UncaughtErrorEvent";
 import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
 
 export type FlashEventListener = { bivarianceHack(event: Event): void }["bivarianceHack"];
@@ -212,6 +217,16 @@ export class FlashEventRouter {
         if (type === IOErrorEvent.IO_ERROR || type === IOErrorEvent.DISK_ERROR
             || type === IOErrorEvent.NETWORK_ERROR || type === IOErrorEvent.VERIFY_ERROR)
             return IOErrorEvent._fromNative(type, value);
+        if (type === SecurityErrorEvent.SECURITY_ERROR)
+            return SecurityErrorEvent._fromNative(type, value);
+        if (type === HTTPStatusEvent.HTTP_STATUS)
+            return HTTPStatusEvent._fromNative(type, value);
+        if (type === ProgressEvent.PROGRESS)
+            return ProgressEvent._fromNative(type, value);
+        if (type === ContextMenuEvent.MENU_ITEM_SELECT || type === ContextMenuEvent.MENU_SELECT)
+            return ContextMenuEvent._fromNative(type, value);
+        if (type === UncaughtErrorEvent.UNCAUGHT_ERROR)
+            return UncaughtErrorEvent._fromNative(type, value);
         if (type === TimerEvent.TIMER || type === TimerEvent.TIMER_COMPLETE)
             return new TimerEvent(type);
         if (type === Event.ADDED || type === Event.REMOVED)

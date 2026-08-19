@@ -22023,7 +22023,7 @@
             "new (host: NativeEventHost): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc",
+          "sha256": "26ae97c0147433a2ac02eb79a0f3e5855a6ea7d865f4512c78e75cf220576440",
           "heritage": []
         },
         {
@@ -23990,14 +23990,14 @@
           "export": "FlashEventListener",
           "kind": "type",
           "signature": "any",
-          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc"
+          "sha256": "26ae97c0147433a2ac02eb79a0f3e5855a6ea7d865f4512c78e75cf220576440"
         },
         {
           "module": "src/layaAir/flash/events/FlashEventRouter.ts",
           "export": "NativeEventHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc"
+          "sha256": "26ae97c0147433a2ac02eb79a0f3e5855a6ea7d865f4512c78e75cf220576440"
         },
         {
           "module": "src/layaAir/flash/events/FocusEvent.ts",
@@ -24040,22 +24040,2218 @@
           "kind": "function",
           "signature": "(value: unknown) => value is TimerEvent",
           "sha256": "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81"
+        },
+        {
+          "module": "src/layaAir/flash/events/ContextMenuEvent.ts",
+          "export": "ContextMenuEvent",
+          "kind": "class",
+          "signature": "typeof ContextMenuEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => ContextMenuEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenuOwner",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "isMouseTargetInaccessible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "mouseTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_fromNative",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, value: unknown) => ContextMenuEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MENU_ITEM_SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"menuItemSelect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MENU_SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"menuSelect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, mouseTarget?: unknown, contextMenuOwner?: unknown): ContextMenuEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "22aa86d5a9e8e1dd50b73f4d250d7c86067f129b39e79fe5a02c3a115c06281f",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "Event"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/events/HTTPStatusEvent.ts",
+          "export": "HTTPStatusEvent",
+          "kind": "class",
+          "signature": "typeof HTTPStatusEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => HTTPStatusEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "redirected",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "status",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_fromNative",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, value: unknown) => HTTPStatusEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HTTP_STATUS",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"httpStatus\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, status?: number, redirected?: boolean): HTTPStatusEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "Event"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/events/ProgressEvent.ts",
+          "export": "ProgressEvent",
+          "kind": "class",
+          "signature": "typeof ProgressEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "bytesLoaded",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "bytesTotal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => ProgressEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_fromNative",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, value: unknown) => ProgressEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "PROGRESS",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"progress\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, bytesLoaded?: number, bytesTotal?: number): ProgressEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "Event"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/events/SecurityErrorEvent.ts",
+          "export": "SecurityErrorEvent",
+          "kind": "class",
+          "signature": "typeof SecurityErrorEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => SecurityErrorEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "errorID",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "text",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_fromNative",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, value: unknown) => SecurityErrorEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ERROR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"error\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LINK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"link\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SECURITY_ERROR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"securityError\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT_INPUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"textInput\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string, errorID?: number): SecurityErrorEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "ErrorEvent"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/events/UncaughtErrorEvent.ts",
+          "export": "UncaughtErrorEvent",
+          "kind": "class",
+          "signature": "typeof UncaughtErrorEvent",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_bindNativeControl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(control: { stopPropagation(): void; preventDefault(): void;}) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isImmediatePropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isPropagationStopped",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_prepareForDispatch",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setCurrentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(currentTarget: unknown, phase: EventPhase) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bubbles",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "cancelable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => UncaughtErrorEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentTarget",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "error",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "errorID",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "eventPhase",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "EventPhase"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDefaultPrevented",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preventDefault",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopImmediatePropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopPropagation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "target",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "text",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_fromNative",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, value: unknown) => UncaughtErrorEvent"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"activate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"added\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ADDED_TO_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"addedToStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CANCEL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"cancel\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CHANGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"change\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CLOSE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"close\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"complete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONNECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"connect\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DEACTIVATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"deactivate\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"enterFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ERROR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"error\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "EXIT_FRAME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"exitFrame\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FRAME_CONSTRUCTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"frameConstructed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INIT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"init\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LINK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"link\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "MOUSE_LEAVE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"mouseLeave\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "OPEN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"open\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removed\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOVED_FROM_STAGE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"removedFromStage\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RENDER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"render\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RESIZE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"resize\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SCROLL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"scroll\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SELECT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"select\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SOUND_COMPLETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"soundComplete\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT_INPUT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"textInput\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNCAUGHT_ERROR",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"uncaughtError\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UNLOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"unload\""
+            }
+          ],
+          "constructors": [
+            "new (type: string, bubbles?: boolean, cancelable?: boolean, error?: unknown): UncaughtErrorEvent"
+          ],
+          "indexSignatures": [],
+          "sha256": "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "ErrorEvent"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/events/ContextMenuEvent.ts",
+          "export": "isFlashContextMenuEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ContextMenuEvent",
+          "sha256": "22aa86d5a9e8e1dd50b73f4d250d7c86067f129b39e79fe5a02c3a115c06281f"
+        },
+        {
+          "module": "src/layaAir/flash/events/HTTPStatusEvent.ts",
+          "export": "isFlashHTTPStatusEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is HTTPStatusEvent",
+          "sha256": "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42"
+        },
+        {
+          "module": "src/layaAir/flash/events/ProgressEvent.ts",
+          "export": "isFlashProgressEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ProgressEvent",
+          "sha256": "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750"
+        },
+        {
+          "module": "src/layaAir/flash/events/SecurityErrorEvent.ts",
+          "export": "isFlashSecurityErrorEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SecurityErrorEvent",
+          "sha256": "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b"
+        },
+        {
+          "module": "src/layaAir/flash/events/UncaughtErrorEvent.ts",
+          "export": "isFlashUncaughtErrorEvent",
+          "kind": "function",
+          "signature": "(value: unknown) => value is UncaughtErrorEvent",
+          "sha256": "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashEventsBridgeEvidence.test.ts",
           "test": "Flash events bridge compiler surface",
-          "sha256": "9f3b68b046579b0b2ea35a80bbcb76bfa2e150914e6081c478740f0270816415",
+          "sha256": "c15a6bb9f7ab495bda79e6c5bf7e433552af1e9d1270d9bf30410c2883bbf413",
           "capability": "api.flash.events",
           "covers": [
             "158d1fed0fc6e316d3199fabf21c081f636193fd5be894dc302a622dade894a1",
-            "228547fc30a092e73fc1342cc549a3f46275477e4b609702f8f6c17fb7f434fc",
+            "22aa86d5a9e8e1dd50b73f4d250d7c86067f129b39e79fe5a02c3a115c06281f",
+            "26ae97c0147433a2ac02eb79a0f3e5855a6ea7d865f4512c78e75cf220576440",
             "2b1c3387ca1e1c37d23b08e19e3b5ea54c7d28070461e0ecc48b1fccbf7aba4d",
             "2e037c17f0932f32f4dc2009db93638f2cae5534c0e8602ea14ad6d804792e81",
+            "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f",
+            "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750",
+            "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
+            "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368",
             "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",

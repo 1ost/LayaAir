@@ -26,11 +26,16 @@ import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
 import { isFlashErrorEvent } from "../../../src/layaAir/flash/events/ErrorEvent";
+import { isFlashContextMenuEvent } from "../../../src/layaAir/flash/events/ContextMenuEvent";
+import { isFlashHTTPStatusEvent } from "../../../src/layaAir/flash/events/HTTPStatusEvent";
 import { isFlashIOErrorEvent } from "../../../src/layaAir/flash/events/IOErrorEvent";
 import { isFlashKeyboardEvent } from "../../../src/layaAir/flash/events/KeyboardEvent";
 import { isFlashMouseEvent } from "../../../src/layaAir/flash/events/MouseEvent";
+import { isFlashProgressEvent } from "../../../src/layaAir/flash/events/ProgressEvent";
+import { isFlashSecurityErrorEvent } from "../../../src/layaAir/flash/events/SecurityErrorEvent";
 import { isFlashTextEvent } from "../../../src/layaAir/flash/events/TextEvent";
 import { isFlashTimerEvent } from "../../../src/layaAir/flash/events/TimerEvent";
+import { isFlashUncaughtErrorEvent } from "../../../src/layaAir/flash/events/UncaughtErrorEvent";
 import { isFlashURLRequest } from "../../../src/layaAir/flash/net/URLRequest";
 import { isFlashTimer } from "../../../src/layaAir/flash/utils/Timer";
 import { isFlashTextField } from "../../../src/layaAir/flash/text/TextField";
@@ -53,8 +58,9 @@ import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
-    ErrorEvent, FlashStageBoundary, FocusEvent, Graphics, IMEEvent, IOErrorEvent, KeyboardEvent,
-    InteractiveObject, MouseEvent, MovieClip, Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent,
+    ContextMenuEvent, ErrorEvent, FlashStageBoundary, FocusEvent, Graphics, HTTPStatusEvent, IMEEvent,
+    IOErrorEvent, KeyboardEvent, InteractiveObject, MouseEvent, MovieClip, ProgressEvent, SecurityErrorEvent,
+    Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent, UncaughtErrorEvent,
     AntiAliasType, CSMSettings, GridFitType,
     TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
     Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
@@ -147,9 +153,14 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     const shape = new Shape();
     const graphics = shape.graphics;
     const error = new ErrorEvent(ErrorEvent.ERROR);
+    const contextMenu = new ContextMenuEvent(ContextMenuEvent.MENU_ITEM_SELECT);
+    const httpStatus = new HTTPStatusEvent(HTTPStatusEvent.HTTP_STATUS);
     const ioError = new IOErrorEvent(IOErrorEvent.IO_ERROR);
     const keyboard = new KeyboardEvent(KeyboardEvent.KEY_DOWN);
     const timer = new TimerEvent(TimerEvent.TIMER);
+    const progress = new ProgressEvent(ProgressEvent.PROGRESS);
+    const securityError = new SecurityErrorEvent(SecurityErrorEvent.SECURITY_ERROR);
+    const uncaughtError = new UncaughtErrorEvent(UncaughtErrorEvent.UNCAUGHT_ERROR);
     const timerDispatcher = new Timer(1);
     const request = new URLRequest();
 
@@ -178,6 +189,11 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
     assert.equal(isFlashEventDispatcher(event), false);
     assert.deepEqual([isFlashShape(shape), isFlashGraphics(graphics), isFlashBitmapDrawable(shape)], [true, true, true]);
     assert.deepEqual([isFlashErrorEvent(error), isFlashErrorEvent(ioError), isFlashIOErrorEvent(ioError)], [true, true, true]);
+    assert.deepEqual([isFlashContextMenuEvent(contextMenu), isFlashHTTPStatusEvent(httpStatus),
+        isFlashProgressEvent(progress), isFlashSecurityErrorEvent(securityError),
+        isFlashUncaughtErrorEvent(uncaughtError)], [true, true, true, true, true]);
+    assert.deepEqual([isFlashEvent(contextMenu), isFlashEvent(httpStatus), isFlashEvent(progress),
+        isFlashErrorEvent(securityError), isFlashErrorEvent(uncaughtError)], [true, true, true, true, true]);
     assert.deepEqual([isFlashKeyboardEvent(keyboard), isFlashTimerEvent(timer), isFlashURLRequest(request),
         isFlashTimer(timerDispatcher)], [true, true, true, true]);
 
@@ -197,9 +213,14 @@ test("class-specific nominal predicates preserve exact Flash heritage without mi
         [isFlashShape, Shape, shape],
         [isFlashGraphics, Graphics, graphics],
         [isFlashErrorEvent, ErrorEvent, error],
+        [isFlashContextMenuEvent, ContextMenuEvent, contextMenu],
+        [isFlashHTTPStatusEvent, HTTPStatusEvent, httpStatus],
         [isFlashIOErrorEvent, IOErrorEvent, ioError],
         [isFlashKeyboardEvent, KeyboardEvent, keyboard],
         [isFlashTimerEvent, TimerEvent, timer],
+        [isFlashProgressEvent, ProgressEvent, progress],
+        [isFlashSecurityErrorEvent, SecurityErrorEvent, securityError],
+        [isFlashUncaughtErrorEvent, UncaughtErrorEvent, uncaughtError],
         [isFlashTimer, Timer, timerDispatcher],
         [isFlashURLRequest, URLRequest, request],
     ];
@@ -701,6 +722,89 @@ test("IOErrorEvent and TimerEvent retain used hierarchy, constants and fields", 
     assert.throws(() => timer.updateAfterEvent(), UnsupportedFlashFeatureError);
 });
 
+test("source-used generic event leaves retain Pepper value, clone and dispatch semantics", () => {
+    const progress = new ProgressEvent("progressMutable", true, true, 1.25, 2.5);
+    progress.bytesLoaded = "9.75" as unknown as number;
+    progress.bytesTotal = -4.5;
+    const progressClone = progress.clone();
+    progress.bytesLoaded = 101;
+    assert.deepEqual([progressClone.type, progressClone.bubbles, progressClone.cancelable,
+        progressClone.bytesLoaded, progressClone.bytesTotal], ["progressMutable", true, true, 9.75, -4.5]);
+    assert.ok(Number.isNaN(new ProgressEvent("nan", false, false, Number.NaN).bytesLoaded));
+    assert.equal(new ProgressEvent("infinity", false, false, 0, Number.POSITIVE_INFINITY).bytesTotal,
+        Number.POSITIVE_INFINITY);
+
+    const http = new HTTPStatusEvent("httpMutable", true, true, 4294967297, true);
+    assert.deepEqual([http.status, http.redirected], [1, true]);
+    http.redirected = false;
+    (http as unknown as { redirected: unknown }).redirected = 1;
+    assert.equal(http.redirected, true);
+    assert.equal(new HTTPStatusEvent("negative", false, false, -1.9).status, -1);
+    assert.equal(new HTTPStatusEvent("overflow", false, false, 2147483648).status, -2147483648);
+    assert.equal(new HTTPStatusEvent("nan", false, false, Number.NaN).status, 0);
+    assert.throws(() => { (http as unknown as { status: number }).status = 202; }, TypeError);
+    assert.equal("responseURL" in http, false);
+    assert.equal("responseHeaders" in http, false);
+    assert.deepEqual([http.clone().status, http.clone().redirected], [1, true]);
+
+    const customText = { toString: (): string => "custom-text" };
+    const security = new SecurityErrorEvent("securityMutable", true, true,
+        customText as unknown as string, 4294967297);
+    assert.deepEqual([security.text, security.errorID], ["custom-text", 1]);
+    (security as unknown as { text: string }).text = "after";
+    assert.throws(() => { (security as unknown as { errorID: number }).errorID = 18; }, TypeError);
+    assert.deepEqual([security.clone().text, security.clone().errorID], ["after", 1]);
+    const nullSecurity = new SecurityErrorEvent("nullText", false, false, null as unknown as string, -1.9);
+    assert.equal(nullSecurity.text, null);
+    assert.equal(nullSecurity.errorID, -1);
+
+    const mouse = new Sprite();
+    const owner = new Sprite();
+    const context = new ContextMenuEvent("contextMutable", true, true, mouse, owner);
+    context.isMouseTargetInaccessible = 1 as unknown as boolean;
+    const contextClone = context.clone();
+    assert.deepEqual([contextClone.mouseTarget === mouse, contextClone.contextMenuOwner === owner,
+        contextClone.isMouseTargetInaccessible], [true, true, false]);
+
+    const thrown = new Error("plain-error");
+    const uncaught = new UncaughtErrorEvent("uncaughtMutable", undefined, undefined, thrown);
+    assert.deepEqual([uncaught.bubbles, uncaught.cancelable, uncaught.error === thrown,
+        uncaught.text, uncaught.errorID], [true, true, true, "", 0]);
+    assert.equal(uncaught.clone().error, thrown);
+    assert.throws(() => { (uncaught as unknown as { error: unknown }).error = "replacement"; }, TypeError);
+    assert.throws(() => { (uncaught as unknown as { errorID: number }).errorID = 99; }, TypeError);
+
+    const target = new DisplayObject();
+    const received: Event[] = [];
+    for (const type of [ProgressEvent.PROGRESS, HTTPStatusEvent.HTTP_STATUS,
+        SecurityErrorEvent.SECURITY_ERROR, ContextMenuEvent.MENU_SELECT, UncaughtErrorEvent.UNCAUGHT_ERROR])
+        target.addEventListener(type, event => received.push(event));
+    target.event(ProgressEvent.PROGRESS, { bytesLoaded: 6.5, bytesTotal: 7.25 });
+    target.event(HTTPStatusEvent.HTTP_STATUS, { status: 201, redirected: true });
+    target.event(SecurityErrorEvent.SECURITY_ERROR, { text: "denied", errorID: 7 });
+    target.event(ContextMenuEvent.MENU_SELECT, { mouseTarget: mouse, contextMenuOwner: owner,
+        isMouseTargetInaccessible: true });
+    target.event(UncaughtErrorEvent.UNCAUGHT_ERROR, { error: thrown });
+    assert.equal(received.length, 5);
+    assert.deepEqual(received.map(event => [event.target === target, event.currentTarget === target]),
+        Array.from({ length: 5 }, () => [true, true]));
+    assert.deepEqual([(received[0] as ProgressEvent).bytesLoaded, (received[0] as ProgressEvent).bytesTotal],
+        [6.5, 7.25]);
+    assert.deepEqual([(received[1] as HTTPStatusEvent).status, (received[1] as HTTPStatusEvent).redirected],
+        [201, true]);
+    assert.deepEqual([(received[2] as SecurityErrorEvent).text, (received[2] as SecurityErrorEvent).errorID],
+        ["denied", 7]);
+    assert.deepEqual([(received[3] as ContextMenuEvent).mouseTarget === mouse,
+        (received[3] as ContextMenuEvent).contextMenuOwner === owner,
+        (received[3] as ContextMenuEvent).isMouseTargetInaccessible], [true, true, true]);
+    assert.equal((received[4] as UncaughtErrorEvent).error, thrown);
+
+    assert.throws(() => ProgressEvent._fromNative(ProgressEvent.PROGRESS, "bad"), TypeError);
+    assert.throws(() => HTTPStatusEvent._fromNative(HTTPStatusEvent.HTTP_STATUS, "bad"), TypeError);
+    assert.throws(() => SecurityErrorEvent._fromNative(SecurityErrorEvent.SECURITY_ERROR, 7), TypeError);
+    assert.throws(() => ContextMenuEvent._fromNative(ContextMenuEvent.MENU_SELECT, 7), TypeError);
+});
+
 test("maintained Flash event constants are immutable", () => {
     assert.deepEqual([
         Event.ACTIVATE, Event.ADDED, Event.ADDED_TO_STAGE, Event.CHANGE, Event.CLOSE, Event.COMPLETE,
@@ -714,14 +818,19 @@ test("maintained Flash event constants are immutable", () => {
         MouseEvent.ROLL_OUT, MouseEvent.ROLL_OVER,
         TextEvent.LINK, TextEvent.TEXT_INPUT,
         TimerEvent.TIMER, TimerEvent.TIMER_COMPLETE,
+        ContextMenuEvent.MENU_ITEM_SELECT, ContextMenuEvent.MENU_SELECT,
+        HTTPStatusEvent.HTTP_STATUS, ProgressEvent.PROGRESS, SecurityErrorEvent.SECURITY_ERROR,
+        UncaughtErrorEvent.UNCAUGHT_ERROR,
     ], [
         "activate", "added", "addedToStage", "change", "close", "complete", "connect", "deactivate",
         "enterFrame", "init", "removedFromStage", "resize", "soundComplete",
         "focusIn", "focusOut", "diskError", "ioError", "networkError", "keyDown", "keyUp",
         "click", "doubleClick", "mouseDown", "mouseMove", "mouseOut", "mouseOver", "mouseUp",
         "mouseWheel", "rollOut", "rollOver", "link", "textInput", "timer", "timerComplete",
+        "menuItemSelect", "menuSelect", "httpStatus", "progress", "securityError", "uncaughtError",
     ]);
-    for (const constructor of [Event, FocusEvent, IOErrorEvent, KeyboardEvent, MouseEvent, TextEvent, TimerEvent]) {
+    for (const constructor of [Event, FocusEvent, IOErrorEvent, KeyboardEvent, MouseEvent, TextEvent, TimerEvent,
+        ContextMenuEvent, HTTPStatusEvent, ProgressEvent, SecurityErrorEvent, UncaughtErrorEvent]) {
         assert.equal(Object.isFrozen(constructor), true, constructor.name);
         const stringConstants = Object.values(Object.getOwnPropertyDescriptors(constructor))
             .filter(descriptor => "value" in descriptor && typeof descriptor.value === "string");

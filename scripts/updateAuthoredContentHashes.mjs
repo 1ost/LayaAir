@@ -16,9 +16,15 @@ if (ledger.hashMode !== "canonical-lf-utf8")
 
 const eventCapability = ledger.capabilities.find(item => item.id === "api.flash.events");
 for (const [module, exported, kind = "class"] of [
+    ["src/layaAir/flash/events/ContextMenuEvent.ts", "ContextMenuEvent"],
     ["src/layaAir/flash/events/FocusEvent.ts", "FocusEvent"],
+    ["src/layaAir/flash/events/HTTPStatusEvent.ts", "HTTPStatusEvent"],
     ["src/layaAir/flash/events/IMEEvent.ts", "IMEEvent"],
+    ["src/layaAir/flash/events/ProgressEvent.ts", "ProgressEvent"],
+    ["src/layaAir/flash/events/SecurityErrorEvent.ts", "SecurityErrorEvent"],
     ["src/layaAir/flash/events/TextEvent.ts", "TextEvent"],
+    ["src/layaAir/flash/events/UncaughtErrorEvent.ts", "UncaughtErrorEvent"],
+    ["src/layaAir/flash/events/ContextMenuEvent.ts", "isFlashContextMenuEvent", "function"],
     ["src/layaAir/flash/events/ErrorEvent.ts", "isFlashErrorEvent", "function"],
     ["src/layaAir/flash/events/Event.ts", "isFlashEvent", "function"],
     ["src/layaAir/flash/events/EventDispatcher.ts", "IEventDispatcher", "interface"],
@@ -26,11 +32,15 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/events/FlashEventRouter.ts", "FlashEventListener", "type"],
     ["src/layaAir/flash/events/FlashEventRouter.ts", "NativeEventHost", "interface"],
     ["src/layaAir/flash/events/FocusEvent.ts", "isFlashFocusEvent", "function"],
+    ["src/layaAir/flash/events/HTTPStatusEvent.ts", "isFlashHTTPStatusEvent", "function"],
     ["src/layaAir/flash/events/IOErrorEvent.ts", "isFlashIOErrorEvent", "function"],
     ["src/layaAir/flash/events/KeyboardEvent.ts", "isFlashKeyboardEvent", "function"],
     ["src/layaAir/flash/events/MouseEvent.ts", "isFlashMouseEvent", "function"],
+    ["src/layaAir/flash/events/ProgressEvent.ts", "isFlashProgressEvent", "function"],
+    ["src/layaAir/flash/events/SecurityErrorEvent.ts", "isFlashSecurityErrorEvent", "function"],
     ["src/layaAir/flash/events/TextEvent.ts", "isFlashTextEvent", "function"],
     ["src/layaAir/flash/events/TimerEvent.ts", "isFlashTimerEvent", "function"],
+    ["src/layaAir/flash/events/UncaughtErrorEvent.ts", "isFlashUncaughtErrorEvent", "function"],
 ]) {
     if (!eventCapability.obligations.some(item => item.module === module && item.export === exported))
         eventCapability.obligations.push({ module, export: exported, kind, signature: "",
