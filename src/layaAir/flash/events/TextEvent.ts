@@ -7,7 +7,7 @@ export function isFlashTextEvent(value: unknown): value is TextEvent {
     return typeof value === "object" && value !== null && TEXT_EVENT_VALUES.has(value);
 }
 
-/** Flash-shaped text event with an immutable exact native text payload. */
+/** Flash-shaped text event with a mutable, source-shaped native text payload. */
 export class TextEvent extends Event {
     static readonly LINK = "link";
     static readonly TEXT_INPUT = "textInput";

@@ -23949,7 +23949,7 @@
             "new (type: string, bubbles?: boolean, cancelable?: boolean, text?: string): TextEvent"
           ],
           "indexSignatures": [],
-          "sha256": "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7",
+          "sha256": "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e",
           "heritage": [
             {
               "kind": "extends",
@@ -24032,7 +24032,7 @@
           "export": "isFlashTextEvent",
           "kind": "function",
           "signature": "(value: unknown) => value is TextEvent",
-          "sha256": "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7"
+          "sha256": "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e"
         },
         {
           "module": "src/layaAir/flash/events/TimerEvent.ts",
@@ -26250,12 +26250,12 @@
             "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750",
             "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
+            "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e",
             "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368",
             "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
             "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
-            "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7",
             "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
           ]
         }

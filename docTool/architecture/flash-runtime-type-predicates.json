@@ -354,7 +354,7 @@
       "heritageClosure": [
         "flash.events.Event"
       ],
-      "moduleSha256": "eba5d77a17dc0cf46340b6b783d0bd4454a374eab1eaf6e93433d770cee94ee7"
+      "moduleSha256": "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e"
     },
     {
       "sourceQName": "flash.events.TimerEvent",
