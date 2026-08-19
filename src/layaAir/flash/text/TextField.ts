@@ -2,6 +2,7 @@ import { Input as LayaInput, setInputEventOwner, type InputSelectionDirection } 
 import { Text as LayaText, type ITextCmd, type ITextLine } from "../../laya/display/Text";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { HtmlParseOptions } from "../../laya/html/HtmlParseOptions";
+import { Point as LayaPoint } from "../../laya/maths/Point";
 import { PAL } from "../../laya/platform/PlatformAdapters";
 import { readTextCompositionPayload } from "../../laya/platform/TextInputAdapter";
 import { Browser } from "../../laya/utils/Browser";
@@ -89,7 +90,8 @@ class NativeFlashTextInput extends LayaInput {
 
     setFlashLineScroll(y: number): void {
         this.ensureFlashLayout();
-        if (!this._scrollPos) return;
+        if (this.maxScrollY <= 0) return;
+        this._scrollPos ??= new LayaPoint();
         this._scrollPos.y = Math.max(0, y);
         this.renderText();
     }
@@ -208,6 +210,7 @@ export class TextField extends InteractiveObject {
         this._nativeInput.type = LayaInput.TYPE_TEXT;
         this._nativeInput.editable = false;
         this._nativeInput.padding = [2, 2, 2, 2];
+        this._nativeInput.overflow = LayaText.HIDDEN;
         this._nativeInput.valign = "top";
         this._nativeInput.flashParagraphFormatProvider = offset => {
             if (this._characterFormats) return cloneFormat(this._characterFormats[offset] ?? this._currentFormat());
@@ -608,6 +611,17 @@ export class TextField extends InteractiveObject {
     protected override _applyNativeFocus(value: boolean): void {
         this.focus = value;
         this._syncNativeFocusIndicator(value);
+    }
+
+    override destroy(destroyChild = true): void {
+        if (this.destroyed) return;
+        this._nativeInputSession = null;
+        this._focusRequested = false;
+        this._nativeInput.offAllCaller(this);
+        setInputEventOwner(this._nativeInput, null);
+        this._nativeInput.focus = false;
+        this._nativeInput.destroy(true);
+        super.destroy(destroyChild);
     }
 
     /** @internal Runtime probe for the composed native control; not source API. */

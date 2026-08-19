@@ -42,6 +42,7 @@
     "text.input",
     "text.html-layout",
     "text.advanced-rasterization",
+    "text.authored-device-field-configuration",
     "interaction.button-states",
     "interaction.hit-test",
     "interaction.pointer",

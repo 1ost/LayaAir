@@ -26663,7 +26663,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d",
+          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
           "heritage": [
             {
               "kind": "extends",
@@ -26679,7 +26679,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -26689,7 +26689,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -26699,7 +26699,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -27448,12 +27448,12 @@
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "706f3ef922440ef7e167d85416b060490e360ae91373a4c0e5d308906219e00e",
+          "sha256": "dd938c8a96a94b07a3a4cf4710d15e0d5d3f903bf331d778212500aa4b049e2d",
           "capability": "api.flash.text",
           "covers": [
+            "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
-            "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
-            "d6bd4dd1f91301287d7a6731720a4ef9df35770ffde0c8bfd6f2cb4a991c944d"
+            "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305"
           ]
         }
       ]
@@ -28903,6 +28903,44 @@
           "capability": "api.flash.ui",
           "covers": [
             "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text.authored-device-field-configuration",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredTextFormatConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredTextFieldConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "createAuthoredTextField",
+          "kind": "function",
+          "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
+          "sha256": "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
+          "test": "Authored device TextField configuration compiler surface",
+          "sha256": "dd938c8a96a94b07a3a4cf4710d15e0d5d3f903bf331d778212500aa4b049e2d",
+          "capability": "text.authored-device-field-configuration",
+          "covers": [
+            "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
           ]
         }
       ]

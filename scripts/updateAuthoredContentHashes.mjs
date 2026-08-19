@@ -106,6 +106,31 @@ for (const [module, exported] of textSubjects) {
         textCapability.obligations.push({ module, export: exported, kind: exported.startsWith("flash") || exported.startsWith("isFlash") ? "function" : "class", signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" });
 }
 
+let authoredDeviceTextCapability = ledger.capabilities.find(item =>
+    item.id === "text.authored-device-field-configuration");
+if (!authoredDeviceTextCapability) {
+    authoredDeviceTextCapability = { id: "text.authored-device-field-configuration" };
+    ledger.capabilities.push(authoredDeviceTextCapability);
+}
+Object.assign(authoredDeviceTextCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredTextFormatConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredTextFieldConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "createAuthoredTextField", "function"],
+    ].map(([module, exported, kind]) => authoredDeviceTextCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "", sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashTextBridgeEvidence.test.ts",
+        test: "Authored device TextField configuration compiler surface",
+        sha256: "",
+        capability: "text.authored-device-field-configuration",
+        covers: [],
+    }],
+});
+delete authoredDeviceTextCapability.blockingReason;
+
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
 for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/geom/Point.ts", "Point"],

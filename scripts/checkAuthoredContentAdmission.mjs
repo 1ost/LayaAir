@@ -32,7 +32,7 @@ document.stage-metadata library.symbol-linkage library.imported-assets
 display.hierarchy display.place-remove-depth display.instance-name
 geometry.shape-path geometry.gradient-fill geometry.bitmap-fill geometry.morph
 media.bitmap media.font media.audio media.video media.binary
-text.static-glyph-runs text.dynamic text.input text.html-layout text.advanced-rasterization
+text.static-glyph-runs text.dynamic text.input text.html-layout text.advanced-rasterization text.authored-device-field-configuration
 interaction.button-states interaction.hit-test interaction.pointer interaction.focus-tab
 rendering.transform rendering.color-transform rendering.mask rendering.blend rendering.filter rendering.cache rendering.scaling-grid
 timeline.frames-labels timeline.property-track timeline.nested-symbol timeline.morph-ratio timeline.audio timeline.declarative-cue

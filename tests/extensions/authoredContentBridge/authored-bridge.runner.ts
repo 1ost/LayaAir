@@ -61,8 +61,9 @@ import {
     UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
-    LayaAuthoredBindingHost, mapLayaAuthoredEventData, normalizeAuthoredCodeBindingContract,
-    registerAuthoredContentRuntime
+    createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
+    normalizeAuthoredCodeBindingContract, registerAuthoredContentRuntime,
+    type AuthoredTextFieldConfiguration,
 } from "../../../src/extensions/authoredContent/runtime";
 import {
     AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
@@ -1903,6 +1904,124 @@ test("TextField has genuine Flash heritage and a composed native Laya input", ()
     field.dispatchEvent(new Event(Event.CHANGE));
     assert.equal(changed, 1);
     assert.throws(() => field.type = "password", /TextField.type/);
+});
+
+test("authored TextField factory atomically publishes the three launch-critical device-Arial fields", () => {
+    const configurations: readonly AuthoredTextFieldConfiguration[] = [
+        {
+            sourceId: 17, x: -2, y: -2, width: 574.85, height: 22.45,
+            type: "dynamic", multiline: false, wordWrap: false, selectable: false,
+            displayAsPassword: false, autoSize: "none", html: false, gutter: 2, overflow: "hidden",
+            initialText: "",
+            format: {
+                fontMode: "device", font: "Arial", size: 14, color: 0xffffff, bold: true,
+                italic: false, underline: false, align: "center", leftMargin: 0, rightMargin: 0,
+                indent: 0, leading: 2,
+            },
+        },
+        {
+            sourceId: 19, x: -2, y: -2, width: 679, height: 33,
+            type: "dynamic", multiline: true, wordWrap: true, selectable: false,
+            displayAsPassword: false, autoSize: "none", html: false, gutter: 2, overflow: "hidden",
+            initialText: "",
+            format: {
+                fontMode: "device", font: "Arial", size: 12, color: 0xcccccc, bold: false,
+                italic: false, underline: false, align: "center", leftMargin: 0, rightMargin: 0,
+                indent: 0, leading: 2,
+            },
+        },
+        {
+            sourceId: 20, x: -2, y: -2, width: 547, height: 23,
+            type: "dynamic", multiline: false, wordWrap: false, selectable: false,
+            displayAsPassword: false, autoSize: "none", html: false, gutter: 2, overflow: "hidden",
+            initialText: "",
+            format: {
+                fontMode: "device", font: "Arial", size: 12, color: 0xcccccc, bold: false,
+                italic: false, underline: false, align: "center", leftMargin: 0, rightMargin: 0,
+                indent: 0, leading: 2,
+            },
+        },
+    ];
+
+    for (const configuration of configurations) {
+        const field = createAuthoredTextField(configuration);
+        const native = field.children[0] as LayaInput;
+        assert.ok(field instanceof InteractiveObject);
+        assert.equal(isFlashTextField(field), true);
+        assert.deepEqual([field.name, field.x, field.y, field.width, field.height],
+            [`symbol${configuration.sourceId}`, configuration.x, configuration.y, configuration.width, configuration.height]);
+        assert.deepEqual([field.type, field.multiline, field.wordWrap, field.selectable, field.displayAsPassword],
+            [configuration.type, configuration.multiline, configuration.wordWrap,
+                configuration.selectable, configuration.displayAsPassword]);
+        assert.deepEqual([field.flashAutoSize, field.text], [configuration.autoSize, configuration.initialText]);
+        assert.deepEqual(native.padding, [2, 2, 2, 2], "the Flash two-pixel gutter remains engine-owned");
+        assert.equal(native.overflow, "hidden", "authored bounds clip incomplete and overflowing lines");
+        assert.equal(field.embedFonts, false, "launch slice uses the device Arial path, not embedded-font readiness");
+        assert.deepEqual([
+            field.defaultTextFormat.font, field.defaultTextFormat.size, field.defaultTextFormat.color,
+            field.defaultTextFormat.bold, field.defaultTextFormat.italic, field.defaultTextFormat.underline,
+            field.defaultTextFormat.align, field.defaultTextFormat.leftMargin, field.defaultTextFormat.rightMargin,
+            field.defaultTextFormat.indent, field.defaultTextFormat.leading,
+        ], [
+            configuration.format.font, configuration.format.size, configuration.format.color,
+            configuration.format.bold, configuration.format.italic, configuration.format.underline,
+            configuration.format.align, configuration.format.leftMargin, configuration.format.rightMargin,
+            configuration.format.indent, configuration.format.leading,
+        ]);
+
+        let changes = 0;
+        let textInputs = 0;
+        let focusEvents = 0;
+        let compositionEvents = 0;
+        field.addEventListener(Event.CHANGE, () => changes++);
+        field.addEventListener(TextEvent.TEXT_INPUT, () => textInputs++);
+        field.addEventListener(FocusEvent.FOCUS_IN, () => focusEvents++);
+        field.addEventListener(IMEEvent.IME_COMPOSITION, () => compositionEvents++);
+        field.text = `field-${configuration.sourceId}`;
+        assert.equal(field.text, `field-${configuration.sourceId}`, "programmatic writes are synchronous");
+        assert.equal(field.numLines, 1, "metrics are synchronous before the next frame");
+        assert.equal(field.getLineMetrics(0).leading, 2, "authored leading survives native layout");
+        assert.deepEqual([changes, textInputs], [0, 0], "programmatic writes emit no user-edit events");
+
+        (PAL as any).textInput.target = native;
+        field.destroy(configuration.sourceId !== 20);
+        assert.deepEqual([field.destroyed, native.destroyed, field.numChildren, (PAL as any).textInput.target],
+            [true, true, 0, null], "destroy releases private input ownership and focus");
+        native.event(LayaEvent.INPUT, "late");
+        native.event(LayaEvent.CHANGE, "late");
+        native.event(LayaEvent.FOCUS, "late");
+        native.event(LayaEvent.COMPOSITION_START, "late");
+        native.event(LayaEvent.COMPOSITION_UPDATE, "late");
+        native.event(LayaEvent.COMPOSITION_END, "late");
+        assert.deepEqual([changes, textInputs, focusEvents, compositionEvents, field.numChildren], [0, 0, 0, 0, 0],
+            "destroyed native controls cannot resurrect or forward listeners");
+    }
+});
+
+test("authored TextField validation fails before publication and preserves prior fields", () => {
+    const valid: AuthoredTextFieldConfiguration = {
+        sourceId: 17, x: -2, y: -2, width: 574.85, height: 22.45,
+        type: "dynamic", multiline: false, wordWrap: false, selectable: false,
+        displayAsPassword: false, autoSize: "none", html: false, gutter: 2, overflow: "hidden",
+        initialText: "stable",
+        format: {
+            fontMode: "device", font: "Arial", size: 14, color: 0xffffff, bold: true,
+            italic: false, underline: false, align: "center", leftMargin: 0, rightMargin: 0,
+            indent: 0, leading: 2,
+        },
+    };
+    const published = createAuthoredTextField(valid);
+    const invalid = { ...valid, format: { ...valid.format, leading: Number.NaN } };
+    assert.throws(() => createAuthoredTextField(invalid), /format\.leading must be finite/);
+    assert.deepEqual([published.text, published.x, published.width, published.defaultTextFormat.leading],
+        ["stable", -2, 574.85, 2], "a rejected batch cannot partially mutate a published field");
+
+    let getterReads = 0;
+    const accessor = { ...valid } as any;
+    Object.defineProperty(accessor, "width", { enumerable: true, get(): number { getterReads++; return 1; } });
+    assert.throws(() => createAuthoredTextField(accessor), /width must be an own data property/);
+    assert.equal(getterReads, 0, "validation does not execute authored accessors");
+    published.destroy(true);
 });
 
 test("TextField preserves nullable defaults, character ranges, replacement, and independent plain and HTML views", () => {
