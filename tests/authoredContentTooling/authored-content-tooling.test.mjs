@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -17,8 +17,10 @@ test("public package imports without IDE globals and exposes only the headless A
     assert.deepEqual(Object.keys(api).sort(), [
         "AUTHORED_CONTENT_PROJECT_SCHEMA",
         "AUTHORED_CONTENT_RECEIPT_SCHEMA",
+        "AUTHORED_CONTENT_TOOL_SOURCE_SHA256",
         "AUTHORED_CONTENT_TOOL_VERSION",
         "AuthoredContentToolError",
+        "checkAuthoredContentDelivery",
         "convertAuthoredContent"
     ]);
 });
@@ -74,6 +76,29 @@ test("strict projects reject duplicate keys, drift, and conversion without an ou
     finally { await rm(fixture.workspace, { recursive: true, force: true }); }
 });
 
+test("validation errors exit 1 while only an authenticated HOLD exits 2", async () => {
+    const cli = spawnSync(process.execPath, [path.join(packageRoot, "dist/cli.cjs"), "unknown"], { encoding: "utf8", windowsHide: true });
+    assert.equal(cli.status, 1);
+    assert.equal(cli.stdout, "");
+    assert.equal(JSON.parse(cli.stderr).schema, "laya-authored-content-cli-error@1");
+});
+
+test("input authentication rejects symbolic links", async t => {
+    const fixture = await projectFixture();
+    const external = path.join(path.dirname(fixture.workspace), `${path.basename(fixture.workspace)}-outside.swf`);
+    try {
+        await writeFile(external, "outside");
+        await rm(path.join(fixture.workspace, "input.swf"));
+        try { await symlink(external, path.join(fixture.workspace, "input.swf")); }
+        catch (error) { if (error.code === "EPERM") return t.skip("symlink creation is not permitted"); throw error; }
+        await assert.rejects(
+            api.convertAuthoredContent({ command: "check", projectPath: fixture.projectPath, workspaceRoot: fixture.workspace, providerRoot: repositoryRoot }),
+            error => error.code === "AUTHORED_CONTENT_INPUT_SYMLINK"
+        );
+    }
+    finally { await rm(external, { force: true }); await rm(fixture.workspace, { recursive: true, force: true }); }
+});
+
 test("generated package packs without IDE implementation sources and supports ESM, CJS, and its bin", async () => {
     const temporary = await mkdtemp(path.join(os.tmpdir(), "laya-authored-package-"));
     try {
@@ -109,7 +134,9 @@ async function projectFixture() {
     await writeFile(path.join(workspace, "input.swf"), input);
     const head = git("rev-parse", "HEAD");
     const remoteName = "origin";
-    const remoteRef = "refs/remotes/origin/feat/flash-porting-fidelity";
+    const remoteRef = git("for-each-ref", "--format=%(refname)", `refs/remotes/${remoteName}`)
+        .split(/\r?\n/).find(ref => ref && !ref.endsWith("/HEAD"));
+    assert.ok(remoteRef, `provider checkout has no ${remoteName} remote-tracking ref`);
     const ledgerPath = "docTool/architecture/authored-content-capabilities.json";
     const ledger = await readFile(path.join(repositoryRoot, ledgerPath));
     const ledgerHash = digest(Buffer.from(ledger.toString("utf8").replace(/\r\n?/g, "\n"), "utf8"));

@@ -8,9 +8,11 @@ import {
     AuthoredContentHold,
     AuthoredContentProject,
     AuthoredContentProviderReceipt,
-    AuthoredContentToolError
+    AuthoredContentToolError,
+    AUTHORED_CONTENT_TOOL_SOURCE_SHA256,
+    AUTHORED_CONTENT_TOOL_VERSION
 } from "../types.js";
-import { canonicalLfSha256, readStrictJson } from "./CanonicalJson.js";
+import { canonicalLfSha256, parseStrictJsonBytes, readStrictJson, sha256 } from "./CanonicalJson.js";
 
 const execute = promisify(execFile);
 const DISPOSITIONS = new Set<AuthoredContentDisposition>(["native", "declarative", "typescript-obligation", "evidence", "blocking"]);
@@ -26,6 +28,7 @@ export async function preflightAuthoredContentProvider(
 ): Promise<AuthoredContentProviderPreflight> {
     const root = await realDirectory(providerRoot);
     const provider = project.provider;
+    await requireCleanProvider(root);
     const head = await git(root, "rev-parse", "HEAD");
     if (head !== provider.commit)
         fail("AUTHORED_CONTENT_PROVIDER_COMMIT_DRIFT", `provider HEAD is ${head}; expected ${provider.commit}.`);
@@ -44,7 +47,7 @@ export async function preflightAuthoredContentProvider(
     const ledgerHash = canonicalLfSha256(ledgerBytes, "authored-content capability ledger");
     if (ledgerHash !== provider.capabilityLedger.sha256)
         fail("AUTHORED_CONTENT_PROVIDER_LEDGER_DRIFT", `provider capability ledger digest is ${ledgerHash}; expected ${provider.capabilityLedger.sha256}.`);
-    const ledger = await readStrictJson(ledgerPath, "authored-content capability ledger") as any;
+    const ledger = parseStrictJsonBytes(ledgerBytes, "authored-content capability ledger") as any;
     if (ledger?.schema !== provider.capabilityLedger.schema || ledger?.hashMode !== provider.capabilityLedger.hashMode)
         fail("AUTHORED_CONTENT_PROVIDER_LEDGER_IDENTITY", "provider capability ledger schema or hash mode drifted.");
     if (!Array.isArray(ledger.capabilities))
@@ -67,6 +70,7 @@ export async function preflightAuthoredContentProvider(
             message: `Provider commit ${provider.commit} is not the authenticated published ref ${provider.remote.commit}.`
         });
     }
+    let requiresAuthoritativeEvidence = false;
     for (const job of project.jobs) {
         for (const capabilityId of job.requiredCapabilities) {
             const capability = capabilities.get(capabilityId);
@@ -87,8 +91,20 @@ export async function preflightAuthoredContentProvider(
             else if (!Array.isArray(capability.evidence) || capability.evidence.length === 0) {
                 fail("AUTHORED_CONTENT_CAPABILITY_EVIDENCE_MISSING", `admitted capability ${capabilityId} has no evidence.`);
             }
+            else requiresAuthoritativeEvidence = true;
         }
     }
+
+    const toolingSourceSha256 = await providerToolingSourceSha256(root);
+    if (toolingSourceSha256 !== AUTHORED_CONTENT_TOOL_SOURCE_SHA256)
+        fail("AUTHORED_CONTENT_PROVIDER_TOOLING_DRIFT", "running tooling does not match the authenticated provider commit.");
+    if (requiresAuthoritativeEvidence) {
+        await authoritativeEvidenceVerification(root);
+        const afterBytes = await readFile(ledgerPath);
+        if (!afterBytes.equals(ledgerBytes))
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", "capability ledger changed during authoritative evidence verification.");
+    }
+    await requireCleanProvider(root);
 
     const receipt: AuthoredContentProviderReceipt = {
         repository: "LayaAir",
@@ -96,7 +112,13 @@ export async function preflightAuthoredContentProvider(
         packageVersion: provider.packageVersion,
         remote: provider.remote,
         published: provider.commit === provider.remote.commit,
-        capabilityLedger: provider.capabilityLedger
+        capabilityLedger: provider.capabilityLedger,
+        tooling: {
+            package: "@layabox/laya-authored-content",
+            version: AUTHORED_CONTENT_TOOL_VERSION,
+            commit: provider.commit,
+            sourceSha256: toolingSourceSha256
+        }
     };
     return { receipt, holds: holds.sort(compareHold) };
 }
@@ -133,6 +155,32 @@ async function git(root: string, ...arguments_: string[]): Promise<string> {
     }
     catch (error) {
         throw new AuthoredContentToolError("AUTHORED_CONTENT_PROVIDER_GIT", `git ${arguments_.join(" ")} failed.`, { cause: error as Error });
+    }
+}
+
+async function requireCleanProvider(root: string): Promise<void> {
+    const status = await git(root, "status", "--porcelain=v1", "--untracked-files=all");
+    if (status) fail("AUTHORED_CONTENT_PROVIDER_DIRTY", "provider checkout must exactly match its authenticated commit.");
+}
+
+async function providerToolingSourceSha256(root: string): Promise<string> {
+    const listing = await git(root, "ls-tree", "-r", "--full-tree", "HEAD", "--",
+        "package.json",
+        "src/extensions/authoredContent/scripts/buildTooling.mjs",
+        "src/extensions/authoredContent/tooling",
+        "src/extensions/authoredContent/tsconfig.tooling.json",
+        "tooling/layaAuthoredContent");
+    return sha256(`${listing.replace(/\r\n?/g, "\n")}\n`);
+}
+
+async function authoritativeEvidenceVerification(root: string): Promise<void> {
+    try {
+        await execute(process.execPath, [path.join(root, "scripts/checkAuthoredContentAdmission.mjs"), "--verify-evidence"], {
+            cwd: root, encoding: "utf8", windowsHide: true, maxBuffer: 16 * 1024 * 1024
+        });
+    }
+    catch (error) {
+        throw new AuthoredContentToolError("AUTHORED_CONTENT_PROVIDER_EVIDENCE_REJECTED", "authoritative capability evidence verification failed.", { cause: error as Error });
     }
 }
 

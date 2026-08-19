@@ -95,5 +95,5 @@ function compareHold(left: AuthoredContentHold, right: AuthoredContentHold): num
 }
 
 function fail(code: string, message: string): never {
-    throw new AuthoredContentToolError(code, message, { exitCode: 2 });
+    throw new AuthoredContentToolError(code, message, { exitCode: 1 });
 }

@@ -1,8 +1,10 @@
 export const AUTHORED_CONTENT_PROJECT_SCHEMA = "laya-authored-content-project@1" as const;
 export const AUTHORED_CONTENT_RECEIPT_SCHEMA = "laya-authored-content-receipt@1" as const;
 export const AUTHORED_CONTENT_TOOL_VERSION = "0.1.0" as const;
+declare const __LAYA_AUTHORED_CONTENT_TOOL_SOURCE_SHA256__: string;
+export const AUTHORED_CONTENT_TOOL_SOURCE_SHA256 = __LAYA_AUTHORED_CONTENT_TOOL_SOURCE_SHA256__;
 
-export type AuthoredContentCommand = "check" | "convert" | "publish";
+export type AuthoredContentCommand = "check" | "convert" | "publish" | "check-delivery";
 export type AuthoredContentInputKind = "raw-swf" | "raw-swc" | "evidence-bundle" | "neutral-ir";
 export type AuthoredContentDisposition = "native" | "declarative" | "typescript-obligation" | "evidence" | "blocking";
 
@@ -73,6 +75,12 @@ export interface AuthoredContentProviderReceipt {
     readonly remote: AuthoredContentProjectProviderRemote;
     readonly published: boolean;
     readonly capabilityLedger: AuthoredContentCapabilityLedgerLock;
+    readonly tooling: {
+        readonly package: "@layabox/laya-authored-content";
+        readonly version: typeof AUTHORED_CONTENT_TOOL_VERSION;
+        readonly commit: string;
+        readonly sourceSha256: string;
+    };
 }
 
 export interface AuthoredContentInputReceipt {
@@ -112,6 +120,16 @@ export interface ConvertAuthoredContentResult {
     readonly receipt: AuthoredContentConversionReceipt;
 }
 
+export interface CheckAuthoredContentDeliveryRequest {
+    readonly deliveryRoot: string;
+    readonly providerRoot: string;
+}
+
+export interface CheckAuthoredContentDeliveryResult {
+    readonly exitCode: 0;
+    readonly receipt: AuthoredContentConversionReceipt;
+}
+
 export class AuthoredContentToolError extends Error {
     readonly code: string;
     readonly exitCode: 1 | 2;
@@ -120,6 +138,6 @@ export class AuthoredContentToolError extends Error {
         super(`${code}: ${message}`, options);
         this.name = "AuthoredContentToolError";
         this.code = code;
-        this.exitCode = options?.exitCode ?? 2;
+        this.exitCode = options?.exitCode ?? 1;
     }
 }

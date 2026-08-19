@@ -116,8 +116,8 @@ function validateProject(value: unknown): AuthoredContentProject {
     const provider = validateProvider(source.provider);
     if (!Array.isArray(source.jobs) || source.jobs.length === 0)
         fail("AUTHORED_CONTENT_PROJECT_JOBS", "project.jobs must be a non-empty array.");
-    const jobs = source.jobs.map((job, index) => validateJob(job, index));
-    assertUniqueSorted(jobs.map(job => job.id), "project job IDs");
+    const jobs = source.jobs.map((job, index) => validateJob(job, index)).sort((left, right) => compareText(left.id, right.id));
+    assertUnique(jobs.map(job => job.id), "project job IDs");
     const outputs = new Map<string, string>();
     for (const job of jobs) {
         const outputIdentity = portableIdentity(job.output);
@@ -138,6 +138,8 @@ function validateProvider(value: unknown): AuthoredContentProjectProvider {
     const packageVersion = nonemptyString(source.packageVersion, "project.provider.packageVersion");
     const remoteSource = exactObject(source.remote, ["commit", "name", "ref", "url"], "project.provider.remote");
     const remoteName = stableId(remoteSource.name, "project.provider.remote.name");
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(remoteName))
+        fail("AUTHORED_CONTENT_PROVIDER_REMOTE_NAME", "project.provider.remote.name is not a portable Git remote name.");
     const remoteRef = nonemptyString(remoteSource.ref, "project.provider.remote.ref");
     if (!remoteRef.startsWith(`refs/remotes/${remoteName}/`) || remoteRef.includes("..") || remoteRef.startsWith("-"))
         fail("AUTHORED_CONTENT_PROVIDER_REMOTE_REF", "project.provider.remote.ref must be a full remote-tracking ref for the selected remote.");
@@ -189,15 +191,14 @@ function validateInput(value: unknown, label: string): AuthoredContentProjectInp
 function stringArray(value: unknown, label: string, emptyAllowed: boolean): readonly string[] {
     if (!Array.isArray(value) || (!emptyAllowed && value.length === 0))
         fail("AUTHORED_CONTENT_STRING_ARRAY", `${label} must be ${emptyAllowed ? "an" : "a non-empty"} array.`);
-    const values = value.map((item, index) => stableId(item, `${label}[${index}]`));
-    assertUniqueSorted(values, label);
+    const values = value.map((item, index) => stableId(item, `${label}[${index}]`)).sort(compareText);
+    assertUnique(values, label);
     return values;
 }
 
-function assertUniqueSorted(values: readonly string[], label: string): void {
-    const expected = [...new Set(values)].sort(compareText);
-    if (expected.length !== values.length || expected.some((value, index) => value !== values[index]))
-        fail("AUTHORED_CONTENT_ORDER", `${label} must be unique and sorted by Unicode code unit.`);
+function assertUnique(values: readonly string[], label: string): void {
+    if (new Set(values).size !== values.length)
+        fail("AUTHORED_CONTENT_ORDER", `${label} must contain unique values.`);
 }
 
 function exactObject(value: unknown, keys: readonly string[], label: string): Record<string, unknown> {
@@ -212,9 +213,9 @@ function exactObject(value: unknown, keys: readonly string[], label: string): Re
 }
 
 function nonemptyString(value: unknown, label: string): string {
-    if (typeof value !== "string" || !value || value !== value.trim() || value.includes("\0") || value.normalize("NFC") !== value)
+    if (typeof value !== "string" || !value || value !== value.trim() || value.includes("\0"))
         fail("AUTHORED_CONTENT_STRING", `${label} must be a stable non-empty string.`);
-    return value;
+    return value.normalize("NFC");
 }
 
 function portableIdentity(value: string): string {

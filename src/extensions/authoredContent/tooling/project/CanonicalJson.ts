@@ -36,6 +36,10 @@ export function canonicalJsonSha256(value: unknown): string {
 
 export async function readStrictJson(path: string, label: string, requireLf = false): Promise<unknown> {
     const bytes = await readFile(path);
+    return parseStrictJsonBytes(bytes, label, requireLf);
+}
+
+export function parseStrictJsonBytes(bytes: Uint8Array, label: string, requireLf = false): unknown {
     let text = decodeUtf8(bytes, label);
     if (requireLf && text.includes("\r"))
         throw new AuthoredContentToolError("AUTHORED_CONTENT_JSON_CR", `${label} must use LF line endings.`);

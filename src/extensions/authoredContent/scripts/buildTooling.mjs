@@ -12,6 +12,19 @@ const dist = path.join(packageRoot, "dist");
 const require = createRequire(import.meta.url);
 const { build } = require("esbuild");
 
+const providerCommit = await capture("git", ["rev-parse", "HEAD"]);
+const providerStatus = await capture("git", ["status", "--porcelain=v1", "--untracked-files=all"]);
+if (providerStatus)
+    throw new Error("Refusing to build @layabox/laya-authored-content from a dirty provider checkout.");
+const toolingListing = await capture("git", ["ls-tree", "-r", "--full-tree", "HEAD", "--",
+    "package.json",
+    "src/extensions/authoredContent/scripts/buildTooling.mjs",
+    "src/extensions/authoredContent/tooling",
+    "src/extensions/authoredContent/tsconfig.tooling.json",
+    "tooling/layaAuthoredContent"]);
+const { createHash } = await import("node:crypto");
+const toolingSourceSha256 = createHash("sha256").update(`${toolingListing.replace(/\r\n?/g, "\n")}\n`).digest("hex");
+
 await rm(packageRoot, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 
@@ -21,7 +34,8 @@ const shared = {
     target: "node20",
     sourcemap: false,
     legalComments: "none",
-    logLevel: "warning"
+    logLevel: "warning",
+    define: { __LAYA_AUTHORED_CONTENT_TOOL_SOURCE_SHA256__: JSON.stringify(toolingSourceSha256) }
 };
 await Promise.all([
     build({ ...shared, entryPoints: [path.join(extensionRoot, "tooling/index.ts")], format: "esm", outfile: path.join(dist, "index.mjs") }),
@@ -49,7 +63,7 @@ await run(process.execPath, [
     "--pretty", "false"
 ]);
 await mkdir(path.join(packageRoot, "schema"), { recursive: true });
-await cp(path.join(extensionRoot, "tooling/schema/laya-authored-content-project-v1.schema.json"), path.join(packageRoot, "schema/laya-authored-content-project-v1.schema.json"));
+await cp(path.join(repositoryRoot, "tooling/layaAuthoredContent/project-v1.json"), path.join(packageRoot, "schema/laya-authored-content-project-v1.schema.json"));
 await cp(path.join(repositoryRoot, "LICENSE"), path.join(packageRoot, "LICENSE"));
 
 const manifest = {
@@ -68,6 +82,7 @@ const manifest = {
     },
     files: ["dist", "schema", "README.md", "LICENSE"]
 };
+manifest.layaAuthoredContentProvider = { commit: providerCommit, toolingSourceSha256 };
 await writeFile(path.join(packageRoot, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 await writeFile(path.join(packageRoot, "README.md"), `# @layabox/laya-authored-content
 
@@ -83,5 +98,19 @@ async function run(command, arguments_) {
         const child = spawn(command, arguments_, { cwd: repositoryRoot, stdio: "inherit", windowsHide: true });
         child.on("error", reject);
         child.on("exit", code => code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`)));
+    });
+}
+
+async function capture(command, arguments_) {
+    return await new Promise((resolve, reject) => {
+        let stdout = "";
+        let stderr = "";
+        const child = spawn(command, arguments_, { cwd: repositoryRoot, windowsHide: true });
+        child.stdout.setEncoding("utf8");
+        child.stderr.setEncoding("utf8");
+        child.stdout.on("data", chunk => { stdout += chunk; });
+        child.stderr.on("data", chunk => { stderr += chunk; });
+        child.on("error", reject);
+        child.on("exit", code => code === 0 ? resolve(stdout.trim()) : reject(new Error(`${command} exited ${code}: ${stderr.trim()}`)));
     });
 }
