@@ -72,7 +72,8 @@ test("capture validation rejects premultiplication ambiguity, malformed bytes, a
 
 test("exact captures pass with zero metrics and a deterministic authenticated receipt", () => {
     const source = capture();
-    const receipt = compareRgbaCaptures(source, capture());
+    const candidate = capture();
+    const receipt = compareRgbaCaptures(source, candidate);
     assert.equal(receipt.passed, true);
     assert.deepEqual(receipt.mismatchReasons, []);
     assert.deepEqual(receipt.diffBounds, null);
@@ -89,18 +90,26 @@ test("exact captures pass with zero metrics and a deterministic authenticated re
     });
     assert.deepEqual(receipt.policy, EXACT_PIXEL_POLICY);
     assert.match(receipt.source.artifactSha256, /^[a-f0-9]{64}$/);
-    assert.equal(serializePixelGoldenReceipt(receipt), canonicalJson(receipt));
-    assert.deepEqual(parsePixelGoldenReceipt(canonicalJson(receipt)), receipt);
-    assert.deepEqual(parsePixelGoldenReceiptBytes(Buffer.from(canonicalJson(receipt))), receipt);
+    assert.equal(serializePixelGoldenReceipt(receipt, source, candidate), canonicalJson(receipt));
+    assert.deepEqual(parsePixelGoldenReceipt(canonicalJson(receipt), source, candidate), receipt);
+    assert.deepEqual(parsePixelGoldenReceiptBytes(Buffer.from(canonicalJson(receipt)), source, candidate), receipt);
+    assert.throws(() => serializePixelGoldenReceipt(receipt), /requires its exact source and candidate/);
     assert.deepEqual(receipt, compareRgbaCaptures(source, capture()));
 });
 
 test("capture and receipt byte parsers reject invalid UTF-8 and byte-normalized identities", () => {
-    const captureBytes = Buffer.from(serializeRgbaCapture(capture()));
-    const receiptBytes = Buffer.from(serializePixelGoldenReceipt(compareRgbaCaptures(capture(), capture())));
-    for (const [bytes, parse] of [[captureBytes, parseRgbaCaptureBytes], [receiptBytes, parsePixelGoldenReceiptBytes]]) {
-        const invalid = Buffer.concat([bytes.subarray(0, bytes.length - 2), Buffer.from([0xff, 0x0a])]);
-        assert.throws(() => parse(invalid), /not valid UTF-8/);
+    const source = capture();
+    const candidate = capture();
+    const captureBytes = Buffer.from(serializeRgbaCapture(source));
+    const receiptBytes = Buffer.from(serializePixelGoldenReceipt(compareRgbaCaptures(source, candidate), source, candidate));
+    const invalidCapture = Buffer.concat([captureBytes.subarray(0, captureBytes.length - 2), Buffer.from([0xff, 0x0a])]);
+    assert.throws(() => parseRgbaCaptureBytes(invalidCapture), /not valid UTF-8/);
+    const invalidReceipt = Buffer.concat([receiptBytes.subarray(0, receiptBytes.length - 2), Buffer.from([0xff, 0x0a])]);
+    assert.throws(() => parsePixelGoldenReceiptBytes(invalidReceipt, source, candidate), /not valid UTF-8/);
+    for (const [bytes, parse] of [
+        [captureBytes, value => parseRgbaCaptureBytes(value)],
+        [receiptBytes, value => parsePixelGoldenReceiptBytes(value, source, candidate)],
+    ]) {
         const bom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), bytes]);
         assert.throws(() => parse(bom), /exact BOM-free UTF-8|valid JSON/);
     }
@@ -163,9 +172,26 @@ test("receipt validation rejects missing, unknown, ill-typed, and inconsistent r
     cases.push({ ...clone(exact), mismatchReasons: ["environment"], passed: false });
     for (const malformed of cases) {
         const rehashed = rehashReceipt(malformed);
-        assert.throws(() => serializePixelGoldenReceipt(rehashed));
+        assert.throws(() => serializePixelGoldenReceipt(rehashed, capture(), capture()));
     }
-    assert.throws(() => serializePixelGoldenReceipt({ ...clone(exact), receiptSha256: zeroHash }), /does not authenticate/);
+    assert.throws(() => serializePixelGoldenReceipt({ ...clone(exact), receiptSha256: zeroHash }, capture(), capture()), /does not authenticate/);
+});
+
+test("authoritative validation recomputes metrics and rejects realizability-safe rehashed inventions", () => {
+    const source = createRgbaCapture({ width: 3, height: 1, rgba: new Uint8Array(12), environment: environment() });
+    const candidate = createRgbaCapture({ width: 3, height: 1, rgba: Uint8Array.from([3, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0]), environment: environment() });
+    const receipt = compareRgbaCaptures(source, candidate);
+    assert.equal(receipt.metrics.squaredChannelDelta, 14);
+    const invented = rehashReceipt({
+        ...clone(receipt),
+        metrics: {
+            ...clone(receipt.metrics), squaredChannelDelta: 16,
+            rootMeanSquareChannelDelta: Math.sqrt(16 / 12),
+        },
+    });
+    assert.throws(() => serializePixelGoldenReceipt(invented, source, candidate), /does not exactly match/);
+    const unrelated = capture();
+    assert.throws(() => serializePixelGoldenReceipt(receipt, unrelated, unrelated), /does not exactly match/);
 });
 
 test("straight-RGBA differences report exact metrics and the minimal pixel bounds", () => {

@@ -404,7 +404,7 @@ function expectedThresholdReasons(metrics, policy) {
     return reasons;
 }
 
-export function validatePixelGoldenReceipt(receipt) {
+function validatePixelGoldenReceiptStructure(receipt) {
     assertPlainObject(receipt, "receipt");
     assertExactKeys(receipt, RECEIPT_KEYS, "receipt");
     if (receipt.schema !== AUTHORED_PIXEL_GOLDEN_RECEIPT_SCHEMA) {
@@ -546,23 +546,37 @@ export function compareRgbaCaptures(sourceCapture, candidateCapture, policy = EX
     return { ...receipt, receiptSha256: sha256(canonicalJson(receipt)) };
 }
 
-export function serializePixelGoldenReceipt(receipt) {
-    validatePixelGoldenReceipt(receipt);
+export function validatePixelGoldenReceipt(receipt, sourceCapture, candidateCapture) {
+    validatePixelGoldenReceiptStructure(receipt);
+    if (sourceCapture === undefined || candidateCapture === undefined) {
+        throw new TypeError("authoritative receipt validation requires its exact source and candidate captures.");
+    }
+    validateRgbaCapture(sourceCapture);
+    validateRgbaCapture(candidateCapture);
+    const recomputed = compareRgbaCaptures(sourceCapture, candidateCapture, receipt.policy);
+    if (canonicalJson(recomputed) !== canonicalJson(receipt)) {
+        throw new Error("receipt does not exactly match its authenticated source and candidate captures.");
+    }
+    return receipt;
+}
+
+export function serializePixelGoldenReceipt(receipt, sourceCapture, candidateCapture) {
+    validatePixelGoldenReceipt(receipt, sourceCapture, candidateCapture);
     return canonicalJson(receipt);
 }
 
-export function parsePixelGoldenReceipt(text, label = "pixel golden receipt artifact") {
+export function parsePixelGoldenReceipt(text, sourceCapture, candidateCapture, label = "pixel golden receipt artifact") {
     if (typeof text !== "string") throw new TypeError(`${label} must be UTF-8 text.`);
     let receipt;
     try { receipt = JSON.parse(text); }
     catch (error) { throw new SyntaxError(`${label} is not valid JSON: ${error.message}`); }
-    validatePixelGoldenReceipt(receipt);
+    validatePixelGoldenReceipt(receipt, sourceCapture, candidateCapture);
     if (text !== canonicalJson(receipt)) throw new Error(`${label} is not in canonical JSON form.`);
     return receipt;
 }
 
-export function parsePixelGoldenReceiptBytes(bytes, label = "pixel golden receipt artifact") {
-    return parsePixelGoldenReceipt(decodeExactUtf8(bytes, label), label);
+export function parsePixelGoldenReceiptBytes(bytes, sourceCapture, candidateCapture, label = "pixel golden receipt artifact") {
+    return parsePixelGoldenReceipt(decodeExactUtf8(bytes, label), sourceCapture, candidateCapture, label);
 }
 
 function writeFileAtomic(destination, content) {
@@ -619,7 +633,7 @@ export function runAuthoredPixelGoldenCli(args) {
         const candidate = parseRgbaCaptureBytes(fs.readFileSync(options.candidate), "candidate capture artifact");
         const policy = options.policy ? readCanonicalJson(options.policy, "pixel policy artifact") : EXACT_PIXEL_POLICY;
         const receipt = compareRgbaCaptures(source, candidate, policy);
-        writeFileAtomic(options.receipt, serializePixelGoldenReceipt(receipt));
+        writeFileAtomic(options.receipt, serializePixelGoldenReceipt(receipt, source, candidate));
         return { exitCode: receipt.passed ? 0 : 1, receipt };
     }
     throw new Error("Usage: authoredPixelGolden.mjs capture|compare [--name value ...]");
