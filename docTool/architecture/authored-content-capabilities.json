@@ -19149,13 +19149,48 @@
           "kind": "interface",
           "signature": "any",
           "sha256": "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030"
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
+          "export": "FlashDisplayRootBoundary",
+          "kind": "class",
+          "signature": "typeof FlashDisplayRootBoundary",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "claim",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "<TRoot extends LayaNode = LayaNode>(stage: LayaStage, onFrame: (root: TRoot) => void, options?: FlashDisplayRootOptions) => FlashDisplayRootLease<TRoot>"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "52ca512002cea414e1f479f6b7414a1f070de66ef3f872d8ce92e1246b9c0058",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
+          "export": "FlashDisplayRootLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "52ca512002cea414e1f479f6b7414a1f070de66ef3f872d8ce92e1246b9c0058"
+        },
+        {
+          "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
+          "export": "FlashDisplayRootOptions",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "52ca512002cea414e1f479f6b7414a1f070de66ef3f872d8ce92e1246b9c0058"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "bad26a5c1261d0137dcb59da19476caadad8ea526235aacbda344d892ec0eabf",
+          "sha256": "d10cea96ac7b453ba12c26dea6ae81cc8240eb847a3357b67c5e8083e023ca5c",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -19167,6 +19202,7 @@
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
+            "52ca512002cea414e1f479f6b7414a1f070de66ef3f872d8ce92e1246b9c0058",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
