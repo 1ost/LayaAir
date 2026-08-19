@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://layaair.com/schemas/laya-authored-content-project-v1.schema.json",
+  "title": "LayaAir authored-content project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "provider", "jobs"],
+  "properties": {
+    "schema": { "const": "laya-authored-content-project@1" },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "packageVersion", "remote", "capabilityLedger"],
+      "properties": {
+        "repository": { "const": "LayaAir" },
+        "commit": { "$ref": "#/$defs/gitOid" },
+        "packageVersion": { "type": "string", "minLength": 1 },
+        "remote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "url", "ref", "commit"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "minLength": 1 },
+            "ref": { "type": "string", "minLength": 1 },
+            "commit": { "$ref": "#/$defs/gitOid" }
+          }
+        },
+        "capabilityLedger": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "schema", "hashMode", "sha256"],
+          "properties": {
+            "path": { "$ref": "#/$defs/relativePath" },
+            "schema": { "const": "laya-authored-content-capabilities@1" },
+            "hashMode": { "const": "canonical-lf-utf8" },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "input", "entries", "locales", "output", "requiredCapabilities"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "input": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "path", "sha256", "size"],
+            "properties": {
+              "kind": { "enum": ["raw-swf", "raw-swc", "evidence-bundle", "neutral-ir"] },
+              "path": { "$ref": "#/$defs/relativePath" },
+              "sha256": { "$ref": "#/$defs/sha256" },
+              "size": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "entries": { "$ref": "#/$defs/nonemptyIds" },
+          "locales": { "$ref": "#/$defs/ids" },
+          "output": { "$ref": "#/$defs/relativePath" },
+          "requiredCapabilities": { "$ref": "#/$defs/ids" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "relativePath": { "type": "string", "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/]+(?:/[^/]+)*$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$" },
+    "ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "nonemptyIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+  }
+}
