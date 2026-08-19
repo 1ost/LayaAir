@@ -338,10 +338,21 @@ function validateMetrics(metrics, width, height) {
     for (const channel of CHANNEL_KEYS) {
         const channelTotal = metrics.channelTotalDelta[channel];
         const channelMaximum = metrics.channelMaxDelta[channel];
-        if (channelTotal > metrics.differingPixels * 255 || channelMaximum > channelTotal
+        if (channelTotal > metrics.differingPixels * channelMaximum || channelMaximum > channelTotal
             || (channelTotal === 0) !== (channelMaximum === 0)) {
             throw new Error(`receipt ${channel}-channel metrics are internally impossible.`);
         }
+    }
+    const channelMaximumSum = Object.values(metrics.channelMaxDelta).reduce((sum, value) => sum + value, 0);
+    const minimumSquaredFromChannelMaxima = Object.values(metrics.channelMaxDelta)
+        .reduce((sum, value) => sum + value * value, 0);
+    const maximumSquaredFromChannels = CHANNEL_KEYS.reduce((sum, channel) =>
+        sum + metrics.channelTotalDelta[channel] * metrics.channelMaxDelta[channel], 0);
+    if (metrics.totalChannelDelta > metrics.differingPixels * channelMaximumSum
+        || metrics.squaredChannelDelta < minimumSquaredFromChannelMaxima
+        || metrics.squaredChannelDelta > maximumSquaredFromChannels
+        || (metrics.squaredChannelDelta - metrics.totalChannelDelta) % 2 !== 0) {
+        throw new Error("receipt aggregate metrics contradict per-channel maxima or integer deltas.");
     }
     if (Object.values(metrics.channelTotalDelta).reduce((sum, value) => sum + value, 0) !== metrics.totalChannelDelta
         || Math.max(...Object.values(metrics.channelMaxDelta)) !== metrics.maxChannelDelta) {

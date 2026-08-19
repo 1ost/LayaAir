@@ -112,6 +112,9 @@ test("receipt validation rejects missing, unknown, ill-typed, and inconsistent r
     const multiSource = createRgbaCapture({ width: 3, height: 2, rgba: new Uint8Array(24), environment: environment() });
     const multiPixels = new Uint8Array(24); multiPixels[0] = 1; multiPixels[20] = 1;
     const multiDrift = compareRgbaCaptures(multiSource, createRgbaCapture({ width: 3, height: 2, rgba: multiPixels, environment: environment() }));
+    const oneSource = createRgbaCapture({ width: 1, height: 1, rgba: new Uint8Array(4), environment: environment() });
+    const oneCandidate = createRgbaCapture({ width: 1, height: 1, rgba: Uint8Array.from([255, 0, 0, 0]), environment: environment() });
+    const oneDrift = compareRgbaCaptures(oneSource, oneCandidate);
     const cases = [];
     const missing = clone(exact); delete missing.source; cases.push(missing);
     cases.push({ ...clone(exact), unknown: true });
@@ -137,6 +140,14 @@ test("receipt validation rejects missing, unknown, ill-typed, and inconsistent r
     });
     cases.push({ ...clone(drift), diffBounds: { x: 2, y: 0, width: 1, height: 1 } });
     cases.push({ ...clone(multiDrift), diffBounds: { x: 0, y: 0, width: 1, height: 1 } });
+    cases.push({
+        ...clone(oneDrift),
+        metrics: {
+            ...clone(oneDrift.metrics), maxChannelDelta: 1, squaredChannelDelta: 255,
+            rootMeanSquareChannelDelta: Math.sqrt(255 / 4),
+            channelMaxDelta: { r: 1, g: 0, b: 0, a: 0 },
+        },
+    });
     cases.push({ ...clone(drift), mismatchReasons: ["maxDifferingPixels", "maxDifferingPixels"] });
     cases.push({ ...clone(drift), passed: true });
     cases.push({ ...clone(exact), mismatchReasons: ["environment"], passed: false });
