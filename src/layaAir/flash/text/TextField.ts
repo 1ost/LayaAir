@@ -1,6 +1,13 @@
 import { Input as LayaInput, setInputEventOwner, type InputSelectionDirection } from "../../laya/display/Input";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
-import { Text as LayaText, type ITextCmd, type ITextLine } from "../../laya/display/Text";
+import {
+    Text as LayaText,
+    type ITextCmd,
+    type ITextLine,
+    type TextAdvanceProvider,
+    type TextFontFamilyResolver,
+    type TextFontMetricsProvider,
+} from "../../laya/display/Text";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { HtmlParseOptions } from "../../laya/html/HtmlParseOptions";
 import { Point as LayaPoint } from "../../laya/maths/Point";
@@ -366,6 +373,18 @@ export class TextField extends InteractiveObject {
 
     get selectable(): boolean { return this._nativeInput.selectable; }
     set selectable(value: boolean) { this._nativeInput.selectable = !!value; }
+
+    /** @internal Canonical native authored-font metrics seam. */
+    get fontMetricsProvider(): TextFontMetricsProvider { return this._nativeInput.fontMetricsProvider; }
+    set fontMetricsProvider(value: TextFontMetricsProvider) { this._nativeInput.fontMetricsProvider = value; }
+
+    /** @internal Canonical native authored-font family seam. */
+    get fontFamilyResolver(): TextFontFamilyResolver { return this._nativeInput.fontFamilyResolver; }
+    set fontFamilyResolver(value: TextFontFamilyResolver) { this._nativeInput.fontFamilyResolver = value; }
+
+    /** @internal Canonical native authored-font advance seam. */
+    get textAdvanceProvider(): TextAdvanceProvider { return this._nativeInput.textAdvanceProvider; }
+    set textAdvanceProvider(value: TextAdvanceProvider) { this._nativeInput.textAdvanceProvider = value; }
 
     get focus(): boolean { return this._focusRequested || this._nativeInput.focus; }
     set focus(value: boolean) {

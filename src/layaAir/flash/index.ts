@@ -52,6 +52,7 @@ export { Transform } from "./geom/Transform";
 export * from "./text/TextField";
 export { StaticText } from "./text/StaticText";
 export * from "./text/TextFormat";
+export { Font } from "./text/Font";
 export { FontType } from "./text/FontType";
 export { URLRequest, navigateToURL } from "./net/URLRequest";
 export { URLLoaderDataFormat } from "./net/URLLoaderDataFormat";
