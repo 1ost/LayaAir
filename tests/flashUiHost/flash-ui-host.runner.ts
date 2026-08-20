@@ -73,6 +73,37 @@ test("Keyboard host publishes only after both listeners install and tears down t
         "failed successor installation cannot replace published keyboard state");
     predecessorLease.dispose();
 
+    const nestedListeners = new Map<string, KeyboardListener>();
+    const outerListeners = new Map<string, KeyboardListener>();
+    const outerRemovals: string[] = [];
+    let nestedLease: ReturnType<typeof installNativeKeyboardStateHost> | null = null;
+    let nested = false;
+    const nestedTarget = {
+        addEventListener(type: string, listener: EventListener): void {
+            nestedListeners.set(type, listener as KeyboardListener);
+        },
+        removeEventListener(type: string): void { nestedListeners.delete(type); },
+    } as unknown as EventTarget;
+    const outerTarget = {
+        addEventListener(type: string, listener: EventListener): void {
+            outerListeners.set(type, listener as KeyboardListener);
+            if (!nested) {
+                nested = true;
+                nestedLease = installNativeKeyboardStateHost(nestedTarget);
+            }
+        },
+        removeEventListener(type: string): void {
+            outerRemovals.push(type);
+            outerListeners.delete(type);
+        },
+    } as unknown as EventTarget;
+    assert.throws(() => installNativeKeyboardStateHost(outerTarget), /superseded reentrantly/);
+    assert.deepEqual(outerRemovals, ["keydown", "keyup"]);
+    nestedListeners.get("keydown")!(trusted(true, true));
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [true, true],
+        "the nested successful installation remains authoritative");
+    nestedLease!.dispose();
+
     const disposeCalls: string[] = [];
     const disposePrimary = new Error("keydown removal failed");
     const disposeListeners = new Map<string, KeyboardListener>();
@@ -155,6 +186,70 @@ test("ContextMenu host installation rollback attempts every removal and preserve
         "canvas:remove:contextmenu", "canvas:remove:keydown", "document:remove:pointerdown",
         "window:remove:blur",
     ]);
+});
+
+test("ContextMenu nested installation wins and failed replacement preserves its predecessor", () => {
+    type Listener = EventListenerOrEventListenerObject;
+    let label = "outer";
+    let nestedTriggered = false;
+    let failKeydown = false;
+    const addLabels = new Map<Listener, string>();
+    const removals: string[] = [];
+    let nestedLease: ReturnType<typeof installNativeContextMenuHost> | null = null;
+    const recordAdd = (scope: string, type: string, listener: Listener): void => {
+        addLabels.set(listener, label);
+        if (scope === "canvas" && type === "contextmenu" && label === "outer" && !nestedTriggered) {
+            nestedTriggered = true;
+            label = "nested";
+            try { nestedLease = installNativeContextMenuHost({ canvas, document, resolveTarget: () => null }); }
+            finally { label = "outer"; }
+        }
+        if (scope === "canvas" && type === "keydown" && failKeydown)
+            throw new Error("replacement keydown failed");
+    };
+    const recordRemove = (scope: string, type: string, listener: Listener): void => {
+        const owner = addLabels.get(listener);
+        if (owner) removals.push(`${owner}:${scope}:${type}`);
+        addLabels.delete(listener);
+    };
+    const canvas = {
+        addEventListener(type: string, listener: Listener): void { recordAdd("canvas", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("canvas", type, listener); },
+    } as unknown as HTMLElement;
+    const view = {
+        addEventListener(type: string, listener: Listener): void { recordAdd("window", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("window", type, listener); },
+    };
+    const document = {
+        body: {}, defaultView: view,
+        addEventListener(type: string, listener: Listener): void { recordAdd("document", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("document", type, listener); },
+    } as unknown as Document;
+
+    assert.throws(() => installNativeContextMenuHost({ canvas, document, resolveTarget: () => null }),
+        /superseded reentrantly/);
+    assert.equal(removals.filter(value => value.startsWith("outer:")).length, 4);
+
+    label = "successor";
+    const successorLease = installNativeContextMenuHost({ canvas, document, resolveTarget: () => null });
+    assert.equal(removals.filter(value => value.startsWith("nested:")).length, 4,
+        "the nested host was the predecessor retired by the next successful installation");
+
+    label = "failed";
+    failKeydown = true;
+    assert.throws(() => installNativeContextMenuHost({ canvas, document, resolveTarget: () => null }),
+        /replacement keydown failed/);
+    failKeydown = false;
+    assert.equal(removals.filter(value => value.startsWith("successor:")).length, 0,
+        "failed replacement listener installation preserves the predecessor");
+
+    label = "final";
+    const finalLease = installNativeContextMenuHost({ canvas, document, resolveTarget: () => null });
+    assert.equal(removals.filter(value => value.startsWith("successor:")).length, 4,
+        "the preserved predecessor is retired by the next successful replacement");
+    nestedLease!.dispose();
+    successorLease.dispose();
+    finalLease.dispose();
 });
 
 test("Clipboard synchronously publishes only source-used text and leases cannot clobber successors", () => {

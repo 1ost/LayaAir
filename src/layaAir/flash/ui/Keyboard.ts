@@ -11,6 +11,7 @@ interface LockState {
 
 let currentLockState: LockState | null = null;
 let currentKeyboardOwner: object | null = null;
+let keyboardInstallGeneration = 0;
 
 function readLockState(event: Event): LockState {
     const keyboard = event as KeyboardEvent;
@@ -31,6 +32,7 @@ export function installNativeKeyboardStateHost(target: EventTarget): FlashKeyboa
     if (!target || typeof target.addEventListener !== "function"
         || typeof target.removeEventListener !== "function")
         throw new TypeError("Flash Keyboard state requires an EventTarget");
+    const installGeneration = ++keyboardInstallGeneration;
     const owner = Object.freeze({});
     const update = (event: Event): void => {
         if (event.isTrusted && currentKeyboardOwner === owner) currentLockState = readLockState(event);
@@ -42,6 +44,14 @@ export function installNativeKeyboardStateHost(target: EventTarget): FlashKeyboa
         for (const type of ["keydown", "keyup"]) {
             try { target.removeEventListener(type, update); }
             catch { /* Preserve the installation failure after attempting both removals. */ }
+        }
+        throw error;
+    }
+    if (keyboardInstallGeneration !== installGeneration) {
+        const error = new Error("Flash Keyboard host installation was superseded reentrantly");
+        for (const type of ["keydown", "keyup"]) {
+            try { target.removeEventListener(type, update); }
+            catch { /* Preserve the supersession error after attempting both removals. */ }
         }
         throw error;
     }

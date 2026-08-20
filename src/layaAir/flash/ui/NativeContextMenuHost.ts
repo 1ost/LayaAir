@@ -20,6 +20,7 @@ interface HostAuthority {
 }
 
 const CANVAS_AUTHORITIES = new WeakMap<HTMLElement, HostAuthority>();
+const CANVAS_INSTALLATIONS = new WeakMap<HTMLElement, object>();
 
 function findOwner(value: unknown): InteractiveObject | null {
     let current = resolveFlashFocusOwner(value);
@@ -48,7 +49,9 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
     if (typeof options.resolveTarget !== "function")
         throw new TypeError("Native context-menu host requires a target resolver");
 
-    CANVAS_AUTHORITIES.get(canvas)?.retire();
+    const predecessor = CANVAS_AUTHORITIES.get(canvas);
+    const installationToken = Object.freeze({});
+    CANVAS_INSTALLATIONS.set(canvas, installationToken);
     const token = Object.freeze({});
     let popup: HTMLDivElement | null = null;
     let previousFocus: HTMLElement | null = null;
@@ -185,25 +188,6 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         openFromEvent(event, bounds.left, bounds.bottom);
     };
 
-    try {
-        canvas.addEventListener("contextmenu", onContextMenu);
-        canvas.addEventListener("keydown", onCanvasKeyDown);
-        document.addEventListener("pointerdown", onDocumentPointerDown, true);
-        document.defaultView?.addEventListener("blur", onWindowBlur);
-    } catch (error) {
-        disposed = true;
-        for (const operation of [
-            () => canvas.removeEventListener("contextmenu", onContextMenu),
-            () => canvas.removeEventListener("keydown", onCanvasKeyDown),
-            () => document.removeEventListener("pointerdown", onDocumentPointerDown, true),
-            () => document.defaultView?.removeEventListener("blur", onWindowBlur),
-        ]) {
-            try { operation(); }
-            catch { /* Preserve the installation failure after attempting every rollback. */ }
-        }
-        throw error;
-    }
-
     const retire = (): void => {
         if (disposed) return;
         disposed = true;
@@ -227,7 +211,51 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         capture(dismiss);
         if (caught) throw firstError;
     };
+    const rollback = (): void => {
+        disposed = true;
+        generation++;
+        for (const operation of [
+            () => canvas.removeEventListener("contextmenu", onContextMenu),
+            () => canvas.removeEventListener("keydown", onCanvasKeyDown),
+            () => document.removeEventListener("pointerdown", onDocumentPointerDown, true),
+            () => document.defaultView?.removeEventListener("blur", onWindowBlur),
+            dismiss,
+        ]) {
+            try { operation(); }
+            catch { /* Installation rollback preserves its primary failure. */ }
+        }
+    };
+
+    try {
+        canvas.addEventListener("contextmenu", onContextMenu);
+        canvas.addEventListener("keydown", onCanvasKeyDown);
+        document.addEventListener("pointerdown", onDocumentPointerDown, true);
+        document.defaultView?.addEventListener("blur", onWindowBlur);
+    } catch (error) {
+        if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
+            CANVAS_INSTALLATIONS.delete(canvas);
+        rollback();
+        throw error;
+    }
+
+    if (CANVAS_INSTALLATIONS.get(canvas) !== installationToken
+        || CANVAS_AUTHORITIES.get(canvas) !== predecessor) {
+        rollback();
+        throw new Error("Native context-menu host installation was superseded reentrantly");
+    }
+    try { predecessor?.retire(); }
+    catch (error) {
+        if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
+            CANVAS_INSTALLATIONS.delete(canvas);
+        rollback();
+        throw error;
+    }
+    if (CANVAS_INSTALLATIONS.get(canvas) !== installationToken || CANVAS_AUTHORITIES.has(canvas)) {
+        rollback();
+        throw new Error("Native context-menu host installation was superseded during predecessor teardown");
+    }
     CANVAS_AUTHORITIES.set(canvas, { token, retire });
+    CANVAS_INSTALLATIONS.delete(canvas);
 
     return Object.freeze({
         get open(): boolean { return !disposed && ownsCanvas() && popup !== null; },
