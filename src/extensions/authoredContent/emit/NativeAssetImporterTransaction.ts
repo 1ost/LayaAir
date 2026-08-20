@@ -426,6 +426,10 @@ async function persistRecoveryJournal(
         await handle.close();
     }
     await host.fs.promises.rename(nextPath, recoveryPath);
+    await syncDirectory(root, host);
+}
+
+async function syncDirectory(root: string, host: NativeAssetTransactionHost): Promise<void> {
     const directory = await host.fs.promises.open(root, "r");
     try {
         try {
@@ -448,6 +452,53 @@ export async function isNativeAssetImporterRecoveryPending(
     return !await isMissing(host.path.resolve(tempPath, "authored-content-native-transaction"), host);
 }
 
+/** Returns only logical paths; callers must bind them to registered editor assets before resume. */
+export async function listNativeAssetImporterRecoveryPaths(
+    tempPath: string,
+    host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
+): Promise<ReadonlyArray<string>> {
+    const root = host.path.resolve(tempPath, "authored-content-native-transaction");
+    const value = await loadRecoveryJournal(root, host);
+    if (value.schema !== "laya-authored-content-recovery@2" || !Array.isArray(value.targets))
+        fail("RECOVERY_JOURNAL_INVALID", root);
+    const paths = value.targets.map(item => item?.relativePath);
+    if (paths.some(path => !isCanonicalRelativePath(path)) || new Set(paths).size !== paths.length)
+        fail("RECOVERY_JOURNAL_INVALID", root);
+    return Object.freeze(paths as string[]);
+}
+
+/**
+ * Preserves an interrupted first-publication artifact under a deterministic
+ * quarantine name. This is legal only when no recovery journal was ever
+ * published, which proves no target mutation could have begun.
+ */
+export async function retireAbortedNativeAssetImporterPublication(
+    tempPath: string,
+    host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
+): Promise<string> {
+    const root = host.path.resolve(tempPath, "authored-content-native-transaction");
+    const recoveryPath = host.path.join(root, "recovery.json");
+    const nextPath = host.path.join(root, "recovery.next.json");
+    if (!await isMissing(recoveryPath, host) || await isMissing(nextPath, host))
+        fail("ABORTED_PUBLICATION_NOT_PROVEN", root);
+    const bytes = await host.fs.promises.readFile(nextPath);
+    try {
+        const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+        if (value?.schema === "laya-authored-content-recovery@2")
+            fail("ABORTED_PUBLICATION_IS_RECOVERABLE", root);
+    }
+    catch (error) {
+        if (error instanceof Error && error.message.includes("ABORTED_PUBLICATION_IS_RECOVERABLE"))
+            throw error;
+    }
+    const quarantine = `${root}.aborted-${host.sha256(bytes).slice(0, 16)}`;
+    if (!await isMissing(quarantine, host))
+        fail("ABORTED_PUBLICATION_QUARANTINE_EXISTS", quarantine);
+    await host.fs.promises.rename(root, quarantine);
+    await syncDirectory(host.path.dirname(root), host);
+    return quarantine;
+}
+
 function isUnsupportedDirectorySync(error: unknown): boolean {
     return Boolean(error && typeof error === "object" && "code" in error
         && ["EPERM", "EINVAL", "ENOTSUP"].includes(String((error as { code?: unknown }).code)));
@@ -459,8 +510,7 @@ async function readRecoveryJournal(
     host: NativeAssetTransactionHost
 ): Promise<RecoveryJournal> {
     const recoveryPath = host.path.join(root, "recovery.json");
-    const raw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(recoveryPath));
-    const value = JSON.parse(raw) as Partial<RecoveryJournal>;
+    const value = await loadRecoveryJournal(root, host, targets);
     if (value.schema !== "laya-authored-content-recovery@2" || !Array.isArray(value.targets)
         || !Array.isArray(value.installed)
         || !Array.isArray(value.backups) || !Array.isArray(value.failures))
@@ -491,6 +541,63 @@ async function readRecoveryJournal(
     if (value.failures.some(message => typeof message !== "string"))
         fail("RECOVERY_JOURNAL_INVALID", recoveryPath);
     return value as RecoveryJournal;
+}
+
+async function loadRecoveryJournal(
+    root: string,
+    host: NativeAssetTransactionHost,
+    expectedTargets?: ReadonlyMap<string, string>
+): Promise<Partial<RecoveryJournal>> {
+    const recoveryPath = host.path.join(root, "recovery.json");
+    const nextPath = host.path.join(root, "recovery.next.json");
+    if (!await isMissing(nextPath, host)) {
+        // A fully written .next is the newer write-ahead state. Parse it
+        // before promotion so truncated/corrupt crash residue remains
+        // untouched and fails closed.
+        const nextBytes = await host.fs.promises.readFile(nextPath);
+        try {
+            const nextRaw = new TextDecoder("utf-8", { fatal: true }).decode(nextBytes);
+            const nextValue = JSON.parse(nextRaw) as Partial<RecoveryJournal>;
+            assertRecoveryJournalShape(nextValue, nextPath, host, expectedTargets);
+            await host.fs.promises.rename(nextPath, recoveryPath);
+            await syncDirectory(root, host);
+        }
+        catch (error) {
+            if (await isMissing(recoveryPath, host))
+                throw error;
+            const invalidPath = host.path.join(root, `recovery.invalid-${host.sha256(nextBytes).slice(0, 16)}.json`);
+            if (!await isMissing(invalidPath, host))
+                fail("RECOVERY_INVALID_EVIDENCE_EXISTS", invalidPath);
+            await host.fs.promises.rename(nextPath, invalidPath);
+            await syncDirectory(root, host);
+        }
+    }
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(recoveryPath));
+    const value = JSON.parse(raw) as Partial<RecoveryJournal>;
+    assertRecoveryJournalShape(value, recoveryPath, host, expectedTargets);
+    return value;
+}
+
+function assertRecoveryJournalShape(
+    value: Partial<RecoveryJournal>,
+    label: string,
+    host: NativeAssetTransactionHost,
+    expectedTargets?: ReadonlyMap<string, string>
+): void {
+    if (value.schema !== "laya-authored-content-recovery@2" || !Array.isArray(value.targets)
+        || !Array.isArray(value.installed) || !Array.isArray(value.backups) || !Array.isArray(value.failures))
+        fail("RECOVERY_JOURNAL_INVALID", label);
+    if (value.targets.some(item => !item || !isCanonicalRelativePath(item.relativePath) || typeof item.target !== "string"))
+        fail("RECOVERY_JOURNAL_INVALID", label);
+    if (expectedTargets) {
+        const expected = sortedTargets(expectedTargets).map(([relativePath, target]) => ({
+            relativePath,
+            target: host.path.resolve(target)
+        }));
+        if (value.targets.length !== expected.length || value.targets.some((item, index) =>
+            item.relativePath !== expected[index].relativePath || host.path.resolve(item.target) !== expected[index].target))
+            fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", label);
+    }
 }
 
 function sortedTargets(targets: ReadonlyMap<string, string>): Array<[string, string]> {

@@ -18,6 +18,8 @@ import {
     NativeAssetImporterTransaction,
     NativeAssetTransactionEvent,
     NativeAssetTransactionHost,
+    listNativeAssetImporterRecoveryPaths,
+    retireAbortedNativeAssetImporterPublication,
     resumeNativeAssetImporterRecovery,
     retireNativeAssetImporterRecovery
 } from "../../src/extensions/authoredContent/emit/NativeAssetImporterTransaction";
@@ -256,6 +258,47 @@ const nativeTransactionHost: NativeAssetTransactionHost = {
     path,
     sha256
 };
+
+function journalPublicationFaultHost(fault: "write" | "sync" | "rename" | "directory-sync"): NativeAssetTransactionHost {
+    return {
+        ...nativeTransactionHost,
+        fs: {
+            ...nativeTransactionHost.fs,
+            promises: {
+                ...nativeTransactionHost.fs.promises,
+                async open(file, flags) {
+                    const handle = await (fs.promises.open(file, flags as any));
+                    if (fault === "directory-sync" && file.endsWith("authored-content-native-transaction")) return {
+                        async writeFile(bytes: Uint8Array | string) { await handle.writeFile(bytes); },
+                        async sync() { throw new Error("simulated journal directory fsync interruption"); },
+                        async close() { await handle.close(); }
+                    };
+                    if (!file.endsWith("recovery.next.json")) return handle as any;
+                    return {
+                        async writeFile(bytes: Uint8Array | string) {
+                            if (fault === "write") {
+                                await handle.writeFile("{");
+                                throw new Error("simulated journal write interruption");
+                            }
+                            await handle.writeFile(bytes);
+                        },
+                        async sync() {
+                            if (fault === "sync")
+                                throw new Error("simulated journal fsync interruption");
+                            await handle.sync();
+                        },
+                        async close() { await handle.close(); }
+                    };
+                },
+                async rename(source, destination) {
+                    if (fault === "rename" && source.endsWith("recovery.next.json"))
+                        throw new Error("simulated journal rename interruption");
+                    await fs.promises.rename(source, destination);
+                }
+            }
+        }
+    };
+}
 
 async function main(): Promise<void> {
     await test("XFL bundle adapter validates and scales immutable manifest content", () => {
@@ -780,6 +823,42 @@ async function main(): Promise<void> {
         }
     });
 
+    await test("restart reconciles every first-journal write fsync and rename interruption", async () => {
+        for (const fault of ["write", "sync", "rename", "directory-sync"] as const) {
+            const root = fs.mkdtempSync(path.join(os.tmpdir(), `laya-native-journal-${fault}-`));
+            try {
+                const target = path.join(root, "outputs", "asset.lh");
+                const targets = new Map([["asset.lh", target]]);
+                const tempPath = path.join(root, "temp");
+                const transaction = new NativeAssetImporterTransaction(
+                    tempPath,
+                    targets,
+                    undefined,
+                    journalPublicationFaultHost(fault)
+                );
+                await assertRejects(
+                    () => transaction.stage("asset.lh", new Uint8Array([1])),
+                    `simulated journal ${fault === "sync" ? "fsync" : fault === "directory-sync" ? "directory fsync" : fault} interruption`
+                );
+                if (fault === "write") {
+                    const quarantine = await retireAbortedNativeAssetImporterPublication(tempPath, nativeTransactionHost);
+                    assert(fs.existsSync(quarantine), "partial first-journal evidence was deleted instead of quarantined");
+                }
+                else {
+                    const paths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
+                    assert(paths.join(",") === "asset.lh", `${fault} restart did not promote the complete newer journal`);
+                    await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+                    await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+                }
+                assert(!fs.existsSync(path.join(tempPath, "authored-content-native-transaction")),
+                    `${fault} recovery left the active transaction root deadlocked`);
+            }
+            finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
+        }
+    });
+
     await test("real importer fails closed when a target is recreated during commit", async () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-recreate-"));
         try {
@@ -1088,6 +1167,13 @@ async function main(): Promise<void> {
             importerSource.includes("writeNativeLayaAuthoredContentTransaction("),
             "importer does not stage the complete native bundle transaction"
         );
+        const recoveryCheck = importerSource.indexOf("isNativeAssetImporterRecoveryPending(this.tempPath)");
+        assert(recoveryCheck >= 0 && recoveryCheck < importerSource.indexOf("adapter.parse("),
+            "changed or corrupt source can prevent pending recovery before parsing");
+        assert(recoveryCheck < importerSource.indexOf("readAuthenticatedResourcePayloads("),
+            "changed or corrupt resources can prevent pending recovery before authentication");
+        assert(importerSource.includes("listNativeAssetImporterRecoveryPaths(this.tempPath)"),
+            "restart recovery derives its output closure from durable journal identity");
         assert(
             importerSource.indexOf("captureEditorSubAssetState(this.subAssets)") < importerSource.indexOf("this.clearLibrary()"),
             "importer does not snapshot editor identity and bytes before clearing its library"
