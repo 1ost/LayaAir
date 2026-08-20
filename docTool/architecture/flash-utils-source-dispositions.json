@@ -1,0 +1,111 @@
+{
+  "schema": "layaair-flash-source-dispositions@1",
+  "sourceRepository": "bleach-services",
+  "sourceRevision": "44ba66fc235b838b6e47afdead2f265ebf5b22c9",
+  "engineBaseRevision": "f70a010408c2de1855e3e9ebd85f140bbaa2b39e",
+  "authority": "Native TypeScript application code uses ordinary language constructs and explicit registries. LayaAir owns reusable platform bridges, but does not reproduce AVM traits, QNames, namespaces, dynamic Proxy dispatch, or a universal class registry.",
+  "dispositions": [
+    {
+      "requestedQName": "flash.utils.describeType",
+      "sourceQName": "flash.utils.describeType",
+      "disposition": "native-application-rewrite",
+      "layaExport": null,
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/Logging/TLogger.as:189",
+        "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:35",
+        "game-client/tapplication_main/src/ghostcat/util/core/AbstractUtil.as:42"
+      ],
+      "reason": "The consumers request AVM trait XML. Port logging to ordinary value inspection and port reflective consumers to explicit native metadata; do not synthesize trait XML.",
+      "hold": "The three consumers remain HOLD until their owning application workpacks remove describeType and focused tests prove the replacement metadata or logging behavior."
+    },
+    {
+      "requestedQName": "flash.utils.Dictionary",
+      "sourceQName": "flash.utils.Dictionary",
+      "disposition": "transpile-to-native-collection",
+      "layaExport": null,
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/Foundation/Container/THashMap.as:3",
+        "game-client/tmain/src/Processors_Mini/Accessories/TProcessorMiniLoad.as:21",
+        "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:4"
+      ],
+      "reason": "Strong dictionaries lower to Map and proven weak object-key dictionaries lower to WeakMap. Direct property access, delete, membership, and enumeration must be lowered by the transpiler or rewritten by the application owner; a second runtime Dictionary would duplicate that authority.",
+      "hold": "Any ambiguous receiver, alias, key kind, weak-key enumeration, or escaping aggregate remains HOLD at transpilation/application ownership instead of falling back to a compatibility object."
+    },
+    {
+      "requestedQName": "flash.utils.flash_proxy",
+      "sourceQName": "flash.utils.flash_proxy",
+      "disposition": "native-application-rewrite",
+      "layaExport": "src/layaAir/flash/filters/FilterProxy.ts#FilterProxy",
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/ghostcat/display/filter/FilterProxy.as:8",
+        "game-client/tapplication_main/src/ghostcat/display/filter/FilterProxy.as:148",
+        "game-client/tapplication_main/src/ghostcat/display/filter/FilterProxy.as:153"
+      ],
+      "reason": "The sole source consumer is the filter helper. LayaAir already replaces it with explicit typed filter properties and no namespace or property-interception machinery.",
+      "hold": "The application consumer remains HOLD until it imports the authenticated native FilterProxy and removes namespace dispatch."
+    },
+    {
+      "requestedQName": "flash.utils.getDefinitionByName",
+      "sourceQName": "flash.utils.getDefinitionByName",
+      "disposition": "explicit-native-registry",
+      "layaExport": "src/extensions/authoredContent/runtime/bootstrap.ts#registerAuthoredContentRuntime",
+      "sourceEvidence": [
+        "game-client/tmain/src/utils/BrowserConsole.as:46",
+        "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:41",
+        "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:56"
+      ],
+      "reason": "Converted authored symbols use the existing explicit linkage registry. Logger discovery becomes host injection, and other dynamic application factories must register their supported stable identifiers locally. A universal definition lookup is forbidden.",
+      "hold": "Each non-authored lookup remains HOLD until its owner identifies the finite names, registers explicit native factories or injects the host dependency, and tests unknown-name failure."
+    },
+    {
+      "requestedQName": "flash.utils.getQualifiedClassName",
+      "sourceQName": "flash.utils.getQualifiedClassName",
+      "disposition": "stable-native-identifier",
+      "layaExport": null,
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/Foundation/Utilities/TUtilityReflection.as:147",
+        "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:57",
+        "game-client/tapplication_main/src/util/BrowserConsole.as:73"
+      ],
+      "reason": "AVM-qualified runtime names are not stable JavaScript identities. Diagnostic consumers use explicit labels or constructor names; lookup consumers use registry-owned stable IDs.",
+      "hold": "Lookup and persistence consumers remain HOLD until their stable identifier contract is explicit; diagnostics may port directly without an engine bridge."
+    },
+    {
+      "requestedQName": "flash.utils.getQualifiedSuperclassName",
+      "sourceQName": "flash.utils.getQualifiedSuperclassName",
+      "disposition": "explicit-native-metadata",
+      "layaExport": null,
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:36",
+        "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:47"
+      ],
+      "reason": "The sole owner performs AVM RTTI traversal. Port it to an explicit application registry or ordinary prototype relationships only for supported native classes.",
+      "hold": "TUtilityRTTI remains HOLD until its finite class and factory consumers are identified and tested without qualified-name reconstruction."
+    },
+    {
+      "requestedQName": "flash.utils.Proxy",
+      "sourceQName": "flash.utils.Proxy",
+      "disposition": "native-application-rewrite",
+      "layaExport": "src/layaAir/flash/filters/FilterProxy.ts#FilterProxy",
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/ghostcat/display/filter/FilterProxy.as:7",
+        "game-client/tapplication_main/src/ghostcat/display/filter/FilterProxy.as:14"
+      ],
+      "reason": "The sole consumer is already represented by an explicit sealed native FilterProxy. Neither an AS3 Proxy base nor a JavaScript Proxy trap is a legitimate reusable API.",
+      "hold": "The legacy consumer remains HOLD until its owning workpack adopts the native FilterProxy and proves property/update ordering."
+    },
+    {
+      "requestedQName": "flash.utils.XML",
+      "sourceQName": "XML",
+      "disposition": "invalid-qname-split-consumers",
+      "layaExport": "src/layaAir/flash/xml/StrictXmlDocument.ts#StrictXmlDocument",
+      "sourceEvidence": [
+        "game-client/tapplication_main/src/Foundation/Resources/Streamization/XML/TResourceUnstreamizerXml.as:35",
+        "game-client/tapplication_main/src/Foundation/Resources/XML/TXml.as:11",
+        "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:15"
+      ],
+      "reason": "XML is a global AS3/E4X type, not flash.utils.XML. Immutable resource consumers may use StrictXmlDocument; describeType XML and E4X mutation/query consumers require application-specific native rewrites. LayaAir must not export an E4X facade.",
+      "hold": "Any consumer needing mutation, XMLList, namespaces, E4X operators, or serialization beyond the admitted strict resource parser remains HOLD until that exact behavior has a native owner and evidence."
+    }
+  ]
+}
