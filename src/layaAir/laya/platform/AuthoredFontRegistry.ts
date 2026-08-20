@@ -180,6 +180,7 @@ export class AuthoredFontRegistry {
     private readonly receiptsByKey = new Map<string, AuthenticatedFontLoadReceipt>();
     private readonly bindings = new WeakMap<object, BindingState>();
     private readonly bindingStates = new Set<BindingState>();
+    private disposePromise: Promise<void> | null = null;
 
     constructor(manifest: AuthoredFontManifest) {
         const normalized = normalizeManifest(manifest);
@@ -218,6 +219,7 @@ export class AuthoredFontRegistry {
     }
 
     private async preloadDocument(documentId: string, signal?: AbortSignal): Promise<readonly AuthoredFontRuntimeRecord[]> {
+        if (this.disposePromise) throw new Error("Authored font registry is disposing");
         const entries = this.entriesByDocument.get(requireNonemptyString(documentId, "documentId"));
         if (!entries) throw new Error(`Unknown authored font document '${documentId}'`);
         if (signal?.aborted) throw new AuthoredFontBindingCancelledError();
@@ -229,10 +231,14 @@ export class AuthoredFontRegistry {
             return result;
         }
 
-        const operation = this.preloadAtomically(documentId, entries, signal);
+        // A document transaction is shared authority. An individual waiter's
+        // cancellation must not poison it for the other live waiters.
+        const operation = this.preloadAtomically(documentId, entries);
         this.pendingDocuments.set(documentId, operation);
         try {
-            return await operation;
+            const result = await operation;
+            if (signal?.aborted) throw new AuthoredFontBindingCancelledError();
+            return result;
         } finally {
             if (this.pendingDocuments.get(documentId) === operation) this.pendingDocuments.delete(documentId);
         }
@@ -395,13 +401,28 @@ export class AuthoredFontRegistry {
     }
 
     async dispose(): Promise<void> {
+        if (this.disposePromise) return this.disposePromise;
+        const operation = this.disposeAll();
+        this.disposePromise = operation;
+        try {
+            await operation;
+        } finally {
+            if (this.disposePromise === operation) this.disposePromise = null;
+        }
+    }
+
+    private async disposeAll(): Promise<void> {
+        // Fence every in-flight transaction before returning. New transactions
+        // are rejected while disposePromise is set, so none can commit after
+        // this method has drained and disposed the pending cohort.
+        while (this.pendingDocuments.size > 0)
+            await Promise.allSettled([...this.pendingDocuments.values()]);
         for (const documentId of [...this.loadedDocuments]) await this.disposeDocument(documentId);
     }
 
     private async preloadAtomically(
         documentId: string,
         entries: readonly FrozenEntry[],
-        signal?: AbortSignal,
     ): Promise<readonly AuthoredFontRuntimeRecord[]> {
         const settled = await Promise.allSettled(entries.map(entry => {
             const authorization = Object.freeze({});
@@ -438,10 +459,8 @@ export class AuthoredFontRegistry {
             }
             prepared.push({ entry, receipt });
         });
-        if (signal?.aborted) failures.push("Authored font preload was cancelled");
         if (failures.length) {
             await disposeReceipts(prepared.map(item => item.receipt));
-            if (signal?.aborted) throw new AuthoredFontBindingCancelledError();
             throw new Error(failures[0]);
         }
 
@@ -457,9 +476,8 @@ export class AuthoredFontRegistry {
 
         const commits = await Promise.allSettled(prepared.map(item => item.receipt.commit()));
         const commitFailure = commits.find(result => result.status === "rejected");
-        if (commitFailure || signal?.aborted) {
+        if (commitFailure) {
             await disposeReceipts(prepared.map(item => item.receipt));
-            if (signal?.aborted) throw new AuthoredFontBindingCancelledError();
             const reason = commitFailure?.status === "rejected" && commitFailure.reason instanceof Error
                 ? `: ${commitFailure.reason.message}` : "";
             throw new Error(`Failed to commit authored font document '${documentId}'${reason}`);

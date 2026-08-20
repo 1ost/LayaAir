@@ -254,6 +254,86 @@ test("cancelled transaction and destroyed consumer publish neither resources nor
     await registry.dispose();
 });
 
+for (const abortingWaiterArrivesFirst of [true, false]) {
+    test(`one cancelled shared waiter does not poison survivor when aborting waiter arrives ${abortingWaiterArrivesFirst ? "first" : "second"}`, async () => {
+        const authored = entry(`shared-${abortingWaiterArrivesFirst ? "abort-first" : "abort-second"}`, 1, "regular", "shared");
+        const harness = new FontHarness();
+        const registry = new AuthoredFontRegistry(manifest([authored]));
+        const family = registry.runtimeFamilyFor(keyOf(authored));
+        const control = deferred();
+        harness.faceDeferred.set(family, control);
+        const cancelledConsumer = new Text();
+        const survivingConsumer = new Text();
+        const controller = new AbortController();
+        const cancelled = () => registry.preloadAndBind(cancelledConsumer, authored.documentId, controller.signal);
+        const surviving = () => registry.preloadAndBind(survivingConsumer, authored.documentId);
+        const first = abortingWaiterArrivesFirst ? cancelled() : surviving();
+        const second = abortingWaiterArrivesFirst ? surviving() : cancelled();
+        controller.abort();
+        control.resolve();
+        const [firstResult, secondResult] = await Promise.allSettled([first, second]);
+        const cancelledResult = abortingWaiterArrivesFirst ? firstResult : secondResult;
+        const survivingResult = abortingWaiterArrivesFirst ? secondResult : firstResult;
+        assert.equal(cancelledResult.status, "rejected");
+        assert.ok(cancelledResult.status === "rejected"
+            && cancelledResult.reason instanceof AuthoredFontBindingCancelledError);
+        assert.equal(survivingResult.status, "fulfilled");
+        assert.equal(harness.installed.size, 1, "the shared document publishes exactly once");
+        assert.equal(registry.isDocumentLoaded(authored.documentId), true);
+        assert.equal(cancelledConsumer.fontFamilyResolver, undefined);
+        assert.equal(typeof survivingConsumer.fontFamilyResolver, "function");
+        const bridge = registry.activateFlashBridge();
+        assert.equal(Font.enumerateFonts(false).length, 1);
+        bridge.cancel();
+        if (survivingResult.status === "fulfilled") survivingResult.value.cancel();
+        await registry.dispose();
+        assert.equal(harness.installed.size, 0);
+    });
+}
+
+test("all cancelled shared waiters leave zero font or provider publication", async () => {
+    const authored = entry("shared-all-cancel", 1, "regular", "shared-all-cancel");
+    const harness = new FontHarness();
+    const registry = new AuthoredFontRegistry(manifest([authored]));
+    const control = deferred();
+    harness.faceDeferred.set(registry.runtimeFamilyFor(keyOf(authored)), control);
+    const consumers = [new Text(), new Text()];
+    const controllers = [new AbortController(), new AbortController()];
+    const waiters = consumers.map((consumer, index) =>
+        registry.preloadAndBind(consumer, authored.documentId, controllers[index].signal));
+    controllers.forEach(controller => controller.abort());
+    control.resolve();
+    const results = await Promise.allSettled(waiters);
+    assert.ok(results.every(result => result.status === "rejected"
+        && result.reason instanceof AuthoredFontBindingCancelledError));
+    assert.equal(harness.installed.size, 0);
+    assert.equal(registry.isDocumentLoaded(authored.documentId), false);
+    assert.ok(consumers.every(consumer => consumer.fontFamilyResolver === undefined));
+    assert.deepEqual(Font.enumerateFonts(false), []);
+    await registry.dispose();
+});
+
+test("dispose fences pending document transactions and prevents later commit", async () => {
+    const authored = entry("dispose-pending", 1, "regular", "dispose-pending");
+    const harness = new FontHarness();
+    const registry = new AuthoredFontRegistry(manifest([authored]));
+    const control = deferred();
+    harness.faceDeferred.set(registry.runtimeFamilyFor(keyOf(authored)), control);
+    const pending = registry.preload(authored.documentId);
+    let disposed = false;
+    const disposing = registry.dispose().then(() => { disposed = true; });
+    await Promise.resolve();
+    assert.equal(disposed, false, "dispose must wait for the pending platform transaction");
+    await assert.rejects(registry.preload(authored.documentId), /registry is disposing/);
+    control.resolve();
+    await Promise.all([pending, disposing]);
+    assert.equal(registry.isDocumentLoaded(authored.documentId), false);
+    assert.equal(harness.installed.size, 0);
+    assert.deepEqual(Font.enumerateFonts(false), []);
+    await Promise.resolve();
+    assert.equal(harness.installed.size, 0, "no commit may occur after dispose returns");
+});
+
 test("ordinary Loader options cannot mint an authenticated font receipt", async () => {
     const authored = entry("public-mint", 1, "regular", "public-mint");
     const harness = new FontHarness();
