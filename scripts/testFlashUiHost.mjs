@@ -57,6 +57,7 @@ try {
     assert.equal(payload.resolverDismissInert, true);
     assert.equal(payload.activationGetterFenced, true);
     assert.equal(payload.evilArrayIndexed, true);
+    assert.equal(payload.sameLeaseDismissInert, true);
     assert.deepEqual(payload.trustedDefaultStates, [true, false]);
     assert.deepEqual(payload.trustedKeyboardDefaultStates, [true]);
     assert.ok(payload.route.includes("item:true:true:true"));
@@ -213,6 +214,36 @@ async function runChromiumGate(chromium, html, temporaryDirectory) {
         await client.waitFor("globalThis.__flashUiHostTest.generationHost.open === true");
         await client.key("Escape", "Escape", 27);
         await client.waitFor("globalThis.__flashUiHostTest.generationHost.open === false");
+
+        await client.evaluate("globalThis.__flashUiHostTest.sameLeaseCanvas.focus()");
+        await client.key("ContextMenu", "ContextMenu", 93);
+        await client.waitFor("globalThis.__flashUiHostTest.sameLeaseHost.open === true");
+        await client.evaluate("globalThis.__flashUiHostTest.armSameLeaseDismiss()");
+        await client.mouse(530, 20, "right");
+        await client.evaluate("new Promise(resolve => setTimeout(resolve, 50))");
+        const sameLeaseSnapshot = await client.evaluate(`({
+            inert: globalThis.__flashUiHostTest.state.sameLeaseDismissInert,
+            open: globalThis.__flashUiHostTest.sameLeaseHost.open,
+            triggered: globalThis.__flashUiHostTest.sameLeaseTriggered,
+            focusBefore: globalThis.__flashUiHostTest.sameLeaseFocusBefore,
+            focusAfter: globalThis.__flashUiHostTest.state.ownerFocused,
+            popupCount: document.querySelectorAll('[data-flash-context-menu=true]').length,
+            pointTag: document.elementFromPoint(530, 20)?.tagName ?? null,
+            popupRect: (() => { const rect = document.querySelector('[data-flash-context-menu=true]')?.getBoundingClientRect();
+                return rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null; })(),
+            canvasRect: (() => { const rect = globalThis.__flashUiHostTest.sameLeaseCanvas.getBoundingClientRect();
+                return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; })()
+        })`);
+        assert.deepEqual(sameLeaseSnapshot, {
+            inert: true, open: false, triggered: false,
+            focusBefore: sameLeaseSnapshot.focusBefore, focusAfter: sameLeaseSnapshot.focusBefore,
+            popupCount: 0, pointTag: "CANVAS", popupRect: null,
+            canvasRect: sameLeaseSnapshot.canvasRect,
+        });
+        await client.mouse(540, 30, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.sameLeaseHost.open === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.sameLeaseHost.open === false");
 
         await client.mouse(290, 300, "right");
         await client.waitFor("globalThis.__flashUiHostTest.activationHost.open === true");

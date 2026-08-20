@@ -36,6 +36,7 @@ interface BrowserGateState {
     resolverDismissInert: boolean;
     activationGetterFenced: boolean;
     evilArrayIndexed: boolean;
+    sameLeaseDismissInert: boolean;
 }
 
 void BrowserAdapter;
@@ -55,6 +56,7 @@ const state: BrowserGateState = {
     disposeSelectionDispatches: 0, successorSelectionDispatches: 0, successorInstalled: false,
     resolverStaleInert: false, openingDismissStaleInert: false,
     resolverDismissInert: false, activationGetterFenced: false, evilArrayIndexed: false,
+    sameLeaseDismissInert: false,
 };
 
 class TestOwner extends InteractiveObject {
@@ -291,6 +293,52 @@ generationCanvas.addEventListener("contextmenu", event => {
         && !generationHost.open;
 });
 
+const sameLeaseCanvas = canvasAt(10, 520);
+sameLeaseCanvas.tabIndex = 0;
+document.addEventListener("pointerdown", event => {
+    if (event.isTrusted && event.target === sameLeaseCanvas) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }
+}, true);
+sameLeaseCanvas.addEventListener("mousedown", event => {
+    if (event.isTrusted && event.button === 2) event.preventDefault();
+}, true);
+const sameLeaseOwner = new TestOwner();
+const sameLeaseMenu = new ContextMenu();
+sameLeaseMenu.customItems.push(new ContextMenuItem("Same lease dismiss"));
+sameLeaseOwner.contextMenu = sameLeaseMenu;
+const sameLeaseRestore = document.createElement("button");
+sameLeaseRestore.textContent = "same lease restore";
+sameLeaseRestore.style.cssText = "position:absolute;left:520px;top:90px";
+document.body.appendChild(sameLeaseRestore);
+let sameLeaseInitialKeyboard = true;
+let sameLeaseArmed = false;
+let sameLeaseTriggered = false;
+let sameLeaseFocusBefore = 0;
+sameLeaseCanvas.addEventListener("keydown", event => {
+    if (event.isTrusted && sameLeaseInitialKeyboard && event.key === "ContextMenu") {
+        sameLeaseInitialKeyboard = false;
+        sameLeaseRestore.focus();
+    }
+}, true);
+let sameLeaseHost: ReturnType<typeof installNativeContextMenuHost>;
+sameLeaseHost = installNativeContextMenuHost({
+    canvas: sameLeaseCanvas, document, resolveTarget: () => sameLeaseOwner,
+});
+sameLeaseRestore.addEventListener("focus", () => {
+    if (!sameLeaseArmed) return;
+    sameLeaseArmed = false;
+    sameLeaseTriggered = true;
+    sameLeaseHost.dismiss();
+});
+sameLeaseCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || !sameLeaseTriggered) return;
+    state.sameLeaseDismissInert = !sameLeaseHost.open && state.ownerFocused === sameLeaseFocusBefore
+        && document.querySelectorAll("[data-flash-context-menu=true]").length === 0;
+    sameLeaseTriggered = false;
+});
+
 const activationCanvas = canvasAt(280, 270);
 const activationOwner = new TestOwner();
 const activationMenu = new ContextMenu();
@@ -387,12 +435,14 @@ Object.assign(globalThis, {
         state, firstHost, primaryHost, reentrantHost, forgedHost, structuralHost, prior,
         disposeSelectionHost, predecessorSelectionHost, disposeSelectionRestore, successorSelectionRestore,
         openingDismissHost, openingDismissRestore,
-        generationHost, activationHost, evilHost,
+        generationHost, sameLeaseHost, sameLeaseCanvas, sameLeaseRestore, activationHost, evilHost,
         get successorSelectionOpen(): boolean { return successorSelectionHost?.open ?? false; },
         get resolverSuccessorOpen(): boolean { return resolverSuccessorHost?.open ?? false; },
         get openingDismissSuccessorOpen(): boolean { return openingDismissSuccessor?.open ?? false; },
         get openingDismissSuccessorInstalled(): boolean { return openingDismissSuccessor !== null; },
         get openingDismissFocusBefore(): number { return openingDismissFocusBefore; },
+        get sameLeaseTriggered(): boolean { return sameLeaseTriggered; },
+        get sameLeaseFocusBefore(): number { return sameLeaseFocusBefore; },
         get activationSuccessorOpen(): boolean { return activationSuccessor?.open ?? false; },
         armDisposeSelection(): void { disposeSelectionArmed = true; },
         armSuccessorSelection(): void { successorSelectionArmed = true; },
@@ -403,6 +453,10 @@ Object.assign(globalThis, {
         enableResolverSuccessor(): void { resolverSuccessorReady = true; },
         enableOpeningDismissSuccessor(): void { openingDismissSuccessorReady = true; },
         armActivationGetter(): void { activationArmed = true; },
+        armSameLeaseDismiss(): void {
+            sameLeaseFocusBefore = state.ownerFocused;
+            sameLeaseArmed = true;
+        },
         finishActivationGetter(): void {
             state.activationGetterFenced = activationEnabledReadsAfterLoss === 0
                 && !activationHost.open && !(activationSuccessor?.open ?? false);
@@ -440,6 +494,7 @@ Object.assign(globalThis, {
             openingDismissHost.dispose();
             openingDismissSuccessor?.dispose();
             generationHost.dispose();
+            sameLeaseHost.dispose();
             activationHost.dispose();
             activationSuccessor?.dispose();
             evilHost.dispose();

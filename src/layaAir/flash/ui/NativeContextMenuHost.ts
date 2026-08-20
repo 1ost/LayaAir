@@ -141,8 +141,8 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
 
         event.preventDefault();
         dismiss();
+        if (disposed || !ownsCanvas() || generation !== entryGeneration + 1) return;
         const callbackGeneration = generation;
-        if (disposed || !ownsCanvas()) return;
         const activeElement = document.activeElement;
         if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
         previousFocus = activeElement instanceof HTMLElement ? activeElement : null;

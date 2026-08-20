@@ -40242,21 +40242,21 @@
           "export": "NativeContextMenuHostOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+          "sha256": "b8bc1addba6a796d13129fa0b07fa3fe5a881d69249f07732f1fa8be39092719"
         },
         {
           "module": "src/layaAir/flash/ui/NativeContextMenuHost.ts",
           "export": "NativeContextMenuHostLease",
           "kind": "interface",
           "signature": "any",
-          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+          "sha256": "b8bc1addba6a796d13129fa0b07fa3fe5a881d69249f07732f1fa8be39092719"
         },
         {
           "module": "src/layaAir/flash/ui/NativeContextMenuHost.ts",
           "export": "installNativeContextMenuHost",
           "kind": "function",
           "signature": "(options: NativeContextMenuHostOptions) => NativeContextMenuHostLease",
-          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+          "sha256": "b8bc1addba6a796d13129fa0b07fa3fe5a881d69249f07732f1fa8be39092719"
         },
         {
           "module": "src/layaAir/flash/ui/ContextMenu.ts",
@@ -40282,8 +40282,8 @@
           "covers": [
             "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca",
             "5984314d477a4ad6fab0323dd7831254cd337cf108a66cf7459632b73937d8e0",
+            "b8bc1addba6a796d13129fa0b07fa3fe5a881d69249f07732f1fa8be39092719",
             "b9f2edf246d97fa62e2d7e3e71865234179a305fd44d604dbac03f541516c6ba",
-            "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230",
             "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
           ]
         }
