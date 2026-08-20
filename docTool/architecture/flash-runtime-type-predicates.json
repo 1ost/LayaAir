@@ -368,7 +368,7 @@
       "heritageClosure": [
         "flash.events.Event"
       ],
-      "moduleSha256": "663166803f7814db21a6a2ade8b66cf032271078db113a47eaa8a1d49520d750"
+      "moduleSha256": "2fee556ae1abbd4ac77b9bf3740afc77e11111788ddcbc4ffbf2bd16d9143d75"
     },
     {
       "sourceQName": "flash.events.SecurityErrorEvent",
@@ -579,6 +579,86 @@
       "moduleSha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
     },
     {
+      "sourceQName": "flash.net.FileReference",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/FileReference.ts",
+      "constructorExport": "FileReference",
+      "predicateExport": "isFlashFileReference",
+      "constructorSignature": "typeof FileReference",
+      "constructSignatures": [
+        "new (): FileReference"
+      ],
+      "predicateSignature": "(value: unknown) => value is FileReference",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "1c68d5e378597c0593b8e8a09ab1d93307a2151aace5e8b99a791d2d3ba7c03a"
+    },
+    {
+      "sourceQName": "flash.net.LocalConnection",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/LocalConnection.ts",
+      "constructorExport": "LocalConnection",
+      "predicateExport": "isFlashLocalConnection",
+      "constructorSignature": "typeof LocalConnection",
+      "constructSignatures": [
+        "new (): LocalConnection"
+      ],
+      "predicateSignature": "(value: unknown) => value is LocalConnection",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "e796fadc2075cbf0c2d7dc41a089ad3f17ce89eef8665a68cd3372e27da83758"
+    },
+    {
+      "sourceQName": "flash.net.SharedObject",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/SharedObject.ts",
+      "constructorExport": "SharedObject",
+      "predicateExport": "isFlashSharedObject",
+      "constructorSignature": "typeof SharedObject",
+      "constructSignatures": [
+        "new (token: typeof SHARED_OBJECT_TOKEN, _storage: FlashSharedObjectStorageHost, _key: string, _data: Record<string, unknown>): SharedObject"
+      ],
+      "predicateSignature": "(value: unknown) => value is SharedObject",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "60530f4f4b66c39613e7e788b2048867a4bc462eeba7d71f023e5e883c78559e"
+    },
+    {
+      "sourceQName": "flash.net.Socket",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/Socket.ts",
+      "constructorExport": "Socket",
+      "predicateExport": "isFlashSocket",
+      "constructorSignature": "typeof Socket",
+      "constructSignatures": [
+        "new (host?: string | null, port?: number): Socket"
+      ],
+      "predicateSignature": "(value: unknown) => value is Socket",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "60fe981935dbada3abe33b162604c89f6b328e1c764f50dee2d80b38714a2e99"
+    },
+    {
+      "sourceQName": "flash.net.URLLoader",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/URLLoader.ts",
+      "constructorExport": "URLLoader",
+      "predicateExport": "isFlashURLLoader",
+      "constructorSignature": "typeof URLLoader",
+      "constructSignatures": [
+        "new (request?: URLRequest | null): URLLoader"
+      ],
+      "predicateSignature": "(value: unknown) => value is URLLoader",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "c88fadc60a01d39e48d9bd7ff73df9f692a59dd271514e6a5078dcb2b23f709b"
+    },
+    {
       "sourceQName": "flash.net.URLRequest",
       "targetCapabilityId": "api.flash.net",
       "targetModule": "src/layaAir/flash/net/URLRequest.ts",
@@ -590,7 +670,21 @@
       "predicateExport": "isFlashURLRequest",
       "predicateSignature": "(value: unknown) => value is URLRequest",
       "heritageClosure": [],
-      "moduleSha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
+      "moduleSha256": "5b1204a75ab6461ac2279bc17fdee26b90343517263ccad194dd2e6c79978947"
+    },
+    {
+      "sourceQName": "flash.net.URLVariables",
+      "targetCapabilityId": "api.flash.net",
+      "targetModule": "src/layaAir/flash/net/URLVariables.ts",
+      "constructorExport": "URLVariables",
+      "predicateExport": "isFlashURLVariables",
+      "constructorSignature": "typeof URLVariables",
+      "constructSignatures": [
+        "new (source?: string | null): URLVariables"
+      ],
+      "predicateSignature": "(value: unknown) => value is URLVariables",
+      "heritageClosure": [],
+      "moduleSha256": "6da30c84ec38adcccaa4702f8736b3975d3253a3d665d44111e46aaac55be800"
     },
     {
       "sourceQName": "flash.text.StaticText",

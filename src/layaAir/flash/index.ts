@@ -57,7 +57,27 @@ export * from "./text/TextFormat";
 export { Font } from "./text/Font";
 export { FontType } from "./text/FontType";
 export { URLRequest, navigateToURL } from "./net/URLRequest";
+export type { URLRequestHeader, FlashURLRequestSnapshot } from "./net/URLRequest";
 export { URLLoaderDataFormat } from "./net/URLLoaderDataFormat";
+export { URLLoader } from "./net/URLLoader";
+export { URLVariables } from "./net/URLVariables";
+export { Socket } from "./net/Socket";
+export { SharedObject } from "./net/SharedObject";
+export { LocalConnection } from "./net/LocalConnection";
+export { FileReference } from "./net/FileReference";
+export { sendToURL } from "./net/sendToURL";
+export { registerClassAlias } from "./net/ClassAlias";
+export {
+    FlashHTTPHost, installFlashHTTPHost,
+} from "./net/FlashHTTPTransport";
+export type {
+    FlashHTTPRequest, FlashHTTPResponse, FlashHTTPProgressObserver, FlashHTTPStatusObserver,
+} from "./net/FlashHTTPTransport";
+export { FlashSocketHost, installFlashSocketHost } from "./net/Socket";
+export type { FlashSocketCallbacks, FlashSocketConnection, FlashSocketConnectOptions } from "./net/Socket";
+export { FlashSharedObjectStorageHost, installFlashSharedObjectStorageHost } from "./net/SharedObject";
+export { FlashFileDownloadHost, installFlashFileDownloadHost } from "./net/FileReference";
+export type { FlashFileDownload } from "./net/FileReference";
 export { Timer } from "./utils/Timer";
 export { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from "./utils/TimerFunctions";
 export { Endian } from "./utils/Endian";

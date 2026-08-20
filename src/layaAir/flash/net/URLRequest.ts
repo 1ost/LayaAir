@@ -6,6 +6,15 @@ export interface URLRequestHeader {
     value: string;
 }
 
+/** Immutable transport descriptor captured without invoking caller accessors. */
+export interface FlashURLRequestSnapshot {
+    readonly url: string;
+    readonly method: string;
+    readonly data: unknown;
+    readonly contentType: string | null;
+    readonly requestHeaders: readonly Readonly<URLRequestHeader>[];
+}
+
 const URL_REQUEST_VALUES = new WeakSet<object>();
 
 interface URLRequestState {
@@ -79,6 +88,55 @@ export function snapshotNativeLoaderRequest(request: URLRequest): string {
             "data, javascript and blob sources are outside the native-content bridge"
         );
     return state.url;
+}
+
+/**
+ * Captures a canonical request for the browser HTTP bridge. The returned
+ * descriptor owns its header values, so later caller mutation cannot alter an
+ * in-flight request.
+ */
+export function snapshotFlashURLRequest(request: URLRequest): FlashURLRequestSnapshot {
+    const state = typeof request === "object" && request !== null
+        ? URL_REQUEST_STATE.get(request)
+        : undefined;
+    if (!state || !URL_REQUEST_VALUES.has(request))
+        throw new TypeError("Network operations require a canonical URLRequest");
+    if (state.url === null || state.url.length === 0 || state.url.trim() !== state.url)
+        throw new TypeError("URLRequest requires a non-empty canonical URL");
+    if (/[\u0000-\u001f\u007f]/.test(state.url))
+        throw new TypeError("URLRequest URL contains control characters");
+    const explicitScheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(state.url);
+    if (explicitScheme !== null && !/^https?$/i.test(explicitScheme[1]))
+        throw new UnsupportedFlashFeatureError(
+            "flash.net.URLRequest transport",
+            "absolute request URLs must use HTTP or HTTPS"
+        );
+    if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(state.method))
+        throw new TypeError("URLRequest.method must be an HTTP token");
+
+    const requestHeaders = state.requestHeaders.map((header, index) => {
+        if (typeof header !== "object" || header === null)
+            throw new TypeError(`URLRequest.requestHeaders[${index}] must contain string name and value`);
+        const nameDescriptor = Object.getOwnPropertyDescriptor(header, "name");
+        const valueDescriptor = Object.getOwnPropertyDescriptor(header, "value");
+        if (!nameDescriptor || !("value" in nameDescriptor) || typeof nameDescriptor.value !== "string"
+            || !valueDescriptor || !("value" in valueDescriptor) || typeof valueDescriptor.value !== "string")
+            throw new TypeError(`URLRequest.requestHeaders[${index}] must use own data properties`);
+        const name = nameDescriptor.value;
+        const value = valueDescriptor.value;
+        if (name.length === 0 || /[\u0000-\u0020():<>@,;\\\[\]?={}\u007f]/.test(name))
+            throw new TypeError(`URLRequest.requestHeaders[${index}].name is invalid`);
+        if (/[\r\n]/.test(value))
+            throw new TypeError(`URLRequest.requestHeaders[${index}].value contains a newline`);
+        return Object.freeze({ name, value });
+    });
+    return Object.freeze({
+        url: state.url,
+        method: state.method.toUpperCase(),
+        data: state.data,
+        contentType: state.contentType,
+        requestHeaders: Object.freeze(requestHeaders),
+    });
 }
 
 /**

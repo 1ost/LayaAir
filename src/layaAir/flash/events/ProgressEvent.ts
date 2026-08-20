@@ -11,6 +11,7 @@ export function isFlashProgressEvent(value: unknown): value is ProgressEvent {
 /** Source-shaped byte progress value; native Loader and socket producers remain separate owners. */
 export class ProgressEvent extends Event {
     static readonly PROGRESS = "progress";
+    static readonly SOCKET_DATA = "socketData";
 
     private _bytesLoaded = 0;
     private _bytesTotal = 0;
