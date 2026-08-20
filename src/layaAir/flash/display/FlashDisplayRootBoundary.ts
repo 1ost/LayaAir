@@ -47,7 +47,11 @@ interface FlashDisplayRootRecord<TRoot extends LayaNode = LayaNode> {
     generation: number;
     frameScheduler: LayaTimer | null;
     frameScheduled: boolean;
+    frameCleanupPending: boolean;
+    frameCleanupInProgress: boolean;
     removalListenerInstalled: boolean;
+    removalListenerCleanupPending: boolean;
+    removalListenerCleanupInProgress: boolean;
 }
 
 const LEASE_RECORDS = new WeakMap<object, FlashDisplayRootRecord<any>>();
@@ -90,7 +94,11 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             generation: 0,
             frameScheduler: null,
             frameScheduled: false,
-            removalListenerInstalled: false
+            frameCleanupPending: false,
+            frameCleanupInProgress: false,
+            removalListenerInstalled: false,
+            removalListenerCleanupPending: false,
+            removalListenerCleanupInProgress: false
         };
         LEASE_RECORDS.set(this, record);
         for (const name of ["attach", "detach", "dispose"] as const) {
@@ -110,6 +118,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         const record = requireRecord<TRoot>(this);
         const root = record.root;
         return record.phase === "attached" && root !== null
+            && record.frameScheduled && !record.frameCleanupPending
+            && record.removalListenerInstalled && !record.removalListenerCleanupPending
             && !record.stage.destroyed && record.stage === ILaya.stage
             && !root.destroyed && isPublished(record, root);
     }
@@ -174,8 +184,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         this._assertUsable(record);
         const root = record.root;
         if (!root) return null;
-        if (record.phase === "detached" && !record.frameScheduled
-            && !record.removalListenerInstalled) return root;
+        if (record.phase === "detached" && !this._hasFrameCleanup(record)
+            && !this._hasRemovalListenerCleanup(record)) return root;
 
         record.phase = "detaching";
         let failure: unknown = NO_FAILURE;
@@ -207,21 +217,34 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
 
         if (stageOwns(record, root) && !root.destroyed && !record.stage.destroyed
             && record.stage === ILaya.stage) {
-            record.phase = "attached";
             try {
+                // A failed prior off/clear leaves indeterminate host ownership.
+                // Resolve that authority before installing exactly one new pair.
+                if (record.removalListenerCleanupPending)
+                    this._removeRemovalListener(record, root);
                 this._installRemovalListener(record, root);
             } catch (error) {
                 if (failure === NO_FAILURE) failure = error;
             }
-            if (!record.frameScheduled) {
+            if (record.frameCleanupPending) {
+                try {
+                    this._stopFrames(record);
+                } catch (error) {
+                    if (failure === NO_FAILURE) failure = error;
+                }
+            }
+            if (!this._hasFrameCleanup(record)) {
                 try {
                     this._startFrames(record);
                 } catch (error) {
                     if (failure === NO_FAILURE) failure = error;
                 }
             }
+            record.phase = record.frameScheduled && !record.frameCleanupPending
+                && record.removalListenerInstalled && !record.removalListenerCleanupPending
+                ? "attached" : "detaching";
         } else {
-            if (record.frameScheduled) {
+            if (this._hasFrameCleanup(record)) {
                 try {
                     this._stopFrames(record);
                 } catch (error) {
@@ -233,7 +256,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             } catch (error) {
                 if (failure === NO_FAILURE) failure = error;
             }
-            record.phase = record.frameScheduled || record.removalListenerInstalled
+            record.phase = this._hasFrameCleanup(record) || this._hasRemovalListenerCleanup(record)
                 ? "detaching" : "detached";
         }
 
@@ -275,13 +298,14 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             const rootCleanupComplete = record.destroyRootOnDispose
                 ? root.destroyed
                 : !stageOwns(record, root) && root.parent == null;
-            const hostCleanupComplete = !record.frameScheduled && !record.removalListenerInstalled;
+            const hostCleanupComplete = !this._hasFrameCleanup(record)
+                && !this._hasRemovalListenerCleanup(record);
             if (rootCleanupComplete && hostCleanupComplete) {
                 this._release(record, root);
             } else {
                 record.phase = "dispose-pending";
             }
-        } else if (!record.frameScheduled && !record.removalListenerInstalled) {
+        } else if (!this._hasFrameCleanup(record) && !this._hasRemovalListenerCleanup(record)) {
             this._release(record, null);
         } else {
             record.phase = "dispose-pending";
@@ -312,7 +336,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
                 }
             }
             if (record.phase === "attached") {
-                record.phase = record.frameScheduled || record.removalListenerInstalled
+                record.phase = this._hasFrameCleanup(record) || this._hasRemovalListenerCleanup(record)
                     ? "detaching" : "detached";
             }
             if (failure !== NO_FAILURE) throw failure;
@@ -340,7 +364,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             }
         }
         if (this._disposalHasStarted(record)) return;
-        record.phase = record.frameScheduled || record.removalListenerInstalled
+        record.phase = this._hasFrameCleanup(record) || this._hasRemovalListenerCleanup(record)
             ? "detaching" : "detached";
     }
 
@@ -375,50 +399,130 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
     }
 
     private _installRemovalListener(record: FlashDisplayRootRecord<TRoot>, root: TRoot): void {
-        if (record.removalListenerInstalled) return;
-        root.on(LayaEvent.REMOVED, this, this._handleRootRemoved);
-        record.removalListenerInstalled = true;
+        if (record.removalListenerInstalled && !record.removalListenerCleanupPending) return;
+        if (record.removalListenerCleanupPending)
+            throw new Error("Flash display-root removal-listener cleanup must complete before installation");
+
+        // Claim cleanup authority before entering overridable EventDispatcher
+        // code: `on` may install then throw, or reentrantly dispose before it
+        // returns. Either way a later off remains mandatory and retryable.
+        record.removalListenerInstalled = false;
+        record.removalListenerCleanupPending = true;
+        try {
+            root.on(LayaEvent.REMOVED, this, this._handleRootRemoved);
+        } catch (error) {
+            try {
+                this._removeRemovalListener(record, root);
+            } catch {
+                // Preserve the installation error and retained cleanup authority.
+            }
+            throw error;
+        }
+
+        if (record.phase === "attaching" || record.phase === "detaching") {
+            record.removalListenerInstalled = true;
+            record.removalListenerCleanupPending = false;
+            return;
+        }
+
+        // Reentrant disposal/removal may have called off before an override
+        // completed installation. Reacquire and reconcile after `on` returns.
+        record.removalListenerCleanupPending = true;
+        this._removeRemovalListener(record, root);
+        throw new Error("Flash display-root removal-listener installation was interrupted");
     }
 
     private _removeRemovalListener(record: FlashDisplayRootRecord<TRoot>, root: TRoot): void {
-        if (!record.removalListenerInstalled) return;
-        root.off(LayaEvent.REMOVED, this, this._handleRootRemoved);
+        if (!this._hasRemovalListenerCleanup(record)) return;
+        if (record.removalListenerCleanupInProgress) return;
+
+        record.removalListenerInstalled = false;
+        record.removalListenerCleanupPending = true;
+        record.removalListenerCleanupInProgress = true;
+        try {
+            root.off(LayaEvent.REMOVED, this, this._handleRootRemoved);
+        } catch (error) {
+            throw error;
+        } finally {
+            record.removalListenerCleanupInProgress = false;
+        }
+        record.removalListenerCleanupPending = false;
         record.removalListenerInstalled = false;
     }
 
     private _startFrames(record: FlashDisplayRootRecord<TRoot>): void {
-        if (record.frameScheduled) return;
+        if (record.frameScheduled && !record.frameCleanupPending) return;
+        if (record.frameCleanupPending)
+            throw new Error("Flash display-root frame cleanup must complete before registration");
         const scheduler = ILaya.timer;
         if (!scheduler || typeof scheduler.frameLoop !== "function" || typeof scheduler.clear !== "function")
             throw new Error("Canonical Laya timer is unavailable for the Flash display root");
         const generation = record.generation + 1;
         record.generation = generation;
         record.frameScheduler = scheduler;
-        record.frameScheduled = true;
+        record.frameScheduled = false;
+        record.frameCleanupPending = true;
         try {
             scheduler.frameLoop(1, this, this._advanceFrame, [generation], true);
         } catch (error) {
             // Fence a callback that may have been installed before frameLoop threw.
             record.generation++;
             try {
-                scheduler.clear(this, this._advanceFrame);
-                record.frameScheduler = null;
-                record.frameScheduled = false;
+                this._stopFrames(record);
             } catch {
                 // Keep retryable ownership of a possibly live subscription.
             }
             throw error;
         }
+        if (record.frameScheduler !== scheduler || !record.frameCleanupPending
+            || (record.phase !== "attached" && record.phase !== "detaching")) {
+            // A reentrant host may have cleared before completing registration.
+            // Reacquire cleanup authority after frameLoop returns so an
+            // install-after-clear subscription cannot escape the lease.
+            record.frameScheduler = scheduler;
+            record.frameScheduled = false;
+            record.frameCleanupPending = true;
+            try {
+                this._stopFrames(record);
+            } catch {
+                // Retain the indeterminate scheduler authority for retry.
+            }
+            throw new Error("Flash display-root frame registration was interrupted");
+        }
+        record.frameCleanupPending = false;
+        record.frameScheduled = true;
     }
 
     private _stopFrames(record: FlashDisplayRootRecord<TRoot>): void {
-        if (!record.frameScheduled) return;
+        if (!this._hasFrameCleanup(record)) return;
+        if (record.frameCleanupInProgress) return;
         const scheduler = record.frameScheduler;
         record.generation++;
         if (!scheduler) throw new Error("Flash display-root frame ownership is unavailable");
-        scheduler.clear(this, this._advanceFrame);
-        record.frameScheduler = null;
+        // Fence first, then move known-live ownership into an indeterminate,
+        // retryable cleanup state before entering the overridable scheduler.
         record.frameScheduled = false;
+        record.frameCleanupPending = true;
+        record.frameCleanupInProgress = true;
+        try {
+            scheduler.clear(this, this._advanceFrame);
+        } catch (error) {
+            throw error;
+        } finally {
+            record.frameCleanupInProgress = false;
+        }
+        record.frameScheduler = null;
+        record.frameCleanupPending = false;
+        record.frameScheduled = false;
+    }
+
+    private _hasFrameCleanup(record: FlashDisplayRootRecord<TRoot>): boolean {
+        return record.frameScheduled || record.frameCleanupPending || record.frameCleanupInProgress;
+    }
+
+    private _hasRemovalListenerCleanup(record: FlashDisplayRootRecord<TRoot>): boolean {
+        return record.removalListenerInstalled || record.removalListenerCleanupPending
+            || record.removalListenerCleanupInProgress;
     }
 
     private _rollbackAttachment(record: FlashDisplayRootRecord<TRoot>, root: TRoot, firstClaim: boolean): void {
@@ -444,8 +548,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             return;
         }
 
-        const cleanupPending = stageOwns(record, root) || record.frameScheduled
-            || record.removalListenerInstalled;
+        const cleanupPending = stageOwns(record, root) || this._hasFrameCleanup(record)
+            || this._hasRemovalListenerCleanup(record);
         if (firstClaim && !cleanupPending && root.parent == null) {
             if (ROOT_LEASES.get(root) === this) ROOT_LEASES.delete(root);
             record.root = null;

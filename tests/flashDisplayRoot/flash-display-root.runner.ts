@@ -29,6 +29,7 @@ class FakeScheduler {
     clearCalls = 0;
     registerError: unknown = null;
     clearError: unknown = null;
+    clearThrowsBeforeMutation = false;
 
     frameLoop(delay: number, caller: unknown, method: Function,
         args: unknown[] = [], coverBefore = true): void {
@@ -42,6 +43,7 @@ class FakeScheduler {
 
     clear(caller: unknown, method: Function): void {
         this.clearCalls++;
+        if (this.clearError && this.clearThrowsBeforeMutation) throw this.clearError;
         for (const registration of this.registrations)
             if (registration.caller === caller && registration.method === method)
                 registration.active = false;
@@ -240,7 +242,7 @@ test("Laya-isolated removal listener errors cannot strand lifecycle cleanup or a
     }
 });
 
-test("detach propagates first cleanup failure and restores live ownership when removal fails", () => {
+test("clear plus removal failure never counterfeits attached state and cleanup retries exactly", () => {
     const previousStage = ILaya.stage;
     const previousTimer = ILaya.timer;
     const stage = new Stage();
@@ -262,12 +264,110 @@ test("detach propagates first cleanup failure and restores live ownership when r
         lease.attach(root);
         scheduler.clearError = new Error("fixture clear failure");
         assert.throws(() => lease.detach(), /fixture clear failure/);
-        assert.deepEqual([lease.attached, root.parent, scheduler.activeCount, removeCalls], [true, stage, 0, 1]);
+        assert.deepEqual([lease.attached, root.parent, scheduler.activeCount, removeCalls],
+            [false, stage, 0, 1], "zero frames must never be published as attached");
         scheduler.clearError = null;
         failRemoval = false;
         assert.equal(lease.detach(), root);
         assert.deepEqual([lease.attached, root.parent, scheduler.activeCount, removeCalls], [false, null, 0, 2]);
         lease.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
+test("clear-before-mutation failure fences a possibly live frame until retry", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new LayaNode();
+    const originalRemove = stage.removeChild.bind(stage);
+    let failRemoval = true;
+    let frames = 0;
+    stage.removeChild = ((node: LayaNode) => {
+        if (failRemoval) throw new Error("fixture remove failure");
+        return originalRemove(node);
+    }) as typeof stage.removeChild;
+    try {
+        install(stage, scheduler);
+        const lease = FlashDisplayRootBoundary.claim<LayaNode>(stage, () => frames++, {
+            destroyRootOnDispose: false
+        });
+        lease.attach(root);
+        const retained = scheduler.latest();
+        scheduler.clearThrowsBeforeMutation = true;
+        scheduler.clearError = new Error("fixture pre-clear failure");
+        assert.throws(() => lease.detach(), /fixture pre-clear failure/);
+        assert.deepEqual([lease.attached, root.parent, scheduler.activeCount], [false, stage, 1]);
+        scheduler.fire(retained);
+        assert.equal(frames, 0, "indeterminate host callback is generation-fenced");
+
+        scheduler.clearError = null;
+        failRemoval = false;
+        assert.equal(lease.detach(), root);
+        assert.deepEqual([lease.attached, root.parent, scheduler.activeCount], [false, null, 0]);
+        lease.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
+test("install-then-throw removal listener is reconciled and its root claim is released", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new LayaNode();
+    const originalOn = root.on.bind(root);
+    let failAfterInstall = true;
+    root.on = ((type: string, caller: unknown, listener?: Function, args?: unknown[]) => {
+        const result = originalOn(type, caller, listener!, args);
+        if (failAfterInstall) throw new Error("fixture post-install failure");
+        return result;
+    }) as typeof root.on;
+    try {
+        install(stage, scheduler);
+        const lease = FlashDisplayRootBoundary.claim<LayaNode>(stage, () => undefined, {
+            destroyRootOnDispose: false
+        });
+        assert.throws(() => lease.attach(root), /fixture post-install failure/);
+        assert.deepEqual([lease.root, lease.attached, root.hasListener("removed"), root.parent,
+            scheduler.activeCount], [null, false, false, undefined, 0]);
+
+        failAfterInstall = false;
+        assert.equal(lease.attach(root), root, "successful reconciliation releases exact root ownership");
+        assert.deepEqual([lease.attached, root.hasListener("removed"), scheduler.activeCount],
+            [true, true, 1]);
+        lease.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
+test("reentrant dispose inside removal-listener on reconciles a listener installed afterward", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new CountingNode();
+    const originalOn = root.on.bind(root);
+    let lease: FlashDisplayRootLease<CountingNode>;
+    root.on = ((type: string, caller: unknown, listener?: Function, args?: unknown[]) => {
+        lease.dispose();
+        return originalOn(type, caller, listener!, args);
+    }) as typeof root.on;
+    try {
+        install(stage, scheduler);
+        lease = FlashDisplayRootBoundary.claim<CountingNode>(stage, () => undefined);
+        assert.throws(() => lease.attach(root), /installation was interrupted/);
+        assert.deepEqual([lease.disposed, lease.root, root.destroyed, root.hasListener("removed"),
+            stage.children.includes(root), scheduler.activeCount], [true, null, true, false, false, 0]);
+        const successor = FlashDisplayRootBoundary.claim(stage, () => undefined);
+        successor.dispose();
     } finally {
         ILaya.stage = previousStage;
         ILaya.timer = previousTimer;
