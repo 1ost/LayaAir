@@ -57,6 +57,7 @@ import { NoRender2DProcess } from "../../../src/layaAir/laya/RenderDriver/NoRend
 import { NoRenderDeviceFactory } from "../../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { PrefabImpl } from "../../../src/layaAir/laya/resource/PrefabImpl";
 import { Texture } from "../../../src/layaAir/laya/resource/Texture";
+import { Loader } from "../../../src/layaAir/laya/net/Loader";
 import "../../../src/layaAir/laya/ModuleDef";
 import {
     AnimatorClip2DTimeline, DisplayObject, DisplayObjectContainer, Event, EventDispatcher, EventPhase,
@@ -74,6 +75,12 @@ import {
     type AuthoredStaticTextConfiguration, type AuthoredTextFieldConfiguration,
 } from "../../../src/extensions/authoredContent/runtime";
 import {
+    AUTHORED_CONTENT_RUNTIME_IDS,
+    AuthoredDynamicTextField,
+    AuthoredMovieClip,
+    registerAuthoredContentPrimitives,
+} from "../../../src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives";
+import {
     AUTHORED_BINDING_RESERVED_SOURCE_SURFACES,
 } from "../../../src/extensions/authoredContent/runtime/AuthoredBindingReservedSurfaces";
 import { ButtonStateLinkage, FlashPanel, SubmitButtonLinkage } from "./generated/FlashPanel";
@@ -88,7 +95,11 @@ Browser.context = {
     fontKerning: "normal",
     measureText: (value: string) => ({ width: Array.from(value).length * 5 }),
 } as unknown as CanvasRenderingContext2D;
-ILaya.stage = { _graphicUpdateList: new Set(), _tranMatrixUpdateList: new Set() } as any;
+ILaya.stage = {
+    _graphicUpdateList: new Set(),
+    _tranMatrixUpdateList: new Set(),
+    _componentDriver: { _toDestroys: new Set() },
+} as any;
 const frameCallbacks: Array<{ caller: unknown; method: Function }> = [];
 ILaya.timer = {
     callLater: (): void => undefined,
@@ -2170,6 +2181,89 @@ test("authored TextField validation fails before publication and preserves prior
     assert.throws(() => createAuthoredTextField(accessor), /width must be an own data property/);
     assert.equal(getterReads, 0, "validation does not execute authored accessors");
     published.destroy(true);
+});
+
+test("canonical hierarchy deserializes a Laya-owned authored dynamic TextField primitive", () => {
+    registerAuthoredContentPrimitives();
+    const configuration: AuthoredTextFieldConfiguration = {
+        sourceId: 17, x: 347.1, y: 558, width: 574.85, height: 22.45,
+        type: "dynamic", multiline: false, wordWrap: false, selectable: false,
+        displayAsPassword: false, autoSize: "none", html: false, gutter: 2,
+        overflow: "hidden", initialText: "",
+        format: {
+            fontMode: "device", font: "Arial", size: 14, color: 0xffffff, bold: true,
+            italic: false, underline: false, align: "center", leftMargin: 0,
+            rightMargin: 0, indent: 0, leading: 2,
+        },
+    };
+    const errors: unknown[] = [];
+    const prefab = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "symbol17",
+        "_$type": "Sprite",
+        "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.textField,
+        authoredConfiguration: configuration,
+        name: "TF_ProgressText",
+        x: 347.1,
+        y: 558,
+        width: 574.85,
+        height: 22.45,
+    });
+    const field = prefab.create({}, errors) as AuthoredDynamicTextField;
+    assert.deepEqual(errors, []);
+    assert.equal(field instanceof AuthoredDynamicTextField, true);
+    assert.equal(isFlashTextField(field), true);
+    assert.equal(field.name, "TF_ProgressText");
+    assert.equal(field.defaultTextFormat.font, "Arial");
+    assert.equal(field.defaultTextFormat.bold, true);
+    field.text = "Loading 10%";
+    assert.equal(field.text, "Loading 10%");
+    field.destroy(true);
+});
+
+test("canonical hierarchy binds an independently clocked 16-frame authored MovieClip", () => {
+    registerAuthoredContentPrimitives();
+    const clip = new AnimationClip2D();
+    clip._duration = 16 / 30;
+    clip._frameRate = 30;
+    clip.islooping = true;
+    clip._setCreateURL("res://happy-bear-timeline", "happy-bear-timeline");
+    const type = Loader.getURLInfo("happy-bear-timeline.mc");
+    Loader._cacheRes("happy-bear-timeline", clip, type.typeId, type.main);
+    const priorLoader = ILaya.loader;
+    ILaya.loader = {
+        getRes: (): AnimationClip2D => clip,
+        clearRes: (): void => undefined,
+    } as any;
+    const errors: unknown[] = [];
+    const prefab = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "symbol11",
+        "_$type": "Sprite",
+        "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.movieClip,
+        name: "HappyBear",
+        "_$comp": [{
+            "_$type": "AnimatorClip2D",
+            clip: { "_$uuid": "happy-bear-timeline", "_$type": "AnimationClip2D" },
+            autoPlay: true,
+        }],
+    });
+    const bear = prefab.create({}, errors) as AuthoredMovieClip;
+    assert.deepEqual(errors, []);
+    assert.equal(bear instanceof AuthoredMovieClip, true);
+    assert.equal(isFlashMovieClip(bear), true);
+    assert.equal(bear.name, "HappyBear");
+    assert.equal(bear.totalFrames, 16);
+    bear.gotoAndStop(13);
+    assert.equal(bear.currentFrame, 13);
+    assert.equal(bear.isPlaying, false);
+    bear.play();
+    assert.equal(bear.isPlaying, true);
+    bear.stop();
+    assert.equal(bear.isPlaying, false);
+    bear.destroy(true);
+    Loader.clearRes("happy-bear-timeline", clip);
+    ILaya.loader = priorLoader;
 });
 
 test("texture-backed StaticText preserves Flash identity, authored bounds and exact mapped text", () => {

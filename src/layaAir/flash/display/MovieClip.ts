@@ -74,6 +74,12 @@ export class MovieClip extends Sprite {
         if (animator?.clip) this._bindNativeTimeline(new AnimatorClip2DTimeline(animator), this._flashFrameLabels as Record<string, number>);
     }
 
+    /** @internal Completes native timeline binding after component properties deserialize. */
+    _onAnimatorClip2DReady(animator: AnimatorClip2D): void {
+        if (animator.owner === this && animator.clip)
+            this._bindNativeTimeline(new AnimatorClip2DTimeline(animator), this._flashFrameLabels as Record<string, number>);
+    }
+
     /** @internal Atomic native factory seam: validation completes before state replacement. */
     _bindNativeTimeline(timeline: NativeMovieClipTimeline, labels: Record<string, number> = {}): void {
         validateTimeline(timeline);

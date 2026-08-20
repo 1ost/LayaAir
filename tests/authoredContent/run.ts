@@ -53,9 +53,17 @@ class TestSprite {
     visible = true;
     zOrder = 0;
     readonly children: TestSprite[] = [];
+    readonly components: unknown[] = [];
     addChild<T extends TestSprite>(child: T): T { this.children.push(child); return child; }
     getChildAt(index: number): TestSprite { return this.children[index]; }
-    addComponent<T>(Component: new () => T): T { return new Component(); }
+    addComponent<T>(Component: new () => T): T {
+        const component = new Component();
+        this.components.push(component);
+        return component;
+    }
+    getComponent<T>(Component: new () => T): T | null {
+        return this.components.find(value => value instanceof Component) as T ?? null;
+    }
     destroy(): void { this.children.length = 0; }
 }
 class TestText extends TestSprite {
@@ -191,6 +199,109 @@ function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
             }]
         },
         timeline: { frameRate: 30, duration: 0, loop: false, tracks: [] }
+    };
+}
+
+function dynamicTextDocument(): Record<string, unknown> {
+    return {
+        schema: "neutral-authored-content@1",
+        documentId: "bootstrap-loading",
+        resources: [],
+        root: {
+            linkage: "symbol21",
+            runtimeLinkage: "Processors_Mini.Accessories.LoadingScreenSkin",
+            kind: "container",
+            width: 1250,
+            height: 650,
+            children: [{
+                linkage: "symbol17",
+                name: "TF_ProgressText",
+                kind: "dynamic-text",
+                depth: 7,
+                x: 347.1,
+                y: 558,
+                width: 574.85,
+                height: 22.45,
+                textField: {
+                    sourceId: 17,
+                    type: "dynamic",
+                    multiline: false,
+                    wordWrap: false,
+                    selectable: false,
+                    displayAsPassword: false,
+                    autoSize: "none",
+                    html: false,
+                    gutter: 2,
+                    overflow: "hidden",
+                    initialText: "",
+                    format: {
+                        fontMode: "device",
+                        font: "Arial",
+                        size: 14,
+                        color: 0xffffff,
+                        bold: true,
+                        italic: false,
+                        underline: false,
+                        align: "center",
+                        leftMargin: 0,
+                        rightMargin: 0,
+                        indent: 0,
+                        leading: 2,
+                    },
+                },
+                children: [],
+            }],
+        },
+        timeline: { frameRate: 30, duration: 0, loop: false, tracks: [] },
+    };
+}
+
+function nestedHappyBearDocument(): Record<string, unknown> {
+    const resources = [1, 5, 9, 13].map(frame => ({
+        id: `happy-frame-${frame}`,
+        sourcePath: `images/happy-frame-${frame}.png`,
+        mediaType: "image/png",
+        byteLength: 1,
+        sha256: "00".repeat(32),
+    }));
+    const children = [1, 5, 9, 13].map((frame, index) => ({
+        linkage: `pose${frame}`,
+        name: `pose${frame}`,
+        kind: "image",
+        depth: index + 1,
+        resourceId: `happy-frame-${frame}`,
+        visible: frame === 1,
+        children: [],
+    }));
+    return {
+        schema: "neutral-authored-content@1",
+        documentId: "bootstrap-happy-bear",
+        resources,
+        root: {
+            linkage: "symbol21",
+            kind: "container",
+            children: [{
+                linkage: "symbol11",
+                name: "HappyBear",
+                kind: "container",
+                depth: 1,
+                children,
+                timeline: {
+                    frameRate: 30,
+                    duration: 16 / 30,
+                    loop: true,
+                    tracks: children.map(child => ({
+                        targetPath: ["symbol11", child.linkage],
+                        property: "visible",
+                        keyframes: [1, 5, 9, 13].map(frame => ({
+                            time: (frame - 1) / 30,
+                            value: child.linkage === `pose${frame}`,
+                        })),
+                    })),
+                },
+            }],
+        },
+        timeline: { frameRate: 30, duration: 0, loop: false, tracks: [] },
     };
 }
 
@@ -399,6 +510,77 @@ async function main(): Promise<void> {
         }
         finally {
             root.destroy();
+            clip.destroy();
+        }
+    });
+
+    await test("dynamic TextField hierarchy emits canonical Laya-owned runtime binding and exact configuration", () => {
+        const content = normalizeNeutralAuthoredContent(dynamicTextDocument());
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1,
+            "_$type": "Sprite",
+            name: "symbol21",
+            width: 1250,
+            height: 650,
+            "_$child": [{
+                "_$type": "Text",
+                name: "TF_ProgressText",
+                x: 347.1,
+                y: 558,
+                width: 574.85,
+                height: 22.45,
+            }],
+        }, "root-timeline", new Map());
+        const field = (hierarchy._$child as any[])[0];
+        assert(hierarchy._$runtime === "Processors_Mini.Accessories.LoadingScreenSkin",
+            "application root linkage was not emitted");
+        assert(field._$type === "Sprite", "dynamic TextField serialized type is not canonical Sprite");
+        assert(field._$runtime === "Laya.AuthoredContent.TextField",
+            "dynamic TextField did not use the Laya-owned primitive runtime");
+        assert(field.authoredConfiguration.sourceId === 17, "dynamic TextField source identity was lost");
+        assert(field.authoredConfiguration.format.font === "Arial", "dynamic TextField font was lost");
+        assert(field.authoredConfiguration.format.bold === true, "dynamic TextField font style was lost");
+    });
+
+    await test("nested MovieClip emits an independent 16-frame four-pose native timeline", () => {
+        const content = normalizeNeutralAuthoredContent(nestedHappyBearDocument());
+        const timelines = NativeLayaEmitter.createNestedTimelines(content);
+        const clip = timelines.get("symbol21/symbol11");
+        assert(timelines.size === 1 && clip !== undefined, "nested timeline closure drifted");
+        const parsed = AnimationClip2D._parse(NativeAnimationClip2DWriter.write(clip)) as any;
+        assert(parsed._frameRate === 30 && Math.round(parsed._duration * parsed._frameRate) === 16,
+            "nested timeline frame authority drifted");
+        assert(parsed.islooping === true && parsed._nodes.count === 4,
+            "nested timeline loop/track closure drifted");
+        for (let index = 0; index < 4; index++) {
+            const track = parsed._nodes.getNodeByIndex(index);
+            assert(track.nodePath.startsWith("/pose"), "nested animator target was not relative to its MovieClip");
+            assert(track._keyFrames.length === 4, "pose visibility does not cover all four change frames");
+        }
+        const bindings = new Map([["symbol21/symbol11", { assetId: "happy-bear-timeline", clip }]]);
+        const resourceBindings = new Map([1, 5, 9, 13].map(frame => [
+            `happy-frame-${frame}`,
+            `happy-frame-${frame}-asset`,
+        ]));
+        const rootClip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(
+            content,
+            "root-timeline",
+            rootClip,
+            resourceBindings,
+            bindings,
+        ) as unknown as TestSprite;
+        try {
+            const bear = root.getChildAt(0);
+            const animator = bear.getComponent(TestAnimatorClip2D);
+            assert(animator?.clip === clip && animator.autoPlay,
+                "nested MovieClip does not own its independently clocked animator");
+            assert(clip.url === "res://happy-bear-timeline" && clip.uuid === "happy-bear-timeline",
+                "nested timeline asset identity was not sealed");
+        }
+        finally {
+            root.destroy();
+            rootClip.destroy();
             clip.destroy();
         }
     });

@@ -59,12 +59,19 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
         const priorEditorState = await captureEditorSubAssetState(this.subAssets);
         let libraryChanged = false;
         let nativeTimeline: Laya.AnimationClip2D | undefined;
+        let nestedNativeTimelines: ReadonlyMap<string, Laya.AnimationClip2D> = new Map();
         let root: Laya.Sprite | undefined;
         try {
             libraryChanged = true;
             this.clearLibrary();
             const prefab = this.createSubAsset(`${baseName}.lh`, "prefab");
             const timeline = this.createSubAsset(`${baseName}.mc`, "timeline");
+            nestedNativeTimelines = NativeLayaEmitter.createNestedTimelines(content);
+            const nestedTimelineAssets = [...nestedNativeTimelines].map(([semanticPath], index) => ({
+                semanticPath,
+                timelinePath: `timelines/nested-${index + 1}.mc`,
+                asset: this.createSubAsset(`timelines/nested-${index + 1}.mc`, `timeline:${semanticPath}`),
+            }));
             const resourceAssets = new Map(content.resources.map(resource => [
                 resource.id,
                 this.createSubAsset(resource.outputPath, `resource:${resource.id}`)
@@ -73,7 +80,20 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
                 [...resourceAssets].map(([id, asset]) => [id, asset.id])
             );
             nativeTimeline = NativeLayaEmitter.createTimeline(content);
-            root = NativeLayaEmitter.createPrefabRoot(content, timeline.id, nativeTimeline, resourceAssetIds);
+            const nestedTimelineBindings = new Map(nestedTimelineAssets.map(value => [
+                value.semanticPath,
+                {
+                    assetId: value.asset.id,
+                    clip: nestedNativeTimelines.get(value.semanticPath)!,
+                },
+            ]));
+            root = NativeLayaEmitter.createPrefabRoot(
+                content,
+                timeline.id,
+                nativeTimeline,
+                resourceAssetIds,
+                nestedTimelineBindings,
+            );
             const timelineBytes = new Uint8Array(NativeAnimationClip2DWriter.write(nativeTimeline));
             const hierarchy = IEditorEnv.HierarchyWriter.write(root, { creatingPrefab: true });
             const bundle = await prepareNativeLayaAuthoredContentBundle({
@@ -83,6 +103,14 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
                 timelinePath,
                 timelineAssetId: timeline.id,
                 timelineBytes,
+                nestedTimelines: nestedTimelineAssets.map(value => ({
+                    semanticPath: value.semanticPath,
+                    timelinePath: value.timelinePath,
+                    timelineAssetId: value.asset.id,
+                    timelineBytes: new Uint8Array(NativeAnimationClip2DWriter.write(
+                        nestedNativeTimelines.get(value.semanticPath)!
+                    )),
+                })),
                 resourceAssetIds,
                 resourcePayloads,
                 sha256: bytes => crypto.createHash("sha256").update(bytes).digest("hex")
@@ -90,6 +118,7 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
             const targets = new Map<string, string>([
                 [prefabPath, prefab.fullPath],
                 [timelinePath, timeline.fullPath],
+                ...nestedTimelineAssets.map(value => [value.timelinePath, value.asset.fullPath] as [string, string]),
                 ...content.resources.map(resource => [resource.outputPath, resourceAssets.get(resource.id)!.fullPath] as [string, string])
             ]);
             await writeNativeLayaAuthoredContentTransaction(
@@ -118,6 +147,7 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
         finally {
             root?.destroy();
             nativeTimeline?.destroy();
+            nestedNativeTimelines.forEach(clip => clip.destroy());
         }
     }
 }

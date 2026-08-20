@@ -1,6 +1,6 @@
 export const NEUTRAL_AUTHORED_CONTENT_SCHEMA = "neutral-authored-content@1" as const;
 
-export type NeutralNodeKind = "container" | "image" | "text";
+export type NeutralNodeKind = "container" | "dynamic-text" | "image" | "text";
 export type NeutralImageMediaType = "image/jpeg" | "image/png";
 export type NeutralTimelineProperty = "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible";
 export type NeutralKeyframeValue = number | boolean;
@@ -23,7 +23,42 @@ export interface NeutralAuthoredNode {
     readonly color?: string;
     /** Required only for image nodes and resolved through the authenticated resource closure. */
     readonly resourceId?: string;
+    /** Application-owned root/linkage class; primitive children use Laya-owned runtime IDs. */
+    readonly runtimeLinkage?: string;
+    readonly textField?: NeutralDynamicTextField;
+    /** Independently clocked timeline owned by this nested symbol. */
+    readonly timeline?: NeutralTimeline;
     readonly children: ReadonlyArray<NeutralAuthoredNode>;
+}
+
+export interface NeutralDynamicTextField {
+    readonly sourceId: number;
+    readonly type: "dynamic" | "input";
+    readonly multiline: boolean;
+    readonly wordWrap: boolean;
+    readonly selectable: boolean;
+    readonly displayAsPassword: boolean;
+    readonly autoSize: "none";
+    readonly html: false;
+    readonly gutter: 2;
+    readonly overflow: "hidden";
+    readonly initialText: string;
+    readonly format: NeutralDynamicTextFormat;
+}
+
+export interface NeutralDynamicTextFormat {
+    readonly fontMode: "device";
+    readonly font: string;
+    readonly size: number;
+    readonly color: number;
+    readonly bold: boolean;
+    readonly italic: boolean;
+    readonly underline: boolean;
+    readonly align: "left" | "center" | "right" | "justify";
+    readonly leftMargin: number;
+    readonly rightMargin: number;
+    readonly indent: number;
+    readonly leading: number;
 }
 
 export interface NeutralAuthoredResource {
@@ -64,7 +99,7 @@ export interface NeutralAuthoredContentIR {
     readonly timeline: NeutralTimeline;
 }
 
-const NODE_KINDS: ReadonlySet<string> = new Set(["container", "image", "text"]);
+const NODE_KINDS: ReadonlySet<string> = new Set(["container", "dynamic-text", "image", "text"]);
 const IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png"]);
 const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible"]);
 const SCALED_NODE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "width", "height", "fontSize"]);
@@ -100,7 +135,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible",
-        "text", "fontSize", "color", "resourceId", "children"
+        "text", "fontSize", "color", "resourceId", "runtimeLinkage", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -128,6 +163,12 @@ function normalizeNode(
         resourceId: source.resourceId === undefined
             ? undefined
             : canonicalResourceId(requiredString(source.resourceId, `${path}.resourceId`)),
+        runtimeLinkage: source.runtimeLinkage === undefined
+            ? undefined
+            : canonicalRuntimeLinkage(requiredString(source.runtimeLinkage, `${path}.runtimeLinkage`)),
+        textField: source.textField === undefined
+            ? undefined
+            : normalizeDynamicTextField(source.textField, `${path}.textField`, scale),
         children: normalizeSiblings(array(source.children, `${path}.children`), `${path}.children`, scale)
     };
     if (node.kind === "text" && node.text === undefined)
@@ -138,9 +179,76 @@ function normalizeNode(
         fail("AUTHORED_CONTENT_RESOURCE_ON_NON_IMAGE", `${path}.resourceId is only valid on an image node.`);
     if (node.kind !== "text" && (node.text !== undefined || node.fontSize !== undefined || node.color !== undefined))
         fail("AUTHORED_CONTENT_TEXT_PROPERTY_ON_NON_TEXT", `${path} contains text-only properties.`);
+    if (node.kind === "dynamic-text" && node.textField === undefined)
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_MISSING", `${path}.textField is required for a dynamic-text node.`);
+    if (node.kind !== "dynamic-text" && node.textField !== undefined)
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_UNEXPECTED", `${path}.textField is only valid on a dynamic-text node.`);
+    if (node.kind === "dynamic-text") {
+        if (node.x === undefined || node.y === undefined || node.width === undefined || node.height === undefined)
+            fail("AUTHORED_CONTENT_DYNAMIC_TEXT_BOUNDS_MISSING", `${path} requires exact x, y, width, and height.`);
+    }
     if (node.kind !== "container" && node.children.length !== 0)
         fail("AUTHORED_CONTENT_LEAF_CHILDREN_UNSUPPORTED", `${path} ${node.kind} nodes cannot contain children.`);
-    return node;
+    if (source.timeline !== undefined && node.kind !== "container")
+        fail("AUTHORED_CONTENT_NESTED_TIMELINE_HOST_INVALID", `${path}.timeline requires a container node.`);
+    return source.timeline === undefined
+        ? node
+        : { ...node, timeline: normalizeTimeline(source.timeline, scale, collectNodePaths(node)) };
+}
+
+function normalizeDynamicTextField(value: unknown, path: string, scale: number): NeutralDynamicTextField {
+    const source = record(value, path);
+    allowedKeys(source, [
+        "autoSize", "displayAsPassword", "format", "gutter", "html", "initialText", "multiline",
+        "overflow", "selectable", "sourceId", "type", "wordWrap"
+    ], path);
+    const format = record(source.format, `${path}.format`);
+    allowedKeys(format, [
+        "align", "bold", "color", "font", "fontMode", "indent", "italic", "leading", "leftMargin",
+        "rightMargin", "size", "underline"
+    ], `${path}.format`);
+    const sourceId = requiredFiniteNumber(source.sourceId, `${path}.sourceId`);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0)
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_SOURCE_ID_INVALID", `${path}.sourceId must be a positive safe integer.`);
+    const type = requiredString(source.type, `${path}.type`);
+    if (type !== "dynamic" && type !== "input")
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_TYPE_UNSUPPORTED", `${path}.type '${type}' is unsupported.`);
+    const fontMode = requiredString(format.fontMode, `${path}.format.fontMode`);
+    if (fontMode !== "device")
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_FONT_MODE_UNSUPPORTED", `${path}.format.fontMode '${fontMode}' is unsupported.`);
+    const align = requiredString(format.align, `${path}.format.align`);
+    if (!new Set(["left", "center", "right", "justify"]).has(align))
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_ALIGN_UNSUPPORTED", `${path}.format.align '${align}' is unsupported.`);
+    const color = requiredFiniteNumber(format.color, `${path}.format.color`);
+    if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+        fail("AUTHORED_CONTENT_DYNAMIC_TEXT_COLOR_INVALID", `${path}.format.color must be an RGB integer.`);
+    return {
+        sourceId,
+        type,
+        multiline: requiredBoolean(source.multiline, `${path}.multiline`),
+        wordWrap: requiredBoolean(source.wordWrap, `${path}.wordWrap`),
+        selectable: requiredBoolean(source.selectable, `${path}.selectable`),
+        displayAsPassword: requiredBoolean(source.displayAsPassword, `${path}.displayAsPassword`),
+        autoSize: exactLiteral(source.autoSize, "none", `${path}.autoSize`),
+        html: exactLiteral(source.html, false, `${path}.html`),
+        gutter: exactLiteral(source.gutter, 2, `${path}.gutter`),
+        overflow: exactLiteral(source.overflow, "hidden", `${path}.overflow`),
+        initialText: requiredText(source.initialText, `${path}.initialText`),
+        format: {
+            fontMode,
+            font: requiredString(format.font, `${path}.format.font`),
+            size: positiveNumber(format.size, `${path}.format.size`) * scale,
+            color,
+            bold: requiredBoolean(format.bold, `${path}.format.bold`),
+            italic: requiredBoolean(format.italic, `${path}.format.italic`),
+            underline: requiredBoolean(format.underline, `${path}.format.underline`),
+            align: align as NeutralDynamicTextFormat["align"],
+            leftMargin: requiredFiniteNumber(format.leftMargin, `${path}.format.leftMargin`) * scale,
+            rightMargin: requiredFiniteNumber(format.rightMargin, `${path}.format.rightMargin`) * scale,
+            indent: requiredFiniteNumber(format.indent, `${path}.format.indent`) * scale,
+            leading: requiredFiniteNumber(format.leading, `${path}.format.leading`) * scale,
+        }
+    };
 }
 
 function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: number): ReadonlyArray<NeutralAuthoredNode> {
@@ -310,6 +418,14 @@ function canonicalLinkage(value: string): string {
     return normalized;
 }
 
+function canonicalRuntimeLinkage(value: string): string {
+    const normalized = value.trim().normalize("NFC");
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/.test(normalized)
+        || normalized.startsWith("flash.") || normalized.startsWith("laya.") || normalized.startsWith("Laya."))
+        fail("AUTHORED_CONTENT_RUNTIME_LINKAGE_INVALID", `Runtime linkage '${value}' is not application-owned.`);
+    return normalized;
+}
+
 function canonicalResourceId(value: string): string {
     const normalized = value.trim().normalize("NFC");
     if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(normalized))
@@ -355,6 +471,25 @@ function requiredString(value: unknown, path: string): string {
     if (typeof value !== "string" || value.length === 0)
         fail("AUTHORED_CONTENT_STRING_REQUIRED", `${path} must be a non-empty string.`);
     return value;
+}
+
+function requiredText(value: unknown, path: string): string {
+    if (typeof value !== "string")
+        fail("AUTHORED_CONTENT_STRING_REQUIRED", `${path} must be a string.`);
+    return value;
+}
+
+function positiveNumber(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (result <= 0)
+        fail("AUTHORED_CONTENT_POSITIVE_NUMBER_REQUIRED", `${path} must be positive.`);
+    return result;
+}
+
+function exactLiteral<T extends string | number | boolean>(value: unknown, expected: T, path: string): T {
+    if (value !== expected)
+        fail("AUTHORED_CONTENT_LITERAL_REQUIRED", `${path} must be ${String(expected)}.`);
+    return expected;
 }
 
 function optionalString(value: unknown, path: string): string | undefined {

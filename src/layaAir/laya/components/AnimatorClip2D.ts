@@ -2,6 +2,7 @@ import { Animator2DBase } from "./Animator2DBase";
 import { AnimatorPlayState2D } from "./AnimatorPlayState2D";
 import { AnimatorState2D } from "./AnimatorState2D";
 import { AnimationClip2D } from "./AnimationClip2D";
+import { Node } from "../display/Node";
 
 /**
  * @en 2D animator component that plays a single AnimationClip2D directly, without a state machine.
@@ -183,6 +184,13 @@ export class AnimatorClip2D extends Animator2DBase {
             this.play();
         } else
             this._isPlaying = false;
+    }
+
+    onAfterDeserialize(): void {
+        const owner = this.owner as Node & {
+            _onAnimatorClip2DReady?(animator: AnimatorClip2D): void;
+        };
+        owner._onAnimatorClip2DReady?.(this);
     }
 
     onUpdate(): void {

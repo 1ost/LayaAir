@@ -4,6 +4,7 @@ import {
     NeutralAuthoredNode
 } from "../core/NeutralAuthoredContentIR";
 import { NativeLayaEmitter } from "./NativeLayaEmitter";
+import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 
 export type NativeAuthoredContentBundleFileKind = "image" | "prefab" | "timeline";
 
@@ -31,9 +32,17 @@ export interface NativeLayaBundlePreparation {
     readonly timelinePath: string;
     readonly timelineAssetId: string;
     readonly timelineBytes: Uint8Array;
+    readonly nestedTimelines?: ReadonlyArray<NativeNestedTimelinePublication>;
     readonly resourceAssetIds: ReadonlyMap<string, string>;
     readonly resourcePayloads: ReadonlyMap<string, Uint8Array>;
     readonly sha256: (bytes: Uint8Array) => string | Promise<string>;
+}
+
+export interface NativeNestedTimelinePublication {
+    readonly semanticPath: string;
+    readonly timelinePath: string;
+    readonly timelineAssetId: string;
+    readonly timelineBytes: Uint8Array;
 }
 
 /**
@@ -56,13 +65,20 @@ export async function prepareNativeLayaAuthoredContentBundle(
     if (!(preparation.timelineBytes instanceof Uint8Array) || preparation.timelineBytes.byteLength === 0)
         fail("AUTHORED_CONTENT_NATIVE_TIMELINE_BYTES_REQUIRED", "timelineBytes must be non-empty native .mc bytes.");
 
+    const nestedTimelines = normalizeNestedTimelinePublications(content.root, preparation.nestedTimelines ?? []);
+    const nestedTimelineAssetIds = new Map(nestedTimelines.map(timeline => [
+        timeline.semanticPath,
+        timeline.timelineAssetId,
+    ]));
+
     assertExactKeys(resourceAssetIds, content.resources.map(resource => resource.id), "RESOURCE_BINDING");
     assertExactKeys(resourcePayloads, content.resources.map(resource => resource.id), "RESOURCE_PAYLOAD");
     const hierarchy = prepareNativeLayaHierarchy(
         content,
         preparation.hierarchy,
         timelineAssetId,
-        resourceAssetIds
+        resourceAssetIds,
+        nestedTimelineAssetIds
     );
     const files: NativeAuthoredContentBundleFile[] = [{
         path: prefabPath,
@@ -73,6 +89,13 @@ export async function prepareNativeLayaAuthoredContentBundle(
         kind: "timeline",
         bytes: cloneBytes(preparation.timelineBytes)
     }];
+    for (const timeline of nestedTimelines) {
+        files.push({
+            path: timeline.timelinePath,
+            kind: "timeline",
+            bytes: cloneBytes(timeline.timelineBytes),
+        });
+    }
     for (const resource of content.resources) {
         const payload = resourcePayloads.get(resource.id)!;
         if (!(payload instanceof Uint8Array))
@@ -155,24 +178,29 @@ export function prepareNativeLayaHierarchy(
     content: NeutralAuthoredContentIR,
     hierarchyValue: Record<string, unknown>,
     timelineAssetId: string,
-    resourceAssetIds: ReadonlyMap<string, string>
+    resourceAssetIds: ReadonlyMap<string, string>,
+    nestedTimelineAssetIds: ReadonlyMap<string, string> = new Map()
 ): Record<string, unknown> {
     const hierarchy = canonicalClone(hierarchyValue, "hierarchy") as Record<string, unknown>;
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
+    decorateAuthoredRuntime(content.root, hierarchy);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
         content,
         timelineAssetId,
-        resourceAssetIds
+        resourceAssetIds,
+        nestedTimelineAssetIds
     );
     hierarchy._$preloads = [
         ...content.resources.map(resource => resourceAssetIds.get(resource.id)!),
-        timelineAssetId
+        timelineAssetId,
+        ...nestedTimelineAssetIds.values()
     ];
     hierarchy._$preloadTypes = [
         ...content.resources.map(() => "Texture2D"),
-        "AnimationClip2D"
+        "AnimationClip2D",
+        ...[...nestedTimelineAssetIds].map(() => "AnimationClip2D")
     ];
     return hierarchy;
 }
@@ -188,7 +216,9 @@ function validateHierarchyNode(
     path: string,
     root: boolean
 ): void {
-    const expectedType = source.kind === "container" ? "Sprite" : source.kind === "image" ? "Image" : "Text";
+    const expectedType = source.kind === "container" || source.kind === "dynamic-text"
+        ? "Sprite"
+        : source.kind === "image" ? "Image" : "Text";
     if (value._$type !== expectedType)
         fail("AUTHORED_CONTENT_NATIVE_NODE_TYPE_MISMATCH", `${path} expected ${expectedType}; received ${String(value._$type)}.`);
     const expectedName = source.name ?? source.linkage;
@@ -221,6 +251,50 @@ function validateHierarchyNode(
         if (!childValue || typeof childValue !== "object" || Array.isArray(childValue))
             fail("AUTHORED_CONTENT_NATIVE_CHILD_INVALID", `${path}._$child[${index}] is not a hierarchy node.`);
         validateHierarchyNode(child, childValue as Record<string, unknown>, resourceAssetIds, `${path}/${child.name ?? child.linkage}`, false);
+    });
+}
+
+function decorateAuthoredRuntime(
+    source: NeutralAuthoredNode,
+    value: Record<string, unknown>,
+): void {
+    if (source.kind === "dynamic-text") {
+        value._$type = "Sprite";
+        value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.textField;
+        value.authoredConfiguration = {
+            sourceId: source.textField!.sourceId,
+            x: source.x!,
+            y: source.y!,
+            width: source.width!,
+            height: source.height!,
+            type: source.textField!.type,
+            multiline: source.textField!.multiline,
+            wordWrap: source.textField!.wordWrap,
+            selectable: source.textField!.selectable,
+            displayAsPassword: source.textField!.displayAsPassword,
+            autoSize: source.textField!.autoSize,
+            html: source.textField!.html,
+            gutter: source.textField!.gutter,
+            overflow: source.textField!.overflow,
+            initialText: source.textField!.initialText,
+            format: source.textField!.format,
+        };
+    }
+    else if (source.kind === "container" && source.timeline !== undefined) {
+        value._$type = "Sprite";
+        value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.movieClip;
+    }
+    if (source.runtimeLinkage !== undefined) {
+        value._$type = "Sprite";
+        value._$runtime = source.runtimeLinkage;
+    }
+    const children = value._$child;
+    if (!Array.isArray(children) || children.length !== source.children.length)
+        return;
+    source.children.forEach((child, index) => {
+        const target = children[index];
+        if (target && typeof target === "object" && !Array.isArray(target))
+            decorateAuthoredRuntime(child, target as Record<string, unknown>);
     });
 }
 
@@ -271,6 +345,40 @@ function assertExactKeys<T>(map: ReadonlyMap<string, T>, expected: ReadonlyArray
         if (!expectedSet.has(id))
             fail(`AUTHORED_CONTENT_NATIVE_${label}_UNKNOWN`, `Unknown ${label.toLowerCase()} '${id}'.`);
     }
+}
+
+function normalizeNestedTimelinePublications(
+    root: NeutralAuthoredNode,
+    publications: ReadonlyArray<NativeNestedTimelinePublication>
+): ReadonlyArray<NativeNestedTimelinePublication> {
+    const expected: string[] = [];
+    const visit = (node: NeutralAuthoredNode, parent: ReadonlyArray<string>) => {
+        const semanticPath = [...parent, node.linkage];
+        if (node.timeline !== undefined)
+            expected.push(semanticPath.join("/"));
+        node.children.forEach(child => visit(child, semanticPath));
+    };
+    visit(root, []);
+    if (!Array.isArray(publications) || publications.length !== expected.length)
+        fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_CLOSURE", "Nested timeline publication closure drifted.");
+    const byPath = new Map(publications.map(value => [value.semanticPath, value]));
+    if (byPath.size !== publications.length)
+        fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_DUPLICATE", "A nested timeline semantic path is duplicated.");
+    const normalized = expected.map(semanticPath => {
+        const value = byPath.get(semanticPath);
+        if (!value)
+            fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_MISSING", `Missing nested timeline '${semanticPath}'.`);
+        const timelinePath = canonicalOutputPath(value.timelinePath, ".mc", `nested timeline ${semanticPath}`);
+        if (typeof value.timelineAssetId !== "string" || value.timelineAssetId.length === 0
+            || value.timelineAssetId.indexOf("\0") >= 0)
+            fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_ID_REQUIRED", `Nested timeline '${semanticPath}' has no stable asset ID.`);
+        if (!(value.timelineBytes instanceof Uint8Array) || value.timelineBytes.byteLength === 0)
+            fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_BYTES_REQUIRED", `Nested timeline '${semanticPath}' has no native .mc bytes.`);
+        return { ...value, timelinePath };
+    });
+    if (new Set(normalized.map(value => value.timelineAssetId)).size !== normalized.length)
+        fail("AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_ID_COLLISION", "Nested timeline asset IDs collide.");
+    return normalized;
 }
 
 function canonicalOutputPath(value: string, extension: string, label: string): string {

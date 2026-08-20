@@ -1,6 +1,7 @@
 import { Node } from "../../../layaAir/laya/display/Node";
 import { ClassUtils } from "../../../layaAir/laya/utils/ClassUtils";
 import { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } from "../../../layaAir/flash";
+import { registerAuthoredContentPrimitives } from "./AuthoredRuntimePrimitives";
 
 export type AuthoredSourceType = "DisplayObject" | "MovieClip" | "SimpleButton" | "Sprite" | "TextField";
 export type AuthoredSerializedType = "Sprite" | "Input";
@@ -24,6 +25,7 @@ const SERIALIZED_TYPES: Readonly<Record<AuthoredSourceType, AuthoredSerializedTy
  * canonical serialized `_$type` IDs continue to come from Laya ModuleDef.
  */
 export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntimeLinkage[]): void {
+    registerAuthoredContentPrimitives();
     if (!Array.isArray(linkages)) throw new TypeError("Authored runtime linkages must be an array");
     const typedLinkages: readonly AuthoredRuntimeLinkage[] = linkages;
     const batch = new Map<string, Function>();

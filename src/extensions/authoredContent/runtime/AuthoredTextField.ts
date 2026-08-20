@@ -49,9 +49,19 @@ const FORMAT_KEYS = Object.freeze([
  * TextField or an exception, never a partially configured display object.
  */
 export function createAuthoredTextField(configuration: AuthoredTextFieldConfiguration): TextField {
-    const value = validateConfiguration(configuration);
     const field = new TextField();
-    field.name = `symbol${value.sourceId}`;
+    return configureAuthoredTextField(field, configuration);
+}
+
+export function configureAuthoredTextField(
+    field: TextField,
+    configuration: AuthoredTextFieldConfiguration
+): TextField {
+    if (!(field instanceof TextField) || field.destroyed)
+        throw new TypeError("Authored TextField target must be a live TextField");
+    const value = validateConfiguration(configuration);
+    const instanceName = field.name;
+    field.name = instanceName || `symbol${value.sourceId}`;
     field.pos(value.x, value.y);
     field.size(value.width, value.height);
     field.type = value.type;
