@@ -25,7 +25,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -36,7 +36,7 @@
           "capability": "library.symbol-linkage",
           "covers": [
             "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f",
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -68,7 +68,7 @@
           "capability": "library.imported-assets",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]
@@ -89,7 +89,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -100,7 +100,7 @@
           "capability": "display.hierarchy",
           "covers": [
             "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f",
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]
@@ -126,7 +126,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -137,7 +137,7 @@
           "capability": "display.instance-name",
           "covers": [
             "82157fdab31063eea861a34a6f8201b0aba2df455458d60e469403cec6fea05f",
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]
@@ -178,7 +178,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -189,7 +189,7 @@
           "capability": "media.bitmap",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]
@@ -460,28 +460,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+          "sha256": "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
         }
       ],
       "evidence": [
@@ -491,7 +491,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "c437693473ae231f03dc17810383b74a5bc7498282ae17420ad5a4ac6907792f"
+            "96b1092e8e5bf9c5094f01417f41ce0cdbce1374146f77b514ae80b709ebf5c3"
           ]
         }
       ]

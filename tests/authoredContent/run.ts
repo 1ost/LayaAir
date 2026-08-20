@@ -462,7 +462,9 @@ async function main(): Promise<void> {
             "before-install",
             "after-install"
         ];
-        for (const boundary of boundaries) {
+        for (const boundary of boundaries) for (const initialState of ["existing", "absent"] as const) {
+            if (initialState === "absent" && boundary === "after-backup")
+                continue;
             const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-boundary-"));
             try {
                 const bundle = await prepareNativeLayaAuthoredContentBundle(
@@ -475,10 +477,12 @@ async function main(): Promise<void> {
                 const originals = new Map<string, Uint8Array>();
                 let value = 40;
                 for (const target of targets.values()) {
-                    const bytes = new Uint8Array([value++]);
-                    originals.set(target, bytes);
                     fs.mkdirSync(path.dirname(target), { recursive: true });
-                    fs.writeFileSync(target, bytes);
+                    if (initialState === "existing") {
+                        const bytes = new Uint8Array([value++]);
+                        originals.set(target, bytes);
+                        fs.writeFileSync(target, bytes);
+                    }
                 }
                 const transaction = new NativeAssetImporterTransaction(
                     path.join(root, "temp"),
@@ -496,8 +500,10 @@ async function main(): Promise<void> {
                 for (const [target, expected] of originals) {
                     const actual = fs.readFileSync(target);
                     assert(actual.length === expected.length && actual.every((byte, index) => byte === expected[index]),
-                        `${boundary} left a partial target at ${target}`);
+                        `${boundary}/${initialState} left a partial target at ${target}`);
                 }
+                if (initialState === "absent") for (const target of targets.values())
+                    assert(!fs.existsSync(target), `${boundary}/absent left a newly installed target at ${target}`);
                 assert(!fs.existsSync(transaction.recoveryPath), `${boundary} left recovery evidence after complete rollback`);
             }
             finally {
@@ -506,8 +512,49 @@ async function main(): Promise<void> {
         }
     });
 
-    await test("real importer rollback is best-effort and retains aggregate recovery evidence", async () => {
-        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-rollback-"));
+    await test("real importer retry and rollback are idempotent after complete recovery", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-retry-"));
+        try {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const targets = new Map(bundle.files.map(file => [
+                file.path,
+                path.join(root, "outputs", ...file.path.split("/"))
+            ]));
+            let failOnce = true;
+            const transaction = new NativeAssetImporterTransaction(
+                path.join(root, "temp"),
+                targets,
+                context => {
+                    if (failOnce && context.event === "after-install" && context.relativePath === "bitmap-hierarchy.mc") {
+                        failOnce = false;
+                        throw new Error("retry boundary");
+                    }
+                },
+                nativeTransactionHost
+            );
+            await assertRejects(
+                () => writeNativeLayaAuthoredContentTransaction(bundle, transaction),
+                "retry boundary"
+            );
+            await transaction.rollback();
+            await writeNativeLayaAuthoredContentTransaction(bundle, transaction);
+            await transaction.rollback();
+            for (const file of bundle.files) {
+                const actual = fs.readFileSync(targets.get(file.path)!);
+                assert(actual.length === file.bytes.length && actual.every((byte, index) => byte === file.bytes[index]),
+                    `retry did not install exact ${file.path} bytes`);
+            }
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    await test("real importer remove/restore rollback failures are best-effort with durable aggregate evidence", async () => {
+        for (const failureEvent of ["before-rollback-remove", "before-rollback-restore"] as const) {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), `laya-native-transaction-${failureEvent}-`));
         try {
             const bundle = await prepareNativeLayaAuthoredContentBundle(
                 bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
@@ -529,8 +576,8 @@ async function main(): Promise<void> {
                         rollbackEvents.push(`${context.event}:${context.relativePath}`);
                     if (context.event === "after-install" && context.relativePath === "bitmap-hierarchy.mc")
                         throw new Error("injected commit failure");
-                    if (context.event === "before-rollback-remove" && context.relativePath === "bitmap-hierarchy.mc")
-                        throw new Error("injected rollback removal failure");
+                    if (context.event === failureEvent && context.relativePath === "bitmap-hierarchy.mc")
+                        throw new Error(`injected ${failureEvent} failure`);
                 },
                 nativeTransactionHost
             );
@@ -555,6 +602,7 @@ async function main(): Promise<void> {
         }
         finally {
             fs.rmSync(root, { recursive: true, force: true });
+        }
         }
     });
 
@@ -865,6 +913,14 @@ async function main(): Promise<void> {
         assert(
             importerSource.includes("writeNativeLayaAuthoredContentTransaction("),
             "importer does not stage the complete native bundle transaction"
+        );
+        assert(
+            importerSource.indexOf("captureEditorSubAssetState(this.subAssets)") < importerSource.indexOf("this.clearLibrary()"),
+            "importer does not snapshot editor identity and bytes before clearing its library"
+        );
+        assert(
+            importerSource.includes("restoreEditorSubAssetState("),
+            "a later native-bundle failure can leave partial editor subasset identity"
         );
         assert(
             importerSource.includes("Laya.Loader.HIERARCHY"),
