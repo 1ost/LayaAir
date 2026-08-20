@@ -75,10 +75,15 @@ export class FontAdapter {
             noRetry: true,
         });
         if (!(bytes instanceof ArrayBuffer)) return null;
-        const actual = await rawSha256(bytes);
+        // Detach authentication from any mutable buffer retained by the
+        // transport/cache. The digest and platform registration consume this
+        // one private snapshot, closing mutation-based TOCTOU as well as
+        // refetch-based substitution.
+        const snapshot = bytes.slice(0);
+        const actual = await rawSha256(snapshot);
         if (actual !== expected)
             throw new Error(`Authenticated font bytes do not match sourceSha256 (expected ${expected}, got ${actual})`);
-        return { bytes, sourceSha256: actual };
+        return { bytes: snapshot, sourceSha256: actual };
     }
 
     protected createAuthenticatedReceipt(

@@ -261,6 +261,10 @@ test("raw SHA authenticates one fetched byte snapshot and rejects same-URL wrong
     await registry.preload("auth");
     assert.equal(harness.fetchCount.get(authored.sourceUrl), 1, "verified bytes must be registered without refetch");
     assert.deepEqual(new Uint8Array(harness.faces[0].source), new Uint8Array(expected));
+    const registeredSnapshot = new Uint8Array(harness.faces[0].source).slice();
+    new Uint8Array(expected).fill(0xff);
+    assert.deepEqual(new Uint8Array(harness.faces[0].source), registeredSnapshot,
+        "transport-owned buffer mutation must not change authenticated registration bytes");
     await registry.dispose();
 
     const wrongHarness = new FontHarness();
