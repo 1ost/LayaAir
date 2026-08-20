@@ -118,4 +118,5 @@ export { ImageDecodingPolicy } from "./system/ImageDecodingPolicy";
 export { System, NativeSystemHost, installNativeSystemHost } from "./system/System";
 export { ExternalInterface, NativeExternalInterfaceHost,
     installNativeExternalInterfaceHost } from "./external/ExternalInterface";
+export type { ExternalInterfaceValue } from "./external/ExternalInterface";
 export { IllegalOperationError } from "./errors/IllegalOperationError";

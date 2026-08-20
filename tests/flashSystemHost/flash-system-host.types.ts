@@ -9,6 +9,8 @@ const debugging: boolean = Capabilities.isDebugger;
 const policy: string = ImageDecodingPolicy.ON_LOAD;
 const available: boolean = ExternalInterface.available;
 const result: unknown = ExternalInterface.call("host.call", 1);
+// @ts-expect-error host protocol admits only immutable primitive values
+ExternalInterface.call("host.call", { mutable: true });
 const memory: number = System.totalMemory;
 const error: Error = new IllegalOperationError("message", 1);
 type Hosts = readonly [NativeExternalInterfaceHost, NativeSystemHost];

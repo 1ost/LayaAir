@@ -576,6 +576,7 @@ ensureFlashCapability("api.flash.system", [
 
 ensureFlashCapability("api.flash.external", [
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterface", "class"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterfaceValue", "type"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHost", "class"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "installNativeExternalInterfaceHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",

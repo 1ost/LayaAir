@@ -39529,7 +39529,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e",
+          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf",
           "heritage": []
         },
         {
@@ -39550,7 +39550,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e",
+          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf",
           "heritage": []
         },
         {
@@ -39558,19 +39558,19 @@
           "export": "installNativeSystemHost",
           "kind": "function",
           "signature": "(host: NativeSystemHost) => void",
-          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e"
+          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
-            "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e"
+            "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf"
           ]
         }
       ]
@@ -39601,13 +39601,20 @@
               "scope": "static",
               "optional": false,
               "readonly": false,
-              "signature": "(functionName: string, ...arguments_: unknown[]) => unknown"
+              "signature": "(functionName: string, ...arguments_: ExternalInterfaceValue[]) => unknown"
             }
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636",
+          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/external/ExternalInterface.ts",
+          "export": "ExternalInterfaceValue",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
@@ -39622,12 +39629,12 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(functionName: string, arguments_: readonly unknown[]) => unknown"
+              "signature": "(functionName: string, arguments_: readonly ExternalInterfaceValue[]) => unknown"
             }
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636",
+          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be",
           "heritage": []
         },
         {
@@ -39635,17 +39642,17 @@
           "export": "installNativeExternalInterfaceHost",
           "kind": "function",
           "signature": "(host: NativeExternalInterfaceHost) => void",
-          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636"
+          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
           "capability": "api.flash.external",
           "covers": [
-            "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636"
+            "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
           ]
         }
       ]
@@ -39728,7 +39735,7 @@
             "new (message?: string, id?: number): IllegalOperationError"
           ],
           "indexSignatures": [],
-          "sha256": "5bb7d17b1b88a55812e2520ff590825b4dbd553664d21e3b009334607a889221",
+          "sha256": "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8",
           "heritage": [
             {
               "kind": "extends",
@@ -39741,10 +39748,10 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
           "capability": "api.flash.errors",
           "covers": [
-            "5bb7d17b1b88a55812e2520ff590825b4dbd553664d21e3b009334607a889221"
+            "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"
           ]
         }
       ]

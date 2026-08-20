@@ -1,19 +1,49 @@
+import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
+
 const EXTERNAL_HOSTS = new WeakSet<object>();
-let externalHost: NativeExternalInterfaceHost | null = null;
+const FUNCTION_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+let externalHost: ExternalHostRecord | null = null;
+let installingExternalHost = false;
+
+export type ExternalInterfaceValue = string | number | boolean | null;
+
+interface ExternalHostRecord {
+    readonly owner: NativeExternalInterfaceHost;
+    readonly call: (functionName: string, arguments_: readonly ExternalInterfaceValue[]) => unknown;
+}
 
 /** Nominal embedding boundary for the legacy string-named host protocol. */
 export abstract class NativeExternalInterfaceHost {
-    protected constructor() { EXTERNAL_HOSTS.add(this); }
+    protected constructor() {
+        const prototype = new.target?.prototype;
+        const method = prototype && Object.getOwnPropertyDescriptor(prototype, "call");
+        if (new.target === NativeExternalInterfaceHost
+            || Object.getPrototypeOf(prototype) !== NativeExternalInterfaceHost.prototype
+            || typeof method?.value !== "function")
+            throw new TypeError("NativeExternalInterfaceHost requires a direct concrete data-method subclass");
+        EXTERNAL_HOSTS.add(this);
+    }
 
-    abstract call(functionName: string, arguments_: readonly unknown[]): unknown;
+    abstract call(functionName: string, arguments_: readonly ExternalInterfaceValue[]): unknown;
 }
 
 /** Installs the single application bootstrap host. It cannot be replaced. */
 export function installNativeExternalInterfaceHost(host: NativeExternalInterfaceHost): void {
     if (typeof host !== "object" || host === null || !EXTERNAL_HOSTS.has(host))
         throw new TypeError("Native ExternalInterface host must be a nominal Laya capability");
-    if (externalHost !== null) throw new Error("Native ExternalInterface host is already installed");
-    externalHost = host;
+    if (externalHost !== null || installingExternalHost)
+        throw new Error("Native ExternalInterface host is already installed or installing");
+    installingExternalHost = true;
+    try {
+        const call = requireDataMethod(host, "call", "Native ExternalInterface host");
+        externalHost = Object.freeze({
+            owner: host,
+            call: (functionName: string, arguments_: readonly ExternalInterfaceValue[]) =>
+                Reflect.apply(call, host, [functionName, arguments_]),
+        });
+    } finally {
+        installingExternalHost = false;
+    }
 }
 
 /**
@@ -25,21 +55,34 @@ export class ExternalInterface {
 
     static get available(): boolean { return externalHost !== null; }
 
-    static call(functionName: string, ...arguments_: unknown[]): unknown {
-        if (typeof functionName !== "string" || functionName.trim() !== functionName || functionName.length === 0)
+    static call(functionName: string, ...arguments_: ExternalInterfaceValue[]): unknown {
+        if (typeof functionName !== "string" || !FUNCTION_NAME.test(functionName))
             throw new TypeError("ExternalInterface.call requires a canonical non-empty function name");
-        if (/[^A-Za-z0-9_.:$-]/.test(functionName))
-            throw new TypeError("ExternalInterface.call function name contains unsupported characters");
         if (externalHost === null)
-            throw missingHost("flash.external.ExternalInterface.call",
+            throw new UnsupportedFlashFeatureError("flash.external.ExternalInterface.call",
                 "the application bootstrap has not installed a native external host");
-        return externalHost.call(functionName, Object.freeze([...arguments_]));
+        const snapshot = Object.freeze(arguments_.map((value, index) => snapshotValue(value, index)));
+        return externalHost.call(functionName, snapshot);
     }
 }
 
-function missingHost(feature: string, detail: string): Error {
-    const error = new Error(`${feature}: ${detail}`);
-    error.name = "UnsupportedFlashFeatureError";
-    Object.defineProperty(error, "feature", { value: feature, enumerable: true });
-    return error;
+function snapshotValue(value: unknown, index: number): ExternalInterfaceValue {
+    if (value === null) return null;
+    if (typeof value === "string" || typeof value === "boolean") return value;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    throw new TypeError(`ExternalInterface.call argument ${index} must be a finite primitive host value`);
+}
+
+function requireDataMethod(owner: object, name: string, label: string): Function {
+    let cursor: object | null = owner;
+    while (cursor !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(cursor, name);
+        if (descriptor) {
+            if (typeof descriptor.value !== "function")
+                throw new TypeError(`${label} ${name} must be a data method`);
+            return descriptor.value;
+        }
+        cursor = Object.getPrototypeOf(cursor);
+    }
+    throw new TypeError(`${label} ${name} must be a data method`);
 }
