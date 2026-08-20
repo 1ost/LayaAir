@@ -123,6 +123,19 @@ for (const [module, exported, kind = "class"] of [
 
 const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
 const textSubjects = [
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontBinding", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontBindingCancelledError", "class"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontKey", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifest", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifestEntry", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontRegistry", "class"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontRuntimeRecord", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredFontStyle", "type"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredGlyphMetric", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "AuthoredTextProviderConsumer", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "FlashFontClass", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "FlashFontRegistration", "interface"],
+    ["src/layaAir/flash/text/Font.ts", "Font", "class"],
     ["src/layaAir/flash/text/StaticText.ts", "StaticText"],
     ["src/layaAir/flash/text/StaticText.ts", "isFlashStaticText", "function"],
     ["src/layaAir/flash/text/TextField.ts", "TextField"],
@@ -181,6 +194,40 @@ Object.assign(authoredDeviceTextCapability, {
     }],
 });
 delete authoredDeviceTextCapability.blockingReason;
+
+let authoredFontCapability = ledger.capabilities.find(item => item.id === "text.authored-font-registry");
+if (!authoredFontCapability) {
+    authoredFontCapability = { id: "text.authored-font-registry" };
+    ledger.capabilities.push(authoredFontCapability);
+}
+Object.assign(authoredFontCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontBinding", "interface"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontBindingCancelledError", "class"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontKey", "interface"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifest", "interface"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifestEntry", "interface"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredFontRegistry", "class"],
+        ["src/layaAir/flash/text/Font.ts", "AuthoredTextProviderConsumer", "interface"],
+    ].map(([module, exported, kind]) => authoredFontCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "", sha256: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}) }),
+    evidence: [{
+        path: "tests/architecture/authoredFontRegistryEvidence.test.ts",
+        test: "Authored font registry compiler surface",
+        sha256: "",
+        capability: "text.authored-font-registry",
+        covers: [],
+    }],
+});
+delete authoredFontCapability.blockingReason;
+
+const mediaFontCapability = ledger.capabilities.find(item => item.id === "media.font");
+if (!mediaFontCapability || mediaFontCapability.status !== "blocking")
+    throw new Error("The narrow authored-font registry may not clear broad media.font admission");
+mediaFontCapability.blockingReason = "The authored-font registry admits immutable converted manifests and exact text providers only; broad platform font-media coverage remains unresolved.";
 
 let authoredStaticTextCapability = ledger.capabilities.find(item =>
     item.id === "text.authored-static-text-texture-foundation");

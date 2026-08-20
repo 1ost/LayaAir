@@ -46,6 +46,7 @@
     "text.advanced-rasterization",
     "text.authored-device-field-configuration",
     "text.authored-static-text-texture-foundation",
+    "text.authored-font-registry",
     "interaction.button-states",
     "interaction.hit-test",
     "interaction.pointer",

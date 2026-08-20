@@ -6,6 +6,10 @@ import type { AntiAliasType, CSMSettings, FontStyle, GridFitType, TextColorType,
     TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextLineMetrics,
     TextRenderer, isFlashCSMSettings, isFlashTextFormat } from "../../src/layaAir/flash/text/TextFormat.ts";
 import type { FontType } from "../../src/layaAir/flash/text/FontType.ts";
+import type { AuthoredFontBinding, AuthoredFontBindingCancelledError, AuthoredFontKey,
+    AuthoredFontManifest, AuthoredFontManifestEntry, AuthoredFontRegistry, AuthoredFontRuntimeRecord,
+    AuthoredFontStyle, AuthoredGlyphMetric, AuthoredTextProviderConsumer,
+    Font, FlashFontClass, FlashFontRegistration } from "../../src/layaAir/flash/text/Font.ts";
 import type { StaticText, isFlashStaticText, AuthoredStaticGlyphConfiguration,
     AuthoredStaticGlyphRunConfiguration, AuthoredStaticTextConfiguration, createAuthoredStaticText } from
     "../../src/layaAir/flash/text/StaticText.ts";
@@ -36,8 +40,12 @@ test("Flash text bridge compiler surface", () => {
         typeof CSMSettings, typeof TextLineMetrics, typeof TextRenderer, typeof FontStyle,
         typeof TextColorType, typeof TextDisplayMode, typeof flashHtmlToText,
         typeof flashTextToHtml, typeof isFlashTextField, typeof isFlashCSMSettings, typeof isFlashTextFormat,
-        typeof InteractiveObject, typeof FontType, typeof StaticText,
-        typeof isFlashStaticText] extends readonly unknown[] ? boolean : never));
+        typeof InteractiveObject, typeof FontType, typeof StaticText, typeof isFlashStaticText,
+        typeof Font, FlashFontClass, FlashFontRegistration, AuthoredFontBinding,
+        typeof AuthoredFontBindingCancelledError, AuthoredFontKey, AuthoredFontManifest,
+        AuthoredFontManifestEntry, typeof AuthoredFontRegistry, AuthoredFontRuntimeRecord,
+        AuthoredFontStyle, AuthoredGlyphMetric, AuthoredTextProviderConsumer] extends readonly unknown[]
+        ? boolean : never));
 });
 
 test("Authored device TextField configuration compiler surface", () => {
