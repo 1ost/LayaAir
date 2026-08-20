@@ -474,7 +474,7 @@ export class SubStructRender {
       if (sprite.mask) {
          this._updateLogicMatrix(sprite.mask, sprite.globalTrans.getMatrix(), rect.x, rect.y, matrix);
       }
-      else if (sprite._maskParent && sprite.transform) {
+      else if (sprite._maskParent && (sprite as unknown as { _getNativeTransform(): Matrix })._getNativeTransform()) {
          this._updateLogicMatrix(sprite, sprite.globalTrans.getMatrix(), rect.x, rect.y, matrix);
       }
       else {

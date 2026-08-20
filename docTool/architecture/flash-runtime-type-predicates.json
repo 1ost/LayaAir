@@ -44,7 +44,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b"
+      "moduleSha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -91,7 +91,7 @@
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5"
+      "moduleSha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
     },
     {
       "sourceQName": "flash.display.MovieClip",
@@ -143,7 +143,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a"
+      "moduleSha256": "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735"
     },
     {
       "sourceQName": "flash.display.Sprite",
@@ -447,6 +447,34 @@
       "moduleSha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef"
     },
     {
+      "sourceQName": "flash.geom.ColorTransform",
+      "targetCapabilityId": "api.flash.geom",
+      "targetModule": "src/layaAir/flash/geom/ColorTransform.ts",
+      "constructorExport": "ColorTransform",
+      "constructorSignature": "typeof ColorTransform",
+      "constructSignatures": [
+        "new (redMultiplier?: number, greenMultiplier?: number, blueMultiplier?: number, alphaMultiplier?: number, redOffset?: number, greenOffset?: number, blueOffset?: number, alphaOffset?: number): ColorTransform"
+      ],
+      "predicateExport": "isFlashColorTransform",
+      "predicateSignature": "(value: unknown) => value is ColorTransform",
+      "heritageClosure": [],
+      "moduleSha256": "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
+    },
+    {
+      "sourceQName": "flash.geom.Matrix",
+      "targetCapabilityId": "api.flash.geom",
+      "targetModule": "src/layaAir/flash/geom/Matrix.ts",
+      "constructorExport": "Matrix",
+      "constructorSignature": "typeof Matrix",
+      "constructSignatures": [
+        "new (a?: number, b?: number, c?: number, d?: number, tx?: number, ty?: number): Matrix"
+      ],
+      "predicateExport": "isFlashMatrix",
+      "predicateSignature": "(value: unknown) => value is Matrix",
+      "heritageClosure": [],
+      "moduleSha256": "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535"
+    },
+    {
       "sourceQName": "flash.geom.Point",
       "targetCapabilityId": "api.flash.geom",
       "targetModule": "src/layaAir/flash/geom/Point.ts",
@@ -473,6 +501,20 @@
       "predicateSignature": "(value: unknown) => value is Rectangle",
       "heritageClosure": [],
       "moduleSha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6"
+    },
+    {
+      "sourceQName": "flash.geom.Transform",
+      "targetCapabilityId": "api.flash.geom",
+      "targetModule": "src/layaAir/flash/geom/Transform.ts",
+      "constructorExport": "Transform",
+      "constructorSignature": "typeof Transform",
+      "constructSignatures": [
+        "new (displayObject: DisplayObject): Transform"
+      ],
+      "predicateExport": "isFlashTransform",
+      "predicateSignature": "(value: unknown) => value is Transform",
+      "heritageClosure": [],
+      "moduleSha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
     },
     {
       "sourceQName": "flash.net.URLRequest",

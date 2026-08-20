@@ -1408,8 +1408,8 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     assert.equal(up.parent, null);
     assert.equal(replacement.parent, button);
     const manager = new InputManager();
-    assert.equal(manager.hitTest(button, 19, 9), true);
-    assert.equal(manager.hitTest(button, 20, 9), false);
+    assert.equal(manager.hitTest(button as unknown as LayaSprite, 19, 9), true);
+    assert.equal(manager.hitTest(button as unknown as LayaSprite, 20, 9), false);
     assert.equal(hit.visible, false);
     button.event(LayaEvent.MOUSE_DOWN, nativeMouse(LayaEvent.MOUSE_DOWN, button, 2, 2, 1));
     assert.equal(down.visible, true);
@@ -2015,8 +2015,8 @@ test("SimpleButton state replacement is clean and hitTestState drives InputManag
     const recursiveHit = new DisplayObject();
     const nested = state(8, 6); nested.pos(12, 4); nested.mouseEnabled = true; recursiveHit.addChild(nested);
     aliased.hitTestState = recursiveHit;
-    assert.equal(manager.hitTest(aliased, 13, 5), true, "nested native hit geometry is retained");
-    assert.equal(manager.hitTest(aliased, 5, 5), false, "hit geometry is not reduced to aggregate bounds");
+    assert.equal(manager.hitTest(aliased as unknown as LayaSprite, 13, 5), true, "nested native hit geometry is retained");
+    assert.equal(manager.hitTest(aliased as unknown as LayaSprite, 5, 5), false, "hit geometry is not reduced to aggregate bounds");
 });
 
 test("TextField has genuine Flash heritage and a composed native Laya input", () => {

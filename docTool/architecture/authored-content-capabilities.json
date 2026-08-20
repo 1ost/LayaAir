@@ -126,13 +126,77 @@
     },
     {
       "id": "rendering.transform",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "native",
+      "artifacts": [
+        {
+          "path": "src/layaAir/laya/maths/Matrix.ts",
+          "export": "Matrix",
+          "sha256": "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b"
+        },
+        {
+          "path": "src/layaAir/flash/geom/Matrix.ts",
+          "export": "Matrix",
+          "sha256": "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535"
+        },
+        {
+          "path": "src/layaAir/flash/geom/Transform.ts",
+          "export": "Transform",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "path": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "DisplayObject",
+          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+          "test": "Flash native transform synchronization surface",
+          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
+          "capability": "rendering.transform",
+          "covers": [
+            "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
+            "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+          ]
+        }
+      ]
     },
     {
       "id": "rendering.color-transform",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "native",
+      "artifacts": [
+        {
+          "path": "src/layaAir/flash/geom/ColorTransform.ts",
+          "export": "ColorTransform",
+          "sha256": "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
+        },
+        {
+          "path": "src/layaAir/flash/geom/Transform.ts",
+          "export": "Transform",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "path": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "DisplayObject",
+          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+          "test": "Flash native color-transform browser oracle surface",
+          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
+          "capability": "rendering.color-transform",
+          "covers": [
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
+            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+          ]
+        }
+      ]
     },
     {
       "id": "rendering.mask",
@@ -1849,7 +1913,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -1894,7 +1958,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -1903,7 +1967,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -1912,7 +1976,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -1921,7 +1985,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -2749,7 +2813,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -3956,7 +4020,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -4001,7 +4065,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -4010,7 +4074,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -4019,7 +4083,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -4028,7 +4092,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -4856,7 +4920,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -4998,11 +5062,11 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b",
+          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e",
           "heritage": [
             {
               "kind": "extends",
-              "signature": "LayaSprite"
+              "signature": "NativeDisplayObjectHost"
             },
             {
               "kind": "implements",
@@ -6076,7 +6140,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -6130,7 +6194,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -6157,7 +6221,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -7012,7 +7076,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -8228,7 +8292,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -8282,7 +8346,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -8291,7 +8355,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -8300,7 +8364,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -8309,7 +8373,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -9164,7 +9228,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -9306,7 +9370,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5",
+          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
           "heritage": [
             {
               "kind": "extends",
@@ -10425,7 +10489,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -10497,7 +10561,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -10524,7 +10588,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -11451,7 +11515,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -12767,7 +12831,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -12821,7 +12885,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -12830,7 +12894,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -12839,7 +12903,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -12848,7 +12912,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -13730,7 +13794,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -13890,7 +13954,7 @@
             "new (upState?: DisplayObject | null, overState?: DisplayObject | null, downState?: DisplayObject | null, hitTestState?: DisplayObject | null): SimpleButton"
           ],
           "indexSignatures": [],
-          "sha256": "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a",
+          "sha256": "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
           "heritage": [
             {
               "kind": "extends",
@@ -14973,7 +15037,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -15027,7 +15091,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -15054,7 +15118,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -15909,7 +15973,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -17134,7 +17198,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -17179,7 +17243,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -17188,7 +17252,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -17197,7 +17261,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -17206,7 +17270,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -18052,7 +18116,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -18640,7 +18704,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b"
+          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -18682,14 +18746,14 @@
           "export": "isFlashInteractiveObject",
           "kind": "function",
           "signature": "(value: unknown) => value is InteractiveObject",
-          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5"
+          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
         },
         {
           "module": "src/layaAir/flash/display/InteractiveObject.ts",
           "export": "resolveFlashFocusOwner",
           "kind": "function",
           "signature": "(value: unknown) => InteractiveObject | null",
-          "sha256": "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5"
+          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -18724,7 +18788,7 @@
           "export": "isFlashSimpleButton",
           "kind": "function",
           "signature": "(value: unknown) => value is SimpleButton",
-          "sha256": "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a"
+          "sha256": "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735"
         },
         {
           "module": "src/layaAir/flash/display/Sprite.ts",
@@ -19196,23 +19260,23 @@
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
             "057a4256f818ee150bf2a90d533225b0ccec72cada614e097c09f9d6ffc407c2",
             "0d9adc5bd7855f9a56ab6ed2e43487c417b5f66c722ad4782deb469c1336216b",
-            "122e47f077f25642ba3b22c484faca477135922fc4d00c4abbc1f0e0aa724b8b",
             "2708bec5931d56f474e03eeb7dfe4ad61e327c8364f52a41c5aa65225ecde313",
-            "2a002c7f3a5ed7093e373391d42796690f8736d6bbde31cbb419bd9a619d24d5",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
+            "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
+            "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030",
+            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
             "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba",
-            "fa97ea9cb7f4227fa102279b0c972242afcebd9b91fcfc7388cbd07a7fd56b9a",
             "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
           ]
         }
@@ -19638,6 +19702,390 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/geom/Matrix.ts",
+          "export": "Matrix",
+          "kind": "class",
+          "signature": "typeof Matrix",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "a",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "b",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "c",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Matrix"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "concat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(matrix: Matrix) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copyFrom",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sourceMatrix: Matrix) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "createBox",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(scaleX: number, scaleY: number, rotation?: number, tx?: number, ty?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "createGradientBox",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(width: number, height: number, rotation?: number, tx?: number, ty?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "d",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "deltaTransformPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "identity",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "invert",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "rotate",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(angle: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "scale",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sx: number, sy: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setTo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(a: number, b: number, c: number, d: number, tx: number, ty: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "transformPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "translate",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(dx: number, dy: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "tx",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "ty",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (a?: number, b?: number, c?: number, d?: number, tx?: number, ty?: number): Matrix"
+          ],
+          "indexSignatures": [],
+          "sha256": "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/geom/ColorTransform.ts",
+          "export": "ColorTransform",
+          "kind": "class",
+          "signature": "typeof ColorTransform",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alphaMultiplier",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alphaOffset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blueMultiplier",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blueOffset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => ColorTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "color",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "concat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(second: ColorTransform) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "greenMultiplier",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "greenOffset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "redMultiplier",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "redOffset",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            }
+          ],
+          "constructors": [
+            "new (redMultiplier?: number, greenMultiplier?: number, blueMultiplier?: number, alphaMultiplier?: number, redOffset?: number, greenOffset?: number, blueOffset?: number, alphaOffset?: number): ColorTransform"
+          ],
+          "indexSignatures": [],
+          "sha256": "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "Transform",
+          "kind": "class",
+          "signature": "typeof Transform",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "colorTransform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ColorTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "concatenatedColorTransform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ColorTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "concatenatedMatrix",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Matrix"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copyConcatenatedColorTransformToOutput",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(output: ColorTransform) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copyConcatenatedMatrixToOutput",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(output: Matrix) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "matrix",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Matrix"
+            }
+          ],
+          "constructors": [
+            "new (displayObject: DisplayObject): Transform"
+          ],
+          "indexSignatures": [],
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+          "heritage": []
+        },
+        {
           "module": "src/layaAir/flash/geom/Point.ts",
           "export": "isFlashPoint",
           "kind": "function",
@@ -19650,18 +20098,99 @@
           "kind": "function",
           "signature": "(value: unknown) => value is Rectangle",
           "sha256": "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Matrix.ts",
+          "export": "isFlashMatrix",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Matrix",
+          "sha256": "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535"
+        },
+        {
+          "module": "src/layaAir/flash/geom/ColorTransform.ts",
+          "export": "isFlashColorTransform",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ColorTransform",
+          "sha256": "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "isFlashTransform",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Transform",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "synchronizeDisplayObjectAlpha",
+          "kind": "function",
+          "signature": "(target: DisplayObject) => void",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "transformForDisplayObject",
+          "kind": "function",
+          "signature": "(target: DisplayObject) => Transform",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "applyTransformToDisplayObject",
+          "kind": "function",
+          "signature": "(target: DisplayObject, value: Transform) => void",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "getDisplayObjectFilters",
+          "kind": "function",
+          "signature": "(target: DisplayObject) => BitmapFilter[]",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "setDisplayObjectFilters",
+          "kind": "function",
+          "signature": "(target: DisplayObject, value: BitmapFilter[] | null) => void",
+          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
           "test": "Flash geometry bridge compiler surface",
-          "sha256": "310c5232b55e96360bc3c8c773a42b65c0155e546d4a9fe11abd80a38643874b",
+          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
           "capability": "api.flash.geom",
           "covers": [
+            "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
+            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
             "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2"
           ]
+        }
+      ],
+      "heldSurfaces": [
+        {
+          "surface": "flash.geom.Matrix3D",
+          "reason": "HOLD: no maintained Bleach application source use or independent 3D display evidence."
+        },
+        {
+          "surface": "flash.geom.PerspectiveProjection",
+          "reason": "HOLD: no maintained Bleach application source use or independent perspective evidence."
+        },
+        {
+          "surface": "flash.geom.Transform.matrix3D",
+          "reason": "HOLD: 3D transform state is not source-used or independently evidenced."
+        },
+        {
+          "surface": "flash.geom.Transform.perspectiveProjection",
+          "reason": "HOLD: perspective state is not source-used or independently evidenced."
+        },
+        {
+          "surface": "flash.geom.Transform.pixelBounds",
+          "reason": "HOLD: transformed pixel bounds are not source-used and lack an independent render-bounds oracle."
         }
       ]
     },
@@ -27448,7 +27977,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -27538,7 +28067,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -27547,7 +28076,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -27556,7 +28085,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -27565,7 +28094,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -28735,7 +29264,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,
@@ -30732,7 +31261,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -30777,7 +31306,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -30786,7 +31315,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(index: number, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(index: number, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -30795,7 +31324,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(name: string, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -30804,7 +31333,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "<T extends Node = Sprite>(path: String, classType?: new (...args: any[]) => T) => T"
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
             },
             {
               "abstract": false,
@@ -31641,7 +32170,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Matrix"
+              "signature": "Transform"
             },
             {
               "abstract": false,

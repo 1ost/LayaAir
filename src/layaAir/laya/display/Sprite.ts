@@ -551,6 +551,11 @@ export class Sprite extends Node {
      * @zh 对象的矩阵信息。通过设置矩阵可以实现节点旋转，缩放，位移效果。
      */
     get transform(): Matrix {
+        return this._getNativeTransform();
+    }
+
+    /** @internal Engine-owned matrix seam for source-shaped facades that override `transform`. */
+    protected _getNativeTransform(): Matrix {
         if (!this._tfChanged)
             return this._transform;
 
@@ -581,6 +586,11 @@ export class Sprite extends Node {
     }
 
     set transform(value: Matrix) {
+        this._setNativeTransform(value);
+    }
+
+    /** @internal Engine-owned matrix seam for source-shaped facades that override `transform`. */
+    protected _setNativeTransform(value: Matrix): void {
         this._tfChanged = false;
         let m = this._transform || (this._transform = new Matrix());
         if (value !== m)
@@ -1762,7 +1772,7 @@ export class Sprite extends Node {
         let matrix = pass.offsetMatrix;
         matrix.identity();
 
-        let local = sprite.transform;
+        let local = sprite._getNativeTransform();
         if (local)
             local.copyTo(matrix);
 
@@ -2072,7 +2082,7 @@ export class Sprite extends Node {
         if (!point) return point;
         point.x -= this.pivotX;
         point.y -= this.pivotY;
-        this.transform?.transformPoint(point);
+        this._getNativeTransform()?.transformPoint(point);
         point.x += this._x;
         point.y += this._y;
         let scroll = this._scrollRect;
@@ -2100,7 +2110,7 @@ export class Sprite extends Node {
             point.x += scroll.x * this._scaleX;
             point.y += scroll.y * this._scaleY;
         }
-        this.transform?.invertTransformPoint(point);
+        this._getNativeTransform()?.invertTransformPoint(point);
         point.x += this.pivotX;
         point.y += this.pivotY;
         return point;
@@ -2195,7 +2205,7 @@ export class Sprite extends Node {
                     !this._drawOriRT
                     || this._subpassUpdateFlag
                     || flag & RepaintFlag.UpdateRT
-                    || (this.transform && this._maskParent)
+                    || (this._getNativeTransform() && this._maskParent)
                 ) {
                     this.setSubpassFlag(SubPassFlag.RenderTexture);
                 }
@@ -2483,16 +2493,18 @@ export class Sprite extends Node {
 
         if (this._mask) {
             SpriteUtils.getRect(this._mask, false, rect);
-            if (this._mask.transform) {
-                rect.transform(this._mask.transform, rect);
+            const maskTransform = this._mask._getNativeTransform();
+            if (maskTransform) {
+                rect.transform(maskTransform, rect);
             }
             rect.x += this._mask._pivotX;
             rect.y += this._mask._pivotY;
         }
         else {
             SpriteUtils.getRect(this, false, rect);
-            if (this._maskParent && this.transform) {
-                rect.transform(this.transform, rect);
+            const localTransform = this._getNativeTransform();
+            if (this._maskParent && localTransform) {
+                rect.transform(localTransform, rect);
             }
             rect.x += this._pivotX;
             rect.y += this._pivotY;

@@ -122,7 +122,7 @@ export class InteractiveObject extends DisplayObject {
 
     private _showFocusIndicator(value: boolean): void {
         if (!value) {
-            if (this._focusIndicator?.parent === this) this.removeChild(this._focusIndicator);
+            if ((this._focusIndicator?.parent as unknown) === this) this.removeChild(this._focusIndicator);
             return;
         }
         if (!this._focusIndicator) {
@@ -132,6 +132,6 @@ export class InteractiveObject extends DisplayObject {
         }
         this._focusIndicator.graphics.clear();
         this._focusIndicator.graphics.drawRect(0, 0, Math.max(1, this.width), Math.max(1, this.height), null, "#4a90e2", 2);
-        if (this._focusIndicator.parent !== this) this.addChild(this._focusIndicator);
+        if ((this._focusIndicator.parent as unknown) !== this) this.addChild(this._focusIndicator);
     }
 }

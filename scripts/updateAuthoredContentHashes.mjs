@@ -185,15 +185,94 @@ delete broadStaticGlyphCapability.obligations;
 delete broadStaticGlyphCapability.evidence;
 
 const geometryCapability = ledger.capabilities.find(item => item.id === "api.flash.geom");
-for (const [module, exported, kind = "class"] of [
+const geometrySubjects = [
     ["src/layaAir/flash/geom/Point.ts", "Point"],
     ["src/layaAir/flash/geom/Rectangle.ts", "Rectangle"],
+    ["src/layaAir/flash/geom/Matrix.ts", "Matrix"],
+    ["src/layaAir/flash/geom/ColorTransform.ts", "ColorTransform"],
+    ["src/layaAir/flash/geom/Transform.ts", "Transform"],
     ["src/layaAir/flash/geom/Point.ts", "isFlashPoint", "function"],
     ["src/layaAir/flash/geom/Rectangle.ts", "isFlashRectangle", "function"],
+    ["src/layaAir/flash/geom/Matrix.ts", "isFlashMatrix", "function"],
+    ["src/layaAir/flash/geom/ColorTransform.ts", "isFlashColorTransform", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "isFlashTransform", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "synchronizeDisplayObjectAlpha", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "transformForDisplayObject", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "applyTransformToDisplayObject", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "getDisplayObjectFilters", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "setDisplayObjectFilters", "function"],
+];
+Object.assign(geometryCapability, {
+    status: "typescript-obligation",
+    obligations: geometrySubjects.map(([module, exported, kind = "class"]) =>
+        geometryCapability.obligations?.find(item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+        test: "Flash geometry bridge compiler surface",
+        sha256: "",
+        capability: "api.flash.geom",
+        covers: [],
+    }],
+    heldSurfaces: [
+        { surface: "flash.geom.Matrix3D", reason: "HOLD: no maintained Bleach application source use or independent 3D display evidence." },
+        { surface: "flash.geom.PerspectiveProjection", reason: "HOLD: no maintained Bleach application source use or independent perspective evidence." },
+        { surface: "flash.geom.Transform.matrix3D", reason: "HOLD: 3D transform state is not source-used or independently evidenced." },
+        { surface: "flash.geom.Transform.perspectiveProjection", reason: "HOLD: perspective state is not source-used or independently evidenced." },
+        { surface: "flash.geom.Transform.pixelBounds", reason: "HOLD: transformed pixel bounds are not source-used and lack an independent render-bounds oracle." },
+    ],
+});
+delete geometryCapability.blockingReason;
+
+const renderingTransformCapability = ledger.capabilities.find(item => item.id === "rendering.transform");
+Object.assign(renderingTransformCapability, {
+    status: "native",
+    artifacts: [
+        ["src/layaAir/laya/maths/Matrix.ts", "Matrix"],
+        ["src/layaAir/flash/geom/Matrix.ts", "Matrix"],
+        ["src/layaAir/flash/geom/Transform.ts", "Transform"],
+        ["src/layaAir/flash/display/DisplayObject.ts", "DisplayObject"],
+    ].map(([path, exported]) => renderingTransformCapability.artifacts?.find(
+        item => item.path === path && item.export === exported) || { path, export: exported, sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+        test: "Flash native transform synchronization surface",
+        sha256: "",
+        capability: "rendering.transform",
+        covers: [],
+    }],
+});
+delete renderingTransformCapability.blockingReason;
+
+const renderingColorTransformCapability = ledger.capabilities.find(item => item.id === "rendering.color-transform");
+Object.assign(renderingColorTransformCapability, {
+    status: "native",
+    artifacts: [
+        ["src/layaAir/flash/geom/ColorTransform.ts", "ColorTransform"],
+        ["src/layaAir/flash/geom/Transform.ts", "Transform"],
+        ["src/layaAir/flash/display/DisplayObject.ts", "DisplayObject"],
+    ].map(([path, exported]) => renderingColorTransformCapability.artifacts?.find(
+        item => item.path === path && item.export === exported) || { path, export: exported, sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+        test: "Flash native color-transform browser oracle surface",
+        sha256: "",
+        capability: "rendering.color-transform",
+        covers: [],
+    }],
+});
+delete renderingColorTransformCapability.blockingReason;
+
+for (const [sourceQName, targetModule, constructorExport, predicateExport] of [
+    ["flash.geom.Matrix", "src/layaAir/flash/geom/Matrix.ts", "Matrix", "isFlashMatrix"],
+    ["flash.geom.ColorTransform", "src/layaAir/flash/geom/ColorTransform.ts", "ColorTransform", "isFlashColorTransform"],
+    ["flash.geom.Transform", "src/layaAir/flash/geom/Transform.ts", "Transform", "isFlashTransform"],
 ]) {
-    if (!geometryCapability.obligations.some(item => item.module === module && item.export === exported))
-        geometryCapability.obligations.push({ module, export: exported, kind, signature: "",
-            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" });
+    if (!runtimeTypeAuthority.types.some(item => item.sourceQName === sourceQName))
+        runtimeTypeAuthority.types.push({ sourceQName, targetCapabilityId: "api.flash.geom", targetModule,
+            constructorExport, constructorSignature: "", constructSignatures: [], predicateExport,
+            predicateSignature: "", heritageClosure: [], moduleSha256: "" });
 }
 
 const netCapability = ledger.capabilities.find(item => item.id === "api.flash.net");

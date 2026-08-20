@@ -6,6 +6,7 @@ import { ColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFi
 import { DropShadowFilter } from "../../src/layaAir/flash/filters/DropShadowFilter";
 import { GlowFilter } from "../../src/layaAir/flash/filters/GlowFilter";
 import { PostProcess2D } from "../../src/layaAir/laya/display/PostProcess2D";
+import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
 import "../../src/layaAir/laya/platform/BrowserAdapter";
 import "../../src/layaAir/laya/platform/FileSystemAdapter";
 import "../../src/layaAir/laya/platform/FontAdapter";
@@ -202,7 +203,7 @@ async function render(filter: BlurFilter | GlowFilter | DropShadowFilter | Color
     let postProcess: PostProcess2D | null = null;
     if (filter) {
         postProcess = new PostProcess2D();
-        postProcess.owner = sprite;
+        postProcess.owner = sprite as unknown as LayaSprite;
         postProcess.setResource(source);
         postProcess.addEffect(filter.getEffect());
         postProcess._render();

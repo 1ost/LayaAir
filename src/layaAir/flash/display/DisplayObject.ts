@@ -5,7 +5,23 @@ import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter
 import { Event } from "../events/Event";
 import { IEventDispatcher } from "../events/EventDispatcher";
 import { BitmapFilter } from "../filters/BitmapFilter";
-import { isBitmapFilter } from "../filters/FilterRegistry";
+import {
+    applyTransformToDisplayObject,
+    getDisplayObjectFilters,
+    setDisplayObjectFilters,
+    synchronizeDisplayObjectAlpha,
+    Transform,
+    transformForDisplayObject,
+} from "../geom/Transform";
+
+/**
+ * Internal type-only adapter: Laya owns the native matrix while the exported
+ * Flash subclass exposes an unrelated source-shaped Transform facade.
+ */
+class NativeDisplayObjectHost extends LayaSprite {
+    override get transform(): any { return super.transform; }
+    override set transform(value: any) { super.transform = value; }
+}
 
 const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
 const DISPLAY_OBJECT_VALUES = new WeakSet<object>();
@@ -21,38 +37,26 @@ function events(value: DisplayObject): FlashEventRouter {
 }
 
 /** Flash display source shape backed by a real Laya Sprite. */
-export class DisplayObject extends LayaSprite implements IEventDispatcher {
+export class DisplayObject extends NativeDisplayObjectHost implements IEventDispatcher {
     constructor() {
         super();
         DISPLAY_OBJECT_VALUES.add(this);
     }
 
+    override get alpha(): number { return super.alpha; }
+    override set alpha(value: number) {
+        const clamped = Math.max(0, Math.min(1, Number(value)));
+        super.alpha = Math.trunc(clamped * 256) / 256;
+        if (DISPLAY_OBJECT_VALUES.has(this)) synchronizeDisplayObjectAlpha(this);
+    }
+
+    /** Flash facade backed by the Sprite's native Laya transform state. */
+    override get transform(): Transform { return transformForDisplayObject(this); }
+    override set transform(value: Transform) { applyTransformToDisplayObject(this, value); }
+
     /** Flash returns detached arrays containing detached filter values. */
-    override get filters(): BitmapFilter[] {
-        const values = super.filters;
-        if (!values) return [];
-        const detached: BitmapFilter[] = [];
-        for (let index = 0; index < values.length; index++) {
-            const value = values[index];
-            if (!isBitmapFilter(value)) throw new TypeError("Flash DisplayObject contains a non-Flash filter");
-            detached.push(value.clone());
-        }
-        return detached;
-    }
-    override set filters(value: BitmapFilter[] | null) {
-        if (value == null) {
-            super.filters = null;
-            return;
-        }
-        if (!Array.isArray(value)) throw new TypeError("DisplayObject.filters must be an Array");
-        const detached: BitmapFilter[] = [];
-        for (let index = 0; index < value.length; index++) {
-            const filter = value[index];
-            if (!isBitmapFilter(filter)) throw new TypeError(`DisplayObject.filters[${index}] must be a concrete native BitmapFilter`);
-            detached.push(filter.clone());
-        }
-        super.filters = detached;
-    }
+    override get filters(): BitmapFilter[] { return getDisplayObjectFilters(this); }
+    override set filters(value: BitmapFilter[] | null) { setDisplayObjectFilters(this, value); }
     globalToLocal(point: Point): Point;
     globalToLocal(point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint;
     globalToLocal(point: Point | LayaPoint, createNewPoint = false, globalNode?: LayaSprite): Point | LayaPoint {
@@ -82,16 +86,20 @@ export class DisplayObject extends LayaSprite implements IEventDispatcher {
     dispatchEvent(event: Event): boolean { return events(this).dispatchEvent(event, this); }
     hasEventListener(type: string): boolean { return events(this).hasEventListener(type); }
     willTrigger(type: string): boolean {
-        let node: LayaSprite | null = this;
-        while (node) {
-            if (FlashEventRouter.forHost(node)?.hasEventListener(type)) return true;
-            node = node.parent as LayaSprite | null;
+        let node: unknown = this;
+        while (typeof node === "object" && node !== null) {
+            if (FlashEventRouter.forHost(node as unknown as LayaSprite)?.hasEventListener(type)) return true;
+            node = (node as { parent?: unknown }).parent ?? null;
         }
         return false;
     }
     get root(): DisplayObject {
         let value: DisplayObject = this;
-        while (value.parent instanceof DisplayObject) value = value.parent;
+        for (;;) {
+            const parent: unknown = value.parent;
+            if (!isFlashDisplayObject(parent)) break;
+            value = parent;
+        }
         return value;
     }
 

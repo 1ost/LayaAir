@@ -233,7 +233,7 @@ class DisplayObjectHitArea implements IHitArea {
     constructor(readonly state: DisplayObject) { }
     contains(x: number, y: number, _owner: LayaSprite): boolean {
         const local = this.state.fromParentPoint(new Point(x, y));
-        return this.containsSprite(this.state, local.x, local.y);
+        return this.containsSprite(this.state as unknown as LayaSprite, local.x, local.y);
     }
     private containsSprite(sprite: LayaSprite, x: number, y: number): boolean {
         for (let index = sprite.numChildren - 1; index >= 0; index--) {
@@ -413,7 +413,7 @@ export class SimpleButton extends InteractiveObject {
             if (!expected) throw new Error(`${name} replacement is missing an expected Laya child-array snapshot`);
             return expected;
         };
-        if (value && value.parent !== this) {
+        if (value && (value.parent as unknown) !== this) {
             if (value.parent) {
                 const source = expectedChildren(value.parent);
                 const sourceIndex = source.indexOf(value);
@@ -424,7 +424,7 @@ export class SimpleButton extends InteractiveObject {
             expectedActualParents.set(value, nodeInternals(this)._$container);
             expectedLogicalParents.set(value, this);
         }
-        if (old && old.parent === this && ![...expectedSlots.values()].includes(old)) {
+        if (old && (old.parent as unknown) === this && ![...expectedSlots.values()].includes(old)) {
             const ownerChildren = expectedChildren(this);
             const oldIndex = ownerChildren.indexOf(old);
             if (oldIndex < 0) throw new Error(`${name} prior state is absent from its snapshotted owner`);
@@ -440,7 +440,7 @@ export class SimpleButton extends InteractiveObject {
             if (value) {
                 if (!value.name) value.name = name;
                 setNativeMouseEnabled(value, false);
-                if (value.parent !== this) {
+                if ((value.parent as unknown) !== this) {
                     if (value.parent) {
                         const sourceParent = value.parent;
                         runPermittedNodeMutation(nodeTransaction, [
@@ -457,7 +457,7 @@ export class SimpleButton extends InteractiveObject {
                 }
             }
             this[slot] = value;
-            if (old && old.parent === this && !this._stateStillOwned(old)) {
+            if (old && (old.parent as unknown) === this && !this._stateStillOwned(old)) {
                 runPermittedNodeMutation(nodeTransaction, [
                     { node: this, operation: "removeChild" },
                     { node: old, operation: "setParentDerived" },
