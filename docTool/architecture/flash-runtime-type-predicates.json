@@ -14,7 +14,7 @@
       "predicateExport": "isFlashAccessibilityProperties",
       "predicateSignature": "(value: unknown) => value is AccessibilityProperties",
       "heritageClosure": [],
-      "moduleSha256": "4cbd6331b2440dba72b58fd9b52cbca03eddd710d86dabb22684e1b716f64641"
+      "moduleSha256": "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3"
     },
     {
       "sourceQName": "flash.display.Bitmap",
@@ -747,7 +747,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "a27271d322d5473eaa2f061e4b1383e4eb4fac5390f51b969b58df3a971ac4ef"
+      "moduleSha256": "1c1dd98494b2dc2be49fe4a68e54ba17de7c59a117cdd22be155005fdc8546f3"
     },
     {
       "sourceQName": "flash.ui.ContextMenuItem",
@@ -763,7 +763,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "a27271d322d5473eaa2f061e4b1383e4eb4fac5390f51b969b58df3a971ac4ef"
+      "moduleSha256": "1c1dd98494b2dc2be49fe4a68e54ba17de7c59a117cdd22be155005fdc8546f3"
     },
     {
       "sourceQName": "flash.utils.Timer",

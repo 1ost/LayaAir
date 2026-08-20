@@ -1,136 +1,198 @@
 import { BrowserAdapter } from "../../src/layaAir/laya/platform/BrowserAdapter";
+import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
 import { PAL } from "../../src/layaAir/laya/platform/PlatformAdapters";
+import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
+import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import {
-    AccessibilityProperties, ContextMenu, ContextMenuItem, Keyboard, Mouse, MouseCursor,
-    bindAccessibilityProperties, createBrowserClipboardHost, installNativeContextMenuHost,
+    AccessibilityProperties, Clipboard, ClipboardFormats, ContextMenu, ContextMenuItem,
+    InteractiveObject, Keyboard, Mouse, MouseCursor, bindAccessibilityProperties,
+    createBrowserClipboardHost, installNativeClipboardHost, installNativeContextMenuHost,
     installNativeKeyboardStateHost,
 } from "../../src/layaAir/flash";
 import { ContextMenuEvent } from "../../src/layaAir/flash/events/ContextMenuEvent";
 import { UnsupportedFlashFeatureError } from "../../src/layaAir/flash/events/UnsupportedFlashFeatureError";
 
-void run().then(result => publish({ ok: true, result }), error => publish({
-    ok: false,
-    error: error instanceof Error ? `${error.name}: ${error.message}\n${error.stack ?? ""}` : String(error),
-}));
+interface BrowserGateState {
+    route: string[];
+    trustedDefaultStates: boolean[];
+    trustedKeyboardDefaultStates: boolean[];
+    ownerFocused: number;
+    clipboardAccepted: boolean;
+    clipboardError: string | null;
+    selectionFocusRestored: boolean;
+    syntheticContextIgnored: boolean;
+    programmaticSelectionIgnored: boolean;
+    accessibilitySuccessorPreserved: boolean;
+    accessibilityBaselineRestored: boolean;
+    mouseBrowserProjection: boolean;
+    keyboardProducerTeardown: boolean;
+    clipboardFailClosedOutsideGesture: boolean;
+}
 
-async function run(): Promise<Record<string, unknown>> {
-    // Standalone bridge gate initializes the same browser adapter that Laya
-    // initialization owns in a game process.
-    void BrowserAdapter;
-    PAL.__init__();
+void BrowserAdapter;
+PAL.__init__();
+LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
+LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
+document.body.style.margin = "0";
 
+const state: BrowserGateState = {
+    route: [], trustedDefaultStates: [], trustedKeyboardDefaultStates: [], ownerFocused: 0,
+    clipboardAccepted: false, clipboardError: null, selectionFocusRestored: false,
+    syntheticContextIgnored: false, programmaticSelectionIgnored: false,
+    accessibilitySuccessorPreserved: false, accessibilityBaselineRestored: false,
+    mouseBrowserProjection: false, keyboardProducerTeardown: false,
+    clipboardFailClosedOutsideGesture: false,
+};
+
+class TestOwner extends InteractiveObject {
+    protected override _applyNativeFocus(value: boolean): void {
+        if (value) state.ownerFocused++;
+    }
+}
+
+function canvasAt(top: number): HTMLCanvasElement {
     const canvas = document.createElement("canvas");
-    canvas.tabIndex = 0;
+    canvas.width = 240;
+    canvas.height = 70;
+    canvas.style.cssText = `position:absolute;left:10px;top:${top}px;width:240px;height:70px;border:1px solid black`;
     document.body.appendChild(canvas);
-    const prior = document.createElement("button");
-    prior.textContent = "prior focus";
-    document.body.appendChild(prior);
-    prior.focus();
-
-    const menu = new ContextMenu();
-    menu.hideBuiltInItems();
-    const disabled = new ContextMenuItem("Version", true, false, true);
-    const hidden = new ContextMenuItem("Hidden", false, true, false);
-    const selectable = new ContextMenuItem("Copy debug info");
-    menu.customItems.push(disabled, hidden, selectable);
-    let ownerFocused = 0;
-    const owner: { parent: null; contextMenu: ContextMenu; _applyNativeFocus(value: boolean): void } = {
-        parent: null, contextMenu: menu, _applyNativeFocus(value: boolean) { if (value) ownerFocused++; },
-    };
-    const route: string[] = [];
-    menu.addEventListener(ContextMenuEvent.MENU_SELECT, eventValue => {
-        const event = eventValue as ContextMenuEvent;
-        route.push(`menu:${event.target === menu}:${event.contextMenuOwner === owner}:${event.mouseTarget === owner}`);
-    });
-    selectable.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, eventValue => {
-        const event = eventValue as ContextMenuEvent;
-        route.push(`item:${event.target === selectable}:${event.contextMenuOwner === owner}:${event.mouseTarget === owner}`);
-    });
-    const host = installNativeContextMenuHost({ canvas, document, resolveTarget: () => owner });
-
-    const native = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 11, clientY: 13 });
-    canvas.dispatchEvent(native);
-    requireValue(native.defaultPrevented, "native context menu was not canceled");
-    const popup = document.querySelector<HTMLElement>("[data-flash-context-menu=true]");
-    requireValue(popup?.getAttribute("role") === "menu", "accessible menu was not rendered");
-    const buttons = Array.from(popup.querySelectorAll<HTMLButtonElement>("button"));
-    requireValue(buttons.length === 2 && buttons[0].disabled && buttons[1].textContent === "Copy debug info",
-        "visible/enabled menu projection drifted");
-    buttons[1].click();
-    requireValue(!host.open && document.activeElement === prior, "selection did not close and restore focus");
-    requireValue(JSON.stringify(route) === JSON.stringify(["menu:true:true:true", "item:true:true:true"]),
-        "context-menu event identity drifted");
-
-    canvas.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
-    requireValue(host.open, "second context menu did not open");
-    document.querySelector<HTMLElement>("[data-flash-context-menu=true]")!
-        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-    requireValue(!host.open, "Escape did not dismiss context menu");
-    host.dispose();
-    const afterDispose = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
-    canvas.dispatchEvent(afterDispose);
-    requireValue(!afterDispose.defaultPrevented && !host.open, "disposed context-menu host still intercepted events");
-
-    const accessible = document.createElement("div");
-    accessible.setAttribute("aria-label", "previous");
-    document.body.appendChild(accessible);
-    const properties = new AccessibilityProperties();
-    properties.name = "Context menu owner";
-    properties.description = "Right-click for diagnostics";
-    properties.shortcut = "Shift+F10";
-    const binding = bindAccessibilityProperties(accessible, properties);
-    requireValue(accessible.getAttribute("aria-label") === "Context menu owner"
-        && accessible.getAttribute("aria-description") === "Right-click for diagnostics"
-        && accessible.getAttribute("aria-keyshortcuts") === "Shift+F10", "ARIA projection drifted");
-    properties.silent = true;
-    requireValue(accessible.getAttribute("aria-hidden") === "true", "live accessibility update drifted");
-    binding.dispose();
-    properties.name = "ignored after dispose";
-    requireValue(accessible.getAttribute("aria-label") === "previous"
-        && !accessible.hasAttribute("aria-description") && !accessible.hasAttribute("aria-hidden"),
-        "accessibility teardown did not restore prior attributes");
-
-    const keyboardLease = installNativeKeyboardStateHost(window);
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "A" }));
-    keyboardLease.dispose();
-
-    Mouse.cursor = MouseCursor.BUTTON;
-    requireValue(Mouse.cursor === MouseCursor.BUTTON && document.body.style.cursor === "pointer",
-        "Flash-to-browser cursor mapping drifted");
-    Mouse.hide();
-    requireValue(String(document.body.style.cursor) === "none", "Mouse.hide did not reach the browser adapter");
-    Mouse.show();
-    requireValue(document.body.style.cursor === "pointer", "Mouse.show did not restore the mapped cursor");
-    Mouse.cursor = MouseCursor.AUTO;
-
-    let clipboardRejectedOutsideGesture = false;
-    try { createBrowserClipboardHost(document, navigator).writeText("not activated"); }
-    catch (error) { clipboardRejectedOutsideGesture = error instanceof UnsupportedFlashFeatureError; }
-    const activation = (navigator as Navigator & { readonly userActivation?: { readonly isActive: boolean } }).userActivation;
-    requireValue(clipboardRejectedOutsideGesture || activation?.isActive === true,
-        "clipboard host reported speculative success outside user activation");
-
-    return {
-        contextMenuActualProducer: true,
-        contextMenuTeardown: true,
-        selectionIdentity: true,
-        focusRestored: true,
-        ownerFocused,
-        accessibilityLiveProjection: true,
-        accessibilityTeardown: true,
-        mouseBrowserProjection: true,
-        keyboardProducerTeardown: true,
-        clipboardFailClosedOutsideGesture: clipboardRejectedOutsideGesture,
-    };
+    return canvas;
 }
 
-function requireValue(condition: unknown, message: string): asserts condition {
-    if (!condition) throw new Error(message);
-}
+const prior = document.createElement("button");
+prior.textContent = "prior focus";
+prior.style.cssText = "position:absolute;left:300px;top:10px";
+document.body.appendChild(prior);
+prior.focus();
 
-function publish(payload: unknown): void {
-    const marker = document.createElement("pre");
-    marker.id = "flash-ui-host-browser-result";
-    marker.textContent = JSON.stringify(payload);
-    document.body.appendChild(marker);
-}
+const primaryCanvas = canvasAt(10);
+primaryCanvas.tabIndex = 0;
+let focusBeforePrimaryMenu: Element | null = null;
+primaryCanvas.addEventListener("contextmenu", event => {
+    if (event.isTrusted) focusBeforePrimaryMenu = document.activeElement;
+}, true);
+const primaryOwner = new TestOwner();
+const primaryMenu = new ContextMenu();
+primaryMenu.hideBuiltInItems();
+const disabled = new ContextMenuItem("Version", true, false, true);
+const hidden = new ContextMenuItem("Hidden", false, true, false);
+const selectable = new ContextMenuItem("Copy debug info");
+primaryMenu.customItems.push(disabled, hidden, selectable);
+primaryOwner.contextMenu = primaryMenu;
+primaryMenu.addEventListener(ContextMenuEvent.MENU_SELECT, eventValue => {
+    const event = eventValue as ContextMenuEvent;
+    state.route.push(`menu:${event.target === primaryMenu}:${event.contextMenuOwner === primaryOwner}:${event.mouseTarget === primaryOwner}`);
+});
+selectable.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, eventValue => {
+    const event = eventValue as ContextMenuEvent;
+    state.route.push(`item:${event.target === selectable}:${event.contextMenuOwner === primaryOwner}:${event.mouseTarget === primaryOwner}`);
+    state.selectionFocusRestored = document.activeElement === focusBeforePrimaryMenu;
+    try { state.clipboardAccepted = Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, "trusted-copy"); }
+    catch (error) { state.clipboardError = error instanceof Error ? `${error.name}: ${error.message}` : String(error); }
+});
+const clipboardLease = installNativeClipboardHost(createBrowserClipboardHost(document, navigator));
+const firstHost = installNativeContextMenuHost({ canvas: primaryCanvas, document, resolveTarget: () => primaryOwner });
+const primaryHost = installNativeContextMenuHost({ canvas: primaryCanvas, document, resolveTarget: () => primaryOwner });
+primaryCanvas.addEventListener("contextmenu", event => {
+    if (event.isTrusted) state.trustedDefaultStates.push(event.defaultPrevented);
+});
+primaryCanvas.addEventListener("keydown", event => {
+    if (event.isTrusted && ((event.shiftKey && event.key === "F10") || event.key === "ContextMenu"))
+        state.trustedKeyboardDefaultStates.push(event.defaultPrevented);
+});
+const synthetic = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 30 });
+primaryCanvas.dispatchEvent(synthetic);
+state.syntheticContextIgnored = !synthetic.defaultPrevented && !firstHost.open && !primaryHost.open;
+
+const reentrantCanvas = canvasAt(100);
+const reentrantOwner = new TestOwner();
+const reentrantMenu = new ContextMenu();
+reentrantMenu.customItems.push(new ContextMenuItem("Must not appear"));
+reentrantOwner.contextMenu = reentrantMenu;
+let reentrantHost = installNativeContextMenuHost({
+    canvas: reentrantCanvas, document, resolveTarget: () => reentrantOwner,
+});
+reentrantMenu.addEventListener(ContextMenuEvent.MENU_SELECT, () => reentrantHost.dispose());
+
+const forgedCanvas = canvasAt(190);
+const forgedOwner = new TestOwner();
+const forgedMenu = new ContextMenu();
+forgedMenu.customItems.push(new ContextMenuItem("Canonical"));
+(forgedMenu.customItems as unknown[]).push(Object.freeze({ caption: "Forged", enabled: true, visible: true }));
+forgedOwner.contextMenu = forgedMenu;
+const forgedHost = installNativeContextMenuHost({ canvas: forgedCanvas, document, resolveTarget: () => forgedOwner });
+
+const structuralCanvas = canvasAt(280);
+const structuralMenu = new ContextMenu();
+structuralMenu.customItems.push(new ContextMenuItem("Structural owner must not appear"));
+const structuralOwner: { parent: null; contextMenu: ContextMenu } = { parent: null, contextMenu: structuralMenu };
+const structuralHost = installNativeContextMenuHost({
+    canvas: structuralCanvas, document, resolveTarget: () => structuralOwner,
+});
+structuralCanvas.addEventListener("contextmenu", event => {
+    if (event.isTrusted) state.route.push(`structural-default:${event.defaultPrevented}`);
+});
+
+const accessible = document.createElement("div");
+accessible.setAttribute("aria-label", "original");
+document.body.appendChild(accessible);
+const firstProperties = new AccessibilityProperties();
+firstProperties.name = "first";
+const firstBinding = bindAccessibilityProperties(accessible, firstProperties);
+const secondProperties = new AccessibilityProperties();
+secondProperties.name = "second";
+secondProperties.description = "current description";
+const secondBinding = bindAccessibilityProperties(accessible, secondProperties);
+firstBinding.dispose();
+state.accessibilitySuccessorPreserved = accessible.getAttribute("aria-label") === "second"
+    && accessible.getAttribute("aria-description") === "current description";
+secondBinding.dispose();
+state.accessibilityBaselineRestored = accessible.getAttribute("aria-label") === "original"
+    && !accessible.hasAttribute("aria-description");
+
+const keyboardLease = installNativeKeyboardStateHost(window);
+keyboardLease.dispose();
+state.keyboardProducerTeardown = Keyboard.capsLock === false && Keyboard.numLock === false;
+
+Mouse.cursor = MouseCursor.BUTTON;
+const pointerProjected = Mouse.cursor === MouseCursor.BUTTON && document.body.style.cursor === "pointer";
+Mouse.hide();
+const hiddenProjected = String(document.body.style.cursor) === "none";
+Mouse.show();
+const shownProjected = document.body.style.cursor === "pointer";
+Mouse.cursor = MouseCursor.AUTO;
+state.mouseBrowserProjection = pointerProjected && hiddenProjected && shownProjected;
+
+try { createBrowserClipboardHost(document, navigator).writeText("not activated"); }
+catch (error) { state.clipboardFailClosedOutsideGesture = error instanceof UnsupportedFlashFeatureError; }
+
+Object.assign(globalThis, {
+    __flashUiHostReady: true,
+    __flashUiHostTest: {
+        state, firstHost, primaryHost, reentrantHost, forgedHost, structuralHost, prior,
+        programmaticSelection(): void {
+            const before = state.route.length;
+            document.querySelector<HTMLButtonElement>("[data-flash-context-menu=true] button:not(:disabled):last-of-type")?.click();
+            state.programmaticSelectionIgnored = state.route.length === before && primaryHost.open;
+        },
+        disposePrimary(): void { primaryHost.dispose(); },
+        finish(): Record<string, unknown> {
+            const result = {
+                ...state,
+                duplicateAuthorityRetired: !firstHost.open,
+                primaryOpen: primaryHost.open,
+                reentrantOpen: reentrantHost.open,
+                forgedOpen: forgedHost.open,
+                structuralOpen: structuralHost.open,
+                popupCount: document.querySelectorAll("[data-flash-context-menu=true]").length,
+            };
+            firstHost.dispose();
+            primaryHost.dispose();
+            reentrantHost.dispose();
+            forgedHost.dispose();
+            structuralHost.dispose();
+            clipboardLease.dispose();
+            return result;
+        },
+    },
+});

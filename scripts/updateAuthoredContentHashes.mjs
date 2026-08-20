@@ -451,9 +451,9 @@ Object.assign(uiCapability, {
         ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenu", "class"],
         ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenuItem", "class"],
         ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenuBuiltInItems", "interface"],
-        ["src/layaAir/flash/ui/ContextMenu.ts", "NativeContextMenuHostOptions", "interface"],
-        ["src/layaAir/flash/ui/ContextMenu.ts", "NativeContextMenuHostLease", "interface"],
-        ["src/layaAir/flash/ui/ContextMenu.ts", "installNativeContextMenuHost", "function"],
+        ["src/layaAir/flash/ui/NativeContextMenuHost.ts", "NativeContextMenuHostOptions", "interface"],
+        ["src/layaAir/flash/ui/NativeContextMenuHost.ts", "NativeContextMenuHostLease", "interface"],
+        ["src/layaAir/flash/ui/NativeContextMenuHost.ts", "installNativeContextMenuHost", "function"],
         ["src/layaAir/flash/ui/ContextMenu.ts", "isFlashContextMenu", "function"],
         ["src/layaAir/flash/ui/ContextMenu.ts", "isFlashContextMenuItem", "function"],
     ].map(

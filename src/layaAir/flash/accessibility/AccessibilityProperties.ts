@@ -1,5 +1,11 @@
 const ACCESSIBILITY_PROPERTY_VALUES = new WeakSet<object>();
 const PROPERTY_OBSERVERS = new WeakMap<AccessibilityProperties, Set<() => void>>();
+interface AccessibilityBindingAuthority {
+    readonly token: object;
+    readonly baseline: ReadonlyMap<string, string | null>;
+    deactivate(restore: boolean): void;
+}
+const ELEMENT_BINDINGS = new WeakMap<Element, AccessibilityBindingAuthority>();
 
 /** @internal Read-only nominal proof for canonical Flash accessibility metadata. */
 export function isFlashAccessibilityProperties(value: unknown): value is AccessibilityProperties {
@@ -54,8 +60,16 @@ export function bindAccessibilityProperties(element: Element,
     initial: AccessibilityProperties | null): AccessibilityPropertiesBinding {
     if (!element || typeof element.setAttribute !== "function")
         throw new TypeError("AccessibilityProperties binding requires an Element");
-    const previous = new Map<string, string | null>();
-    for (const name of PROJECTED_ATTRIBUTES) previous.set(name, element.getAttribute(name));
+    const predecessor = ELEMENT_BINDINGS.get(element);
+    let previous: ReadonlyMap<string, string | null>;
+    if (predecessor) previous = predecessor.baseline;
+    else {
+        const baseline = new Map<string, string | null>();
+        for (const name of PROJECTED_ATTRIBUTES) baseline.set(name, element.getAttribute(name));
+        previous = baseline;
+    }
+    predecessor?.deactivate(false);
+    const token = Object.freeze({});
     let current: AccessibilityProperties | null = null;
     let disposed = false;
 
@@ -87,18 +101,28 @@ export function bindAccessibilityProperties(element: Element,
         }
         project();
     };
-    update(initial);
-    return Object.freeze({
-        update,
-        dispose(): void {
-            if (disposed) return;
+    const deactivate = (restore: boolean): void => {
+        if (!disposed) {
             unsubscribe();
             disposed = true;
             current = null;
+        }
+        if (restore && ELEMENT_BINDINGS.get(element)?.token === token) {
+            ELEMENT_BINDINGS.delete(element);
             for (const [name, value] of previous) {
                 if (value === null) element.removeAttribute(name);
                 else element.setAttribute(name, value);
             }
-        },
+        }
+    };
+    ELEMENT_BINDINGS.set(element, { token, baseline: previous, deactivate });
+    try { update(initial); }
+    catch (error) {
+        deactivate(true);
+        throw error;
+    }
+    return Object.freeze({
+        update,
+        dispose(): void { deactivate(true); },
     });
 }

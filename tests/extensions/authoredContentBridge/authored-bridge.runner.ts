@@ -991,7 +991,8 @@ test("explicit Stage boundary preserves attachment, numeric FPS, focus and boots
     stage.scaleMode = "showall";
     stage.frameRate = "fast";
     stage.focus = null;
-    Browser.mainCanvas = { source: { oncontextmenu: null } } as any;
+    const previousContextMenu = () => true;
+    Browser.mainCanvas = { source: { oncontextmenu: previousContextMenu } } as any;
     textInputAdapter.begin = function (target: unknown): void {
         this.target = target;
         stage.focus = target;
@@ -1063,7 +1064,7 @@ test("explicit Stage boundary preserves attachment, numeric FPS, focus and boots
                 loaderParameters: FlashStageBoundary.parseLoaderParameters("locale=en_US")
             }), /live canonical Laya Stage/);
             assert.deepEqual([Config.FPS, Render.frameInterval, fakeStage.alignH,
-                (Browser.mainCanvas.source as any).oncontextmenu], [fps, interval, "fake", null],
+                (Browser.mainCanvas.source as any).oncontextmenu], [fps, interval, "fake", previousContextMenu],
                 "unbranded current-singleton rejection is side-effect-free");
         }
         assert.equal(proxyTraps, 0, "native Stage authentication never interrogates a Proxy");
@@ -1169,6 +1170,8 @@ test("explicit Stage boundary preserves attachment, numeric FPS, focus and boots
         assert.equal(activated, 1);
         FlashStageBoundary.removeEventListener(stage, Event.ACTIVATE, onActivate);
         FlashStageBoundary.dispose(stage);
+        assert.equal((Browser.mainCanvas.source as any).oncontextmenu, previousContextMenu,
+            "Stage disposal restores the exact prior context-menu policy");
     } finally {
         ILaya.stage = previousStage;
         Config.FPS = previousFPS;

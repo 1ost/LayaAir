@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type {
-    ContextMenu, ContextMenuBuiltInItems, ContextMenuItem, NativeContextMenuHostLease,
-    NativeContextMenuHostOptions, installNativeContextMenuHost, isFlashContextMenu,
-    isFlashContextMenuItem,
+    ContextMenu, ContextMenuBuiltInItems, ContextMenuItem, isFlashContextMenu, isFlashContextMenuItem,
 } from "../../src/layaAir/flash/ui/ContextMenu.ts";
+import type {
+    NativeContextMenuHostLease, NativeContextMenuHostOptions, installNativeContextMenuHost,
+} from "../../src/layaAir/flash/ui/NativeContextMenuHost.ts";
 import type {
     FlashKeyboardStateLease, Keyboard, installNativeKeyboardStateHost,
 } from "../../src/layaAir/flash/ui/Keyboard.ts";

@@ -126,12 +126,10 @@ export type { AccessibilityPropertiesBinding } from "./accessibility/Accessibili
 export { Clipboard, createBrowserClipboardHost, installNativeClipboardHost } from "./desktop/Clipboard";
 export type { NativeClipboardHost, NativeClipboardHostLease } from "./desktop/Clipboard";
 export { ClipboardFormats } from "./desktop/ClipboardFormats";
-export {
-    ContextMenu, ContextMenuItem, installNativeContextMenuHost,
-} from "./ui/ContextMenu";
-export type {
-    ContextMenuBuiltInItems, NativeContextMenuHostLease, NativeContextMenuHostOptions
-} from "./ui/ContextMenu";
+export { ContextMenu, ContextMenuItem } from "./ui/ContextMenu";
+export type { ContextMenuBuiltInItems } from "./ui/ContextMenu";
+export { installNativeContextMenuHost } from "./ui/NativeContextMenuHost";
+export type { NativeContextMenuHostLease, NativeContextMenuHostOptions } from "./ui/NativeContextMenuHost";
 export { Keyboard, installNativeKeyboardStateHost } from "./ui/Keyboard";
 export type { FlashKeyboardStateLease } from "./ui/Keyboard";
 export { Mouse } from "./ui/Mouse";

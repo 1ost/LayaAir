@@ -14,7 +14,7 @@ import {
 import { isFlashStage, Stage } from "./Stage";
 import {
     installNativeContextMenuHost, NativeContextMenuHostLease
-} from "../ui/ContextMenu";
+} from "../ui/NativeContextMenuHost";
 
 type MutableStage = LayaStage & { focus: LayaNode | null };
 type FocusSeam = { _applyNativeFocus(value: boolean): void };
@@ -25,7 +25,13 @@ const LOADER_PARAMETER_VALUES = new WeakSet<object>();
 const STAGE_VIEWPORT_OWNERS = new WeakMap<object, FlashStageViewportOwner>();
 const STAGE_VIEWPORT_GENERATIONS = new WeakMap<object, number>();
 const STAGE_EVENT_TARGETS = new WeakMap<object, Stage>();
-const STAGE_CONTEXT_MENU_HOSTS = new WeakMap<object, NativeContextMenuHostLease>();
+interface StageContextMenuPolicy {
+    readonly canvas: HTMLCanvasElement;
+    readonly previous: HTMLCanvasElement["oncontextmenu"];
+    readonly suppress: NonNullable<HTMLCanvasElement["oncontextmenu"]>;
+    readonly host: NativeContextMenuHostLease | null;
+}
+const STAGE_CONTEXT_MENU_HOSTS = new WeakMap<object, StageContextMenuPolicy>();
 
 interface FlashStageViewportRecord {
     readonly stage: LayaStage;
@@ -276,15 +282,23 @@ export class FlashStageBoundary {
         stage.scaleMode = "noscale";
         const canvas = Browser.mainCanvas?.source;
         if (!canvas) throw new Error("Laya main canvas is unavailable for Stage context-menu policy");
-        canvas.oncontextmenu = () => false;
-        if (!STAGE_CONTEXT_MENU_HOSTS.has(stage as object)
-            && typeof document !== "undefined"
-            && typeof (canvas as { addEventListener?: unknown }).addEventListener === "function") {
-            STAGE_CONTEXT_MENU_HOSTS.set(stage as object, installNativeContextMenuHost({
-                canvas: canvas as HTMLCanvasElement,
-                document,
-                resolveTarget: () => InputManager.touchTarget,
-            }));
+        if (!STAGE_CONTEXT_MENU_HOSTS.has(stage as object)) {
+            const typedCanvas = canvas as HTMLCanvasElement;
+            const previous = typedCanvas.oncontextmenu;
+            const suppress: NonNullable<HTMLCanvasElement["oncontextmenu"]> = () => false;
+            typedCanvas.oncontextmenu = suppress;
+            let host: NativeContextMenuHostLease | null = null;
+            try {
+                host = typeof document !== "undefined"
+                    && typeof (canvas as { addEventListener?: unknown }).addEventListener === "function"
+                    ? installNativeContextMenuHost({ canvas: typedCanvas, document,
+                        resolveTarget: () => InputManager.touchTarget })
+                    : null;
+            } catch (error) {
+                if (typedCanvas.oncontextmenu === suppress) typedCanvas.oncontextmenu = previous;
+                throw error;
+            }
+            STAGE_CONTEXT_MENU_HOSTS.set(stage as object, { canvas: typedCanvas, previous, suppress, host });
         }
 
         if (previous && previous.quality === options.quality) return previous;
@@ -339,14 +353,32 @@ export class FlashStageBoundary {
 
     static dispose(stage: LayaStage): void {
         this._requireCurrent(stage);
-        STAGE_VIEWPORT_OWNERS.get(stage as object)?.dispose();
-        STAGE_CONTEXT_MENU_HOSTS.get(stage as object)?.dispose();
+        const viewportOwner = STAGE_VIEWPORT_OWNERS.get(stage as object);
+        const policy = STAGE_CONTEXT_MENU_HOSTS.get(stage as object);
         STAGE_CONTEXT_MENU_HOSTS.delete(stage as object);
         const router = STAGE_ROUTERS.get(stage as object);
-        if (router) {
-            router.dispose();
-            STAGE_ROUTERS.delete(stage as object);
+        STAGE_ROUTERS.delete(stage as object);
+        let caught = false;
+        let firstError: unknown;
+        const capture = (operation: () => void): void => {
+            try { operation(); }
+            catch (error) {
+                if (!caught) {
+                    caught = true;
+                    firstError = error;
+                }
+            }
+        };
+        if (viewportOwner) capture(() => viewportOwner.dispose());
+        if (policy) {
+            capture(() => policy.host?.dispose());
+            capture(() => {
+                if (policy.canvas.oncontextmenu === policy.suppress)
+                    policy.canvas.oncontextmenu = policy.previous;
+            });
         }
+        if (router) capture(() => router.dispose());
+        if (caught) throw firstError;
     }
 
     private static _router(stage: LayaStage): FlashEventRouter {
