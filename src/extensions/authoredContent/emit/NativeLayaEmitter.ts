@@ -281,7 +281,8 @@ export class NativeLayaEmitter {
                 linkageClass: node.linkage,
                 instanceName,
                 kind: node.kind,
-                depth: node.depth
+                depth: node.depth,
+                variable: node.variable,
             });
             nativeOwnerPaths.set(semanticPath.join("/"), animatorOwnerPath);
             node.children.forEach(child => visit(child, semanticPath, nativePath, false));
@@ -299,6 +300,7 @@ export interface NativeAuthoredContentNodeMetadata {
     readonly instanceName: string;
     readonly kind: "container" | "dynamic-text" | "image" | "text";
     readonly depth?: number;
+    readonly variable?: boolean;
 }
 
 export interface NativeAuthoredContentResourceMetadata {

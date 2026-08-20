@@ -44,6 +44,7 @@ const expectedOutputs = [
     "cockpit/AuthoredContentCockpitTypes.js",
     "cockpit/AuthoredPreviewCanvasController.js",
     "core/NeutralAuthoredContentIR.js",
+    "core/AuthoredRuntimeIds.js",
     "core/SourceAdapter.js",
     "editorResources/authored-content-source.svg",
     "emit/EditorSubAssetState.js",

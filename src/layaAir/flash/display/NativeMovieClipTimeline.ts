@@ -30,7 +30,7 @@ export class AnimatorClip2DTimeline implements NativeMovieClipTimeline {
     get currentFrame(): number {
         const time = this._animator.normalizedTime;
         if (!Number.isFinite(time)) throw new RangeError("AnimatorClip2D normalizedTime must be finite");
-        return Math.min(this.totalFrames - 1, Math.max(0, Math.floor(time * this.totalFrames)));
+        return Math.min(this.totalFrames - 1, Math.max(0, Math.floor(time * this.totalFrames + 1e-7)));
     }
     get playing(): boolean { return this._animator.isPlaying; }
     play(frame: number): void { this._animator.play(this._normalizedFrame(this._validateFrame(frame))); }

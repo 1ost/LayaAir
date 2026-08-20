@@ -25,6 +25,7 @@ export interface NeutralAuthoredNode {
     readonly resourceId?: string;
     /** Application-owned root/linkage class; primitive children use Laya-owned runtime IDs. */
     readonly runtimeLinkage?: string;
+    readonly variable?: boolean;
     readonly textField?: NeutralDynamicTextField;
     /** Independently clocked timeline owned by this nested symbol. */
     readonly timeline?: NeutralTimeline;
@@ -135,7 +136,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible",
-        "text", "fontSize", "color", "resourceId", "runtimeLinkage", "textField", "timeline", "children"
+        "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -166,6 +167,7 @@ function normalizeNode(
         runtimeLinkage: source.runtimeLinkage === undefined
             ? undefined
             : canonicalRuntimeLinkage(requiredString(source.runtimeLinkage, `${path}.runtimeLinkage`)),
+        variable: optionalBoolean(source.variable, `${path}.variable`),
         textField: source.textField === undefined
             ? undefined
             : normalizeDynamicTextField(source.textField, `${path}.textField`, scale),

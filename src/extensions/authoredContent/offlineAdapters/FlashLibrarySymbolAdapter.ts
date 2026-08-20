@@ -113,6 +113,7 @@ export class FlashLibrarySymbolAdapter {
             y: placement.y,
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
+            variable: typeof operation?.name === "string",
             children,
             timeline: root ? undefined : nativeTimeline(sourceTimeline, {
                 linkage: string(asset.symbolName, `library.assets.${characterId}.symbolName`),
@@ -231,6 +232,7 @@ export class FlashLibrarySymbolAdapter {
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             resourceId,
+            variable: typeof operation.name === "string",
             children: [],
         };
     }
@@ -258,6 +260,7 @@ export class FlashLibrarySymbolAdapter {
             y: placement.y,
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
+            variable: typeof operation.name === "string",
             textField: {
                 sourceId: characterId,
                 type: textField.fieldType,

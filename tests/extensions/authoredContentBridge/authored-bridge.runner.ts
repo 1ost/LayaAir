@@ -2254,6 +2254,8 @@ test("canonical hierarchy binds an independently clocked 16-frame authored Movie
     assert.equal(isFlashMovieClip(bear), true);
     assert.equal(bear.name, "HappyBear");
     assert.equal(bear.totalFrames, 16);
+    bear.gotoAndStop(5);
+    assert.equal(bear.currentFrame, 5);
     bear.gotoAndStop(13);
     assert.equal(bear.currentFrame, 13);
     assert.equal(bear.isPlaying, false);

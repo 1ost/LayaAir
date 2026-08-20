@@ -95,6 +95,7 @@ export class AnimatorPlayState2D {
 	 */
 	_resetPlayState(startTime: number, clipDuration: number): void {
 		this._finish = false;
+		this._duration = clipDuration;
 		this._startPlayTime = startTime;
 		this._elapsedTime = startTime;
 		this._lastIsFront = true;

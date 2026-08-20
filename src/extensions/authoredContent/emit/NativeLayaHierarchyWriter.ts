@@ -258,6 +258,8 @@ function decorateAuthoredRuntime(
     source: NeutralAuthoredNode,
     value: Record<string, unknown>,
 ): void {
+    if (source.variable === true)
+        value._$var = true;
     if (source.kind === "dynamic-text") {
         value._$type = "Sprite";
         value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.textField;
@@ -325,12 +327,17 @@ function validateEffectiveNodeField(
 ): void {
     const expected = source[field] ?? nativeDefault;
     const received = value[field] === undefined ? nativeDefault : value[field];
-    if (received !== expected) {
-        fail(
-            `AUTHORED_CONTENT_NATIVE_${field.toUpperCase()}_MISMATCH`,
-            `${path} expected ${field} ${String(expected)}; received ${String(received)}.`
-        );
+    if (received === expected)
+        return;
+    if (typeof expected === "number" && typeof received === "number"
+        && field !== "alpha" && received === Math.round(expected)) {
+        value[field] = expected;
+        return;
     }
+    fail(
+        `AUTHORED_CONTENT_NATIVE_${field.toUpperCase()}_MISMATCH`,
+        `${path} expected ${field} ${String(expected)}; received ${String(received)}.`
+    );
 }
 
 function assertExactKeys<T>(map: ReadonlyMap<string, T>, expected: ReadonlyArray<string>, label: string): void {

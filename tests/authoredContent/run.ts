@@ -217,6 +217,7 @@ function dynamicTextDocument(): Record<string, unknown> {
                 linkage: "symbol17",
                 name: "TF_ProgressText",
                 kind: "dynamic-text",
+                variable: true,
                 depth: 7,
                 x: 347.1,
                 y: 558,
@@ -537,6 +538,7 @@ async function main(): Promise<void> {
         assert(field._$type === "Sprite", "dynamic TextField serialized type is not canonical Sprite");
         assert(field._$runtime === "Laya.AuthoredContent.TextField",
             "dynamic TextField did not use the Laya-owned primitive runtime");
+        assert(field._$var === true, "named application field was not marked for runtime injection");
         assert(field.authoredConfiguration.sourceId === 17, "dynamic TextField source identity was lost");
         assert(field.authoredConfiguration.format.font === "Arial", "dynamic TextField font was lost");
         assert(field.authoredConfiguration.format.bold === true, "dynamic TextField font style was lost");

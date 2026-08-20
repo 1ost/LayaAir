@@ -173,7 +173,7 @@ export class AnimatorClip2D extends Animator2DBase {
      */
     gotoAndStopByFrame(frame: number): void {
         if (!this._clip) return;
-        const allFrame = this._clip._duration * this._clip._frameRate;
+        const allFrame = Math.round(this._clip._duration * this._clip._frameRate);
         let normalizedTime = frame / allFrame;
         if (normalizedTime > 1) normalizedTime = 1;
         this.gotoAndStop(normalizedTime);
