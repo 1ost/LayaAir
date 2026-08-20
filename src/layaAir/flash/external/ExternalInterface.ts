@@ -1,46 +1,80 @@
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 
-const EXTERNAL_HOSTS = new WeakSet<object>();
 const FUNCTION_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+declare const NATIVE_EXTERNAL_INTERFACE_HOST_LEASE: unique symbol;
+
 let externalHost: ExternalHostRecord | null = null;
 let installingExternalHost = false;
 
 export type ExternalInterfaceValue = string | number | boolean | null;
 
-interface ExternalHostRecord {
-    readonly owner: NativeExternalInterfaceHost;
-    readonly call: (functionName: string, arguments_: readonly ExternalInterfaceValue[]) => unknown;
+/** Structural application host accepted only through the explicit installer. */
+export interface NativeExternalInterfaceHost {
+    call(functionName: string, arguments_: readonly ExternalInterfaceValue[]): unknown;
 }
 
-/** Nominal embedding boundary for the legacy string-named host protocol. */
-export abstract class NativeExternalInterfaceHost {
-    protected constructor() {
-        const prototype = new.target?.prototype;
-        const method = prototype && Object.getOwnPropertyDescriptor(prototype, "call");
-        if (new.target === NativeExternalInterfaceHost
-            || Object.getPrototypeOf(prototype) !== NativeExternalInterfaceHost.prototype
-            || typeof method?.value !== "function")
-            throw new TypeError("NativeExternalInterfaceHost requires a direct concrete data-method subclass");
-        EXTERNAL_HOSTS.add(this);
+/** Opaque engine-issued ownership of the currently installed external host. */
+export interface NativeExternalInterfaceHostLease {
+    readonly [NATIVE_EXTERNAL_INTERFACE_HOST_LEASE]: true;
+    readonly active: boolean;
+    readonly disposed: boolean;
+    dispose(): void;
+}
+
+interface ExternalHostRecord {
+    owner: NativeExternalInterfaceHost | null;
+    call: Function | null;
+    active: boolean;
+}
+
+const EXTERNAL_LEASE_RECORDS = new WeakMap<object, ExternalHostRecord>();
+
+class EngineNativeExternalInterfaceHostLease implements NativeExternalInterfaceHostLease {
+    declare readonly [NATIVE_EXTERNAL_INTERFACE_HOST_LEASE]: true;
+
+    constructor(record: ExternalHostRecord) {
+        EXTERNAL_LEASE_RECORDS.set(this, record);
+        Object.defineProperties(this, {
+            active: { get: () => requireLeaseRecord(this).active, enumerable: true },
+            disposed: { get: () => !requireLeaseRecord(this).active, enumerable: true },
+            dispose: {
+                value: EngineNativeExternalInterfaceHostLease.prototype.dispose.bind(this),
+                writable: false,
+                enumerable: false,
+                configurable: false,
+            },
+        });
+        Object.freeze(this);
     }
 
-    abstract call(functionName: string, arguments_: readonly ExternalInterfaceValue[]): unknown;
+    get active(): boolean { return requireLeaseRecord(this).active; }
+    get disposed(): boolean { return !requireLeaseRecord(this).active; }
+
+    dispose(): void {
+        retireExternalHost(requireLeaseRecord(this));
+    }
 }
 
-/** Installs the single application bootstrap host. It cannot be replaced. */
-export function installNativeExternalInterfaceHost(host: NativeExternalInterfaceHost): void {
-    if (typeof host !== "object" || host === null || !EXTERNAL_HOSTS.has(host))
-        throw new TypeError("Native ExternalInterface host must be a nominal Laya capability");
-    if (externalHost !== null || installingExternalHost)
-        throw new Error("Native ExternalInterface host is already installed or installing");
+/**
+ * Installs or replaces the application bootstrap host and returns its opaque
+ * ownership lease. A stale lease can never dispose its successor.
+ */
+export function installNativeExternalInterfaceHost(
+    host: NativeExternalInterfaceHost,
+): NativeExternalInterfaceHostLease {
+    if ((typeof host !== "object" && typeof host !== "function") || host === null)
+        throw new TypeError("Native ExternalInterface host must be an explicit structural capability");
+    if (installingExternalHost)
+        throw new Error("Native ExternalInterface host installation is already in progress");
+
     installingExternalHost = true;
     try {
         const call = requireDataMethod(host, "call", "Native ExternalInterface host");
-        externalHost = Object.freeze({
-            owner: host,
-            call: (functionName: string, arguments_: readonly ExternalInterfaceValue[]) =>
-                Reflect.apply(call, host, [functionName, arguments_]),
-        });
+        const record: ExternalHostRecord = { owner: host, call, active: true };
+        const lease = new EngineNativeExternalInterfaceHostLease(record);
+        if (externalHost) retireExternalHost(externalHost);
+        externalHost = record;
+        return lease;
     } finally {
         installingExternalHost = false;
     }
@@ -53,17 +87,35 @@ export function installNativeExternalInterfaceHost(host: NativeExternalInterface
 export class ExternalInterface {
     private constructor() {}
 
-    static get available(): boolean { return externalHost !== null; }
+    static get available(): boolean { return externalHost?.active === true; }
 
     static call(functionName: string, ...arguments_: ExternalInterfaceValue[]): unknown {
         if (typeof functionName !== "string" || !FUNCTION_NAME.test(functionName))
             throw new TypeError("ExternalInterface.call requires a canonical non-empty function name");
-        if (externalHost === null)
+        const record = externalHost;
+        if (!record?.active || record.owner === null || record.call === null)
             throw new UnsupportedFlashFeatureError("flash.external.ExternalInterface.call",
                 "the application bootstrap has not installed a native external host");
         const snapshot = Object.freeze(arguments_.map((value, index) => snapshotValue(value, index)));
-        return externalHost.call(functionName, snapshot);
+        return Reflect.apply(record.call, record.owner, [functionName, snapshot]);
     }
+}
+
+function retireExternalHost(record: ExternalHostRecord): void {
+    if (!record.active) return;
+    record.active = false;
+    record.owner = null;
+    record.call = null;
+    if (externalHost === record) externalHost = null;
+}
+
+function requireLeaseRecord(value: unknown): ExternalHostRecord {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null)
+        throw new TypeError("Native ExternalInterface host lifecycle requires an engine-issued lease");
+    const record = EXTERNAL_LEASE_RECORDS.get(value as object);
+    if (!record)
+        throw new TypeError("Native ExternalInterface host lifecycle requires an engine-issued lease");
+    return record;
 }
 
 function snapshotValue(value: unknown, index: number): ExternalInterfaceValue {
@@ -75,7 +127,9 @@ function snapshotValue(value: unknown, index: number): ExternalInterfaceValue {
 
 function requireDataMethod(owner: object, name: string, label: string): Function {
     let cursor: object | null = owner;
-    while (cursor !== null) {
+    const visited = new Set<object>();
+    while (cursor !== null && !visited.has(cursor)) {
+        visited.add(cursor);
         const descriptor = Object.getOwnPropertyDescriptor(cursor, name);
         if (descriptor) {
             if (typeof descriptor.value !== "function")

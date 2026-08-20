@@ -39529,48 +39529,41 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf",
+          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde",
           "heritage": []
         },
         {
           "module": "src/layaAir/flash/system/System.ts",
           "export": "NativeSystemHost",
-          "kind": "class",
-          "signature": "typeof NativeSystemHost",
-          "members": [
-            {
-              "abstract": true,
-              "kind": "method",
-              "name": "setClipboard",
-              "scope": "instance",
-              "optional": false,
-              "readonly": false,
-              "signature": "(text: string) => void"
-            }
-          ],
-          "constructors": [],
-          "indexSignatures": [],
-          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf",
-          "heritage": []
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
+        },
+        {
+          "module": "src/layaAir/flash/system/System.ts",
+          "export": "NativeSystemHostLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
         },
         {
           "module": "src/layaAir/flash/system/System.ts",
           "export": "installNativeSystemHost",
           "kind": "function",
-          "signature": "(host: NativeSystemHost) => void",
-          "sha256": "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf"
+          "signature": "(host: NativeSystemHost) => NativeSystemHostLease",
+          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
+          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
-            "7e4ae7fbaaa18c2387a6633ab25b05b2c425e875d761300efce7c3154cb748cf"
+            "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
           ]
         }
       ]
@@ -39606,7 +39599,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be",
+          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2",
           "heritage": []
         },
         {
@@ -39614,45 +39607,38 @@
           "export": "ExternalInterfaceValue",
           "kind": "type",
           "signature": "any",
-          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
+          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
           "export": "NativeExternalInterfaceHost",
-          "kind": "class",
-          "signature": "typeof NativeExternalInterfaceHost",
-          "members": [
-            {
-              "abstract": true,
-              "kind": "method",
-              "name": "call",
-              "scope": "instance",
-              "optional": false,
-              "readonly": false,
-              "signature": "(functionName: string, arguments_: readonly ExternalInterfaceValue[]) => unknown"
-            }
-          ],
-          "constructors": [],
-          "indexSignatures": [],
-          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be",
-          "heritage": []
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+        },
+        {
+          "module": "src/layaAir/flash/external/ExternalInterface.ts",
+          "export": "NativeExternalInterfaceHostLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
           "export": "installNativeExternalInterfaceHost",
           "kind": "function",
-          "signature": "(host: NativeExternalInterfaceHost) => void",
-          "sha256": "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
+          "signature": "(host: NativeExternalInterfaceHost) => NativeExternalInterfaceHostLease",
+          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
+          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
           "capability": "api.flash.external",
           "covers": [
-            "b45b71d6847d1b6d6b271c47ff9d9394bc370a9f6a0d26300d574d3b49fa85be"
+            "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
           ]
         }
       ]
@@ -39748,7 +39734,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "4a52bfc29f74c012ed8834b1be9bcad09a35b6a66e1d266b1c6b6f69a3f2e40a",
+          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
           "capability": "api.flash.errors",
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"

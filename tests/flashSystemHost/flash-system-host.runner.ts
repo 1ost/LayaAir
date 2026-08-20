@@ -3,34 +3,38 @@ import test from "node:test";
 
 import { IllegalOperationError } from "../../src/layaAir/flash/errors/IllegalOperationError";
 import {
-    ExternalInterface, ExternalInterfaceValue, NativeExternalInterfaceHost, installNativeExternalInterfaceHost,
+    ExternalInterface, ExternalInterfaceValue, NativeExternalInterfaceHostLease, installNativeExternalInterfaceHost,
 } from "../../src/layaAir/flash/external/ExternalInterface";
+import * as externalModule from "../../src/layaAir/flash/external/ExternalInterface";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
 import { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy";
-import { NativeSystemHost, System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import { NativeSystemHostLease, System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import * as systemModule from "../../src/layaAir/flash/system/System";
 import { UnsupportedFlashFeatureError } from "../../src/layaAir/flash/events/UnsupportedFlashFeatureError";
 
-class ExternalHost extends NativeExternalInterfaceHost {
+let reentrantExternalHost: ExternalHost | null = null;
+let reentrantExternalLease: NativeExternalInterfaceHostLease | null = null;
+
+class ExternalHost {
     readonly calls: Array<readonly [string, readonly ExternalInterfaceValue[]]> = [];
     readonly failure = new Error("host failure");
-    constructor() { super(); }
     call(functionName: string, arguments_: readonly ExternalInterfaceValue[]): unknown {
         assert(Object.isFrozen(arguments_));
         this.calls.push([functionName, arguments_]);
         if (functionName === "host.throw") throw this.failure;
         if (functionName === "host.reenter") return ExternalInterface.call("host.inner", 3);
         if (functionName === "host.replace") {
-            try { installNativeExternalInterfaceHost(new ExternalHost()); } catch { return "blocked"; }
+            reentrantExternalHost = new ExternalHost();
+            reentrantExternalLease = installNativeExternalInterfaceHost(reentrantExternalHost);
             return "replaced";
         }
         return { functionName, arguments_ };
     }
 }
 
-class SystemHost extends NativeSystemHost {
+class SystemHost {
     readonly clipboard: string[] = [];
     readonly failure = new Error("clipboard failure");
-    constructor() { super(); }
     setClipboard(text: string): void {
         this.clipboard.push(text);
         if (text === "throw") throw this.failure;
@@ -38,7 +42,7 @@ class SystemHost extends NativeSystemHost {
     }
 }
 
-test("host/system bridge is explicit, nominal, call-only and native-runtime identified", () => {
+test("host/system bridge uses opaque replaceable leases and native-runtime semantics", () => {
     assert.equal(ExternalInterface.available, false);
     assert.throws(() => ExternalInterface.call("gamePay"), error =>
         error instanceof UnsupportedFlashFeatureError
@@ -49,28 +53,23 @@ test("host/system bridge is explicit, nominal, call-only and native-runtime iden
         && error.feature === "flash.system.System.setClipboard"
         && /has not installed a native clipboard host/.test(error.message));
     assert.equal(ExternalInterface.available, false);
-    assert.throws(() => Reflect.construct(NativeExternalInterfaceHost as unknown as Function, []),
-        /requires a direct concrete data-method subclass/);
-    assert.throws(() => Reflect.construct(NativeSystemHost as unknown as Function, []),
-        /requires a direct concrete data-method subclass/);
-    assert.throws(() => Reflect.construct(NativeExternalInterfaceHost as unknown as Function, [], class Fake {}),
-        /requires a direct concrete data-method subclass/);
-    assert.throws(() => Reflect.construct(NativeSystemHost as unknown as Function, [], class Fake {}),
-        /requires a direct concrete data-method subclass/);
-    assert.throws(() => installNativeExternalInterfaceHost(Object.create(NativeExternalInterfaceHost.prototype)),
-        /nominal Laya capability/);
-    assert.throws(() => installNativeSystemHost(Object.create(NativeSystemHost.prototype)),
-        /nominal Laya capability/);
+    const externalBase = Reflect.get(externalModule, ["Native", "ExternalInterfaceHost"].join(""));
+    const systemBase = Reflect.get(systemModule, ["Native", "SystemHost"].join(""));
+    assert.equal(externalBase, undefined);
+    assert.equal(systemBase, undefined);
+    assert.throws(() => craftedPrototypeConstruct(externalBase, "call"), TypeError);
+    assert.throws(() => craftedPrototypeConstruct(systemBase, "setClipboard"), TypeError);
 
-    const malformedExternal = new ExternalHost();
-    Object.defineProperty(malformedExternal, "call", { value: null });
-    assert.throws(() => installNativeExternalInterfaceHost(malformedExternal), /call must be a data method/);
-    const accessorExternal = new ExternalHost();
+    const malformedExternal = Object.defineProperty({}, "call", { value: null });
+    assert.throws(() => installNativeExternalInterfaceHost(malformedExternal as unknown as { call(): void }),
+        /call must be a data method/);
+    const accessorExternal = {};
     let externalGetterCalls = 0;
     Object.defineProperty(accessorExternal, "call", { get: () => {
         externalGetterCalls++; return (): null => null;
     } });
-    assert.throws(() => installNativeExternalInterfaceHost(accessorExternal), /call must be a data method/);
+    assert.throws(() => installNativeExternalInterfaceHost(accessorExternal as unknown as { call(): void }),
+        /call must be a data method/);
     assert.equal(externalGetterCalls, 0);
     assert.equal(ExternalInterface.available, false);
     let preinstallCoercions = 0;
@@ -79,14 +78,38 @@ test("host/system bridge is explicit, nominal, call-only and native-runtime iden
     } }) as unknown as string), UnsupportedFlashFeatureError);
     assert.equal(preinstallCoercions, 0);
 
-    const malformedSystem = new SystemHost();
-    Object.defineProperty(malformedSystem, "setClipboard", { value: undefined });
-    assert.throws(() => installNativeSystemHost(malformedSystem), /setClipboard must be a data method/);
+    const malformedSystem = Object.defineProperty({}, "setClipboard", { value: undefined });
+    assert.throws(() => installNativeSystemHost(malformedSystem as unknown as { setClipboard(): void }),
+        /setClipboard must be a data method/);
 
     const external = new ExternalHost();
     const system = new SystemHost();
-    installNativeExternalInterfaceHost(external);
-    installNativeSystemHost(system);
+    const externalLease = installNativeExternalInterfaceHost(external);
+    const systemLease = installNativeSystemHost(system);
+    assert.equal(Object.isFrozen(externalLease), true);
+    assert.equal(Object.isFrozen(systemLease), true);
+    assert.deepEqual([externalLease.active, externalLease.disposed], [true, false]);
+    assert.deepEqual([systemLease.active, systemLease.disposed], [true, false]);
+    const forgedExternalLease = Object.create(Object.getPrototypeOf(externalLease)) as NativeExternalInterfaceHostLease;
+    const forgedSystemLease = Object.create(Object.getPrototypeOf(systemLease)) as NativeSystemHostLease;
+    assert.throws(() => forgedExternalLease.dispose(), /engine-issued lease/);
+    assert.throws(() => forgedSystemLease.dispose(), /engine-issued lease/);
+    const reentrantExternal = new Proxy({ call(): void {} }, {
+        getOwnPropertyDescriptor(target, property): PropertyDescriptor | undefined {
+            installNativeExternalInterfaceHost(new ExternalHost());
+            return Reflect.getOwnPropertyDescriptor(target, property);
+        },
+    });
+    assert.throws(() => installNativeExternalInterfaceHost(reentrantExternal), /already in progress/);
+    assert.equal(externalLease.active, true);
+    const reentrantSystem = new Proxy({ setClipboard(): void {} }, {
+        getOwnPropertyDescriptor(target, property): PropertyDescriptor | undefined {
+            installNativeSystemHost(new SystemHost());
+            return Reflect.getOwnPropertyDescriptor(target, property);
+        },
+    });
+    assert.throws(() => installNativeSystemHost(reentrantSystem), /already in progress/);
+    assert.equal(systemLease.active, true);
     assert.equal(ExternalInterface.available, true);
     assert.deepEqual(ExternalInterface.call("host.gamePay", 7, "sku"), {
         functionName: "host.gamePay", arguments_: [7, "sku"],
@@ -107,8 +130,18 @@ test("host/system bridge is explicit, nominal, call-only and native-runtime iden
     assert.deepEqual(ExternalInterface.call("host.captured", true), {
         functionName: "host.captured", arguments_: [true],
     });
-    assert.equal(ExternalInterface.call("host.replace"), "blocked");
-    assert.throws(() => installNativeExternalInterfaceHost(new ExternalHost()), /already installed/);
+    assert.equal(ExternalInterface.call("host.replace"), "replaced");
+    assert(reentrantExternalHost);
+    assert(reentrantExternalLease);
+    assert.deepEqual([externalLease.active, externalLease.disposed], [false, true]);
+    externalLease.dispose();
+    assert.equal(reentrantExternalLease.active, true);
+    assert.deepEqual(ExternalInterface.call("host.afterReplacement", 9), {
+        functionName: "host.afterReplacement", arguments_: [9],
+    });
+    const invalidReplacement = Object.defineProperty({}, "call", { get: () => { throw new Error("getter"); } });
+    assert.throws(() => installNativeExternalInterfaceHost(invalidReplacement as { call(): void }), /data method/);
+    assert.equal(reentrantExternalLease.active, true);
 
     System.setClipboard("Ichigo");
     System.setClipboard(null as unknown as string);
@@ -118,7 +151,12 @@ test("host/system bridge is explicit, nominal, call-only and native-runtime iden
     (system as { setClipboard: SystemHost["setClipboard"] }).setClipboard = () => { throw new Error("mutated"); };
     System.setClipboard("captured");
     assert.equal(system.clipboard[system.clipboard.length - 1], "captured");
-    assert.throws(() => installNativeSystemHost(new SystemHost()), /already installed/);
+    const replacementSystem = new SystemHost();
+    const replacementSystemLease = installNativeSystemHost(replacementSystem);
+    assert.deepEqual([systemLease.active, systemLease.disposed], [false, true]);
+    systemLease.dispose();
+    System.setClipboard("replacement");
+    assert.deepEqual(replacementSystem.clipboard, ["replacement"]);
     setHeapMemory(Number.MAX_SAFE_INTEGER + 2);
     assert.equal(System.totalMemoryNumber, Number.MAX_SAFE_INTEGER);
     assert.equal(System.totalMemory, 0);
@@ -149,7 +187,23 @@ test("host/system bridge is explicit, nominal, call-only and native-runtime iden
     assert.equal(new IllegalOperationError("hostile", hostileId as unknown as number).errorID, 41);
     assert.equal(coercions, 1);
     assert.deepEqual([new IllegalOperationError().message, new IllegalOperationError().errorID], ["", 0]);
+
+    reentrantExternalLease.dispose();
+    assert.equal(ExternalInterface.available, false);
+    assert.throws(() => ExternalInterface.call("after.dispose"), UnsupportedFlashFeatureError);
+    reentrantExternalLease.dispose();
+    replacementSystemLease.dispose();
+    assert.throws(() => System.setClipboard("after dispose"), UnsupportedFlashFeatureError);
+    replacementSystemLease.dispose();
 });
+
+function craftedPrototypeConstruct(exportedBase: unknown, methodName: string): object {
+    const base = exportedBase as Function & { prototype: object };
+    function Fake(): void {}
+    Fake.prototype = Object.create(base.prototype) as object;
+    Object.defineProperty(Fake.prototype, methodName, { value: (): void => undefined });
+    return Reflect.construct(base, [], Fake);
+}
 
 function setHeapMemory(usedJSHeapSize: number): void {
     Object.defineProperty(globalThis.performance, "memory", {

@@ -115,8 +115,9 @@ export type {
 } from "./xml/StrictXmlDocument";
 export { Capabilities } from "./system/Capabilities";
 export { ImageDecodingPolicy } from "./system/ImageDecodingPolicy";
-export { System, NativeSystemHost, installNativeSystemHost } from "./system/System";
-export { ExternalInterface, NativeExternalInterfaceHost,
-    installNativeExternalInterfaceHost } from "./external/ExternalInterface";
-export type { ExternalInterfaceValue } from "./external/ExternalInterface";
+export { System, installNativeSystemHost } from "./system/System";
+export type { NativeSystemHost, NativeSystemHostLease } from "./system/System";
+export { ExternalInterface, installNativeExternalInterfaceHost } from "./external/ExternalInterface";
+export type { ExternalInterfaceValue, NativeExternalInterfaceHost,
+    NativeExternalInterfaceHostLease } from "./external/ExternalInterface";
 export { IllegalOperationError } from "./errors/IllegalOperationError";

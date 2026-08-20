@@ -557,7 +557,7 @@ const ensureFlashCapability = (id, subjects, evidencePath, evidenceTest) => {
     Object.assign(capability, {
         status: "typescript-obligation",
         obligations: subjects.map(([module, exported, kind]) => capability.obligations?.find(
-            item => item.module === module && item.export === exported)
+            item => item.module === module && item.export === exported && item.kind === kind)
             || { module, export: exported, kind, signature: "",
                 ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
         evidence: [{ path: evidencePath, test: evidenceTest, sha256: "", capability: id, covers: [] }],
@@ -569,7 +569,8 @@ ensureFlashCapability("api.flash.system", [
     ["src/layaAir/flash/system/Capabilities.ts", "Capabilities", "class"],
     ["src/layaAir/flash/system/ImageDecodingPolicy.ts", "ImageDecodingPolicy", "class"],
     ["src/layaAir/flash/system/System.ts", "System", "class"],
-    ["src/layaAir/flash/system/System.ts", "NativeSystemHost", "class"],
+    ["src/layaAir/flash/system/System.ts", "NativeSystemHost", "interface"],
+    ["src/layaAir/flash/system/System.ts", "NativeSystemHostLease", "interface"],
     ["src/layaAir/flash/system/System.ts", "installNativeSystemHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash system bridge compiler surface and clean-break dispositions");
@@ -577,7 +578,8 @@ ensureFlashCapability("api.flash.system", [
 ensureFlashCapability("api.flash.external", [
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterface", "class"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterfaceValue", "type"],
-    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHost", "class"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHost", "interface"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHostLease", "interface"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "installNativeExternalInterfaceHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash external call-only bridge compiler surface");

@@ -1,17 +1,60 @@
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 
-const SYSTEM_HOSTS = new WeakSet<object>();
 const UINT_MAX = 0xffffffff;
+declare const NATIVE_SYSTEM_HOST_LEASE: unique symbol;
+
 let systemHost: SystemHostRecord | null = null;
 let installingSystemHost = false;
 
+/** Structural application host accepted only through the explicit installer. */
+export interface NativeSystemHost {
+    setClipboard(text: string): void;
+}
+
+/** Opaque engine-issued ownership of the currently installed System host. */
+export interface NativeSystemHostLease {
+    readonly [NATIVE_SYSTEM_HOST_LEASE]: true;
+    readonly active: boolean;
+    readonly disposed: boolean;
+    dispose(): void;
+}
+
 interface SystemHostRecord {
-    readonly owner: NativeSystemHost;
-    readonly setClipboard: (text: string) => void;
+    owner: NativeSystemHost | null;
+    setClipboard: Function | null;
+    active: boolean;
 }
 
 interface BrowserHeapMemory {
     readonly usedJSHeapSize?: number;
+}
+
+const SYSTEM_LEASE_RECORDS = new WeakMap<object, SystemHostRecord>();
+
+class EngineNativeSystemHostLease implements NativeSystemHostLease {
+    declare readonly [NATIVE_SYSTEM_HOST_LEASE]: true;
+
+    constructor(record: SystemHostRecord) {
+        SYSTEM_LEASE_RECORDS.set(this, record);
+        Object.defineProperties(this, {
+            active: { get: () => requireLeaseRecord(this).active, enumerable: true },
+            disposed: { get: () => !requireLeaseRecord(this).active, enumerable: true },
+            dispose: {
+                value: EngineNativeSystemHostLease.prototype.dispose.bind(this),
+                writable: false,
+                enumerable: false,
+                configurable: false,
+            },
+        });
+        Object.freeze(this);
+    }
+
+    get active(): boolean { return requireLeaseRecord(this).active; }
+    get disposed(): boolean { return !requireLeaseRecord(this).active; }
+
+    dispose(): void {
+        retireSystemHost(requireLeaseRecord(this));
+    }
 }
 
 function usedHeapSize(): number {
@@ -23,35 +66,24 @@ function usedHeapSize(): number {
     return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value));
 }
 
-/** Nominal application bootstrap capability for synchronous clipboard handoff. */
-export abstract class NativeSystemHost {
-    protected constructor() {
-        const prototype = new.target?.prototype;
-        const method = prototype && Object.getOwnPropertyDescriptor(prototype, "setClipboard");
-        if (new.target === NativeSystemHost
-            || Object.getPrototypeOf(prototype) !== NativeSystemHost.prototype
-            || typeof method?.value !== "function")
-            throw new TypeError("NativeSystemHost requires a direct concrete data-method subclass");
-        SYSTEM_HOSTS.add(this);
-    }
+/**
+ * Installs or replaces the application bootstrap host and returns its opaque
+ * ownership lease. A stale lease can never dispose its successor.
+ */
+export function installNativeSystemHost(host: NativeSystemHost): NativeSystemHostLease {
+    if ((typeof host !== "object" && typeof host !== "function") || host === null)
+        throw new TypeError("Native System host must be an explicit structural capability");
+    if (installingSystemHost)
+        throw new Error("Native System host installation is already in progress");
 
-    /** Accepts text into the embedding host's clipboard workflow. */
-    abstract setClipboard(text: string): void;
-}
-
-/** Installs the single application-owned native System host. */
-export function installNativeSystemHost(host: NativeSystemHost): void {
-    if (typeof host !== "object" || host === null || !SYSTEM_HOSTS.has(host))
-        throw new TypeError("Native System host must be a nominal Laya capability");
-    if (systemHost !== null || installingSystemHost)
-        throw new Error("Native System host is already installed or installing");
     installingSystemHost = true;
     try {
         const setClipboard = requireDataMethod(host, "setClipboard", "Native System host");
-        systemHost = Object.freeze({
-            owner: host,
-            setClipboard: (text: string) => Reflect.apply(setClipboard, host, [text]),
-        });
+        const record: SystemHostRecord = { owner: host, setClipboard, active: true };
+        const lease = new EngineNativeSystemHostLease(record);
+        if (systemHost) retireSystemHost(systemHost);
+        systemHost = record;
+        return lease;
     } finally {
         installingSystemHost = false;
     }
@@ -72,16 +104,39 @@ export class System {
     static get totalMemoryNumber(): number { return usedHeapSize(); }
 
     static setClipboard(value: string): void {
-        if (systemHost === null)
+        const record = systemHost;
+        if (!record?.active || record.owner === null || record.setClipboard === null)
             throw new UnsupportedFlashFeatureError("flash.system.System.setClipboard",
                 "the application bootstrap has not installed a native clipboard host");
-        systemHost.setClipboard(value == null ? "" : String(value));
+        const text = value == null ? "" : String(value);
+        if (systemHost !== record || !record.active || record.owner === null || record.setClipboard === null)
+            throw new Error("Native System host changed during clipboard value coercion");
+        Reflect.apply(record.setClipboard, record.owner, [text]);
     }
+}
+
+function retireSystemHost(record: SystemHostRecord): void {
+    if (!record.active) return;
+    record.active = false;
+    record.owner = null;
+    record.setClipboard = null;
+    if (systemHost === record) systemHost = null;
+}
+
+function requireLeaseRecord(value: unknown): SystemHostRecord {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null)
+        throw new TypeError("Native System host lifecycle requires an engine-issued lease");
+    const record = SYSTEM_LEASE_RECORDS.get(value as object);
+    if (!record)
+        throw new TypeError("Native System host lifecycle requires an engine-issued lease");
+    return record;
 }
 
 function requireDataMethod(owner: object, name: string, label: string): Function {
     let cursor: object | null = owner;
-    while (cursor !== null) {
+    const visited = new Set<object>();
+    while (cursor !== null && !visited.has(cursor)) {
+        visited.add(cursor);
         const descriptor = Object.getOwnPropertyDescriptor(cursor, name);
         if (descriptor) {
             if (typeof descriptor.value !== "function")

@@ -21,23 +21,29 @@ try {
 (() => {
   const F = globalThis.LayaFlash;
   const checks = {};
-  try { Reflect.construct(F.NativeExternalInterfaceHost, []); checks.directExternal = false; }
-  catch { checks.directExternal = true; }
-  try { Reflect.construct(F.NativeSystemHost, []); checks.directSystem = false; }
-  catch { checks.directSystem = true; }
-  try { Reflect.construct(F.NativeExternalInterfaceHost, [], class Fake {}); checks.fakeNewTarget = false; }
-  catch { checks.fakeNewTarget = true; }
+  checks.noExternalBase = F.NativeExternalInterfaceHost === undefined;
+  checks.noSystemBase = F.NativeSystemHost === undefined;
+  const craftedConstruct = (base, methodName) => {
+    function Fake() {}
+    Fake.prototype = Object.create(base.prototype);
+    Object.defineProperty(Fake.prototype, methodName, { value() {} });
+    return Reflect.construct(base, [], Fake);
+  };
+  try { craftedConstruct(F.NativeExternalInterfaceHost, "call"); checks.craftedExternal = false; }
+  catch { checks.craftedExternal = true; }
+  try { craftedConstruct(F.NativeSystemHost, "setClipboard"); checks.craftedSystem = false; }
+  catch { checks.craftedSystem = true; }
   try { F.ExternalInterface.call("before"); checks.preinstall = false; }
   catch (error) {
     checks.preinstall = error instanceof F.UnsupportedFlashFeatureError
       && error.feature === "flash.external.ExternalInterface.call";
   }
-  class ExternalHost extends F.NativeExternalInterfaceHost {
-    constructor() { super(); this.calls = []; }
+  class ExternalHost {
+    constructor() { this.calls = []; }
     call(name, args) { this.calls.push([name, args]); return args.length; }
   }
-  class SystemHost extends F.NativeSystemHost {
-    constructor() { super(); this.value = null; }
+  class SystemHost {
+    constructor() { this.value = null; }
     setClipboard(text) { this.value = text; }
   }
   const malformed = new ExternalHost();
@@ -46,14 +52,31 @@ try {
   catch { checks.malformed = F.ExternalInterface.available === false; }
   const external = new ExternalHost();
   const system = new SystemHost();
-  F.installNativeExternalInterfaceHost(external);
-  F.installNativeSystemHost(system);
+  const externalLease = F.installNativeExternalInterfaceHost(external);
+  const systemLease = F.installNativeSystemHost(system);
   checks.call = F.ExternalInterface.call("console.log", "ready", 1) === 2;
   try { F.ExternalInterface.call("."); checks.dot = false; } catch { checks.dot = true; }
   try { F.ExternalInterface.call("console.log", { mutable: true }); checks.object = false; }
   catch { checks.object = external.calls.length === 1; }
   F.System.setClipboard("bundle");
   checks.clipboard = system.value === "bundle";
+  const replacementExternal = new ExternalHost();
+  const replacementExternalLease = F.installNativeExternalInterfaceHost(replacementExternal);
+  externalLease.dispose();
+  checks.externalReplacement = externalLease.disposed && replacementExternalLease.active
+    && F.ExternalInterface.call("replacement", 1) === 1;
+  const replacementSystem = new SystemHost();
+  const replacementSystemLease = F.installNativeSystemHost(replacementSystem);
+  systemLease.dispose();
+  F.System.setClipboard("replacement");
+  checks.systemReplacement = systemLease.disposed && replacementSystemLease.active
+    && replacementSystem.value === "replacement";
+  const forgedExternalLease = Object.create(Object.getPrototypeOf(replacementExternalLease));
+  try { forgedExternalLease.dispose(); checks.forgedLease = false; }
+  catch { checks.forgedLease = replacementExternalLease.active; }
+  replacementExternalLease.dispose();
+  replacementSystemLease.dispose();
+  checks.teardown = !F.ExternalInterface.available;
   const illegal = new F.IllegalOperationError("blocked", 17);
   const descriptor = Object.getOwnPropertyDescriptor(illegal, "errorID");
   checks.illegal = illegal.name === "Error" && illegal.toString() === "Error: blocked"

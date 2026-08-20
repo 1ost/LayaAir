@@ -1,23 +1,23 @@
 import {
-    ExternalInterface, ExternalInterfaceValue, NativeExternalInterfaceHost, installNativeExternalInterfaceHost,
+    ExternalInterface, ExternalInterfaceValue, installNativeExternalInterfaceHost,
 } from "../../src/layaAir/flash/external/ExternalInterface";
+import * as externalModule from "../../src/layaAir/flash/external/ExternalInterface";
 import { IllegalOperationError } from "../../src/layaAir/flash/errors/IllegalOperationError";
 import { UnsupportedFlashFeatureError } from "../../src/layaAir/flash/events/UnsupportedFlashFeatureError";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
-import { NativeSystemHost, System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import { System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import * as systemModule from "../../src/layaAir/flash/system/System";
 
-class BrowserExternalHost extends NativeExternalInterfaceHost {
+class BrowserExternalHost {
     readonly calls: string[] = [];
-    constructor() { super(); }
     call(functionName: string, arguments_: readonly ExternalInterfaceValue[]): unknown {
         this.calls.push(`${functionName}:${arguments_.join(",")}`);
         return arguments_.length;
     }
 }
 
-class BrowserSystemHost extends NativeSystemHost {
+class BrowserSystemHost {
     clipboard = "";
-    constructor() { super(); }
     setClipboard(text: string): void { this.clipboard = text; }
 }
 
@@ -27,19 +27,20 @@ try {
         preinstallTyped = error instanceof UnsupportedFlashFeatureError
             && error.feature === "flash.external.ExternalInterface.call";
     }
-    let directExternalRejected = false;
-    let directSystemRejected = false;
-    try { Reflect.construct(NativeExternalInterfaceHost as unknown as Function, []); }
-    catch { directExternalRejected = true; }
-    try { Reflect.construct(NativeSystemHost as unknown as Function, []); }
-    catch { directSystemRejected = true; }
-    let forgedNewTargetRejected = false;
-    try { Reflect.construct(NativeExternalInterfaceHost as unknown as Function, [], class Fake {}); }
-    catch { forgedNewTargetRejected = true; }
+    const externalBase = Reflect.get(externalModule, ["Native", "ExternalInterfaceHost"].join(""));
+    const systemBase = Reflect.get(systemModule, ["Native", "SystemHost"].join(""));
+    const noExternalConstructor = externalBase === undefined;
+    const noSystemConstructor = systemBase === undefined;
+    let craftedExternalRejected = false;
+    let craftedSystemRejected = false;
+    try { craftedPrototypeConstruct(externalBase, "call"); }
+    catch { craftedExternalRejected = true; }
+    try { craftedPrototypeConstruct(systemBase, "setClipboard"); }
+    catch { craftedSystemRejected = true; }
     const external = new BrowserExternalHost();
     const system = new BrowserSystemHost();
-    installNativeExternalInterfaceHost(external);
-    installNativeSystemHost(system);
+    const externalLease = installNativeExternalInterfaceHost(external);
+    const systemLease = installNativeSystemHost(system);
     const result = ExternalInterface.call("bleachDebugLog", "info", "ready");
     let invalidRejected = false;
     let objectRejected = false;
@@ -47,13 +48,31 @@ try {
     try { ExternalInterface.call("bleachDebugLog", { mutable: true } as unknown as ExternalInterfaceValue); }
     catch { objectRejected = true; }
     System.setClipboard("browser text");
+    const replacementExternal = new BrowserExternalHost();
+    const replacementExternalLease = installNativeExternalInterfaceHost(replacementExternal);
+    externalLease.dispose();
+    const staleExternalSafe = replacementExternalLease.active && ExternalInterface.call("replacement", 1) === 1;
+    const replacementSystem = new BrowserSystemHost();
+    const replacementSystemLease = installNativeSystemHost(replacementSystem);
+    systemLease.dispose();
+    System.setClipboard("replacement text");
+    const staleSystemSafe = replacementSystemLease.active && replacementSystem.clipboard === "replacement text";
     const illegal = new IllegalOperationError("blocked", 17);
     const descriptor = Object.getOwnPropertyDescriptor(illegal, "errorID");
+    const availableBeforeDispose = ExternalInterface.available;
+    replacementExternalLease.dispose();
+    replacementSystemLease.dispose();
+    let externalDisposed = !ExternalInterface.available;
+    let systemDisposed = false;
+    try { System.setClipboard("disposed"); } catch (error) {
+        systemDisposed = error instanceof UnsupportedFlashFeatureError;
+    }
     publish({
         ok: result === 2 && external.calls[0] === "bleachDebugLog:info,ready"
-            && system.clipboard === "browser text" && ExternalInterface.available
-            && preinstallTyped && directExternalRejected && directSystemRejected
-            && forgedNewTargetRejected
+            && system.clipboard === "browser text" && availableBeforeDispose
+            && preinstallTyped && noExternalConstructor && noSystemConstructor
+            && craftedExternalRejected && craftedSystemRejected && staleExternalSafe && staleSystemSafe
+            && externalDisposed && systemDisposed
             && invalidRejected && objectRejected && illegal.name === "Error"
             && illegal.toString() === "Error: blocked" && descriptor?.writable === false,
         version: Capabilities.version,
@@ -63,6 +82,14 @@ try {
     });
 } catch (error) {
     publish({ ok: false, error: error instanceof Error ? error.stack ?? error.message : String(error) });
+}
+
+function craftedPrototypeConstruct(exportedBase: unknown, methodName: string): object {
+    const base = exportedBase as Function & { prototype: object };
+    function Fake(): void {}
+    Fake.prototype = Object.create(base.prototype) as object;
+    Object.defineProperty(Fake.prototype, methodName, { value: (): void => undefined });
+    return Reflect.construct(base, [], Fake);
 }
 
 function publish(value: unknown): void {
