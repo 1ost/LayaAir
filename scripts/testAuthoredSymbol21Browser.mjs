@@ -22,6 +22,19 @@ const screenshot = process.env.SYMBOL21_SCREENSHOT_PATH
     ? resolve(process.env.SYMBOL21_SCREENSHOT_PATH)
     : join(temporaryDirectory, "symbol21.png");
 try {
+    const adversarial = spawnSync(process.execPath, [
+        join(root, "src/extensions/authoredContent/scripts/verifyFlashLibrarySymbol.cjs"),
+        sourceRoot,
+        "21",
+        "Processors_Mini.Accessories.LoadingScreenSkin",
+        "--adversarial",
+    ], { cwd: root, encoding: "utf8", timeout: 60_000, maxBuffer: 16 * 1024 * 1024 });
+    if (adversarial.error) throw adversarial.error;
+    assert.equal(adversarial.status, 0, `symbol21 fail-closed verification failed:\n${adversarial.stderr}`);
+    const rejected = JSON.parse(adversarial.stdout);
+    assert.equal(rejected.phase, "adapter-parse");
+    assert.equal(rejected.rejected.length, 15);
+
     const emission = spawnSync(process.execPath, [
         join(root, "src/extensions/authoredContent/scripts/emitFlashLibrarySymbolBundle.cjs"),
         sourceRoot,

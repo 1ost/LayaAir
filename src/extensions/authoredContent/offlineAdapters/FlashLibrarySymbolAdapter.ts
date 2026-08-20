@@ -13,6 +13,16 @@ type NeutralResourceInput = {
     readonly sha256: string;
 };
 
+const PLACEMENT_FIELDS = new Set(["characterId", "depth", "matrix", "move", "name", "op", "ratio"]);
+const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
+const TIMELINE_FIELDS = new Set(["frameCount", "frameRate", "frames", "schema", "symbolId", "symbolName"]);
+const FRAME_FIELDS = new Set(["durationTicks", "index", "labels", "operations", "sounds"]);
+const TEXT_FIELD_FIELDS = new Set([
+    "align", "autoSize", "border", "color", "fieldType", "fontId", "fontSize", "html", "indent",
+    "initialText", "leading", "leftMargin", "multiline", "password", "rightMargin", "selectable",
+    "useOutlines", "variableName", "wordWrap",
+]);
+
 export interface FlashLibraryResourceAuthority {
     readonly sourcePath: string;
     readonly mediaType: "image/jpeg" | "image/png";
@@ -167,7 +177,7 @@ export class FlashLibrarySymbolAdapter {
             array(current.operations, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1} operations`)
                 .forEach((operationValue, operationIndex) => {
                     const operation = object(operationValue, `timeline operation ${operationIndex}`);
-                    exactPlace(operation);
+                    exactPlace(operation, "replacement");
                     const depth = positiveInteger(operation.depth, "place.depth");
                     const characterId = positiveInteger(operation.characterId, "place.characterId");
                     const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
@@ -244,11 +254,24 @@ export class FlashLibrarySymbolAdapter {
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
         const textField = object(asset.textField, `library.assets.${characterId}.textField`);
+        exactKeys(textField, TEXT_FIELD_FIELDS, `library.assets.${characterId}.textField`, "FLASH_LIBRARY_TEXT_FIELD_UNSUPPORTED");
         if (textField.useOutlines !== false)
             fail("FLASH_LIBRARY_TEXT_OUTLINES_UNSUPPORTED", `Text ${characterId} is not a device-font field.`);
+        exactValue(textField.autoSize, false, "FLASH_LIBRARY_TEXT_AUTO_SIZE_UNSUPPORTED", `Text ${characterId} auto-size is unsupported.`);
+        exactValue(textField.html, false, "FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId} HTML mode is unsupported.`);
+        exactValue(textField.border, false, "FLASH_LIBRARY_TEXT_BORDER_UNSUPPORTED", `Text ${characterId} border rendering is unsupported.`);
+        exactValue(textField.variableName, "", "FLASH_LIBRARY_TEXT_VARIABLE_UNSUPPORTED", `Text ${characterId} has an unsupported internal variable binding.`);
+        const initialText = text(textField.initialText, `library.assets.${characterId}.textField.initialText`);
+        if (text(asset.initialText, `library.assets.${characterId}.initialText`) !== initialText)
+            fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
         const fontId = positiveInteger(textField.fontId, `library.assets.${characterId}.textField.fontId`);
         const fontAsset = object(assets[String(fontId)], `library.assets.${fontId}`);
+        if (fontAsset.kind !== "font")
+            fail("FLASH_LIBRARY_TEXT_FONT_REQUIRED", `Text ${characterId} does not reference a font asset.`);
         const font = object(fontAsset.font, `library.assets.${fontId}.font`);
+        const color = object(textField.color, `library.assets.${characterId}.textField.color`);
+        exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.textField.color`, "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
+        exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const placement = translation(operation);
         return {
@@ -263,7 +286,7 @@ export class FlashLibrarySymbolAdapter {
             variable: typeof operation.name === "string",
             textField: {
                 sourceId: characterId,
-                type: textField.fieldType,
+                type: oneOf(textField.fieldType, ["dynamic", "input"], "text.fieldType"),
                 multiline: boolean(textField.multiline, "text.multiline"),
                 wordWrap: boolean(textField.wordWrap, "text.wordWrap"),
                 selectable: boolean(textField.selectable, "text.selectable"),
@@ -272,16 +295,16 @@ export class FlashLibrarySymbolAdapter {
                 html: false,
                 gutter: 2,
                 overflow: "hidden",
-                initialText: textField.initialText ?? "",
+                initialText,
                 format: {
                     fontMode: "device",
                     font: string(font.family, `library.assets.${fontId}.font.family`),
                     size: finite(textField.fontSize, "text.fontSize"),
-                    color: finite(object(textField.color, "text.color").color, "text.color.color"),
+                    color: finite(color.color, "text.color.color"),
                     bold: boolean(font.bold, "font.bold"),
                     italic: boolean(font.italic, "font.italic"),
                     underline: false,
-                    align: textField.align,
+                    align: oneOf(textField.align, ["left", "center", "right", "justify"], "text.align"),
                     leftMargin: finite(textField.leftMargin, "text.leftMargin"),
                     rightMargin: finite(textField.rightMargin, "text.rightMargin"),
                     indent: finite(textField.indent, "text.indent"),
@@ -323,6 +346,7 @@ function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode)
 function timeline(values: ReadonlyMap<number, unknown>, id: number): Record<string, any> {
     const value = object(values.get(id), `timeline ${id}`);
     exactSchema(value, "flash-timeline@1", `timeline ${id}`);
+    exactKeys(value, TIMELINE_FIELDS, `timeline ${id}`, "FLASH_LIBRARY_TIMELINE_FIELD_UNSUPPORTED");
     return value;
 }
 
@@ -331,25 +355,42 @@ function frame(sourceTimeline: Record<string, any>, index: number): Record<strin
 }
 
 function rejectFrameSideEffects(value: Record<string, any>, symbolId: number): void {
+    exactKeys(value, FRAME_FIELDS, `timeline ${symbolId} frame`, "FLASH_LIBRARY_FRAME_FIELD_UNSUPPORTED");
     if (array(value.labels ?? [], `timeline ${symbolId}.labels`).length !== 0)
         fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", `Timeline ${symbolId} contains frame labels.`);
     if (array(value.sounds ?? [], `timeline ${symbolId}.sounds`).length !== 0)
         fail("FLASH_LIBRARY_FRAME_SOUNDS_UNSUPPORTED", `Timeline ${symbolId} contains frame sounds.`);
 }
 
-function exactPlace(operation: Record<string, any>): void {
+function exactPlace(operation: Record<string, any>, mode: "static" | "replacement" = "static"): void {
+    exactKeys(operation, PLACEMENT_FIELDS, "place", "FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED");
     if (operation.op !== "place")
         fail("FLASH_LIBRARY_DISPLAY_OPERATION_UNSUPPORTED", `Display operation '${String(operation.op)}' is unsupported.`);
+    positiveInteger(operation.characterId, "place.characterId");
+    positiveInteger(operation.depth, "place.depth");
+    const move = operation.move === undefined ? false : boolean(operation.move, "place.move");
+    if (operation.name !== undefined)
+        string(operation.name, "place.name");
+    if (mode === "static" && move)
+        fail("FLASH_LIBRARY_STATIC_MOVE_UNSUPPORTED", "A static placement cannot modify a prior depth.");
+    if (mode === "replacement" && operation.name !== undefined)
+        fail("FLASH_LIBRARY_REPLACEMENT_NAME_UNSUPPORTED", "Replacement frames cannot change instance names.");
+    if (mode === "replacement" && move && operation.matrix !== undefined)
+        fail("FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED", "Replacement frames cannot override the retained depth transform.");
     if (operation.ratio !== undefined && operation.ratio !== 0)
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Non-zero morph ratios are unsupported.");
-    if (operation.matrix !== undefined)
-        translation(operation);
+    if (operation.matrix !== undefined) {
+        const placement = translation(operation);
+        if (mode === "replacement" && (placement.x !== 0 || placement.y !== 0))
+            fail("FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED", "Replacement timelines require a zero-translation retained depth transform.");
+    }
 }
 
 function translation(operation: Record<string, any>): { x: number; y: number } {
     if (operation.matrix === undefined)
         return { x: 0, y: 0 };
     const matrix = object(operation.matrix, "place.matrix");
+    exactKeys(matrix, MATRIX_FIELDS, "place.matrix", "FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED");
     if (matrix.a !== 1 || matrix.b !== 0 || matrix.c !== 0 || matrix.d !== 1)
         fail("FLASH_LIBRARY_MATRIX_UNSUPPORTED", "Only untranslated unit-scale retained placements are admitted by this projection.");
     return { x: finite(matrix.tx, "place.matrix.tx"), y: finite(matrix.ty, "place.matrix.ty") };
@@ -358,6 +399,18 @@ function translation(operation: Record<string, any>): { x: number; y: number } {
 function exactSchema(value: Record<string, any>, expected: string, label: string): void {
     if (value.schema !== expected)
         fail("FLASH_LIBRARY_SCHEMA_UNSUPPORTED", `${label} schema must be '${expected}'.`);
+}
+
+function exactKeys(value: Record<string, any>, allowed: ReadonlySet<string>, label: string, code: string): void {
+    for (const key of Object.keys(value)) {
+        if (!allowed.has(key))
+            fail(code, `${label}.${key} is unsupported.`);
+    }
+}
+
+function exactValue(value: unknown, expected: unknown, code: string, message: string): void {
+    if (value !== expected)
+        fail(code, message);
 }
 
 function object(value: unknown, label: string): Record<string, any> {
@@ -376,6 +429,18 @@ function string(value: unknown, label: string): string {
     if (typeof value !== "string" || value.length === 0)
         fail("FLASH_LIBRARY_STRING_REQUIRED", `${label} must be a non-empty string.`);
     return value;
+}
+
+function text(value: unknown, label: string): string {
+    if (typeof value !== "string")
+        fail("FLASH_LIBRARY_TEXT_REQUIRED", `${label} must be text.`);
+    return value;
+}
+
+function oneOf<T extends string>(value: unknown, values: ReadonlyArray<T>, label: string): T {
+    if (typeof value !== "string" || !values.includes(value as T))
+        fail("FLASH_LIBRARY_ENUM_REQUIRED", `${label} must be one of ${values.join(", ")}.`);
+    return value as T;
 }
 
 function finite(value: unknown, label: string): number {
