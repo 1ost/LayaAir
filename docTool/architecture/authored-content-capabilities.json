@@ -281,7 +281,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
         }
       ],
       "evidence": [
@@ -294,7 +294,7 @@
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
           ]
         }
       ]
@@ -316,7 +316,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
         }
       ],
       "evidence": [
@@ -328,7 +328,7 @@
           "covers": [
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
-            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
           ]
         }
       ]
@@ -1744,6 +1744,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
             },
             {
               "abstract": false,
@@ -3855,6 +3864,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -5243,7 +5261,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d",
+          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99",
           "heritage": [
             {
               "kind": "extends",
@@ -5966,6 +5984,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -6169,6 +6196,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -8118,6 +8154,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -8321,6 +8366,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -9551,7 +9605,7 @@
             "new (): InteractiveObject"
           ],
           "indexSignatures": [],
-          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
+          "sha256": "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e",
           "heritage": [
             {
               "kind": "extends",
@@ -10288,6 +10342,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -10500,6 +10563,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -12648,6 +12720,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -12851,6 +12932,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -14863,6 +14953,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -15075,6 +15174,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -17033,6 +17141,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -18876,7 +18993,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509",
+          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
           "heritage": []
         },
         {
@@ -18912,7 +19029,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -18926,14 +19043,14 @@
           "export": "FlashStageBootstrap",
           "kind": "interface",
           "signature": "any",
-          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
+          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageBootstrapOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
+          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -18954,14 +19071,14 @@
           "export": "isFlashInteractiveObject",
           "kind": "function",
           "signature": "(value: unknown) => value is InteractiveObject",
-          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
+          "sha256": "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e"
         },
         {
           "module": "src/layaAir/flash/display/InteractiveObject.ts",
           "export": "resolveFlashFocusOwner",
           "kind": "function",
           "signature": "(value: unknown) => InteractiveObject | null",
-          "sha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
+          "sha256": "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -19413,14 +19530,14 @@
           "export": "FlashStageViewport",
           "kind": "interface",
           "signature": "any",
-          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
+          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageViewportOwner",
           "kind": "interface",
           "signature": "any",
-          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
+          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
         },
         {
           "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
@@ -20402,6 +20519,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -20632,6 +20758,15 @@
               "optional": false,
               "readonly": false,
               "signature": "LoaderInfo"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -22465,25 +22600,25 @@
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
             "0c183c816d8f0584029bc83e9bbe1e3c0c478881d621f99c000a15f8441d16ea",
+            "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e",
             "2708bec5931d56f474e03eeb7dfe4ad61e327c8364f52a41c5aa65225ecde313",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
-            "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509",
             "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
+            "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "9211d03bc7ce9096658a1f1b87c84625fead0c9b8c50d6a1de569d6b7ee3ad18",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
-            "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
-            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d",
+            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
             "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
           ]
@@ -30758,6 +30893,15 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "active",
               "scope": "instance",
               "optional": false,
@@ -31006,6 +31150,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "contextMenu",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenu"
             },
             {
               "abstract": false,
@@ -34155,6 +34308,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "accessibilityProperties",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "AccessibilityProperties"
             },
             {
               "abstract": false,
@@ -38839,17 +39001,1309 @@
           "indexSignatures": [],
           "sha256": "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/ui/Keyboard.ts",
+          "export": "Keyboard",
+          "kind": "class",
+          "signature": "typeof Keyboard",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "A",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ALTERNATE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "B",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BACKSPACE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "C",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CAPS_LOCK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "capsLock",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "COMMAND",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "CONTROL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "D",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DELETE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "DOWN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "E",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "END",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ENTER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ESCAPE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F1",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F10",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F11",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F12",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F2",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F3",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F4",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F5",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F6",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F7",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F8",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "F9",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "G",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "H",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HOME",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "I",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "INSERT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isAccessible",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "J",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "K",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "L",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LEFT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "M",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "N",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_0",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_1",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_2",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_3",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_4",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_5",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_6",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_7",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_8",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMBER_9",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "numLock",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_0",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_1",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_2",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_3",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_4",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_5",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_6",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_7",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_8",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_9",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_ADD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_DECIMAL",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_DIVIDE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_ENTER",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_MULTIPLY",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "NUMPAD_SUBTRACT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "O",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "P",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "PAGE_DOWN",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "PAGE_UP",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "Q",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "QUOTE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "R",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RIGHT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "S",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SEMICOLON",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SHIFT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "SPACE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "T",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TAB",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "U",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "UP",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "V",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "W",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "X",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "Y",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "Z",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "5984314d477a4ad6fab0323dd7831254cd337cf108a66cf7459632b73937d8e0",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/ui/Keyboard.ts",
+          "export": "FlashKeyboardStateLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "5984314d477a4ad6fab0323dd7831254cd337cf108a66cf7459632b73937d8e0"
+        },
+        {
+          "module": "src/layaAir/flash/ui/Keyboard.ts",
+          "export": "installNativeKeyboardStateHost",
+          "kind": "function",
+          "signature": "(target: EventTarget) => FlashKeyboardStateLease",
+          "sha256": "5984314d477a4ad6fab0323dd7831254cd337cf108a66cf7459632b73937d8e0"
+        },
+        {
+          "module": "src/layaAir/flash/ui/Mouse.ts",
+          "export": "Mouse",
+          "kind": "class",
+          "signature": "typeof Mouse",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "cursor",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "get string; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hide",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "registerCursor",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_name: string, _cursor: unknown) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "show",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "supportsCursor",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "supportsNativeCursor",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "unregisterCursor",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_name: string) => never"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "b9f2edf246d97fa62e2d7e3e71865234179a305fd44d604dbac03f541516c6ba",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/ui/ContextMenu.ts",
+          "export": "ContextMenu",
+          "kind": "class",
+          "signature": "typeof ContextMenu",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "builtInItems",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "ContextMenuBuiltInItems"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "customItems",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ContextMenuItem[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hideBuiltInItems",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (): ContextMenu"
+          ],
+          "indexSignatures": [],
+          "sha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/ui/ContextMenu.ts",
+          "export": "ContextMenuItem",
+          "kind": "class",
+          "signature": "typeof ContextMenuItem",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "caption",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => ContextMenuItem"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "enabled",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "separatorBefore",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (caption: string | null, separatorBefore?: boolean, enabled?: boolean, visible?: boolean): ContextMenuItem"
+          ],
+          "indexSignatures": [],
+          "sha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/ui/ContextMenu.ts",
+          "export": "ContextMenuBuiltInItems",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
+        },
+        {
+          "module": "src/layaAir/flash/ui/NativeContextMenuHost.ts",
+          "export": "NativeContextMenuHostOptions",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+        },
+        {
+          "module": "src/layaAir/flash/ui/NativeContextMenuHost.ts",
+          "export": "NativeContextMenuHostLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+        },
+        {
+          "module": "src/layaAir/flash/ui/NativeContextMenuHost.ts",
+          "export": "installNativeContextMenuHost",
+          "kind": "function",
+          "signature": "(options: NativeContextMenuHostOptions) => NativeContextMenuHostLease",
+          "sha256": "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230"
+        },
+        {
+          "module": "src/layaAir/flash/ui/ContextMenu.ts",
+          "export": "isFlashContextMenu",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ContextMenu",
+          "sha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
+        },
+        {
+          "module": "src/layaAir/flash/ui/ContextMenu.ts",
+          "export": "isFlashContextMenuItem",
+          "kind": "function",
+          "signature": "(value: unknown) => value is ContextMenuItem",
+          "sha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
         }
       ],
       "evidence": [
         {
-          "path": "tests/architecture/flashConstantsBridgeEvidence.test.ts",
-          "test": "Flash string constant compiler and runtime surface",
-          "sha256": "f5c6f851345b1c765a8979fd0eb81db2b0c1102731990ba6f09400059ba0485f",
+          "path": "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+          "test": "Flash UI host compiler surface and browser producer ownership",
+          "sha256": "6c5b2a306c35dbd9937f1903468e93b5a40fb614f2c68896f2820c2837b47cc4",
           "capability": "api.flash.ui",
           "covers": [
-            "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca"
+            "3af1cac806de162f684fd950d9e1dc65a407d626ca562aca7fb4d6a8023f3cca",
+            "5984314d477a4ad6fab0323dd7831254cd337cf108a66cf7459632b73937d8e0",
+            "b9f2edf246d97fa62e2d7e3e71865234179a305fd44d604dbac03f541516c6ba",
+            "d31f7ed1621bfb5031afa506a67199c5734081bb02f43ec210fc99eeec344230",
+            "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
           ]
+        }
+      ],
+      "heldSurfaces": [
+        {
+          "surface": "flash.ui.Mouse.registerCursor",
+          "reason": "HOLD: custom bitmap and animated cursors are not source-used and lack a cross-platform Laya cursor artifact contract."
+        },
+        {
+          "surface": "flash.ui.ContextMenu built-in items",
+          "reason": "HOLD: browsers do not permit replacement or augmentation of their native built-in context menu; retained game code hides every built-in item."
+        },
+        {
+          "surface": "flash.ui.ContextMenu clipboardItems",
+          "reason": "HOLD: retained game code does not use AIR clipboard-menu population and browsers do not expose an equivalent native menu surface."
+        },
+        {
+          "surface": "flash.ui.ContextMenu on non-DOM platforms",
+          "reason": "HOLD: the source-used custom menu is implemented by the browser DOM producer; native and mini-game shells require a platform-owned menu host."
         }
       ]
     },
@@ -39830,6 +41284,321 @@
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"
           ]
+        }
+      ]
+    },
+    {
+      "id": "api.flash.desktop",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/desktop/Clipboard.ts",
+          "export": "Clipboard",
+          "kind": "class",
+          "signature": "typeof Clipboard",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clear",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_format: string) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "formats",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_format: string, _transferMode?: string) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasFormat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_format: string) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(format: string, data: unknown, _serializable?: boolean) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "generalClipboard",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "Clipboard"
+            }
+          ],
+          "constructors": [
+            "new (): Clipboard"
+          ],
+          "indexSignatures": [],
+          "sha256": "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/desktop/Clipboard.ts",
+          "export": "NativeClipboardHost",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454"
+        },
+        {
+          "module": "src/layaAir/flash/desktop/Clipboard.ts",
+          "export": "NativeClipboardHostLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454"
+        },
+        {
+          "module": "src/layaAir/flash/desktop/Clipboard.ts",
+          "export": "installNativeClipboardHost",
+          "kind": "function",
+          "signature": "(host: NativeClipboardHost) => NativeClipboardHostLease",
+          "sha256": "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454"
+        },
+        {
+          "module": "src/layaAir/flash/desktop/Clipboard.ts",
+          "export": "createBrowserClipboardHost",
+          "kind": "function",
+          "signature": "(document?: Document, navigator?: Navigator) => NativeClipboardHost",
+          "sha256": "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454"
+        },
+        {
+          "module": "src/layaAir/flash/desktop/ClipboardFormats.ts",
+          "export": "ClipboardFormats",
+          "kind": "class",
+          "signature": "typeof ClipboardFormats",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "BITMAP_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:bitmap\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "FILE_LIST_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:file list\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "HTML_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:html\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "RICH_TEXT_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:rtf\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "TEXT_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:text\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "URL_FORMAT",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"air:url\""
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "b8c40d1dfd06a8fd2fb7f3ac719c61ef3b39f0dc964494e5faee6f7230e84917",
+          "heritage": []
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+          "test": "Flash desktop clipboard compiler surface and browser producer ownership",
+          "sha256": "6c5b2a306c35dbd9937f1903468e93b5a40fb614f2c68896f2820c2837b47cc4",
+          "capability": "api.flash.desktop",
+          "covers": [
+            "b8c40d1dfd06a8fd2fb7f3ac719c61ef3b39f0dc964494e5faee6f7230e84917",
+            "d3eedfe1d37daa7e559e134598edcf06e5ff0970cb2e3976c606426a3926e454"
+          ]
+        }
+      ],
+      "heldSurfaces": [
+        {
+          "surface": "flash.desktop.Clipboard reads",
+          "reason": "HOLD: browser clipboard reads are asynchronous, permission-gated and cannot truthfully satisfy AIR's synchronous API."
+        },
+        {
+          "surface": "flash.desktop.Clipboard non-text formats",
+          "reason": "HOLD: retained source publishes text only and no independently authenticated browser serialization contract exists for other AIR formats."
+        },
+        {
+          "surface": "flash.desktop non-Clipboard APIs",
+          "reason": "HOLD: this capability admits only the source-used clipboard boundary; native process, tray, application and filesystem actions remain separate platform work."
+        }
+      ]
+    },
+    {
+      "id": "api.flash.accessibility",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/accessibility/AccessibilityProperties.ts",
+          "export": "AccessibilityProperties",
+          "kind": "class",
+          "signature": "typeof AccessibilityProperties",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "description",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get string | null; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "forceSimple",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get boolean; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get string | null; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "noAutoLabeling",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get boolean; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "shortcut",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get string | null; set unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "silent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get boolean; set unknown"
+            }
+          ],
+          "constructors": [
+            "new (): AccessibilityProperties"
+          ],
+          "indexSignatures": [],
+          "sha256": "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/accessibility/AccessibilityProperties.ts",
+          "export": "AccessibilityPropertiesBinding",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3"
+        },
+        {
+          "module": "src/layaAir/flash/accessibility/AccessibilityProperties.ts",
+          "export": "bindAccessibilityProperties",
+          "kind": "function",
+          "signature": "(element: Element, initial: AccessibilityProperties | null) => AccessibilityPropertiesBinding",
+          "sha256": "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3"
+        },
+        {
+          "module": "src/layaAir/flash/accessibility/AccessibilityProperties.ts",
+          "export": "isFlashAccessibilityProperties",
+          "kind": "function",
+          "signature": "(value: unknown) => value is AccessibilityProperties",
+          "sha256": "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+          "test": "Flash accessibility metadata compiler surface and DOM binding ownership",
+          "sha256": "6c5b2a306c35dbd9937f1903468e93b5a40fb614f2c68896f2820c2837b47cc4",
+          "capability": "api.flash.accessibility",
+          "covers": [
+            "c6937d8c905afbc924e1c39173aebb41c2af855686cad5ab06378a234f58c6f3"
+          ]
+        }
+      ],
+      "heldSurfaces": [
+        {
+          "surface": "automatic canvas accessibility-tree projection",
+          "reason": "HOLD: the generic property/binding seam is admitted, but display geometry and action projection require a higher-level authored accessibility host."
         }
       ]
     }

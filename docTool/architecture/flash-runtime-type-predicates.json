@@ -747,7 +747,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "1c1dd98494b2dc2be49fe4a68e54ba17de7c59a117cdd22be155005fdc8546f3"
+      "moduleSha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
     },
     {
       "sourceQName": "flash.ui.ContextMenuItem",
@@ -763,7 +763,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "1c1dd98494b2dc2be49fe4a68e54ba17de7c59a117cdd22be155005fdc8546f3"
+      "moduleSha256": "e360070a7506572e4e9969ee8986257b57b71a95aaf4e4deea63c9f25bf2cab8"
     },
     {
       "sourceQName": "flash.utils.Timer",
