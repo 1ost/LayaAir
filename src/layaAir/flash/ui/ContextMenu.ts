@@ -41,8 +41,15 @@ export class ContextMenu extends EventDispatcher {
 
     get customItems(): ContextMenuItem[] | null { return this._customItems; }
     set customItems(value: ContextMenuItem[] | null) {
-        if (value !== null && (!Array.isArray(value) || !value.every(isFlashContextMenuItem)))
-            throw new TypeError("ContextMenu.customItems requires ContextMenuItem[] or null");
+        if (value !== null) {
+            if (!Array.isArray(value))
+                throw new TypeError("ContextMenu.customItems requires ContextMenuItem[] or null");
+            const itemCount = value.length;
+            for (let index = 0; index < itemCount; index++) {
+                if (!isFlashContextMenuItem(value[index]))
+                    throw new TypeError("ContextMenu.customItems requires ContextMenuItem[] or null");
+            }
+        }
         this._customItems = value;
     }
 

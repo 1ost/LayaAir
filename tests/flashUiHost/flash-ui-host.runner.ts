@@ -143,6 +143,18 @@ test("ContextMenu retains source-shaped item identity, mutation and dispatch", (
     assert.equal(menu.customItems, null);
     menu.customItems = [item];
     assert.throws(() => { (menu as any).customItems = [Object.freeze({})]; }, TypeError);
+    class EvilItems extends Array<ContextMenuItem> {}
+    const evilItems = new EvilItems();
+    evilItems.push(item);
+    Object.defineProperty(evilItems, "every", { value(): never { throw new Error("overridden every must not run"); } });
+    Object.defineProperty(evilItems, Symbol.iterator, {
+        value: function* (): IterableIterator<ContextMenuItem> {
+            yield Object.freeze({ caption: "forged" }) as unknown as ContextMenuItem;
+        },
+    });
+    menu.customItems = evilItems;
+    assert.equal(menu.customItems[0], item,
+        "validation uses indexed canonical entries rather than an overridable iterator/every");
 
     item.caption = null;
     item.separatorBefore = false;
@@ -367,6 +379,26 @@ test("Clipboard installation captures one callable and a hostile getter cannot o
     assert.deepEqual(capturedWrites, ["captured"]);
     assert.deepEqual(replacedWrites, []);
     capturedLease.dispose();
+
+    const oldWrites: string[] = [];
+    const newWrites: string[] = [];
+    const oldLease = installNativeClipboardHost({
+        writeText(value: string): boolean { oldWrites.push(value); return true; },
+    });
+    let coercionSuccessor: ReturnType<typeof installNativeClipboardHost> | null = null;
+    const hostileData = {
+        [Symbol.toPrimitive](): string {
+            coercionSuccessor = installNativeClipboardHost({
+                writeText(value: string): boolean { newWrites.push(value); return true; },
+            });
+            return "coerced";
+        },
+    };
+    assert.equal(Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, hostileData), true);
+    assert.deepEqual(oldWrites, []);
+    assert.deepEqual(newWrites, ["coerced"]);
+    oldLease.dispose();
+    coercionSuccessor!.dispose();
 });
 
 test("browser Clipboard ignores nested synthetic copy and requires the genuine event to publish", () => {

@@ -33,6 +33,9 @@ interface BrowserGateState {
     successorInstalled: boolean;
     resolverStaleInert: boolean;
     openingDismissStaleInert: boolean;
+    resolverDismissInert: boolean;
+    activationGetterFenced: boolean;
+    evilArrayIndexed: boolean;
 }
 
 void BrowserAdapter;
@@ -51,6 +54,7 @@ const state: BrowserGateState = {
     clipboardFailClosedOutsideGesture: false,
     disposeSelectionDispatches: 0, successorSelectionDispatches: 0, successorInstalled: false,
     resolverStaleInert: false, openingDismissStaleInert: false,
+    resolverDismissInert: false, activationGetterFenced: false, evilArrayIndexed: false,
 };
 
 class TestOwner extends InteractiveObject {
@@ -221,7 +225,6 @@ resolverCanvas.addEventListener("contextmenu", event => {
     if (!event.isTrusted || !resolverSuccessorHost) return;
     state.resolverStaleInert = !event.defaultPrevented && state.ownerFocused === resolverFocusBefore
         && !resolverHost.open && !resolverSuccessorHost.open;
-    queueMicrotask(() => { resolverSuccessorReady = true; });
 });
 
 const openingDismissCanvas = canvasAt(100, 270);
@@ -254,13 +257,91 @@ openingDismissRestore.addEventListener("focus", () => {
         canvas: openingDismissCanvas, document,
         resolveTarget: () => openingDismissSuccessorReady ? openingDismissOwner : null,
     });
-    setTimeout(() => { openingDismissSuccessorReady = true; }, 0);
 });
 openingDismissCanvas.addEventListener("contextmenu", event => {
     if (!event.isTrusted || !openingDismissSuccessor) return;
     state.openingDismissStaleInert = state.ownerFocused === openingDismissFocusBefore
         && !openingDismissHost.open && !openingDismissSuccessor.open
         && document.querySelectorAll("[data-flash-context-menu=true]").length === 0;
+});
+
+const generationCanvas = canvasAt(190, 270);
+const generationOwner = new TestOwner();
+const generationMenu = new ContextMenu();
+generationMenu.customItems.push(new ContextMenuItem("Generation fenced"));
+generationOwner.contextMenu = generationMenu;
+let generationArmed = true;
+let generationObserved = false;
+let generationFocusBefore = 0;
+let generationHost: ReturnType<typeof installNativeContextMenuHost>;
+generationHost = installNativeContextMenuHost({
+    canvas: generationCanvas, document, resolveTarget: () => {
+        if (generationArmed) {
+            generationArmed = false;
+            generationFocusBefore = state.ownerFocused;
+            generationHost.dismiss();
+        }
+        return generationOwner;
+    },
+});
+generationCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || generationArmed || generationObserved) return;
+    generationObserved = true;
+    state.resolverDismissInert = !event.defaultPrevented && state.ownerFocused === generationFocusBefore
+        && !generationHost.open;
+});
+
+const activationCanvas = canvasAt(280, 270);
+const activationOwner = new TestOwner();
+const activationMenu = new ContextMenu();
+const activationItem = new ContextMenuItem("Activation getter");
+activationMenu.customItems.push(activationItem);
+activationOwner.contextMenu = activationMenu;
+let activationArmed = false;
+let activationEnabledReadsAfterLoss = 0;
+let activationSuccessor: ReturnType<typeof installNativeContextMenuHost> | null = null;
+Object.defineProperty(activationItem, "visible", {
+    configurable: true,
+    get(): boolean {
+        if (activationArmed) {
+            activationArmed = false;
+            activationSuccessor = installNativeContextMenuHost({
+                canvas: activationCanvas, document, resolveTarget: () => activationOwner,
+            });
+        }
+        return true;
+    },
+    set(): void {},
+});
+Object.defineProperty(activationItem, "enabled", {
+    configurable: true,
+    get(): boolean {
+        if (activationSuccessor) activationEnabledReadsAfterLoss++;
+        return true;
+    },
+    set(): void {},
+});
+const activationHost = installNativeContextMenuHost({
+    canvas: activationCanvas, document, resolveTarget: () => activationOwner,
+});
+
+class EvilItems extends Array<ContextMenuItem> {}
+const evilCanvas = canvasAt(370, 270);
+const evilOwner = new TestOwner();
+const evilMenu = new ContextMenu();
+const canonicalEvilItem = new ContextMenuItem("Canonical indexed item");
+const evilItems = new EvilItems();
+evilItems.push(canonicalEvilItem);
+Object.defineProperty(evilItems, "every", { value(): boolean { return true; } });
+Object.defineProperty(evilItems, Symbol.iterator, {
+    value: function* (): IterableIterator<ContextMenuItem> {
+        yield Object.freeze({ caption: "FORGED" }) as unknown as ContextMenuItem;
+    },
+});
+evilMenu.customItems = evilItems;
+evilOwner.contextMenu = evilMenu;
+const evilHost = installNativeContextMenuHost({
+    canvas: evilCanvas, document, resolveTarget: () => evilOwner,
 });
 
 const accessible = document.createElement("div");
@@ -306,16 +387,29 @@ Object.assign(globalThis, {
         state, firstHost, primaryHost, reentrantHost, forgedHost, structuralHost, prior,
         disposeSelectionHost, predecessorSelectionHost, disposeSelectionRestore, successorSelectionRestore,
         openingDismissHost, openingDismissRestore,
+        generationHost, activationHost, evilHost,
         get successorSelectionOpen(): boolean { return successorSelectionHost?.open ?? false; },
         get resolverSuccessorOpen(): boolean { return resolverSuccessorHost?.open ?? false; },
         get openingDismissSuccessorOpen(): boolean { return openingDismissSuccessor?.open ?? false; },
         get openingDismissSuccessorInstalled(): boolean { return openingDismissSuccessor !== null; },
         get openingDismissFocusBefore(): number { return openingDismissFocusBefore; },
+        get activationSuccessorOpen(): boolean { return activationSuccessor?.open ?? false; },
         armDisposeSelection(): void { disposeSelectionArmed = true; },
         armSuccessorSelection(): void { successorSelectionArmed = true; },
         armOpeningDismiss(): void {
             openingDismissFocusBefore = state.ownerFocused;
             openingDismissArmed = true;
+        },
+        enableResolverSuccessor(): void { resolverSuccessorReady = true; },
+        enableOpeningDismissSuccessor(): void { openingDismissSuccessorReady = true; },
+        armActivationGetter(): void { activationArmed = true; },
+        finishActivationGetter(): void {
+            state.activationGetterFenced = activationEnabledReadsAfterLoss === 0
+                && !activationHost.open && !(activationSuccessor?.open ?? false);
+        },
+        verifyEvilArray(): void {
+            const button = document.querySelector<HTMLButtonElement>("[data-flash-context-menu=true] button");
+            state.evilArrayIndexed = button?.textContent === "Canonical indexed item";
         },
         programmaticSelection(): void {
             const before = state.route.length;
@@ -345,6 +439,10 @@ Object.assign(globalThis, {
             resolverSuccessorHost?.dispose();
             openingDismissHost.dispose();
             openingDismissSuccessor?.dispose();
+            generationHost.dispose();
+            activationHost.dispose();
+            activationSuccessor?.dispose();
+            evilHost.dispose();
             clipboardLease.dispose();
             return result;
         },

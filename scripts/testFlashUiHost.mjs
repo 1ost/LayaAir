@@ -54,6 +54,9 @@ try {
     assert.equal(payload.selectionFocusRestored, true);
     assert.equal(payload.resolverStaleInert, true);
     assert.equal(payload.openingDismissStaleInert, true);
+    assert.equal(payload.resolverDismissInert, true);
+    assert.equal(payload.activationGetterFenced, true);
+    assert.equal(payload.evilArrayIndexed, true);
     assert.deepEqual(payload.trustedDefaultStates, [true, false]);
     assert.deepEqual(payload.trustedKeyboardDefaultStates, [true]);
     assert.ok(payload.route.includes("item:true:true:true"));
@@ -171,6 +174,7 @@ async function runChromiumGate(chromium, html, temporaryDirectory) {
         assert.deepEqual(resolverSnapshot, {
             inert: true, predecessorOpen: null, successorOpen: false, popupCount: 0, pointTag: "CANVAS",
         });
+        await client.evaluate("globalThis.__flashUiHostTest.enableResolverSuccessor()");
         await client.mouse(290, 30, "right");
         await client.waitFor("globalThis.__flashUiHostTest.resolverSuccessorOpen === true");
         await client.key("Escape", "Escape", 27);
@@ -196,10 +200,40 @@ async function runChromiumGate(chromium, html, temporaryDirectory) {
             focusBefore: openingDismissSnapshot.focusBefore, focusAfter: openingDismissSnapshot.focusBefore,
             popupCount: 0,
         });
+        await client.evaluate("globalThis.__flashUiHostTest.enableOpeningDismissSuccessor()");
         await client.mouse(290, 120, "right");
         await client.waitFor("globalThis.__flashUiHostTest.openingDismissSuccessorOpen === true");
         await client.key("Escape", "Escape", 27);
         await client.waitFor("globalThis.__flashUiHostTest.openingDismissSuccessorOpen === false");
+
+        await client.mouse(290, 210, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.state.resolverDismissInert === true");
+        assert.equal(await client.evaluate("globalThis.__flashUiHostTest.generationHost.open"), false);
+        await client.mouse(290, 210, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.generationHost.open === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.generationHost.open === false");
+
+        await client.mouse(290, 300, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.activationHost.open === true");
+        await client.evaluate("globalThis.__flashUiHostTest.armActivationGetter()");
+        const activationButton = await client.evaluate(`(() => {
+            const rect = document.querySelector('[data-flash-context-menu=true] button').getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        })()`);
+        await client.mouse(activationButton.x, activationButton.y, "left");
+        await client.evaluate("globalThis.__flashUiHostTest.finishActivationGetter()");
+        assert.equal(await client.evaluate("globalThis.__flashUiHostTest.state.activationGetterFenced"), true);
+        await client.mouse(290, 300, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.activationSuccessorOpen === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.activationSuccessorOpen === false");
+
+        await client.mouse(290, 390, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.evilHost.open === true");
+        await client.evaluate("globalThis.__flashUiHostTest.verifyEvilArray()");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.evilHost.open === false");
 
         await client.evaluate("document.querySelector('canvas').focus()");
         await client.key("ContextMenu", "ContextMenu", 93);

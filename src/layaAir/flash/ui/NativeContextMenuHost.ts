@@ -22,14 +22,20 @@ interface HostAuthority {
 const CANVAS_AUTHORITIES = new WeakMap<HTMLElement, HostAuthority>();
 const CANVAS_INSTALLATIONS = new WeakMap<HTMLElement, object>();
 
-function findOwner(value: unknown): InteractiveObject | null {
+function findOwner(value: unknown, authenticate: () => boolean): InteractiveObject | null {
     let current = resolveFlashFocusOwner(value);
+    if (!authenticate()) return null;
     const seen = new Set<InteractiveObject>();
     while (current) {
         if (seen.has(current)) throw new Error("Context-menu owner ancestry is cyclic");
         seen.add(current);
-        if (!current.destroyed && isFlashContextMenu(current.contextMenu)) return current;
+        const destroyed = current.destroyed;
+        if (!authenticate()) return null;
+        const menu = current.contextMenu;
+        if (!authenticate()) return null;
+        if (!destroyed && isFlashContextMenu(menu)) return current;
         const parent = current.parent;
+        if (!authenticate()) return null;
         current = isFlashInteractiveObject(parent) ? parent : null;
     }
     return null;
@@ -94,7 +100,11 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
     const activate = (event: MouseEvent | KeyboardEvent, item: ContextMenuItem,
         owner: InteractiveObject, expectedGeneration: number): void => {
         if (!event.isTrusted || disposed || !ownsCanvas() || generation !== expectedGeneration
-            || !isFlashContextMenuItem(item) || !item.visible || !item.enabled) return;
+            || !isFlashContextMenuItem(item)) return;
+        const visible = item.visible;
+        if (disposed || !ownsCanvas() || generation !== expectedGeneration || !visible) return;
+        const enabled = item.enabled;
+        if (disposed || !ownsCanvas() || generation !== expectedGeneration || !enabled) return;
         dismiss();
         if (disposed || !ownsCanvas() || generation !== expectedGeneration + 1) return;
         item.dispatchEvent(new ContextMenuEvent(ContextMenuEvent.MENU_ITEM_SELECT, false, false, owner, owner));
@@ -107,20 +117,27 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
 
     const openFromEvent = (event: MouseEvent | KeyboardEvent, x: number, y: number): void => {
         if (!event.isTrusted || disposed || !ownsCanvas()) return;
+        const entryGeneration = generation;
+        const ownsEntry = (): boolean => !disposed && ownsCanvas() && generation === entryGeneration;
         const resolvedTarget = Reflect.apply(resolveTarget, options, []) as unknown;
-        if (disposed || !ownsCanvas()) return;
-        const owner = findOwner(resolvedTarget);
-        if (disposed || !ownsCanvas()) return;
+        if (!ownsEntry()) return;
+        const owner = findOwner(resolvedTarget, ownsEntry);
+        if (!ownsEntry()) return;
         if (!owner) return;
         const menu = owner.contextMenu;
-        if (disposed || !ownsCanvas()) return;
+        if (!ownsEntry()) return;
         if (!isFlashContextMenu(menu)) return;
         const rawItems = menu.customItems ?? [];
-        if (disposed || !ownsCanvas()) return;
-        const snapshot = Array.prototype.slice.call(rawItems) as unknown[];
-        if (disposed || !ownsCanvas()) return;
-        const canonicalItems = snapshot.every(isFlashContextMenuItem);
-        if (disposed || !ownsCanvas() || !canonicalItems) return;
+        if (!ownsEntry() || !Array.isArray(rawItems)) return;
+        const itemCount = rawItems.length;
+        if (!ownsEntry()) return;
+        const snapshot: ContextMenuItem[] = [];
+        for (let index = 0; index < itemCount; index++) {
+            const item = rawItems[index];
+            if (!ownsEntry() || !isFlashContextMenuItem(item)) return;
+            snapshot.push(item);
+        }
+        if (!ownsEntry()) return;
 
         event.preventDefault();
         dismiss();
@@ -140,14 +157,24 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
             dismiss();
             throw error;
         }
+        if (disposed || !ownsCanvas() || generation !== callbackGeneration) {
+            previousFocus = null;
+            return;
+        }
+        const ownerDestroyed = owner.destroyed;
+        if (disposed || !ownsCanvas() || generation !== callbackGeneration) {
+            previousFocus = null;
+            return;
+        }
+        const currentMenu = owner.contextMenu;
         if (disposed || !ownsCanvas() || generation !== callbackGeneration
-            || owner.destroyed || owner.contextMenu !== menu) {
+            || ownerDestroyed || currentMenu !== menu) {
             previousFocus = null;
             return;
         }
 
         const items: ContextMenuItem[] = [];
-        for (const item of snapshot as ContextMenuItem[]) {
+        for (const item of snapshot) {
             const visible = item.visible;
             if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
             if (visible) items.push(item);

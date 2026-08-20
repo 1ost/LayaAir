@@ -90,7 +90,8 @@ export class Clipboard {
     setData(format: string, data: unknown, _serializable = true): boolean {
         if (format !== ClipboardFormats.TEXT_FORMAT)
             throw new UnsupportedFlashFeatureError("flash.desktop.Clipboard.setData", `format '${String(format)}' is not admitted`);
-        return resolveHost().writeText(data === null || data === undefined ? "" : String(data));
+        const value = data === null || data === undefined ? "" : String(data);
+        return resolveHost().writeText(value);
     }
 
     clear(): never {
