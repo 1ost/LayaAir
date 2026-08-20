@@ -52,6 +52,8 @@ interface FlashDisplayRootRecord<TRoot extends LayaNode = LayaNode> {
     removalListenerInstalled: boolean;
     removalListenerCleanupPending: boolean;
     removalListenerCleanupInProgress: boolean;
+    operationDepth: number;
+    releasePending: boolean;
 }
 
 const LEASE_RECORDS = new WeakMap<object, FlashDisplayRootRecord<any>>();
@@ -98,7 +100,9 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             frameCleanupInProgress: false,
             removalListenerInstalled: false,
             removalListenerCleanupPending: false,
-            removalListenerCleanupInProgress: false
+            removalListenerCleanupInProgress: false,
+            operationDepth: 0,
+            releasePending: false
         };
         LEASE_RECORDS.set(this, record);
         for (const name of ["attach", "detach", "dispose"] as const) {
@@ -161,6 +165,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         record.root = root;
         ROOT_LEASES.set(root, this);
         record.phase = "attaching";
+        this._enterOperation(record);
         try {
             this._installRemovalListener(record, root);
             record.stage.addChild(root);
@@ -176,6 +181,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         } catch (error) {
             this._rollbackAttachment(record, root, firstClaim);
             throw error;
+        } finally {
+            this._leaveOperation(record);
         }
     }
 
@@ -187,6 +194,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         if (record.phase === "detached" && !this._hasFrameCleanup(record)
             && !this._hasRemovalListenerCleanup(record)) return root;
 
+        this._enterOperation(record);
+        try {
         record.phase = "detaching";
         let failure: unknown = NO_FAILURE;
         try {
@@ -262,11 +271,16 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
 
         if (failure !== NO_FAILURE) throw failure;
         return root;
+        } finally {
+            this._leaveOperation(record);
+        }
     }
 
     dispose(): void {
         const record = requireRecord<TRoot>(this);
         if (record.phase === "disposed" || record.phase === "disposing") return;
+        this._enterOperation(record);
+        try {
         const invokedDuringDetach = record.phase === "detaching";
         record.phase = "disposing";
         const root = record.root;
@@ -314,6 +328,9 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         if (record.phase === "dispose-pending" && failure === NO_FAILURE && !invokedDuringDetach)
             failure = this._pendingDisposalError();
         if (failure !== NO_FAILURE) throw failure;
+        } finally {
+            this._leaveOperation(record);
+        }
     }
 
     private _advanceFrame(generation: number): void {
@@ -525,6 +542,31 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             || record.removalListenerCleanupInProgress;
     }
 
+    private _enterOperation(record: FlashDisplayRootRecord<TRoot>): void {
+        record.operationDepth++;
+    }
+
+    private _leaveOperation(record: FlashDisplayRootRecord<TRoot>): void {
+        if (record.operationDepth <= 0)
+            throw new Error("Flash display-root lifecycle operation accounting underflow");
+        record.operationDepth--;
+        if (record.operationDepth !== 0) return;
+        if (!record.releasePending && record.phase !== "dispose-pending") return;
+
+        record.releasePending = false;
+        const root = record.root;
+        const rootCleanupComplete = root === null || (record.destroyRootOnDispose
+            ? root.destroyed
+            : !stageOwns(record, root) && root.parent == null);
+        const hostCleanupComplete = !this._hasFrameCleanup(record)
+            && !this._hasRemovalListenerCleanup(record);
+        if (rootCleanupComplete && hostCleanupComplete) {
+            this._releaseNow(record, root);
+        } else if (record.phase !== "disposed") {
+            record.phase = "dispose-pending";
+        }
+    }
+
     private _rollbackAttachment(record: FlashDisplayRootRecord<TRoot>, root: TRoot, firstClaim: boolean): void {
         try {
             this._stopFrames(record);
@@ -560,8 +602,17 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
     }
 
     private _release(record: FlashDisplayRootRecord<TRoot>, root: TRoot | null): void {
+        if (record.operationDepth !== 0) {
+            record.releasePending = true;
+            return;
+        }
+        this._releaseNow(record, root);
+    }
+
+    private _releaseNow(record: FlashDisplayRootRecord<TRoot>, root: TRoot | null): void {
         if (root && ROOT_LEASES.get(root) === this) ROOT_LEASES.delete(root);
         if (STAGE_LEASES.get(record.stage) === this) STAGE_LEASES.delete(record.stage);
+        record.releasePending = false;
         record.root = null;
         record.phase = "disposed";
     }

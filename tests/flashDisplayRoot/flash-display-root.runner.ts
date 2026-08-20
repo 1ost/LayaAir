@@ -30,12 +30,14 @@ class FakeScheduler {
     registerError: unknown = null;
     clearError: unknown = null;
     clearThrowsBeforeMutation = false;
+    beforeFrameRegistration: (() => void) | null = null;
 
     frameLoop(delay: number, caller: unknown, method: Function,
         args: unknown[] = [], coverBefore = true): void {
         assert.equal(delay, 1);
         assert.equal(coverBefore, true);
         this.frameLoopCalls++;
+        this.beforeFrameRegistration?.();
         const registration = { caller, method, args: [...args], active: true };
         this.registrations.push(registration);
         if (this.registerError) throw this.registerError;
@@ -405,6 +407,84 @@ test("reentrant dispose inside removal-listener on reconciles a listener install
         assert.throws(() => lease.attach(root), /installation was interrupted/);
         assert.deepEqual([lease.disposed, lease.root, root.destroyed, root.hasListener("removed"),
             stage.children.includes(root), scheduler.activeCount], [true, null, true, false, false, 0]);
+        const successor = FlashDisplayRootBoundary.claim(stage, () => undefined);
+        successor.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
+test("install-after-reentrant frame disposal retains authority when reconciliation clear fails", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new CountingNode();
+    let lease: FlashDisplayRootLease<CountingNode>;
+    try {
+        install(stage, scheduler);
+        lease = FlashDisplayRootBoundary.claim<CountingNode>(stage, () => undefined);
+        scheduler.beforeFrameRegistration = () => {
+            lease.dispose();
+            assert.throws(() => FlashDisplayRootBoundary.claim(stage, () => undefined), /already has/,
+                "authority release is deferred while frameLoop can still install");
+            scheduler.clearThrowsBeforeMutation = true;
+            scheduler.clearError = new Error("fixture reconciliation clear failure");
+        };
+        assert.throws(() => lease.attach(root), /frame registration was interrupted/);
+        assert.deepEqual([lease.disposed, lease.attached, lease.root, root.destroyed,
+            scheduler.activeCount], [false, false, root, true, 1]);
+        assert.throws(() => FlashDisplayRootBoundary.claim(stage, () => undefined), /already has/,
+            "the old lease must retain Stage authority while installed-after-cleanup work is possible");
+        const retained = scheduler.latest();
+        scheduler.fire(retained);
+
+        scheduler.beforeFrameRegistration = null;
+        scheduler.clearError = null;
+        lease.dispose();
+        assert.deepEqual([lease.disposed, lease.root, scheduler.activeCount], [true, null, 0]);
+        const successor = FlashDisplayRootBoundary.claim(stage, () => undefined);
+        successor.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
+test("install-after-reentrant listener disposal retains authority when reconciliation off fails", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new CountingNode();
+    const originalOn = root.on.bind(root);
+    const originalOff = root.off.bind(root);
+    let failBeforeRemoval = false;
+    let lease: FlashDisplayRootLease<CountingNode>;
+    root.off = ((type: string, caller: unknown, listener?: Function) => {
+        if (failBeforeRemoval) throw new Error("fixture reconciliation off failure");
+        return originalOff(type, caller, listener!);
+    }) as typeof root.off;
+    root.on = ((type: string, caller: unknown, listener?: Function, args?: unknown[]) => {
+        lease.dispose();
+        assert.throws(() => FlashDisplayRootBoundary.claim(stage, () => undefined), /already has/,
+            "authority release is deferred while on can still install");
+        failBeforeRemoval = true;
+        return originalOn(type, caller, listener!, args);
+    }) as typeof root.on;
+    try {
+        install(stage, scheduler);
+        lease = FlashDisplayRootBoundary.claim<CountingNode>(stage, () => undefined);
+        assert.throws(() => lease.attach(root), /fixture reconciliation off failure/);
+        assert.deepEqual([lease.disposed, lease.attached, lease.root, root.destroyed,
+            root.hasListener("removed"), scheduler.activeCount], [false, false, root, true, true, 0]);
+        assert.throws(() => FlashDisplayRootBoundary.claim(stage, () => undefined), /already has/,
+            "the old lease must retain Stage authority while listener cleanup is indeterminate");
+
+        failBeforeRemoval = false;
+        lease.dispose();
+        assert.deepEqual([lease.disposed, lease.root, root.hasListener("removed")], [true, null, false]);
         const successor = FlashDisplayRootBoundary.claim(stage, () => undefined);
         successor.dispose();
     } finally {
