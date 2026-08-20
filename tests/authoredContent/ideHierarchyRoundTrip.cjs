@@ -197,8 +197,15 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(
                 bitmapErrors
             );
             assert(bitmapErrors.length === 0, `AUTHORED_CONTENT_BITMAP_LH_PARSE_ERRORS: ${bitmapErrors.join("; ")}`);
-            assert(parsedBitmapRoots[0].getChildAt(0).getChildAt(0) instanceof globalThis.Laya.Image, "AUTHORED_CONTENT_PARSED_IMAGE_MISSING");
-            assert(parsedBitmapRoots[0].getChildAt(0).getChildAt(0).name === "heroImage", "AUTHORED_CONTENT_PARSED_IMAGE_NAME_LOST");
+            const parsedBitmapRoot = parsedBitmapRoots[0];
+            const parsedNested = parsedBitmapRoot.getChildAt(0);
+            const parsedImage = parsedNested.getChildAt(0);
+            const sourceNodes = [bitmapContent.root, bitmapContent.root.children[0], bitmapContent.root.children[0].children[0]];
+            const parsedNodes = [parsedBitmapRoot, parsedNested, parsedImage];
+            for (let index = 0; index < parsedNodes.length; index++) for (const field of ["x", "y", "width", "height", "alpha", "visible"])
+                assert(parsedNodes[index][field] === sourceNodes[index][field], `AUTHORED_CONTENT_PARSED_${index}_${field.toUpperCase()}_LOST`);
+            assert(parsedImage instanceof globalThis.Laya.Image, "AUTHORED_CONTENT_PARSED_IMAGE_MISSING");
+            assert(parsedImage.name === "heroImage", "AUTHORED_CONTENT_PARSED_IMAGE_NAME_LOST");
             parsedBitmapRoots[0].destroy();
             bitmapRoot.destroy();
             bitmapClip.destroy();

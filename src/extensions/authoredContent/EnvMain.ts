@@ -80,7 +80,7 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
             );
         }
         catch (error) {
-            if (libraryChanged && !isIncompleteFileRecovery(error)) {
+            if (libraryChanged) {
                 try {
                     await restoreEditorSubAssetState(
                         this,
@@ -102,11 +102,6 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
             nativeTimeline?.destroy();
         }
     }
-}
-
-function isIncompleteFileRecovery(error: unknown): boolean {
-    return error instanceof Error
-        && error.message.includes("AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_FAILED");
 }
 
 function aggregateFailure(message: string, errors: ReadonlyArray<unknown>): Error & { readonly errors: ReadonlyArray<unknown> } {

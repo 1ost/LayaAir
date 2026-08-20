@@ -77,6 +77,14 @@ interface InstalledFile {
     readonly authority: FileAuthority;
 }
 
+interface RecoveryJournal {
+    readonly schema: "laya-authored-content-recovery@2";
+    readonly targets: ReadonlyArray<{ readonly relativePath: string; readonly target: string }>;
+    readonly installed: ReadonlyArray<InstalledFile>;
+    readonly backups: ReadonlyArray<BackupFile>;
+    readonly failures: ReadonlyArray<string>;
+}
+
 /**
  * Real filesystem transaction for an authenticated native authored-content
  * bundle. Target state is snapshotted before the first staged byte and every
@@ -201,6 +209,7 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                 try {
                     await assertFileAuthority(quarantine, installed.authority, `rollback installed '${installed.relativePath}'`, this.host);
                     await fs.promises.rm(quarantine, { force: true });
+                    this.installed.delete(installed.target);
                 }
                 catch (error) {
                     if (await isMissing(installed.target, this.host))
@@ -227,6 +236,7 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                 await fs.promises.copyFile(backup.backup, backup.target, fs.constants.COPYFILE_EXCL);
                 await assertFileAuthority(backup.target, backup.authority, `restored '${backup.relativePath}'`, this.host);
                 await fs.promises.rm(backup.backup, { force: true });
+                this.backups.delete(backup.target);
             }
             catch (error) {
                 failures.push(asError(error));
@@ -235,16 +245,16 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
 
         if (failures.length !== 0) {
             try {
-                await fs.promises.mkdir(this.root, { recursive: true });
-                await fs.promises.writeFile(this.recoveryPath, `${JSON.stringify({
-                    schema: "laya-authored-content-recovery@1",
+                await persistRecoveryJournal(this.root, {
+                    schema: "laya-authored-content-recovery@2",
+                    targets: sortedTargets(this.targets).map(([relativePath, target]) => ({
+                        relativePath,
+                        target: this.host.path.resolve(target)
+                    })),
                     failures: failures.map(error => error.message),
-                    backups: [...this.backups.values()].map(backup => ({
-                        relativePath: backup.relativePath,
-                        target: backup.target,
-                        backup: backup.backup
-                    }))
-                }, null, 2)}\n`, { flag: "wx" });
+                    installed: [...this.installed.values()],
+                    backups: [...this.backups.values()]
+                }, this.host);
             }
             catch (evidenceError) {
                 failures.push(asError(evidenceError));
@@ -263,7 +273,8 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
         const { fs, path } = this.host;
         if (this.initialized)
             return;
-        await fs.promises.rm(this.root, { recursive: true, force: true });
+        if (!await isMissing(this.root, this.host))
+            fail("RECOVERY_PENDING", `Existing transaction state must be explicitly resumed and retired: ${this.recoveryPath}`);
         await fs.promises.mkdir(this.root, { recursive: true });
         for (const [, targetValue] of sortedTargets(this.targets)) {
             const target = path.resolve(targetValue);
@@ -283,6 +294,140 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
         this.installed.clear();
         this.initialized = false;
     }
+}
+
+/**
+ * Continues a retained rollback in a new editor process. The caller must
+ * provide the exact logical target closure, preventing a forged journal from
+ * naming arbitrary filesystem paths. Successful recovery remains durably
+ * recorded as an empty journal until explicitly retired.
+ */
+export async function resumeNativeAssetImporterRecovery(
+    tempPath: string,
+    targets: ReadonlyMap<string, string>,
+    host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
+): Promise<void> {
+    const root = host.path.resolve(tempPath, "authored-content-native-transaction");
+    const journal = await readRecoveryJournal(root, targets, host);
+    const installed = new Map(journal.installed.map(file => [file.target, file]));
+    const backups = new Map(journal.backups.map(file => [file.target, file]));
+    const failures: Error[] = [];
+
+    for (const file of [...installed.values()].reverse()) {
+        try {
+            if (!await isMissing(file.target, host)) {
+                await assertFileAuthority(file.target, file.authority, `recovery installed '${file.relativePath}'`, host);
+                const quarantine = host.path.join(root, "resume", `installed-${installed.size}`);
+                await host.fs.promises.mkdir(host.path.dirname(quarantine), { recursive: true });
+                await host.fs.promises.rename(file.target, quarantine);
+                await assertFileAuthority(quarantine, file.authority, `recovery quarantine '${file.relativePath}'`, host);
+                await host.fs.promises.rm(quarantine, { force: true });
+            }
+            installed.delete(file.target);
+        }
+        catch (error) {
+            failures.push(asError(error));
+        }
+    }
+
+    for (const backup of [...backups.values()].reverse()) {
+        try {
+            if (await isMissing(backup.backup, host)) {
+                await assertFileAuthority(backup.target, backup.authority, `already restored '${backup.relativePath}'`, host);
+            }
+            else {
+                await assertFileAuthority(backup.backup, backup.authority, `recovery backup '${backup.relativePath}'`, host);
+                if (await isMissing(backup.target, host)) {
+                    await host.fs.promises.mkdir(host.path.dirname(backup.target), { recursive: true });
+                    await host.fs.promises.copyFile(backup.backup, backup.target, host.fs.constants.COPYFILE_EXCL);
+                }
+                await assertFileAuthority(backup.target, backup.authority, `recovered '${backup.relativePath}'`, host);
+                await host.fs.promises.rm(backup.backup, { force: true });
+            }
+            backups.delete(backup.target);
+        }
+        catch (error) {
+            failures.push(asError(error));
+        }
+    }
+
+    await persistRecoveryJournal(root, {
+        schema: "laya-authored-content-recovery@2",
+        targets: journal.targets,
+        failures: failures.map(error => error.message),
+        installed: [...installed.values()],
+        backups: [...backups.values()]
+    }, host);
+    if (failures.length !== 0)
+        throw aggregateFailure(`AUTHORED_CONTENT_NATIVE_TRANSACTION_RESUME_INCOMPLETE: ${root}`, failures);
+}
+
+/** Deletes only an authenticated, fully recovered empty journal. */
+export async function retireNativeAssetImporterRecovery(
+    tempPath: string,
+    targets: ReadonlyMap<string, string>,
+    host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
+): Promise<void> {
+    const root = host.path.resolve(tempPath, "authored-content-native-transaction");
+    const journal = await readRecoveryJournal(root, targets, host);
+    if (journal.installed.length !== 0 || journal.backups.length !== 0)
+        fail("RECOVERY_NOT_COMPLETE", root);
+    await host.fs.promises.rm(root, { recursive: true, force: true });
+}
+
+async function persistRecoveryJournal(
+    root: string,
+    journal: RecoveryJournal,
+    host: NativeAssetTransactionHost
+): Promise<void> {
+    const recoveryPath = host.path.join(root, "recovery.json");
+    const nextPath = host.path.join(root, "recovery.next.json");
+    await host.fs.promises.mkdir(root, { recursive: true });
+    if (!await isMissing(nextPath, host))
+        fail("RECOVERY_UPDATE_PENDING", nextPath);
+    const bytes = `${JSON.stringify(journal, null, 2)}\n`;
+    await host.fs.promises.writeFile(nextPath, bytes, { flag: "wx" });
+    await host.fs.promises.rename(nextPath, recoveryPath);
+}
+
+async function readRecoveryJournal(
+    root: string,
+    targets: ReadonlyMap<string, string>,
+    host: NativeAssetTransactionHost
+): Promise<RecoveryJournal> {
+    const recoveryPath = host.path.join(root, "recovery.json");
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(recoveryPath));
+    const value = JSON.parse(raw) as Partial<RecoveryJournal>;
+    if (value.schema !== "laya-authored-content-recovery@2" || !Array.isArray(value.targets)
+        || !Array.isArray(value.installed)
+        || !Array.isArray(value.backups) || !Array.isArray(value.failures))
+        fail("RECOVERY_JOURNAL_INVALID", recoveryPath);
+    const expectedTargets = sortedTargets(targets).map(([relativePath, target]) => ({
+        relativePath,
+        target: host.path.resolve(target)
+    }));
+    if (value.targets.length !== expectedTargets.length || value.targets.some((item, index) =>
+        !item || item.relativePath !== expectedTargets[index].relativePath
+        || host.path.resolve(item.target) !== expectedTargets[index].target))
+        fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", recoveryPath);
+    const validate = (file: InstalledFile | BackupFile, backup: boolean): void => {
+        if (!file || typeof file !== "object" || !isCanonicalRelativePath(file.relativePath)
+            || typeof file.target !== "string" || !file.authority || typeof file.authority.byteLength !== "number"
+            || !Number.isSafeInteger(file.authority.byteLength) || file.authority.byteLength < 0
+            || !/^[0-9a-f]{64}$/.test(file.authority.sha256))
+            fail("RECOVERY_JOURNAL_INVALID", recoveryPath);
+        const expected = targets.get(file.relativePath);
+        if (!expected || host.path.resolve(expected) !== host.path.resolve(file.target))
+            fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", file.relativePath);
+        if (backup && (!("backup" in file) || typeof file.backup !== "string"
+            || !host.path.resolve(file.backup).startsWith(`${root}${host.path.sep}`)))
+            fail("RECOVERY_BACKUP_AUTHORITY_MISMATCH", file.relativePath);
+    };
+    for (const file of value.installed) validate(file, false);
+    for (const file of value.backups) validate(file, true);
+    if (value.failures.some(message => typeof message !== "string"))
+        fail("RECOVERY_JOURNAL_INVALID", recoveryPath);
+    return value as RecoveryJournal;
 }
 
 function sortedTargets(targets: ReadonlyMap<string, string>): Array<[string, string]> {

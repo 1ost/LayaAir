@@ -17,7 +17,9 @@ import { NativeLayaEmitter } from "../../src/extensions/authoredContent/emit/Nat
 import {
     NativeAssetImporterTransaction,
     NativeAssetTransactionEvent,
-    NativeAssetTransactionHost
+    NativeAssetTransactionHost,
+    resumeNativeAssetImporterRecovery,
+    retireNativeAssetImporterRecovery
 } from "../../src/extensions/authoredContent/emit/NativeAssetImporterTransaction";
 import {
     captureEditorSubAssetState,
@@ -147,6 +149,12 @@ function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
         root: {
             linkage: "Root",
             kind: "container",
+            x: 1,
+            y: 2,
+            width: 100,
+            height: 50,
+            alpha: 0.9,
+            visible: false,
             children: [{
                 linkage: "Front",
                 name: "frontLayer",
@@ -158,6 +166,12 @@ function bitmapHierarchyDocument(payload: Uint8Array): Record<string, unknown> {
                 name: "nestedSymbol",
                 kind: "container",
                 depth: 10,
+                x: 3,
+                y: 4,
+                width: 64,
+                height: 32,
+                alpha: 0.8,
+                visible: false,
                 children: [{
                     linkage: "HeroBitmap",
                     name: "heroImage",
@@ -187,10 +201,22 @@ function bitmapNativeHierarchy(): Record<string, any> {
         name: "Root",
         "_$ver": 1,
         "_$type": "Sprite",
+        x: 1,
+        y: 2,
+        width: 100,
+        height: 50,
+        alpha: 0.9,
+        visible: false,
         "_$child": [{
             zOrder: 10,
             name: "nestedSymbol",
             "_$type": "Sprite",
+            x: 3,
+            y: 4,
+            width: 64,
+            height: 32,
+            alpha: 0.8,
+            visible: false,
             "_$child": [{
                 skin: "res://hero-asset",
                 zOrder: 7,
@@ -370,7 +396,8 @@ async function main(): Promise<void> {
                 diagnostic
             );
             const driftedRoot = JSON.parse(JSON.stringify(hierarchy));
-            driftedRoot[field] = field === "visible" ? false : field === "alpha" ? 0.5 : 1;
+            driftedRoot[field] = field === "visible" ? !driftedRoot[field]
+                : field === "alpha" ? driftedRoot[field] / 2 : driftedRoot[field] + 1;
             assertThrows(
                 () => prepareNativeLayaHierarchy(content, driftedRoot, "timeline-asset", new Map([["hero", "hero-asset"]])),
                 diagnostic
@@ -452,6 +479,25 @@ async function main(): Promise<void> {
                 "AUTHORED_CONTENT_NATIVE_BUNDLE_BYTES_MUTATED"
             );
             assert(staged === 0, `${kind} mutation staged unauthenticated bytes`);
+        }
+        for (const laterIndex of [1, 2]) {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const expected = new Uint8Array(bundle.files[laterIndex].bytes);
+            const staged = new Map<string, Uint8Array>();
+            await writeNativeLayaAuthoredContentTransaction(bundle, {
+                async stage(filePath, bytes) {
+                    staged.set(filePath, new Uint8Array(bytes));
+                    if (staged.size === 1)
+                        bundle.files[laterIndex].bytes[0] ^= 0xff;
+                },
+                async commit() {},
+                async rollback() { throw new Error("rollback must not run"); }
+            });
+            const received = staged.get(bundle.files[laterIndex].path)!;
+            assert(received.length === expected.length && received.every((byte, index) => byte === expected[index]),
+                `inter-stage mutation reached authenticated ${bundle.files[laterIndex].kind} staging`);
         }
     });
 
@@ -603,6 +649,71 @@ async function main(): Promise<void> {
         finally {
             fs.rmSync(root, { recursive: true, force: true });
         }
+        }
+    });
+
+    await test("new-process recovery must be authenticated, resumed, and explicitly retired before retry", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-resume-"));
+        try {
+            const bundle = await prepareNativeLayaAuthoredContentBundle(
+                bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+            );
+            const targets = new Map(bundle.files.map(file => [
+                file.path,
+                path.join(root, "outputs", ...file.path.split("/"))
+            ]));
+            for (const target of targets.values()) {
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, new Uint8Array([5]));
+            }
+            const tempPath = path.join(root, "temp");
+            const failed = new NativeAssetImporterTransaction(
+                tempPath,
+                targets,
+                context => {
+                    if (context.event === "after-install" && context.relativePath === "bitmap-hierarchy.mc")
+                        throw new Error("late commit failure");
+                    if (context.event === "before-rollback-remove" && context.relativePath === "bitmap-hierarchy.mc")
+                        throw new Error("retained installed output");
+                },
+                nativeTransactionHost
+            );
+            await assertRejects(
+                () => writeNativeLayaAuthoredContentTransaction(bundle, failed),
+                "AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_FAILED"
+            );
+            const retainedJournal = fs.readFileSync(failed.recoveryPath);
+            const retry = new NativeAssetImporterTransaction(tempPath, targets, undefined, nativeTransactionHost);
+            await assertRejects(
+                () => retry.stage(bundle.files[0].path, bundle.files[0].bytes),
+                "AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_PENDING"
+            );
+            assert(fs.readFileSync(failed.recoveryPath).equals(retainedJournal),
+                "retry initialization deleted or rewrote retained recovery authority");
+
+            const forgedTargets = new Map(targets);
+            forgedTargets.set(bundle.files[0].path, path.join(root, "forged.lh"));
+            await assertRejects(
+                () => resumeNativeAssetImporterRecovery(tempPath, forgedTargets, nativeTransactionHost),
+                "AUTHORED_CONTENT_NATIVE_TRANSACTION_RECOVERY_TARGET_AUTHORITY_MISMATCH"
+            );
+            assert(fs.readFileSync(failed.recoveryPath).equals(retainedJournal),
+                "rejected recovery authority changed the retained journal");
+
+            await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+            const recovered = JSON.parse(fs.readFileSync(failed.recoveryPath, "utf8"));
+            assert(recovered.installed.length === 0 && recovered.backups.length === 0,
+                "successful resume did not durably record a resolved journal");
+            await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+            assert(!fs.existsSync(failed.recoveryPath), "explicit retirement left recovery authority behind");
+
+            await writeNativeLayaAuthoredContentTransaction(
+                bundle,
+                new NativeAssetImporterTransaction(tempPath, targets, undefined, nativeTransactionHost)
+            );
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
         }
     });
 

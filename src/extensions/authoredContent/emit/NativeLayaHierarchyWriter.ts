@@ -111,21 +111,27 @@ export async function writeNativeLayaAuthoredContentTransaction(
     const authority = sealedBundleAuthorities.get(bundle);
     if (!authority || authority.length !== bundle.files.length)
         fail("AUTHORED_CONTENT_NATIVE_BUNDLE_AUTHORITY_REQUIRED", "The native bundle was not prepared by the authenticated writer.");
+    const authenticatedFiles: NativeAuthoredContentBundleFile[] = [];
     for (let index = 0; index < bundle.files.length; index++) {
         const file = bundle.files[index];
         const expected = authority[index];
-        if (file.path !== expected.path || file.bytes.byteLength !== expected.byteLength
-            || hashBytes(file.bytes) !== expected.sha256) {
+        // Snapshot every file before the first awaited host call. Otherwise a
+        // stage callback could mutate a later file after its validation and
+        // before that later file is cloned.
+        const bytes = cloneBytes(file.bytes);
+        if (file.path !== expected.path || bytes.byteLength !== expected.byteLength
+            || hashBytes(bytes) !== expected.sha256) {
             fail(
                 "AUTHORED_CONTENT_NATIVE_BUNDLE_BYTES_MUTATED",
                 `Prepared native file '${expected.path}' drifted before staging.`
             );
         }
+        authenticatedFiles.push(Object.freeze({ path: expected.path, kind: file.kind, bytes }));
     }
     let committed = false;
     try {
-        for (const file of bundle.files)
-            await transaction.stage(file.path, cloneBytes(file.bytes));
+        for (const file of authenticatedFiles)
+            await transaction.stage(file.path, file.bytes);
         await transaction.commit();
         committed = true;
     }
