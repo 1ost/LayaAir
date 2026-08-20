@@ -197,7 +197,7 @@
     {
       "id": "media.font",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "The authored-font registry admits immutable converted manifests and exact text providers only; broad platform font-media coverage remains unresolved."
     },
     {
       "id": "media.audio",
@@ -30917,6 +30917,24 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "fontFamilyResolver",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "TextFontFamilyResolver"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "fontMetricsProvider",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "TextFontMetricsProvider"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -32087,6 +32105,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "textAdvanceProvider",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "TextAdvanceProvider"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "textHeight",
               "scope": "instance",
@@ -32333,7 +32360,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a",
+          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a",
           "heritage": [
             {
               "kind": "extends",
@@ -32349,7 +32376,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
+          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -32359,7 +32386,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
+          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -32369,7 +32396,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
+          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -35238,17 +35265,107 @@
           "constructors": [],
           "indexSignatures": [],
           "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
+        },
+        {
+          "module": "src/layaAir/flash/text/Font.ts",
+          "export": "FlashFontClass",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542"
+        },
+        {
+          "module": "src/layaAir/flash/text/Font.ts",
+          "export": "FlashFontRegistration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542"
+        },
+        {
+          "module": "src/layaAir/flash/text/Font.ts",
+          "export": "Font",
+          "kind": "class",
+          "signature": "typeof Font",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#glyphCodePoints",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "ReadonlySet<number>"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "fontName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "fontStyle",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"bold\" | \"boldItalic\" | \"italic\" | \"regular\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "fontType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"device\" | \"embedded\" | \"embeddedCFF\""
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasGlyphs",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(str: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "enumerateFonts",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(enumerateDeviceFonts?: boolean) => Font[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "registerFont",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(fontClass: FlashFontClass) => void"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Flash text bridge compiler surface",
-          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
+          "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "api.flash.text",
           "covers": [
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
-            "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a",
+            "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a",
+            "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
           ]
@@ -37157,7 +37274,7 @@
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Authored device TextField configuration compiler surface",
-          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
+          "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
             "2840e8ca11328601f41f6aea7dbb7f85c0ccacf0c6d3982d0b90b21e8bc33b3e"
@@ -37202,7 +37319,7 @@
         {
           "path": "tests/architecture/flashTextBridgeEvidence.test.ts",
           "test": "Authored texture-backed StaticText configuration compiler surface",
-          "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
+          "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-static-text-texture-foundation",
           "covers": [
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
@@ -37432,6 +37549,235 @@
           "capability": "api.flash.xml",
           "covers": [
             "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text.authored-font-registry",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontBinding",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontBindingCancelledError",
+          "kind": "class",
+          "signature": "typeof AuthoredFontBindingCancelledError",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "message",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "stack",
+              "scope": "instance",
+              "optional": true,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "captureStackTrace",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetObject: object, constructorOpt?: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "prepareStackTrace",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(err: Error, stackTraces: NodeJS.CallSite[]) => any"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "stackTraceLimit",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (): AuthoredFontBindingCancelledError"
+          ],
+          "indexSignatures": [],
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "Error"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontKey",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontManifest",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontManifestEntry",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontRegistry",
+          "kind": "class",
+          "signature": "typeof AuthoredFontRegistry",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "activateFlashBridge",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "bindText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, documentId: string) => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispose",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Promise<void>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "disposeDocument",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string) => Promise<void>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDocumentLoaded",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "manifest",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "AuthoredFontManifest"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preload",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string, signal?: AbortSignal) => Promise<readonly AuthoredFontRuntimeRecord[]>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preloadAndBind",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, documentId: string, signal?: AbortSignal) => Promise<AuthoredFontBinding>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "runtimeFamilyFor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: AuthoredFontKey) => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "enumeratePublishedFonts",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => readonly FlashFontRecordView[]"
+            }
+          ],
+          "constructors": [
+            "new (manifest: AuthoredFontManifest): AuthoredFontRegistry"
+          ],
+          "indexSignatures": [],
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredTextProviderConsumer",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredFontRegistryEvidence.test.ts",
+          "test": "Authored font registry compiler surface",
+          "sha256": "483569ec786959bb2c90c3b6568831baf6534e77bf63f36741e4904824e46852",
+          "capability": "text.authored-font-registry",
+          "covers": [
+            "c38ca50dba7c4b3d2f3eece7c75ec10390cdc9ff7f0abf549a39346c32dbe7eb"
           ]
         }
       ]
