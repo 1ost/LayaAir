@@ -428,6 +428,11 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         try {
             root.on(LayaEvent.REMOVED, this, this._handleRootRemoved);
         } catch (error) {
+            // `on` may have installed after reentrant cleanup and then thrown.
+            // Reacquire exact cleanup authority regardless of flags mutated by
+            // the nested lifecycle operation before attempting reconciliation.
+            record.removalListenerInstalled = false;
+            record.removalListenerCleanupPending = true;
             try {
                 this._removeRemovalListener(record, root);
             } catch {
@@ -482,8 +487,13 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         try {
             scheduler.frameLoop(1, this, this._advanceFrame, [generation], true);
         } catch (error) {
-            // Fence a callback that may have been installed before frameLoop threw.
+            // Fence and reacquire the exact scheduler even if a reentrant
+            // lifecycle operation cleared the provisional flags before
+            // frameLoop installed a callback and then threw.
             record.generation++;
+            record.frameScheduler = scheduler;
+            record.frameScheduled = false;
+            record.frameCleanupPending = true;
             try {
                 this._stopFrames(record);
             } catch {
