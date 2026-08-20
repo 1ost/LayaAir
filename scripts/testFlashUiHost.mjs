@@ -128,6 +128,34 @@ async function runChromiumGate(chromium, html, temporaryDirectory) {
         await client.mouse(30, 300, "right");
         assert.equal(await client.evaluate("document.querySelectorAll('[data-flash-context-menu=true]').length"), 0);
 
+        await client.evaluate("globalThis.__flashUiHostTest.disposeSelectionRestore.focus()");
+        await client.evaluate("globalThis.__flashUiHostTest.armDisposeSelection()");
+        await client.mouse(30, 390, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.disposeSelectionHost.open === true");
+        let selectionButton = await client.evaluate(`(() => {
+            const rect = document.querySelector('[data-flash-context-menu=true] button:not(:disabled)').getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        })()`);
+        await client.mouse(selectionButton.x, selectionButton.y, "left");
+        await client.waitFor("globalThis.__flashUiHostTest.disposeSelectionHost.open === false");
+        assert.equal(await client.evaluate("globalThis.__flashUiHostTest.state.disposeSelectionDispatches"), 0);
+
+        await client.evaluate("globalThis.__flashUiHostTest.successorSelectionRestore.focus()");
+        await client.evaluate("globalThis.__flashUiHostTest.armSuccessorSelection()");
+        await client.mouse(30, 480, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.predecessorSelectionHost.open === true");
+        selectionButton = await client.evaluate(`(() => {
+            const rect = document.querySelector('[data-flash-context-menu=true] button:not(:disabled)').getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        })()`);
+        await client.mouse(selectionButton.x, selectionButton.y, "left");
+        await client.waitFor("globalThis.__flashUiHostTest.state.successorInstalled === true");
+        assert.equal(await client.evaluate("globalThis.__flashUiHostTest.state.successorSelectionDispatches"), 0);
+        await client.mouse(30, 480, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.successorSelectionOpen === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.successorSelectionOpen === false");
+
         await client.evaluate("document.querySelector('canvas').focus()");
         await client.key("ContextMenu", "ContextMenu", 93);
         await client.waitFor("globalThis.__flashUiHostTest.primaryHost.open === true");

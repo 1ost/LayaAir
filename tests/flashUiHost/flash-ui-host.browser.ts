@@ -27,6 +27,9 @@ interface BrowserGateState {
     mouseBrowserProjection: boolean;
     keyboardProducerTeardown: boolean;
     clipboardFailClosedOutsideGesture: boolean;
+    disposeSelectionDispatches: number;
+    successorSelectionDispatches: number;
+    successorInstalled: boolean;
 }
 
 void BrowserAdapter;
@@ -42,6 +45,7 @@ const state: BrowserGateState = {
     accessibilitySuccessorPreserved: false, accessibilityBaselineRestored: false,
     mouseBrowserProjection: false, keyboardProducerTeardown: false,
     clipboardFailClosedOutsideGesture: false,
+    disposeSelectionDispatches: 0, successorSelectionDispatches: 0, successorInstalled: false,
 };
 
 class TestOwner extends InteractiveObject {
@@ -133,6 +137,59 @@ structuralCanvas.addEventListener("contextmenu", event => {
     if (event.isTrusted) state.route.push(`structural-default:${event.defaultPrevented}`);
 });
 
+const disposeSelectionCanvas = canvasAt(370);
+disposeSelectionCanvas.tabIndex = 0;
+const disposeSelectionOwner = new TestOwner();
+const disposeSelectionMenu = new ContextMenu();
+const disposeSelectionItem = new ContextMenuItem("Dispose during focus restoration");
+disposeSelectionMenu.customItems.push(disposeSelectionItem);
+disposeSelectionOwner.contextMenu = disposeSelectionMenu;
+disposeSelectionItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+    () => state.disposeSelectionDispatches++);
+let disposeSelectionArmed = false;
+let disposeSelectionHost = installNativeContextMenuHost({
+    canvas: disposeSelectionCanvas, document, resolveTarget: () => disposeSelectionOwner,
+});
+const disposeSelectionRestore = document.createElement("button");
+disposeSelectionRestore.textContent = "dispose selection restore";
+document.body.appendChild(disposeSelectionRestore);
+disposeSelectionCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || !disposeSelectionArmed) return;
+    disposeSelectionArmed = false;
+    const restore = document.activeElement;
+    if (restore instanceof HTMLElement)
+        restore.addEventListener("focus", () => disposeSelectionHost.dispose(), { once: true });
+}, true);
+
+const successorSelectionCanvas = canvasAt(460);
+successorSelectionCanvas.tabIndex = 0;
+const successorSelectionOwner = new TestOwner();
+const successorSelectionMenu = new ContextMenu();
+const successorSelectionItem = new ContextMenuItem("Install successor during focus restoration");
+successorSelectionMenu.customItems.push(successorSelectionItem);
+successorSelectionOwner.contextMenu = successorSelectionMenu;
+successorSelectionItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,
+    () => state.successorSelectionDispatches++);
+const predecessorSelectionHost = installNativeContextMenuHost({
+    canvas: successorSelectionCanvas, document, resolveTarget: () => successorSelectionOwner,
+});
+let successorSelectionHost: ReturnType<typeof installNativeContextMenuHost> | null = null;
+const successorSelectionRestore = document.createElement("button");
+successorSelectionRestore.textContent = "successor selection restore";
+document.body.appendChild(successorSelectionRestore);
+let successorSelectionArmed = false;
+successorSelectionCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || !successorSelectionArmed) return;
+    successorSelectionArmed = false;
+    const restore = document.activeElement;
+    if (restore instanceof HTMLElement) restore.addEventListener("focus", () => {
+        successorSelectionHost = installNativeContextMenuHost({
+            canvas: successorSelectionCanvas, document, resolveTarget: () => successorSelectionOwner,
+        });
+        state.successorInstalled = true;
+    }, { once: true });
+}, true);
+
 const accessible = document.createElement("div");
 accessible.setAttribute("aria-label", "original");
 document.body.appendChild(accessible);
@@ -170,6 +227,10 @@ Object.assign(globalThis, {
     __flashUiHostReady: true,
     __flashUiHostTest: {
         state, firstHost, primaryHost, reentrantHost, forgedHost, structuralHost, prior,
+        disposeSelectionHost, predecessorSelectionHost, disposeSelectionRestore, successorSelectionRestore,
+        get successorSelectionOpen(): boolean { return successorSelectionHost?.open ?? false; },
+        armDisposeSelection(): void { disposeSelectionArmed = true; },
+        armSuccessorSelection(): void { successorSelectionArmed = true; },
         programmaticSelection(): void {
             const before = state.route.length;
             document.querySelector<HTMLButtonElement>("[data-flash-context-menu=true] button:not(:disabled):last-of-type")?.click();
@@ -191,6 +252,9 @@ Object.assign(globalThis, {
             reentrantHost.dispose();
             forgedHost.dispose();
             structuralHost.dispose();
+            disposeSelectionHost.dispose();
+            predecessorSelectionHost.dispose();
+            successorSelectionHost?.dispose();
             clipboardLease.dispose();
             return result;
         },

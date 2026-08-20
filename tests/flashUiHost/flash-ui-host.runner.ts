@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
     AccessibilityProperties, Clipboard, ClipboardFormats, ContextMenu, ContextMenuItem,
-    Keyboard, installNativeClipboardHost, installNativeKeyboardStateHost,
+    Keyboard, installNativeClipboardHost, installNativeContextMenuHost, installNativeKeyboardStateHost,
 } from "../../src/layaAir/flash";
 import { isFlashAccessibilityProperties } from "../../src/layaAir/flash/accessibility/AccessibilityProperties";
 import { isFlashContextMenu, isFlashContextMenuItem } from "../../src/layaAir/flash/ui/ContextMenu";
@@ -61,6 +61,38 @@ test("ContextMenu retains source-shaped item identity, mutation and dispatch", (
     item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, () => observed++);
     item.dispatchEvent(new ContextMenuEvent(ContextMenuEvent.MENU_ITEM_SELECT));
     assert.equal(observed, 1);
+});
+
+test("ContextMenu host installation rollback attempts every removal and preserves the primary failure", () => {
+    const calls: string[] = [];
+    const primary = new Error("pointer listener installation failed");
+    const canvas = {
+        addEventListener(type: string): void { calls.push(`canvas:add:${type}`); },
+        removeEventListener(type: string): void {
+            calls.push(`canvas:remove:${type}`);
+            if (type === "contextmenu") throw new Error("cleanup failed");
+        },
+    } as unknown as HTMLElement;
+    const view = {
+        addEventListener(type: string): void { calls.push(`window:add:${type}`); },
+        removeEventListener(type: string): void { calls.push(`window:remove:${type}`); },
+    };
+    const document = {
+        body: {}, defaultView: view,
+        addEventListener(type: string): void {
+            calls.push(`document:add:${type}`);
+            throw primary;
+        },
+        removeEventListener(type: string): void { calls.push(`document:remove:${type}`); },
+    } as unknown as Document;
+
+    assert.throws(() => installNativeContextMenuHost({ canvas, document, resolveTarget: () => null }),
+        error => error === primary);
+    assert.deepEqual(calls, [
+        "canvas:add:contextmenu", "canvas:add:keydown", "document:add:pointerdown",
+        "canvas:remove:contextmenu", "canvas:remove:keydown", "document:remove:pointerdown",
+        "window:remove:blur",
+    ]);
 });
 
 test("Clipboard synchronously publishes only source-used text and leases cannot clobber successors", () => {

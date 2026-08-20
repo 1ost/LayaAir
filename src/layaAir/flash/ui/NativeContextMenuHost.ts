@@ -74,6 +74,7 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         if (!event.isTrusted || disposed || !ownsCanvas() || generation !== expectedGeneration
             || !isFlashContextMenuItem(item) || !item.visible || !item.enabled) return;
         dismiss();
+        if (disposed || !ownsCanvas() || generation !== expectedGeneration + 1) return;
         item.dispatchEvent(new ContextMenuEvent(ContextMenuEvent.MENU_ITEM_SELECT, false, false, owner, owner));
     };
 
@@ -190,11 +191,16 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         document.addEventListener("pointerdown", onDocumentPointerDown, true);
         document.defaultView?.addEventListener("blur", onWindowBlur);
     } catch (error) {
-        canvas.removeEventListener("contextmenu", onContextMenu);
-        canvas.removeEventListener("keydown", onCanvasKeyDown);
-        document.removeEventListener("pointerdown", onDocumentPointerDown, true);
-        document.defaultView?.removeEventListener("blur", onWindowBlur);
         disposed = true;
+        for (const operation of [
+            () => canvas.removeEventListener("contextmenu", onContextMenu),
+            () => canvas.removeEventListener("keydown", onCanvasKeyDown),
+            () => document.removeEventListener("pointerdown", onDocumentPointerDown, true),
+            () => document.defaultView?.removeEventListener("blur", onWindowBlur),
+        ]) {
+            try { operation(); }
+            catch { /* Preserve the installation failure after attempting every rollback. */ }
+        }
         throw error;
     }
 
