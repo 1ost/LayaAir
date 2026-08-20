@@ -8,7 +8,7 @@ import type {
     AuthoredFontManifestEntry,
     AuthoredFontRegistry,
     AuthoredTextProviderConsumer,
-} from "../../src/layaAir/flash/text/Font.ts";
+} from "../../src/layaAir/laya/platform/AuthoredFontRegistry.ts";
 
 test("Authored font registry compiler surface", () => {
     assert.ok(true as boolean satisfies ([

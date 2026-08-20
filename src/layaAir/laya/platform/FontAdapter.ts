@@ -4,7 +4,7 @@ import { URL } from "../net/URL";
 import { Browser } from "../utils/Browser";
 import { Utils } from "../utils/Utils";
 import { PAL } from "./PlatformAdapters";
-import { consumeFontTransactionPermit } from "../../flash/text/Font";
+import { consumeFontTransactionPermit } from "./AuthoredFontRegistry";
 
 export interface AuthenticatedFontReceiptIdentity {
     readonly key: string;

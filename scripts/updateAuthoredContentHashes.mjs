@@ -123,20 +123,9 @@ for (const [module, exported, kind = "class"] of [
 
 const textCapability = ledger.capabilities.find(item => item.id === "api.flash.text");
 const textSubjects = [
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontBinding", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontBindingCancelledError", "class"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontKey", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifest", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifestEntry", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontRegistry", "class"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontRuntimeRecord", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredFontStyle", "type"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredGlyphMetric", "interface"],
-    ["src/layaAir/flash/text/Font.ts", "AuthoredTextProviderConsumer", "interface"],
     ["src/layaAir/flash/text/Font.ts", "FlashFontClass", "interface"],
     ["src/layaAir/flash/text/Font.ts", "FlashFontRegistration", "interface"],
     ["src/layaAir/flash/text/Font.ts", "Font", "class"],
-    ["src/layaAir/flash/text/Font.ts", "consumeFontTransactionPermit", "function"],
     ["src/layaAir/flash/text/StaticText.ts", "StaticText"],
     ["src/layaAir/flash/text/StaticText.ts", "isFlashStaticText", "function"],
     ["src/layaAir/flash/text/TextField.ts", "TextField"],
@@ -204,13 +193,13 @@ if (!authoredFontCapability) {
 Object.assign(authoredFontCapability, {
     status: "typescript-obligation",
     obligations: [
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontBinding", "interface"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontBindingCancelledError", "class"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontKey", "interface"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifest", "interface"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontManifestEntry", "interface"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredFontRegistry", "class"],
-        ["src/layaAir/flash/text/Font.ts", "AuthoredTextProviderConsumer", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontBinding", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontBindingCancelledError", "class"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontKey", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontManifest", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontManifestEntry", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontRegistry", "class"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredTextProviderConsumer", "interface"],
     ].map(([module, exported, kind]) => authoredFontCapability.obligations?.find(
         item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "", sha256: "",

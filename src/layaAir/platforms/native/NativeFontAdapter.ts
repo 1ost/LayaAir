@@ -1,7 +1,7 @@
 import { ILoadTask } from "../../laya/net/Loader";
 import { AuthenticatedFontLoadReceipt, FontAdapter, FontLoadResult } from "../../laya/platform/FontAdapter";
 import { PAL } from "../../laya/platform/PlatformAdapters";
-import { consumeFontTransactionPermit } from "../../flash/text/Font";
+import { consumeFontTransactionPermit } from "../../laya/platform/AuthoredFontRegistry";
 
 export class NativeFontAdapter extends FontAdapter {
 

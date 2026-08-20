@@ -1,1 +1,1 @@
-export * from "../../../layaAir/flash/text/Font";
+export * from "../../../layaAir/laya/platform/AuthoredFontRegistry";
