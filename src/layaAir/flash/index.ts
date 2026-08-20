@@ -61,3 +61,12 @@ export { ColorMatrixFilter } from "./filters/ColorMatrixFilter";
 export { DropShadowFilter } from "./filters/DropShadowFilter";
 export { GlowFilter } from "./filters/GlowFilter";
 export { FilterProxy } from "./filters/FilterProxy";
+export { FlashGlobalErrorBoundary } from "./browser/FlashGlobalErrorBoundary";
+export type {
+    FlashGlobalErrorLease,
+    FlashGlobalErrorReceiver,
+    FlashGlobalErrorObservation,
+    FlashGlobalErrorReport,
+    FlashGlobalErrorSource,
+    FlashUnhandledRejectionReport,
+} from "./browser/FlashGlobalErrorBoundary";

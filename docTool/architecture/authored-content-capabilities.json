@@ -33548,6 +33548,86 @@
           ]
         }
       ]
+    },
+    {
+      "id": "api.flash.browser",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorBoundary",
+          "kind": "class",
+          "signature": "typeof FlashGlobalErrorBoundary",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "subscribe",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(target: globalThis.Window, receiver: FlashGlobalErrorReceiver) => FlashGlobalErrorLease"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorLease",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorReceiver",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorObservation",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorReport",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashGlobalErrorSource",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        },
+        {
+          "module": "src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts",
+          "export": "FlashUnhandledRejectionReport",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashBrowserBridgeEvidence.test.ts",
+          "test": "Flash browser global-error compiler surface",
+          "sha256": "b8f895408c4631e20fbd48c636af7cf005cda5f3ac8d9c60aabb41067947df58",
+          "capability": "api.flash.browser",
+          "covers": [
+            "ec6bb6e7b1e23f535ad884ee9c45255ba4a45eb3ef82842e171df842d3e0db9f"
+          ]
+        }
+      ]
     }
   ]
 }

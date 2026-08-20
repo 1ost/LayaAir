@@ -43,6 +43,8 @@
     "test:flash-byte-array:types": "tsc -p tests/flashByteArray/tsconfig.json --pretty false",
     "test:flash-display-root": "node scripts/testFlashDisplayRoot.mjs",
     "test:flash-display-root:types": "tsc -p tests/flashDisplayRoot/tsconfig.json --pretty false",
+    "test:flash-global-errors": "node scripts/testFlashGlobalErrors.mjs",
+    "test:flash-global-errors:types": "tsc -p tests/flashGlobalErrors/tsconfig.json --pretty false",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

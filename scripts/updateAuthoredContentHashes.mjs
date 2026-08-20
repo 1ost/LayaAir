@@ -312,6 +312,35 @@ Object.assign(renderingFilterCapability, {
 });
 delete renderingFilterCapability.blockingReason;
 
+let browserCapability = ledger.capabilities.find(item => item.id === "api.flash.browser");
+if (!browserCapability) {
+    browserCapability = { id: "api.flash.browser" };
+    ledger.capabilities.push(browserCapability);
+}
+Object.assign(browserCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorBoundary", "class"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorLease", "interface"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorReceiver", "type"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorObservation", "type"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorReport", "interface"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashGlobalErrorSource", "type"],
+        ["src/layaAir/flash/browser/FlashGlobalErrorBoundary.ts", "FlashUnhandledRejectionReport", "interface"],
+    ].map(([module, exported, kind]) => browserCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashBrowserBridgeEvidence.test.ts",
+        test: "Flash browser global-error compiler surface",
+        sha256: "",
+        capability: "api.flash.browser",
+        covers: [],
+    }],
+});
+delete browserCapability.blockingReason;
+
 const options = compilerOptions();
 const program = ts.createProgram({ rootNames: discoverCode(root), options });
 const checker = program.getTypeChecker();
