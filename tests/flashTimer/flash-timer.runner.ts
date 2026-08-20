@@ -8,6 +8,7 @@ import {
     getTimer, setTimeout as flashSetTimeout, clearTimeout as flashClearTimeout,
     setInterval as flashSetInterval, clearInterval as flashClearInterval,
 } from "../../src/layaAir/flash/utils/TimerFunctions";
+import * as timerFunctions from "../../src/layaAir/flash/utils/TimerFunctions";
 
 interface Registration {
     active: boolean;
@@ -300,6 +301,9 @@ class FakeFunctionTimerHost {
     clearError: unknown = null;
     scheduleError: unknown = null;
     fireDuringSchedule = false;
+    throwAfterRegistration: unknown = null;
+    readonly scheduleReceivers: unknown[] = [];
+    readonly clearReceivers: unknown[] = [];
 
     schedule(kind: "timeout" | "interval", callback: () => void, delay: number): unknown {
         if (this.scheduleError) throw this.scheduleError;
@@ -309,6 +313,7 @@ class FakeFunctionTimerHost {
         const registration = { kind, callback, delay, handle, cleared: false } as FunctionTimerRegistration;
         this.registrations.push(registration);
         if (this.fireDuringSchedule) callback();
+        if (this.throwAfterRegistration) throw this.throwAfterRegistration;
         return handle;
     }
 
@@ -330,12 +335,22 @@ function installFunctionTimerHost(host: FakeFunctionTimerHost): () => void {
         setInterval: globalThis.setInterval,
         clearInterval: globalThis.clearInterval,
     };
-    globalThis.setTimeout = ((callback: () => void, delay?: number) =>
-        host.schedule("timeout", callback, delay ?? 0)) as typeof globalThis.setTimeout;
-    globalThis.clearTimeout = ((handle: unknown) => host.clear(handle)) as typeof globalThis.clearTimeout;
-    globalThis.setInterval = ((callback: () => void, delay?: number) =>
-        host.schedule("interval", callback, delay ?? 0)) as typeof globalThis.setInterval;
-    globalThis.clearInterval = ((handle: unknown) => host.clear(handle)) as typeof globalThis.clearInterval;
+    globalThis.setTimeout = (function (this: unknown, callback: () => void, delay?: number) {
+        host.scheduleReceivers.push(this);
+        return host.schedule("timeout", callback, delay ?? 0);
+    }) as typeof globalThis.setTimeout;
+    globalThis.clearTimeout = (function (this: unknown, handle: unknown) {
+        host.clearReceivers.push(this);
+        host.clear(handle);
+    }) as typeof globalThis.clearTimeout;
+    globalThis.setInterval = (function (this: unknown, callback: () => void, delay?: number) {
+        host.scheduleReceivers.push(this);
+        return host.schedule("interval", callback, delay ?? 0);
+    }) as typeof globalThis.setInterval;
+    globalThis.clearInterval = (function (this: unknown, handle: unknown) {
+        host.clearReceivers.push(this);
+        host.clear(handle);
+    }) as typeof globalThis.clearInterval;
     return () => {
         globalThis.setTimeout = originals.setTimeout;
         globalThis.clearTimeout = originals.clearTimeout;
@@ -343,6 +358,11 @@ function installFunctionTimerHost(host: FakeFunctionTimerHost): () => void {
         globalThis.clearInterval = originals.clearInterval;
     };
 }
+
+test("timer function module exposes exactly the five admitted runtime names", () => {
+    assert.deepEqual(Object.keys(timerFunctions).sort(),
+        ["clearInterval", "clearTimeout", "getTimer", "setInterval", "setTimeout"]);
+});
 
 test("timer functions expose elapsed signed milliseconds from a local monotonic origin", () => {
     const first = getTimer();
@@ -357,7 +377,11 @@ test("timer functions normalize object and numeric host handles into sealed publ
     const restore = installFunctionTimerHost(host);
     try {
         const calls: unknown[][] = [];
-        const timeoutId = flashSetTimeout((...args: unknown[]) => calls.push(args), 12, "a", 2);
+        let callbackThis: unknown = globalThis;
+        const timeoutId = flashSetTimeout(function (this: unknown, ...args: unknown[]) {
+            callbackThis = this;
+            calls.push(args);
+        }, 12, "a", 2);
         const intervalId = flashSetInterval((...args: unknown[]) => calls.push(args), 7, "i");
         assert.deepEqual([Number.isInteger(timeoutId), Number.isInteger(intervalId), timeoutId > 0,
             intervalId > 0, timeoutId === intervalId], [true, true, true, true, false]);
@@ -370,6 +394,8 @@ test("timer functions normalize object and numeric host handles into sealed publ
         host.fire(host.registrations[1]);
         host.fire(host.registrations[1]);
         assert.deepEqual(calls, [["a", 2], ["i"], ["i"]]);
+        assert.equal(callbackThis, undefined, "callbacks use strict Flash function receiver semantics");
+        assert.equal(host.scheduleReceivers.every(receiver => receiver === globalThis), true);
 
         flashClearTimeout(intervalId);
         assert.equal(host.registrations[1].cleared, true, "the shared id namespace permits cross-clear");
@@ -377,6 +403,25 @@ test("timer functions normalize object and numeric host handles into sealed publ
         assert.deepEqual(calls, [["a", 2], ["i"], ["i"]]);
         flashClearInterval(timeoutId);
         assert.equal(host.registrations[0].cleared, false, "completed timeouts are already retired");
+        assert.equal(host.clearReceivers.every(receiver => receiver === globalThis), true);
+    } finally {
+        restore();
+    }
+});
+
+test("timer clearing uses the captured host clear function after a global boundary swap", () => {
+    const first = new FakeFunctionTimerHost();
+    const second = new FakeFunctionTimerHost();
+    const restore = installFunctionTimerHost(first);
+    try {
+        const id = flashSetInterval(() => {}, 1);
+        globalThis.clearInterval = (function (this: unknown, handle: unknown) {
+            second.clearReceivers.push(this);
+            second.clear(handle);
+        }) as typeof globalThis.clearInterval;
+        flashClearInterval(id);
+        assert.equal(first.registrations[0].cleared, true);
+        assert.equal(second.clearReceivers.length, 0);
     } finally {
         restore();
     }
@@ -455,6 +500,23 @@ test("interval callback errors retire the registration and preserve the primary 
     }
 });
 
+test("timeout callback errors retire before dispatch and preserve the primary error", () => {
+    const host = new FakeFunctionTimerHost();
+    const restore = installFunctionTimerHost(host);
+    try {
+        const primary = new Error("timeout callback failed");
+        let calls = 0;
+        const id = flashSetTimeout(() => { calls++; throw primary; }, 3);
+        const registration = host.registrations[0];
+        assert.throws(() => host.fire(registration), error => error === primary);
+        assert.doesNotThrow(() => flashClearTimeout(id));
+        assert.doesNotThrow(() => host.fire(registration));
+        assert.equal(calls, 1);
+    } finally {
+        restore();
+    }
+});
+
 test("timer function validation and registration failures are atomic", () => {
     const host = new FakeFunctionTimerHost();
     const restore = installFunctionTimerHost(host);
@@ -470,6 +532,14 @@ test("timer function validation and registration failures are atomic", () => {
         assert.throws(() => flashSetTimeout(() => {}, 0), error => error === expected);
         flashClearTimeout(0xffffffff);
         assert.equal(host.registrations.length, 0);
+
+        host.scheduleError = null;
+        host.throwAfterRegistration = expected;
+        let staleCalls = 0;
+        assert.throws(() => flashSetTimeout(() => staleCalls++, 0), error => error === expected);
+        assert.equal(host.registrations.length, 1);
+        host.fire(host.registrations[0]);
+        assert.equal(staleCalls, 0, "a host-retained callback is fenced after schedule throws");
     } finally {
         restore();
     }

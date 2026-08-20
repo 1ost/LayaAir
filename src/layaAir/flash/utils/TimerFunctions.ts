@@ -1,5 +1,3 @@
-type FlashTimerCallback = (...args: any[]) => unknown;
-
 type HostTimerHandle = unknown;
 type HostSchedule = (callback: () => void, delay: number) => HostTimerHandle;
 type HostClear = (handle: HostTimerHandle) => void;
@@ -8,7 +6,7 @@ interface FlashTimerEntry {
     readonly id: number;
     readonly generation: number;
     readonly kind: "timeout" | "interval";
-    readonly callback: FlashTimerCallback;
+    readonly callback: (...args: any[]) => unknown;
     readonly args: readonly unknown[];
     readonly hostClear: HostClear;
     active: boolean;
@@ -43,7 +41,7 @@ function readClock(): number {
 const timerOrigin = readClock();
 let lastElapsedMilliseconds = 0;
 
-function checkedCallback(value: FlashTimerCallback): FlashTimerCallback {
+function checkedCallback(value: (...args: any[]) => unknown): (...args: any[]) => unknown {
     if (typeof value !== "function") throw new TypeError("flash.utils timer callback must be a function");
     return value;
 }
@@ -107,7 +105,7 @@ function cancelTimer(id: number): void {
     if (entry) retire(entry, true);
 }
 
-function scheduleTimer(kind: "timeout" | "interval", callbackValue: FlashTimerCallback,
+function scheduleTimer(kind: "timeout" | "interval", callbackValue: (...args: any[]) => unknown,
     delayValue: number, args: readonly unknown[]): number {
     const callback = checkedCallback(callbackValue);
     const delay = checkedDelay(delayValue);
@@ -165,7 +163,7 @@ export function getTimer(): number {
 }
 
 /** Schedules one callback and returns a host-handle-independent Flash timer id. */
-export function setTimeout(callback: FlashTimerCallback, delay: number, ...args: unknown[]): number {
+export function setTimeout(callback: (...args: any[]) => unknown, delay: number, ...args: unknown[]): number {
     return scheduleTimer("timeout", callback, delay, args);
 }
 
@@ -175,7 +173,7 @@ export function clearTimeout(id: number): void {
 }
 
 /** Schedules a repeating callback and returns a host-handle-independent Flash timer id. */
-export function setInterval(callback: FlashTimerCallback, delay: number, ...args: unknown[]): number {
+export function setInterval(callback: (...args: any[]) => unknown, delay: number, ...args: unknown[]): number {
     return scheduleTimer("interval", callback, delay, args);
 }
 
