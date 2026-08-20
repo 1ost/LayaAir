@@ -39381,6 +39381,373 @@
           ]
         }
       ]
+    },
+    {
+      "id": "api.flash.system",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/system/Capabilities.ts",
+          "export": "Capabilities",
+          "kind": "class",
+          "signature": "typeof Capabilities",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "isDebugger",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "language",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "languages",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "readonly string[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "manufacturer",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "os",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "playerType",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "version",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/system/ImageDecodingPolicy.ts",
+          "export": "ImageDecodingPolicy",
+          "kind": "class",
+          "signature": "typeof ImageDecodingPolicy",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ON_DEMAND",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"onDemand\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "ON_LOAD",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"onLoad\""
+            }
+          ],
+          "constructors": [
+            "new (): ImageDecodingPolicy"
+          ],
+          "indexSignatures": [],
+          "sha256": "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/system/System.ts",
+          "export": "System",
+          "kind": "class",
+          "signature": "typeof System",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setClipboard",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "totalMemory",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "totalMemoryNumber",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/system/System.ts",
+          "export": "NativeSystemHost",
+          "kind": "class",
+          "signature": "typeof NativeSystemHost",
+          "members": [
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "setClipboard",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(text: string) => void"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/system/System.ts",
+          "export": "installNativeSystemHost",
+          "kind": "function",
+          "signature": "(host: NativeSystemHost) => void",
+          "sha256": "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+          "test": "Flash system bridge compiler surface and clean-break dispositions",
+          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "capability": "api.flash.system",
+          "covers": [
+            "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
+            "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
+            "fb2475fb2c51c13e71806e4fc236fc02774e5b87daae5de74be95702e582dc6e"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api.flash.external",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/external/ExternalInterface.ts",
+          "export": "ExternalInterface",
+          "kind": "class",
+          "signature": "typeof ExternalInterface",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "available",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "call",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(functionName: string, ...arguments_: unknown[]) => unknown"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/external/ExternalInterface.ts",
+          "export": "NativeExternalInterfaceHost",
+          "kind": "class",
+          "signature": "typeof NativeExternalInterfaceHost",
+          "members": [
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "call",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(functionName: string, arguments_: readonly unknown[]) => unknown"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/external/ExternalInterface.ts",
+          "export": "installNativeExternalInterfaceHost",
+          "kind": "function",
+          "signature": "(host: NativeExternalInterfaceHost) => void",
+          "sha256": "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+          "test": "Flash external call-only bridge compiler surface",
+          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "capability": "api.flash.external",
+          "covers": [
+            "df77fa6c9f84609889f4b3ac1e5bfed15a6d1de8141ff71abaa1c8de943c2636"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api.flash.errors",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/errors/IllegalOperationError.ts",
+          "export": "IllegalOperationError",
+          "kind": "class",
+          "signature": "typeof IllegalOperationError",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "errorID",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "message",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "stack",
+              "scope": "instance",
+              "optional": true,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "captureStackTrace",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetObject: object, constructorOpt?: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "prepareStackTrace",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(err: Error, stackTraces: NodeJS.CallSite[]) => any"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "stackTraceLimit",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            }
+          ],
+          "constructors": [
+            "new (message?: string, id?: number): IllegalOperationError"
+          ],
+          "indexSignatures": [],
+          "sha256": "5bb7d17b1b88a55812e2520ff590825b4dbd553664d21e3b009334607a889221",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "Error"
+            }
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+          "test": "Flash native illegal-operation error compiler surface",
+          "sha256": "8658012c1d47933e074956e01bd249689144bf55c3c0612b83b076b74a24e758",
+          "capability": "api.flash.errors",
+          "covers": [
+            "5bb7d17b1b88a55812e2520ff590825b4dbd553664d21e3b009334607a889221"
+          ]
+        }
+      ]
     }
   ]
 }

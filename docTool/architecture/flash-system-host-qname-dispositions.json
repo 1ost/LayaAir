@@ -1,0 +1,48 @@
+{
+  "schema": "laya-flash-qname-dispositions@1",
+  "sourceAuthority": "reachable Bleach tmain and tapplication_main ActionScript consumers",
+  "implemented": [
+    {
+      "qname": "flash.system.Capabilities",
+      "surface": "native browser runtime diagnostics; version identifies Laya rather than Flash Player"
+    },
+    {
+      "qname": "flash.system.ImageDecodingPolicy",
+      "surface": "native image decode scheduling values"
+    },
+    {
+      "qname": "flash.system.System",
+      "surface": "used heap diagnostics and explicit application clipboard host only"
+    },
+    {
+      "qname": "flash.external.ExternalInterface",
+      "surface": "explicit call-only application host; no global path lookup or callback publication"
+    },
+    {
+      "qname": "flash.errors.IllegalOperationError",
+      "surface": "native Error subtype with stable errorID"
+    }
+  ],
+  "holds": [
+    {
+      "qname": "flash.system.ApplicationDomain",
+      "reason": "HOLD: reachable consumers use SWF definition lookup and dynamic construction; port them to typed linkage/resource registries rather than recreating AVM domains or class registries."
+    },
+    {
+      "qname": "flash.system.LoaderContext",
+      "reason": "HOLD: reachable consumers attach ApplicationDomain to SWF/byte loading; native Loader accepts authenticated Laya hierarchies and deliberately rejects this context."
+    },
+    {
+      "qname": "flash.system.Security",
+      "reason": "HOLD: allowDomain and Flash policy files do not govern browser access; port bootstrap/network policy to CORS, CSP and authenticated providers."
+    },
+    {
+      "qname": "flash.xml.XMLNode",
+      "reason": "HOLD: the only reachable application use is legacy logging coercion; resources use StrictXmlDocument and application code must not acquire a mutable XML compatibility tree."
+    },
+    {
+      "qname": "__AS3__.vec.Vector",
+      "reason": "HOLD: native application TypeScript lowers source vectors to typed arrays/readonly arrays with workpack-specific validation; LayaAir must not ship a universal AS3 Vector runtime."
+    }
+  ]
+}

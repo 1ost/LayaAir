@@ -547,6 +547,44 @@ Object.assign(browserCapability, {
     }],
 });
 delete browserCapability.blockingReason;
+
+const ensureFlashCapability = (id, subjects, evidencePath, evidenceTest) => {
+    let capability = ledger.capabilities.find(item => item.id === id);
+    if (!capability) {
+        capability = { id };
+        ledger.capabilities.push(capability);
+    }
+    Object.assign(capability, {
+        status: "typescript-obligation",
+        obligations: subjects.map(([module, exported, kind]) => capability.obligations?.find(
+            item => item.module === module && item.export === exported)
+            || { module, export: exported, kind, signature: "",
+                ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+        evidence: [{ path: evidencePath, test: evidenceTest, sha256: "", capability: id, covers: [] }],
+    });
+    delete capability.blockingReason;
+};
+
+ensureFlashCapability("api.flash.system", [
+    ["src/layaAir/flash/system/Capabilities.ts", "Capabilities", "class"],
+    ["src/layaAir/flash/system/ImageDecodingPolicy.ts", "ImageDecodingPolicy", "class"],
+    ["src/layaAir/flash/system/System.ts", "System", "class"],
+    ["src/layaAir/flash/system/System.ts", "NativeSystemHost", "class"],
+    ["src/layaAir/flash/system/System.ts", "installNativeSystemHost", "function"],
+], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+"Flash system bridge compiler surface and clean-break dispositions");
+
+ensureFlashCapability("api.flash.external", [
+    ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterface", "class"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHost", "class"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "installNativeExternalInterfaceHost", "function"],
+], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+"Flash external call-only bridge compiler surface");
+
+ensureFlashCapability("api.flash.errors", [
+    ["src/layaAir/flash/errors/IllegalOperationError.ts", "IllegalOperationError", "class"],
+], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
+"Flash native illegal-operation error compiler surface");
 const authoredBitmapHierarchySubjects = {
     normalize: ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "normalizeNeutralAuthoredContent", "function"],
     parseXml: ["src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts", "parseSwfAuthoredContentXml", "function"],

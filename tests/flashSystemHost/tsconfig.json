@@ -1,0 +1,17 @@
+{
+  "extends": "../../src/layaAir/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ES2022",
+    "composite": false,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"]
+  },
+  "include": [
+    "./**/*.ts",
+    "../../src/layaAir/flash/system/**/*.ts",
+    "../../src/layaAir/flash/external/**/*.ts",
+    "../../src/layaAir/flash/errors/**/*.ts"
+  ]
+}
