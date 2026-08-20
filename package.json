@@ -20,7 +20,7 @@
     "buildDocToolRun": "node ./docTool/dist/index.js",
     "check:authored-content-admission": "node scripts/checkAuthoredContentAdmission.mjs",
     "test:authored-content-admission": "node --test tests/architecture/authoredContentAdmission.test.mjs",
-    "verify:authored-content-capabilities": "node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
+    "verify:authored-content-capabilities": "node scripts/updateAuthoredContentHashes.mjs --check && node scripts/checkAuthoredContentAdmission.mjs --verify-evidence",
     "check:authored-content-hashes": "node scripts/updateAuthoredContentHashes.mjs --check",
     "test:authored-content-hash-updater": "node --test tests/architecture/authoredContentHashUpdater.test.mjs",
     "test:websocket": "node scripts/testWebSocketCore.mjs",
