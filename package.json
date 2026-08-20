@@ -51,6 +51,9 @@
     "test:flash-display-root:types": "tsc -p tests/flashDisplayRoot/tsconfig.json --pretty false",
     "test:flash-global-errors": "node scripts/testFlashGlobalErrors.mjs",
     "test:flash-global-errors:types": "tsc -p tests/flashGlobalErrors/tsconfig.json --pretty false",
+    "test:flash-strict-xml": "node scripts/testFlashStrictXml.mjs",
+    "test:flash-strict-xml:types": "tsc -p tests/flashStrictXml/tsconfig.json --pretty false",
+    "test:flash-strict-xml:declarations": "node --test tests/flashStrictXml/flash-strict-xml.declarations.test.mjs",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

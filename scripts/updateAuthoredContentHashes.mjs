@@ -472,6 +472,38 @@ if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters
     });
 }
 
+let xmlCapability = ledger.capabilities.find(item => item.id === "api.flash.xml");
+if (!xmlCapability) {
+    xmlCapability = { id: "api.flash.xml" };
+    ledger.capabilities.push(xmlCapability);
+}
+Object.assign(xmlCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlDocument", "class"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlLimits", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlDeclaration", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlAttribute", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlText", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlCData", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlComment", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlElement", "interface"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlNode", "type"],
+        ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlDocumentNode", "type"],
+    ].map(([module, exported, kind]) => xmlCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashXmlBridgeEvidence.test.ts",
+        test: "Strict immutable XML resource compiler surface",
+        sha256: "",
+        capability: "api.flash.xml",
+        covers: [],
+    }],
+});
+delete xmlCapability.blockingReason;
+
 const options = compilerOptions();
 const program = ts.createProgram({ rootNames: compilerRoots(), options });
 const checker = program.getTypeChecker();

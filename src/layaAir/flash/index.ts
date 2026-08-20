@@ -78,3 +78,15 @@ export type {
     FlashGlobalErrorSource,
     FlashUnhandledRejectionReport,
 } from "./browser/FlashGlobalErrorBoundary";
+export { StrictXmlDocument } from "./xml/StrictXmlDocument";
+export type {
+    StrictXmlLimits,
+    StrictXmlDeclaration,
+    StrictXmlAttribute,
+    StrictXmlText,
+    StrictXmlCData,
+    StrictXmlComment,
+    StrictXmlElement,
+    StrictXmlNode,
+    StrictXmlDocumentNode,
+} from "./xml/StrictXmlDocument";

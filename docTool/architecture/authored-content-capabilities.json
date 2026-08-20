@@ -37114,6 +37114,152 @@
           ]
         }
       ]
+    },
+    {
+      "id": "api.flash.xml",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlDocument",
+          "kind": "class",
+          "signature": "typeof StrictXmlDocument",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "childNodes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "readonly StrictXmlDocumentNode[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "declaration",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "StrictXmlDeclaration"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "epilogComments",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "readonly StrictXmlComment[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "prologComments",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "readonly StrictXmlComment[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "root",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "StrictXmlElement"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parse",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(source: string, limits?: StrictXmlLimits) => StrictXmlDocument"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlLimits",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlDeclaration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlAttribute",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlText",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlCData",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlComment",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlElement",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlNode",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        },
+        {
+          "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
+          "export": "StrictXmlDocumentNode",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashXmlBridgeEvidence.test.ts",
+          "test": "Strict immutable XML resource compiler surface",
+          "sha256": "93d471d16220d01da0245804fc122f9a814ffcfe899b887b5af27b18de7c37dc",
+          "capability": "api.flash.xml",
+          "covers": [
+            "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          ]
+        }
+      ]
     }
   ]
 }
