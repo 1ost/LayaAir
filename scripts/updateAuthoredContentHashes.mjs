@@ -211,6 +211,11 @@ Object.assign(utilsCapability, {
     obligations: [
         ["src/layaAir/flash/utils/Timer.ts", "Timer", "class"],
         ["src/layaAir/flash/utils/Timer.ts", "isFlashTimer", "function"],
+        ["src/layaAir/flash/utils/TimerFunctions.ts", "getTimer", "function"],
+        ["src/layaAir/flash/utils/TimerFunctions.ts", "setTimeout", "function"],
+        ["src/layaAir/flash/utils/TimerFunctions.ts", "clearTimeout", "function"],
+        ["src/layaAir/flash/utils/TimerFunctions.ts", "setInterval", "function"],
+        ["src/layaAir/flash/utils/TimerFunctions.ts", "clearInterval", "function"],
         ["src/layaAir/flash/utils/Endian.ts", "Endian", "class"],
         ["src/layaAir/flash/utils/ByteArray.ts", "ByteArray", "class"],
         ["src/layaAir/flash/utils/ByteArray.ts", "ByteArrayInput", "type"],

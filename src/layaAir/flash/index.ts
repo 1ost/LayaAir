@@ -47,6 +47,7 @@ export { FontType } from "./text/FontType";
 export { URLRequest, navigateToURL } from "./net/URLRequest";
 export { URLLoaderDataFormat } from "./net/URLLoaderDataFormat";
 export { Timer } from "./utils/Timer";
+export { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from "./utils/TimerFunctions";
 export { Endian } from "./utils/Endian";
 export { ByteArray } from "./utils/ByteArray";
 export type { ByteArrayInput, ZlibDecompressionHost } from "./utils/ByteArray";

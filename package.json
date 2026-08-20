@@ -37,6 +37,7 @@
     "test:flash-filters:types": "tsc -p tests/flashFilters/tsconfig.json --pretty false",
     "test:flash-filters:gpu": "node scripts/testFlashFiltersGpu.mjs",
     "test:flash-timer": "node scripts/testFlashTimer.mjs",
+    "test:flash-timer:types": "tsc -p tests/flashTimer/tsconfig.json --pretty false",
     "test:flash-byte-array": "node scripts/testFlashByteArray.mjs",
     "test:flash-byte-array:types": "tsc -p tests/flashByteArray/tsconfig.json --pretty false",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"

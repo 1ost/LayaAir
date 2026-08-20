@@ -32122,6 +32122,41 @@
           "sha256": "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa"
         },
         {
+          "module": "src/layaAir/flash/utils/TimerFunctions.ts",
+          "export": "getTimer",
+          "kind": "function",
+          "signature": "() => number",
+          "sha256": "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd"
+        },
+        {
+          "module": "src/layaAir/flash/utils/TimerFunctions.ts",
+          "export": "setTimeout",
+          "kind": "function",
+          "signature": "(callback: FlashTimerCallback, delay: number, ...args: unknown[]) => number",
+          "sha256": "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd"
+        },
+        {
+          "module": "src/layaAir/flash/utils/TimerFunctions.ts",
+          "export": "clearTimeout",
+          "kind": "function",
+          "signature": "(id: number) => void",
+          "sha256": "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd"
+        },
+        {
+          "module": "src/layaAir/flash/utils/TimerFunctions.ts",
+          "export": "setInterval",
+          "kind": "function",
+          "signature": "(callback: FlashTimerCallback, delay: number, ...args: unknown[]) => number",
+          "sha256": "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd"
+        },
+        {
+          "module": "src/layaAir/flash/utils/TimerFunctions.ts",
+          "export": "clearInterval",
+          "kind": "function",
+          "signature": "(id: number) => void",
+          "sha256": "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd"
+        },
+        {
           "module": "src/layaAir/flash/utils/Endian.ts",
           "export": "Endian",
           "kind": "class",
@@ -32321,9 +32356,10 @@
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "4adf83a171cc77617c248edecca1c763617bd2f9a9e9fad3ba57ae3be218db77",
+          "sha256": "f04563b45a76a2523cde4950d9854364ffbeb5af1050e22c3f62bed4bab66de4",
           "capability": "api.flash.utils",
           "covers": [
+            "1c9cb25ea33eb97a7d732cf9d4927dd0213a45407e19befc69a84590bbee05cd",
             "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
