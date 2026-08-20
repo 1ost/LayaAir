@@ -136,9 +136,14 @@ test("project schema scalar constraints are differential-locked to the runtime v
     const relativePath = schema.$defs.relativePath;
     const devices = ["con", "prn", "aux", "nul", ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`), ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`)];
     const reserved = devices.flatMap(name => [name, name.toUpperCase(), `${name[0].toUpperCase()}${name.slice(1)}.txt`, `safe/${name.toUpperCase()}.bin`]);
-    await compare("relativePath", relativePath, (p, v) => { p.jobs[0].output = v; },
-        ["Root.lh", "safe/conductor.lh", "safe/com0.bin", "safe/com10.bin", "safe/auxiliary", "caf\u00e9/file"],
-        [...reserved, "", "/root", "C:/root", "a\\b", "a:b", "a//b", "a/./b", "a/../b", "a.", "a ", "a/", "a\u0001b"]);
+    const validPaths = ["Root.lh", "safe/conductor.lh", "safe/com0.bin", "safe/com10.bin", "safe/auxiliary", "caf\u00e9/file"];
+    const invalidPaths = [
+        ...reserved, "", "/root", "C:/root", "a\\b", "a:b", "a//b", "a/./b", "a/../b", "a.", "a ", "a/", "a\u0001b",
+        " assets/root", "assets/root ", "\tassets/root", "assets/root\n", "\ufeffassets/root", "assets/root\u00a0"
+    ];
+    await compare("job.output relativePath", relativePath, (p, v) => { p.jobs[0].output = v; }, validPaths, invalidPaths);
+    await compare("input.path relativePath", relativePath, (p, v) => { p.jobs[0].input.path = v; }, validPaths, invalidPaths);
+    await compare("capabilityLedger.path relativePath", relativePath, (p, v) => { p.provider.capabilityLedger.path = v; }, validPaths, invalidPaths);
 
     const remoteRef = schema.$defs.remoteRef;
     await compare("remote.ref", remoteRef, (p, v) => { p.provider.remote.ref = v; },
