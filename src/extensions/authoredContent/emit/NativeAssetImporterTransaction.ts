@@ -484,8 +484,8 @@ export async function retireAbortedNativeAssetImporterPublication(
     const bytes = await host.fs.promises.readFile(nextPath);
     try {
         const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-        if (value?.schema === "laya-authored-content-recovery@2")
-            fail("ABORTED_PUBLICATION_IS_RECOVERABLE", root);
+        assertRecoveryJournalShape(value, nextPath, root, host);
+        fail("ABORTED_PUBLICATION_IS_RECOVERABLE", root);
     }
     catch (error) {
         if (error instanceof Error && error.message.includes("ABORTED_PUBLICATION_IS_RECOVERABLE"))
@@ -558,7 +558,7 @@ async function loadRecoveryJournal(
         try {
             const nextRaw = new TextDecoder("utf-8", { fatal: true }).decode(nextBytes);
             const nextValue = JSON.parse(nextRaw) as Partial<RecoveryJournal>;
-            assertRecoveryJournalShape(nextValue, nextPath, host, expectedTargets);
+            assertRecoveryJournalShape(nextValue, nextPath, root, host, expectedTargets);
             await host.fs.promises.rename(nextPath, recoveryPath);
             await syncDirectory(root, host);
         }
@@ -574,13 +574,14 @@ async function loadRecoveryJournal(
     }
     const raw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(recoveryPath));
     const value = JSON.parse(raw) as Partial<RecoveryJournal>;
-    assertRecoveryJournalShape(value, recoveryPath, host, expectedTargets);
+    assertRecoveryJournalShape(value, recoveryPath, root, host, expectedTargets);
     return value;
 }
 
 function assertRecoveryJournalShape(
     value: Partial<RecoveryJournal>,
     label: string,
+    root: string,
     host: NativeAssetTransactionHost,
     expectedTargets?: ReadonlyMap<string, string>
 ): void {
@@ -588,6 +589,20 @@ function assertRecoveryJournalShape(
         || !Array.isArray(value.installed) || !Array.isArray(value.backups) || !Array.isArray(value.failures))
         fail("RECOVERY_JOURNAL_INVALID", label);
     if (value.targets.some(item => !item || !isCanonicalRelativePath(item.relativePath) || typeof item.target !== "string"))
+        fail("RECOVERY_JOURNAL_INVALID", label);
+    const validateFile = (file: InstalledFile | BackupFile, backup: boolean): void => {
+        if (!file || typeof file !== "object" || !isCanonicalRelativePath(file.relativePath)
+            || typeof file.target !== "string" || !file.authority || typeof file.authority.byteLength !== "number"
+            || !Number.isSafeInteger(file.authority.byteLength) || file.authority.byteLength < 0
+            || !/^[0-9a-f]{64}$/.test(file.authority.sha256))
+            fail("RECOVERY_JOURNAL_INVALID", label);
+        if (backup && (!("backup" in file) || typeof file.backup !== "string"
+            || !host.path.resolve(file.backup).startsWith(`${root}${host.path.sep}`)))
+            fail("RECOVERY_JOURNAL_INVALID", label);
+    };
+    for (const file of value.installed) validateFile(file, false);
+    for (const file of value.backups) validateFile(file, true);
+    if (value.failures.some(message => typeof message !== "string"))
         fail("RECOVERY_JOURNAL_INVALID", label);
     if (expectedTargets) {
         const expected = sortedTargets(expectedTargets).map(([relativePath, target]) => ({

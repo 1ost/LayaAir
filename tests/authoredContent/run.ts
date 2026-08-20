@@ -259,7 +259,7 @@ const nativeTransactionHost: NativeAssetTransactionHost = {
     sha256
 };
 
-function journalPublicationFaultHost(fault: "write" | "sync" | "rename" | "directory-sync"): NativeAssetTransactionHost {
+function journalPublicationFaultHost(fault: "write" | "schema-only" | "sync" | "rename" | "directory-sync"): NativeAssetTransactionHost {
     return {
         ...nativeTransactionHost,
         fs: {
@@ -279,6 +279,10 @@ function journalPublicationFaultHost(fault: "write" | "sync" | "rename" | "direc
                             if (fault === "write") {
                                 await handle.writeFile("{");
                                 throw new Error("simulated journal write interruption");
+                            }
+                            if (fault === "schema-only") {
+                                await handle.writeFile('{"schema":"laya-authored-content-recovery@2"}');
+                                throw new Error("simulated journal schema-only interruption");
                             }
                             await handle.writeFile(bytes);
                         },
@@ -824,7 +828,7 @@ async function main(): Promise<void> {
     });
 
     await test("restart reconciles every first-journal write fsync and rename interruption", async () => {
-        for (const fault of ["write", "sync", "rename", "directory-sync"] as const) {
+        for (const fault of ["write", "schema-only", "sync", "rename", "directory-sync"] as const) {
             const root = fs.mkdtempSync(path.join(os.tmpdir(), `laya-native-journal-${fault}-`));
             try {
                 const target = path.join(root, "outputs", "asset.lh");
@@ -840,7 +844,7 @@ async function main(): Promise<void> {
                     () => transaction.stage("asset.lh", new Uint8Array([1])),
                     `simulated journal ${fault === "sync" ? "fsync" : fault === "directory-sync" ? "directory fsync" : fault} interruption`
                 );
-                if (fault === "write") {
+                if (fault === "write" || fault === "schema-only") {
                     const quarantine = await retireAbortedNativeAssetImporterPublication(tempPath, nativeTransactionHost);
                     assert(fs.existsSync(quarantine), "partial first-journal evidence was deleted instead of quarantined");
                 }
@@ -856,6 +860,33 @@ async function main(): Promise<void> {
             finally {
                 fs.rmSync(root, { recursive: true, force: true });
             }
+        }
+    });
+
+    await test("parseable malformed newer journal is quarantined without replacing published recovery", async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-invalid-newer-journal-"));
+        try {
+            const tempPath = path.join(root, "temp");
+            const targets = new Map([["asset.lh", path.join(root, "outputs", "asset.lh")]]);
+            const transaction = new NativeAssetImporterTransaction(tempPath, targets, undefined, nativeTransactionHost);
+            await transaction.stage("asset.lh", new Uint8Array([1]));
+            const published = fs.readFileSync(transaction.recoveryPath);
+            const transactionRoot = path.dirname(transaction.recoveryPath);
+            fs.writeFileSync(
+                path.join(transactionRoot, "recovery.next.json"),
+                '{"schema":"laya-authored-content-recovery@2","targets":[],"installed":[{}],"backups":[],"failures":[]}'
+            );
+            const paths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
+            assert(paths.join(",") === "asset.lh", "invalid newer journal replaced the published target closure");
+            assert(fs.readFileSync(transaction.recoveryPath).equals(published),
+                "invalid newer journal replaced published recovery bytes");
+            assert(fs.readdirSync(transactionRoot).some(name => name.startsWith("recovery.invalid-")),
+                "invalid newer journal evidence was not quarantined");
+            await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+            await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+        }
+        finally {
+            fs.rmSync(root, { recursive: true, force: true });
         }
     });
 
