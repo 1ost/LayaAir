@@ -1,13 +1,13 @@
 import { ILoadTask } from "../../laya/net/Loader";
 import { FontAdapter } from "../../laya/platform/FontAdapter";
 import { PAL } from "../../laya/platform/PlatformAdapters";
-import { consumeAuthoredFontLoadAuthorization } from "../../flash/text/Font";
+import { consumeFontTransactionPermit } from "../../flash/text/Font";
 
 export class MgFontAdapter extends FontAdapter {
 
     loadFont(task: ILoadTask): Promise<{ family: string } | null> {
         if (task.options.authoredFontIdentity != null) {
-            if (!consumeAuthoredFontLoadAuthorization(task))
+            if (!consumeFontTransactionPermit(task))
                 throw new Error("Authored font loading requires an engine registry transaction");
             return Promise.resolve(null);
         }

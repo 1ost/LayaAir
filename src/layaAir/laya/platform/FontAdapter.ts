@@ -4,7 +4,7 @@ import { URL } from "../net/URL";
 import { Browser } from "../utils/Browser";
 import { Utils } from "../utils/Utils";
 import { PAL } from "./PlatformAdapters";
-import { consumeAuthoredFontLoadAuthorization } from "../../flash/text/Font";
+import { consumeFontTransactionPermit } from "../../flash/text/Font";
 
 export interface AuthenticatedFontReceiptIdentity {
     readonly key: string;
@@ -38,7 +38,7 @@ export class FontAdapter {
     loadFont(task: ILoadTask): Promise<FontLoadResult | null> {
         let fontName = this.resolveFamily(task);
         if (task.options.authoredFontIdentity != null) {
-            if (!consumeAuthoredFontLoadAuthorization(task))
+            if (!consumeFontTransactionPermit(task))
                 throw new Error("Authored font loading requires an engine registry transaction");
             return this.prepareAuthenticatedFont(task, fontName);
         }

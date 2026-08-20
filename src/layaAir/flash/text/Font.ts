@@ -90,14 +90,14 @@ type BindingState = {
 type ActiveFlashFontRecord = FrozenEntry & { readonly receipt: AuthenticatedFontLoadReceipt };
 
 const activeFlashRecordSets = new Set<readonly ActiveFlashFontRecord[]>();
-const AUTHORED_FONT_LOAD_AUTHORIZATION = Symbol("Laya authored font load authorization");
-const authoredFontLoadAuthorizations = new WeakSet<object>();
+const FONT_TRANSACTION_PERMIT = Symbol("Laya font transaction permit");
+const fontTransactionPermits = new WeakSet<object>();
 
 /** @internal Read-only adapter ingress; it consumes but cannot mint an authorization. */
-export function consumeAuthoredFontLoadAuthorization(task: ILoadTask): boolean {
-    const marker = (task.options as Record<PropertyKey, unknown>)[AUTHORED_FONT_LOAD_AUTHORIZATION];
-    if (typeof marker !== "object" || marker === null || !authoredFontLoadAuthorizations.has(marker)) return false;
-    authoredFontLoadAuthorizations.delete(marker);
+export function consumeFontTransactionPermit(task: ILoadTask): boolean {
+    const marker = (task.options as Record<PropertyKey, unknown>)[FONT_TRANSACTION_PERMIT];
+    if (typeof marker !== "object" || marker === null || !fontTransactionPermits.has(marker)) return false;
+    fontTransactionPermits.delete(marker);
     return true;
 }
 
@@ -421,7 +421,7 @@ export class AuthoredFontRegistry {
     ): Promise<readonly AuthoredFontRuntimeRecord[]> {
         const settled = await Promise.allSettled(entries.map(entry => {
             const authorization = Object.freeze({});
-            authoredFontLoadAuthorizations.add(authorization);
+            fontTransactionPermits.add(authorization);
             const options: ILoadURL = {
                 url: entry.sourceUrl,
                 type: Loader.TTF,
@@ -431,7 +431,7 @@ export class AuthoredFontRegistry {
                 cache: false,
                 ignoreCache: true,
                 noRetry: true,
-                [AUTHORED_FONT_LOAD_AUTHORIZATION]: authorization,
+                [FONT_TRANSACTION_PERMIT]: authorization,
             };
             return ILaya.loader.load(options);
         }));

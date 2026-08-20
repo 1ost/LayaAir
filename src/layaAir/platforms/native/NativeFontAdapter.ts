@@ -1,14 +1,14 @@
 import { ILoadTask } from "../../laya/net/Loader";
 import { AuthenticatedFontLoadReceipt, FontAdapter, FontLoadResult } from "../../laya/platform/FontAdapter";
 import { PAL } from "../../laya/platform/PlatformAdapters";
-import { consumeAuthoredFontLoadAuthorization } from "../../flash/text/Font";
+import { consumeFontTransactionPermit } from "../../flash/text/Font";
 
 export class NativeFontAdapter extends FontAdapter {
 
     loadFont(task: ILoadTask): Promise<FontLoadResult | null> {
         let fontName = this.resolveFamily(task);
         if (task.options.authoredFontIdentity != null) {
-            if (!consumeAuthoredFontLoadAuthorization(task))
+            if (!consumeFontTransactionPermit(task))
                 throw new Error("Authored font loading requires an engine registry transaction");
             return this.prepareAuthenticatedNativeFont(task, fontName);
         }
