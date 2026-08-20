@@ -6,7 +6,7 @@ import type {
     TextFontFamilyResolver,
     TextFontMetricsProvider,
 } from "../../laya/display/Text";
-import { Loader } from "../../laya/net/Loader";
+import { Loader, type ILoadTask, type ILoadURL } from "../../laya/net/Loader";
 import {
     isAuthenticatedFontLoadReceipt,
     type AuthenticatedFontLoadReceipt,
@@ -90,6 +90,16 @@ type BindingState = {
 type ActiveFlashFontRecord = FrozenEntry & { readonly receipt: AuthenticatedFontLoadReceipt };
 
 const activeFlashRecordSets = new Set<readonly ActiveFlashFontRecord[]>();
+const AUTHORED_FONT_LOAD_AUTHORIZATION = Symbol("Laya authored font load authorization");
+const authoredFontLoadAuthorizations = new WeakSet<object>();
+
+/** @internal Read-only adapter ingress; it consumes but cannot mint an authorization. */
+export function consumeAuthoredFontLoadAuthorization(task: ILoadTask): boolean {
+    const marker = (task.options as Record<PropertyKey, unknown>)[AUTHORED_FONT_LOAD_AUTHORIZATION];
+    if (typeof marker !== "object" || marker === null || !authoredFontLoadAuthorizations.has(marker)) return false;
+    authoredFontLoadAuthorizations.delete(marker);
+    return true;
+}
 
 /**
  * Source-used Flash font value. Construction and publication stay in this
@@ -180,6 +190,8 @@ export class AuthoredFontRegistry {
     private readonly loadedByKey = new Map<string, FrozenEntry>();
     private readonly loadedRuntimeFamilies = new Map<string, string>();
     private readonly pendingDocuments = new Map<string, Promise<readonly AuthoredFontRuntimeRecord[]>>();
+    private readonly bindingWaiters = new Map<string, number>();
+    private readonly bindingOnlyDocuments = new Set<string>();
     private readonly loadedDocuments = new Set<string>();
     private readonly receiptsByKey = new Map<string, AuthenticatedFontLoadReceipt>();
     private readonly bindings = new WeakMap<object, BindingState>();
@@ -217,6 +229,11 @@ export class AuthoredFontRegistry {
     }
 
     async preload(documentId: string, signal?: AbortSignal): Promise<readonly AuthoredFontRuntimeRecord[]> {
+        this.bindingOnlyDocuments.delete(documentId);
+        return this.preloadDocument(documentId, signal);
+    }
+
+    private async preloadDocument(documentId: string, signal?: AbortSignal): Promise<readonly AuthoredFontRuntimeRecord[]> {
         const entries = this.entriesByDocument.get(requireNonemptyString(documentId, "documentId"));
         if (!entries) throw new Error(`Unknown authored font document '${documentId}'`);
         if (signal?.aborted) throw new AuthoredFontBindingCancelledError();
@@ -298,14 +315,37 @@ export class AuthoredFontRegistry {
     ): Promise<AuthoredFontBinding> {
         requireConsumer(consumer);
         if (consumer.destroyed || signal?.aborted) throw new AuthoredFontBindingCancelledError();
+        const id = requireNonemptyString(documentId, "documentId");
+        if (!this.loadedDocuments.has(id) && !this.pendingDocuments.has(id))
+            this.bindingOnlyDocuments.add(id);
+        this.bindingWaiters.set(id, (this.bindingWaiters.get(id) ?? 0) + 1);
+        let waiterReleased = false;
+        const releaseWaiter = () => {
+            if (waiterReleased) return;
+            waiterReleased = true;
+            const remaining = (this.bindingWaiters.get(id) ?? 1) - 1;
+            if (remaining > 0) this.bindingWaiters.set(id, remaining);
+            else this.bindingWaiters.delete(id);
+        };
         let cancelled = false;
         const onAbort = () => { cancelled = true; };
         signal?.addEventListener("abort", onAbort, { once: true });
         try {
-            await this.preload(documentId, signal);
+            await this.preloadDocument(id, signal);
             if (cancelled || signal?.aborted || consumer.destroyed) throw new AuthoredFontBindingCancelledError();
-            return this.bindText(consumer, documentId);
+            const binding = this.bindText(consumer, id);
+            this.bindingOnlyDocuments.delete(id);
+            return binding;
+        } catch (error) {
+            releaseWaiter();
+            if (this.bindingOnlyDocuments.has(id) && !this.bindingWaiters.has(id)
+                && ![...this.bindingStates].some(state => state.documentId === id)) {
+                this.bindingOnlyDocuments.delete(id);
+                if (this.loadedDocuments.has(id)) await this.disposeDocument(id);
+            }
+            throw error;
         } finally {
+            releaseWaiter();
             signal?.removeEventListener("abort", onAbort);
         }
     }
@@ -379,16 +419,22 @@ export class AuthoredFontRegistry {
         entries: readonly FrozenEntry[],
         signal?: AbortSignal,
     ): Promise<readonly AuthoredFontRuntimeRecord[]> {
-        const settled = await Promise.allSettled(entries.map(entry => ILaya.loader.load({
-            url: entry.sourceUrl,
-            type: Loader.TTF,
-            authoredFontFamily: entry.runtimeFamily,
-            authoredFontIdentity: fontKey(entry),
-            authoredFontSourceSha256: entry.sourceSha256,
-            cache: false,
-            ignoreCache: true,
-            noRetry: true,
-        })));
+        const settled = await Promise.allSettled(entries.map(entry => {
+            const authorization = Object.freeze({});
+            authoredFontLoadAuthorizations.add(authorization);
+            const options: ILoadURL = {
+                url: entry.sourceUrl,
+                type: Loader.TTF,
+                authoredFontFamily: entry.runtimeFamily,
+                authoredFontIdentity: fontKey(entry),
+                authoredFontSourceSha256: entry.sourceSha256,
+                cache: false,
+                ignoreCache: true,
+                noRetry: true,
+                [AUTHORED_FONT_LOAD_AUTHORIZATION]: authorization,
+            };
+            return ILaya.loader.load(options);
+        }));
         const prepared: Array<{ entry: FrozenEntry; receipt: AuthenticatedFontLoadReceipt }> = [];
         const failures: string[] = [];
         settled.forEach((result, index) => {

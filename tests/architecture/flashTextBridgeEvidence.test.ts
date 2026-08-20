@@ -9,7 +9,8 @@ import type { FontType } from "../../src/layaAir/flash/text/FontType.ts";
 import type { AuthoredFontBinding, AuthoredFontBindingCancelledError, AuthoredFontKey,
     AuthoredFontManifest, AuthoredFontManifestEntry, AuthoredFontRegistry, AuthoredFontRuntimeRecord,
     AuthoredFontStyle, AuthoredGlyphMetric, AuthoredTextProviderConsumer,
-    Font, FlashFontClass, FlashFontRegistration } from "../../src/layaAir/flash/text/Font.ts";
+    Font, FlashFontClass, FlashFontRegistration, consumeAuthoredFontLoadAuthorization } from
+    "../../src/layaAir/flash/text/Font.ts";
 import type { StaticText, isFlashStaticText, AuthoredStaticGlyphConfiguration,
     AuthoredStaticGlyphRunConfiguration, AuthoredStaticTextConfiguration, createAuthoredStaticText } from
     "../../src/layaAir/flash/text/StaticText.ts";
@@ -44,7 +45,8 @@ test("Flash text bridge compiler surface", () => {
         typeof Font, FlashFontClass, FlashFontRegistration, AuthoredFontBinding,
         typeof AuthoredFontBindingCancelledError, AuthoredFontKey, AuthoredFontManifest,
         AuthoredFontManifestEntry, typeof AuthoredFontRegistry, AuthoredFontRuntimeRecord,
-        AuthoredFontStyle, AuthoredGlyphMetric, AuthoredTextProviderConsumer] extends readonly unknown[]
+        AuthoredFontStyle, AuthoredGlyphMetric, AuthoredTextProviderConsumer,
+        typeof consumeAuthoredFontLoadAuthorization] extends readonly unknown[]
         ? boolean : never));
 });
 

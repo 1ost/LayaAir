@@ -1,12 +1,16 @@
 import { ILoadTask } from "../../laya/net/Loader";
 import { FontAdapter } from "../../laya/platform/FontAdapter";
 import { PAL } from "../../laya/platform/PlatformAdapters";
+import { consumeAuthoredFontLoadAuthorization } from "../../flash/text/Font";
 
 export class MgFontAdapter extends FontAdapter {
 
     loadFont(task: ILoadTask): Promise<{ family: string } | null> {
-        if (task.options.authoredFontIdentity != null)
+        if (task.options.authoredFontIdentity != null) {
+            if (!consumeAuthoredFontLoadAuthorization(task))
+                throw new Error("Authored font loading requires an engine registry transaction");
             return Promise.resolve(null);
+        }
         if (!PAL.g.loadFont) {
             PAL.warnIncompatibility("TTFont");
             return Promise.resolve(null);

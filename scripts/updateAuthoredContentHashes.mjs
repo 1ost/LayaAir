@@ -136,6 +136,7 @@ const textSubjects = [
     ["src/layaAir/flash/text/Font.ts", "FlashFontClass", "interface"],
     ["src/layaAir/flash/text/Font.ts", "FlashFontRegistration", "interface"],
     ["src/layaAir/flash/text/Font.ts", "Font", "class"],
+    ["src/layaAir/flash/text/Font.ts", "consumeAuthoredFontLoadAuthorization", "function"],
     ["src/layaAir/flash/text/StaticText.ts", "StaticText"],
     ["src/layaAir/flash/text/StaticText.ts", "isFlashStaticText", "function"],
     ["src/layaAir/flash/text/TextField.ts", "TextField"],

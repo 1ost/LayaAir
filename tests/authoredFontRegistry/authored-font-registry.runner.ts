@@ -249,7 +249,26 @@ test("cancelled transaction and destroyed consumer publish neither resources nor
     field.destroy();
     await assert.rejects(bind, AuthoredFontBindingCancelledError);
     assert.equal(field.fontFamilyResolver, undefined);
+    assert.equal(harness.installed.size, 0, "destroyed binding must roll back committed platform fonts");
+    assert.equal(registry.isDocumentLoaded("cancelled"), false);
     await registry.dispose();
+});
+
+test("ordinary Loader options cannot mint an authenticated font receipt", async () => {
+    const authored = entry("public-mint", 1, "regular", "public-mint");
+    const harness = new FontHarness();
+    await assert.rejects(Promise.resolve().then(() => harness.adapter.loadFont({
+        url: authored.sourceUrl,
+        options: {
+            authoredFontFamily: "LayaAuthored_public_mint",
+            authoredFontIdentity: "caller-selected-key",
+            authoredFontSourceSha256: authored.sourceSha256,
+        },
+        progress: { createCallback: (): undefined => undefined },
+        loader: { fetch: (url: string) => harness.fetch(url) },
+    } as unknown as ILoadTask)), /requires an engine registry transaction/);
+    assert.equal(harness.fetchCount.size, 0);
+    assert.equal(harness.installed.size, 0);
 });
 
 test("raw SHA authenticates one fetched byte snapshot and rejects same-URL wrong bytes", async () => {
@@ -316,15 +335,15 @@ test("native authored loading fails closed when unregister is unavailable", asyn
     (PAL as any).g = { registerFont: () => assert.fail("must not register without rollback") };
     try {
         const native = new NativeFontAdapter();
-        const result = await native.loadFont({
-            url: authored.sourceUrl,
-            options: {
-                authoredFontFamily: "LayaAuthored_safe", authoredFontIdentity: "key",
-                authoredFontSourceSha256: authored.sourceSha256,
-            },
-            loader: { fetch: async () => ASSETS.get(authored.sourceUrl) },
-        } as unknown as ILoadTask);
-        assert.equal(result, null);
+        (ILaya as any).loader = {
+            load: (options: Record<string, any>) => native.loadFont({
+                url: options.url, options,
+                loader: { fetch: async () => ASSETS.get(options.url) },
+            } as unknown as ILoadTask),
+        };
+        const registry = new AuthoredFontRegistry(manifest([authored]));
+        await assert.rejects(registry.preload("native"), /did not return an exact authenticated receipt/);
+        assert.equal(registry.isDocumentLoaded("native"), false);
     } finally {
         (PAL as any).g = previousGlobal;
     }
