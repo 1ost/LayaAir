@@ -315,6 +315,45 @@ test("clear-before-mutation failure fences a possibly live frame until retry", (
     }
 });
 
+test("clear and listener-removal throws retain cleanup authority until disposal retry", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const scheduler = new FakeScheduler();
+    const root = new LayaNode();
+    const originalOff = root.off.bind(root);
+    let failAfterRemoval = true;
+    root.off = ((type: string, caller: unknown, listener?: Function) => {
+        const result = originalOff(type, caller, listener!);
+        if (failAfterRemoval) throw new Error("fixture post-listener-removal failure");
+        return result;
+    }) as typeof root.off;
+    try {
+        install(stage, scheduler);
+        const lease = FlashDisplayRootBoundary.claim<LayaNode>(stage, () => undefined, {
+            destroyRootOnDispose: false
+        });
+        lease.attach(root);
+        scheduler.clearError = new Error("fixture post-clear failure");
+        assert.throws(() => lease.dispose(), /fixture post-clear failure/);
+        assert.deepEqual([lease.disposed, lease.attached, lease.root, root.parent,
+            root.hasListener("removed"), scheduler.activeCount], [false, false, root, null, false, 0]);
+        assert.throws(() => FlashDisplayRootBoundary.claim(stage, () => undefined), /already has/,
+            "indeterminate native cleanup retains the exclusive Stage lease");
+
+        scheduler.clearError = null;
+        failAfterRemoval = false;
+        lease.dispose();
+        assert.deepEqual([lease.disposed, lease.root, root.parent, root.hasListener("removed"),
+            scheduler.activeCount], [true, null, null, false, 0]);
+        const successor = FlashDisplayRootBoundary.claim(stage, () => undefined);
+        successor.dispose();
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
 test("install-then-throw removal listener is reconciled and its root claim is released", () => {
     const previousStage = ILaya.stage;
     const previousTimer = ILaya.timer;
