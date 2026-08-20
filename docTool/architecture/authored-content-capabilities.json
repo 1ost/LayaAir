@@ -220,18 +220,48 @@
         {
           "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
           "export": "FlashBevelEffect2D",
-          "sha256": "35366f2d4f034891ffc0d16273b1a6cf6e52bb42f689bc9b34f67eb41b909146"
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "FlashBevelPlacement",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "FlashGradientBevelEffectOptions",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "FlashAuthoredBevelFilterOptions",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "FlashBevelGradient",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "NormalizedFlashBevelEffectOptions",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "createFlashAuthoredBevelFilter",
+          "sha256": "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
+          "sha256": "6cff5c1c04d957ad5efcd3167ad718645dde44fd7d393783fd3ac7420aad308d",
           "capability": "rendering.filter",
           "covers": [
-            "35366f2d4f034891ffc0d16273b1a6cf6e52bb42f689bc9b34f67eb41b909146",
-            "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+            "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872",
+            "9d4bc83c5268a7a77d31bd4306591809d58119488dc2db829c517079a1fe8974"
           ]
         }
       ]
@@ -36861,7 +36891,7 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
+          "sha256": "6cff5c1c04d957ad5efcd3167ad718645dde44fd7d393783fd3ac7420aad308d",
           "capability": "api.flash.filters",
           "covers": [
             "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",

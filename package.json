@@ -36,6 +36,7 @@
     "test:flash-filters": "node scripts/testFlashFilters.mjs",
     "test:flash-filters:types": "tsc -p tests/flashFilters/tsconfig.json --pretty false",
     "test:flash-filters:gpu": "node scripts/testFlashFiltersGpu.mjs",
+    "test:flash-filters:declarations": "node --test tests/flashFilters/flash-filters.declarations.test.mjs",
     "test:flash-geometry": "node scripts/testFlashGeometry.mjs",
     "test:flash-geometry:types": "tsc -p tests/flashGeometry/tsconfig.json --pretty false",
     "test:flash-geometry:gpu": "node scripts/testFlashGeometryGpu.mjs",

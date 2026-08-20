@@ -417,6 +417,18 @@ Object.assign(renderingFilterCapability, {
             export: "FlashBevelEffect2D",
             sha256: "",
         },
+        ...[
+            "FlashBevelPlacement",
+            "FlashGradientBevelEffectOptions",
+            "FlashAuthoredBevelFilterOptions",
+            "FlashBevelGradient",
+            "NormalizedFlashBevelEffectOptions",
+            "createFlashAuthoredBevelFilter",
+        ].map(exported => ({
+            path: "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+            export: exported,
+            sha256: "",
+        })),
     ],
     evidence: [{
         path: "tests/architecture/flashFiltersBridgeEvidence.test.ts",
