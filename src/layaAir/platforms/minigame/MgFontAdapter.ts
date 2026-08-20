@@ -5,6 +5,8 @@ import { PAL } from "../../laya/platform/PlatformAdapters";
 export class MgFontAdapter extends FontAdapter {
 
     loadFont(task: ILoadTask): Promise<{ family: string } | null> {
+        if (task.options.authoredFontIdentity != null)
+            return Promise.resolve(null);
         if (!PAL.g.loadFont) {
             PAL.warnIncompatibility("TTFont");
             return Promise.resolve(null);

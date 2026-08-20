@@ -4,19 +4,17 @@ import type {
     AuthoredFontBinding,
     AuthoredFontBindingCancelledError,
     AuthoredFontKey,
-    AuthoredFontLoadPort,
     AuthoredFontManifest,
     AuthoredFontManifestEntry,
     AuthoredFontRegistry,
     AuthoredTextProviderConsumer,
-} from "../../src/extensions/authoredContent/runtime/AuthoredFontRegistry.ts";
+} from "../../src/layaAir/flash/text/Font.ts";
 
 test("Authored font registry compiler surface", () => {
     assert.ok(true as boolean satisfies ([
         AuthoredFontBinding,
         typeof AuthoredFontBindingCancelledError,
         AuthoredFontKey,
-        AuthoredFontLoadPort,
         AuthoredFontManifest,
         AuthoredFontManifestEntry,
         typeof AuthoredFontRegistry,
