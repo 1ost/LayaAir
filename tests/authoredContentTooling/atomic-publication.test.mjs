@@ -190,7 +190,7 @@ test("provider evidence receives the one authenticated ledger identity across a 
         }]
     };
     try {
-        const result = await providerPreflight.preflightAuthoredContentProvider(project, repositoryRoot, {
+        await assert.rejects(providerPreflight.preflightAuthoredContentProvider(project, repositoryRoot, {
             verifyEvidence: async (root, ledgerBytes) => {
                 assert.equal(root, repositoryRoot);
                 assert.deepEqual(ledgerBytes, authenticated);
@@ -205,9 +205,8 @@ test("provider evidence receives the one authenticated ledger identity across a 
                     restored = true;
                 }
             }
-        });
+        }), error => error.code === "AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED");
         assert.equal(restored, true);
-        assert.equal(result.receipt.capabilityLedger.sha256, provider.capabilityLedger.sha256);
         assert.deepEqual(await readFile(ledgerFile), authenticated);
     }
     finally {
