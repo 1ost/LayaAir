@@ -1,9 +1,11 @@
 import { DisplayObject } from "./DisplayObject";
+import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { RepaintFlag } from "../../laya/display/SpriteConst";
 import { acquireBitmapDataTexture, BitmapData, isFlashBitmapData, observeBitmapData } from "./BitmapData";
 import { PixelSnapping } from "./PixelSnapping";
 
 const BITMAP_VALUES = new WeakSet<object>();
+const destroyCanonicalBitmap = DisplayObject.prototype.destroy;
 
 /** @internal Nominal guard for authenticated runtime `is` checks. */
 export function isFlashBitmap(value: unknown): value is Bitmap {
@@ -52,11 +54,13 @@ export class Bitmap extends DisplayObject {
     }
 
     override destroy(destroyChild = true): void {
-        this.stopObserving?.();
-        this.stopObserving = null;
-        this.bitmapDataValue = null;
-        this.texture = null;
-        super.destroy(destroyChild);
+        runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            this.stopObserving?.();
+            this.stopObserving = null;
+            this.bitmapDataValue = null;
+            this.texture = null;
+            destroyCanonicalBitmap.call(this, destroyChild);
+        });
     }
 
     private refreshTexture(): void {

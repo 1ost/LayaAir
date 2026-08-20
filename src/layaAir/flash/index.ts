@@ -6,17 +6,21 @@ export { FocusEvent } from "./events/FocusEvent";
 export { TextEvent } from "./events/TextEvent";
 export { ErrorEvent } from "./events/ErrorEvent";
 export { IOErrorEvent } from "./events/IOErrorEvent";
+export { ProgressEvent } from "./events/ProgressEvent";
+export { SecurityErrorEvent } from "./events/SecurityErrorEvent";
 export { KeyboardEvent } from "./events/KeyboardEvent";
 export { TimerEvent } from "./events/TimerEvent";
 export { IMEEvent } from "./events/IMEEvent";
 export { ContextMenuEvent } from "./events/ContextMenuEvent";
 export { HTTPStatusEvent } from "./events/HTTPStatusEvent";
-export { ProgressEvent } from "./events/ProgressEvent";
-export { SecurityErrorEvent } from "./events/SecurityErrorEvent";
 export { UncaughtErrorEvent } from "./events/UncaughtErrorEvent";
 export { DisplayObject } from "./display/DisplayObject";
 export { InteractiveObject } from "./display/InteractiveObject";
 export { DisplayObjectContainer } from "./display/DisplayObjectContainer";
+export {
+    Loader, LoaderInfo, NativeLoaderContentHost, NativeLoaderContentSource,
+    installNativeLoaderContentHost
+} from "./display/Loader";
 export { Sprite } from "./display/Sprite";
 export { Graphics } from "./display/Graphics";
 export type { IBitmapDrawable } from "./display/IBitmapDrawable";

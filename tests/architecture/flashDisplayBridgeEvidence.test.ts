@@ -27,6 +27,11 @@ import type { GradientType } from "../../src/layaAir/flash/display/GradientType.
 import type { BlendMode } from "../../src/layaAir/flash/display/BlendMode.ts";
 import type { StageQuality } from "../../src/layaAir/flash/display/StageQuality.ts";
 import type { StageScaleMode } from "../../src/layaAir/flash/display/StageScaleMode.ts";
+import type {
+    Loader, isFlashLoader, LoaderInfo, isFlashLoaderInfo,
+    NativeLoaderContentHost, NativeLoaderContentSource, installNativeLoaderContentHost,
+    isNativeLoaderContentHost
+} from "../../src/layaAir/flash/display/Loader.ts";
 
 test("Flash display bridge compiler surface", () => {
     assert.ok(true as boolean satisfies ([typeof DisplayObject, typeof DisplayObjectContainer, typeof InteractiveObject,
@@ -37,9 +42,12 @@ test("Flash display bridge compiler surface", () => {
         typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
         typeof BitmapDataChannel, typeof PixelSnapping,
         typeof StageAlign, typeof GradientType, typeof BlendMode, typeof StageQuality, typeof StageScaleMode,
+        typeof Loader, typeof LoaderInfo, typeof NativeLoaderContentHost, typeof NativeLoaderContentSource,
+        typeof installNativeLoaderContentHost, typeof isNativeLoaderContentHost,
         typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof isFlashBitmapData, typeof observeBitmapData,
         typeof isFlashDisplayObject, typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
         typeof isFlashGraphics, typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,
         FlashFrameReference, typeof isFlashMovieClip, NativeMovieClipTimeline,
-        typeof isFlashShape, typeof isFlashSimpleButton, typeof isFlashSprite] extends readonly unknown[] ? boolean : never));
+        typeof isFlashShape, typeof isFlashSimpleButton, typeof isFlashSprite,
+        typeof isFlashLoader, typeof isFlashLoaderInfo] extends readonly unknown[] ? boolean : never));
 });

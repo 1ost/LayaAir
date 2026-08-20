@@ -146,7 +146,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
         }
       ],
       "evidence": [
@@ -159,7 +159,7 @@
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
           ]
         }
       ]
@@ -181,7 +181,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
         }
       ],
       "evidence": [
@@ -193,7 +193,7 @@
           "covers": [
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
-            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
           ]
         }
       ]
@@ -5062,7 +5062,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e",
+          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d",
           "heritage": [
             {
               "kind": "extends",
@@ -18258,7 +18258,7 @@
             "new (bitmapData?: BitmapData | null, pixelSnapping?: string, smoothing?: boolean): Bitmap"
           ],
           "indexSignatures": [],
-          "sha256": "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5",
+          "sha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
           "heritage": [
             {
               "kind": "extends",
@@ -18676,7 +18676,7 @@
           "export": "isFlashBitmap",
           "kind": "function",
           "signature": "(value: unknown) => value is Bitmap",
-          "sha256": "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5"
+          "sha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
@@ -18704,7 +18704,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+          "sha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -19248,13 +19248,2740 @@
           "kind": "interface",
           "signature": "any",
           "sha256": "057a4256f818ee150bf2a90d533225b0ccec72cada614e097c09f9d6ffc407c2"
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "Loader",
+          "kind": "class",
+          "signature": "typeof Loader",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite[]"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$container",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Node"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_$parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Node"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_activeHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(activeChangeScripts: any[], fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_addChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_node: LayaNode, _index?: number) => LayaNode"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_anchorX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_anchorY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_blendMode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BlendMode"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_cloneTo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(destObject: Node, srcRoot: Node, dstRoot: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_componentDriver",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ComponentDriver"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_conchData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "any"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_destroyComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(comp: Component) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_destroyed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_dragSupport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DragSupport"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_drawOriRT",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_extra",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "INodeExtra"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getBit",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_globalTrans",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SpriteGlobalTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_graphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Graphics"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_graphicsRenderer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "GraphicsRenderer"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_hitArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IHitArea"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_inActiveHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(activeChangeScripts: any[], fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_initialize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_initShaderData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isHeightSet",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "_isWidthSet",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_manualRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_maskParent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_mouseState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needGraphicsUpdate",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_needUpdateSubpass",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_nodeType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_oriRenderPass",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRender2DPass"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_ownerArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_ownPostProcess",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_parse",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(data: any, spriteMap: any) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_pivotX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_pivotY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_processActive",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(active: boolean, fromSetter?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_processVisible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(parentVisible?: boolean) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_removeChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_node: LayaNode) => LayaNode"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_renderNode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BaseRenderNode2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_renderType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_rotation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Scene"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_scrollRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBelongScene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(scene: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBit",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bit: number, value: boolean) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setBitUp",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Sprite, oldIndex: number, index: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setContainer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(container: Node) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setDisplay",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setManualRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_setUnBelongScene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_shaderData",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ShaderData"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skewX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skewY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_skinBaseUrl",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_struct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRenderStruct2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subpassUpdateFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subStruct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IRenderStruct2D"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_subStructRender",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SubStructRender"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_texture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Texture"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_transform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Matrix"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_updateStruct",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "_zOrder",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#abortForListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, error: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#abortPublished",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, candidate: DisplayObject, primary?: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#acceptPrefab",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, value: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#active",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoadTransaction"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#begin",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(source: NativeSourceSnapshot) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#content",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#contentLoaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "LoaderInfo"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#destroyOwnedContent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(content: DisplayObject) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#destroyUnpublished",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(candidate: unknown, transaction: LoadTransaction) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#detachPublished",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(destroy: boolean, dispatchUnload: boolean) => unknown | undefined"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#explicitHost",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "NativeLoaderContentHost"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#fail",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, security: boolean, text: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#failIO",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, text: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#failSecurity",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, text: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#generation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#internalChildMutation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#isCurrent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#nodeTransaction",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "NodeMutationTransaction"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#publishSourceFailure",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(logicalURL: string, text: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#rejectChildMutation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#rejectNodeMutation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(operation: NodeMutationOperation) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#rejectOwnedContentMutation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_content: DisplayObject, operation: NodeMutationOperation) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#releaseOwnedContent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(content: DisplayObject) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#removeOwnedContent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(content: DisplayObject) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#reportProgress",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(transaction: LoadTransaction, ratio: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#withInternalMutation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T>(content: DisplayObject, loaderSteps: readonly NodeMutationPermit[], contentSteps: readonly NodeMutationPermit[], action: () => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "active",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "activeInHierarchy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode>(_node: T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode>(_node: T, _index: number) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(..._args: LayaNode[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Component>(componentType: new () => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addComponentInstance",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(component: Component) => Component"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alpha",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "anchor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "anchorX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "anchorY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "autoSize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blendMode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "bubbleEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAs",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "callLater",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(method: Function, args?: any[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "readonly Node[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearSubpassFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: SubPassFlag) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clearTimer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any, method: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "close",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "components",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "readonly Component[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "contains",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "content",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "contentLoaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destroy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(destroyChild?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "destroyChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "destroyed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayedInStage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayHeight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "displayWidth",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "doubleClickEnabled",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "dragSupport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DragSupport"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "drawCallOptimize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToCanvas",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number) => HTMLCanvas"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToRenderTexture2D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D, isDrawRenderRect?: boolean, flipY?: boolean, clearColor?: Color, renderScaleX?: number, renderScaleY?: number) => RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToTexture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D | null, isDrawRenderRect?: boolean) => Texture | RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "enableCulling",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "filters",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "get BitmapFilter[]; set BitmapFilter[] | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "findChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "focusRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean | object"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "frameLoop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "frameOnce",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "fromParentPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(out?: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Node>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode = DisplayObject>(index: number, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildByName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode = DisplayObject>(name: string, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildByPath",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Node = Node>(path: String, classType?: new (...args: any[]) => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getComponent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends Component>(componentType: new () => T) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getComponents",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(componentType: typeof Component) => Component[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getGraphicBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(realSize?: boolean, out?: Rectangle) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getMousePoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getSelfBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(out?: Rectangle, recursive?: boolean) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalScaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalScaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "globalToLocal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "globalTrans",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SpriteGlobalTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "graphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Graphics"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasHideFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "hideFlags",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "hitArea",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "IHitArea"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hitTestPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "hitTestPrior",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "is3D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isAncestorOf",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: Node) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "layer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "load",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(request: URLRequest, context?: null) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "loadBytes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_bytes: ArrayBuffer | Uint8Array, _context?: null) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "loadImage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(url: string, complete?: Handler) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "localToGlobal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (point: Point): Point; (point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "mask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "material",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "mouseEnabled",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseThrough",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "needsSoftKeyboard",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "numChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onAfterDeserialize",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onAwake",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onDestroy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onDisable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "onEnable",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Sprite"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parentRepaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(repaintPass?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "pivot",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "pivotX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "pivotY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "pos",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Loader; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "postProcess",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "PostProcess2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "prepareOSR",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => { root: IRenderStruct2D; subPasses: Array<IRender2DPass>; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "reCache",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode>(_node: T, _destroy?: boolean) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_index: number, _destroy?: boolean) => DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildByName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_name: string, _destroy?: boolean) => DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_beginIndex?: number, _endIndex?: number, _destroy?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeSelf",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Node"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "renderNode2D",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "BaseRenderNode2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "repaint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "replaceChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_newNode: LayaNode, _oldNode: LayaNode) => LayaNode"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "root",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "rotation",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "runCallLater",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(method: Function) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "scale",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Loader; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scaleX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scaleY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "scene",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Scene"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scrollRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends LayaNode>(_node: T, _index: number) => T"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setChildIndexBefore",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(_node: LayaNode, _index: number) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setGraphics",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: Graphics, transferOwnership?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSelfBounds",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bound: Rectangle) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSubpassFlag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(flag: SubPassFlag) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setSubRenderPassState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(enable: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "size",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(width: number, height: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "skew",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(x: number, y: number) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "skewX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "skewY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "Sprite_bpEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ mousedown: (event: Event) => void; mouseup: (event: Event) => void; mousemove: (event: Event) => void; mouseover: (event: Event) => void; mouseout: (evente: Event) => void; mousedrag: (event: Event) => void; mousedragend: (event: Event) => void; click: (event: Event) => void; rightmousedown: (event: Event) => void; rightmouseup: (event: Event) => void; rightclick: (event: Event) => void; doubleclick: (event: Event) => void; dragstart: (data: any) => void; dragmove: (data: any) => void; dragend: (data: any) => void; drop: (source: Sprite, data: any) => void; globalTransChanged: (type: number) => void; transformchanged: () => void; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "stackingRoot",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "stage",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Stage"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "startDrag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(area?: Rectangle, hasInertia?: boolean, elasticDistance?: number, elasticBackTime?: number, data?: any, ratio?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stopDrag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "tabEnabled",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "tabIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "tag",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "texture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Texture"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "textureCompositor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ITextureCompositor2D"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "timer",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Timer"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "timerLoop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean, jumpFrame?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "timerOnce",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(delay: number, caller: any, method: Function, args?: any[], coverBefore?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toParentPoint",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(point: Point) => Point"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "transform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Transform"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "unload",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "unloadAndStop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(gc?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateRenderTexture",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "updateSubRenderPassState",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "viewport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "x",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "y",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "zIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "zOrder",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToCanvas",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number) => HTMLCanvas"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToRenderTexture2D",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D, isDrawRenderRect?: boolean, flipY?: boolean, clearColor?: Color, renderScaleX?: number, renderScaleY?: number) => RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "drawToTexture",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sprite: Sprite, canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, rt?: RenderTexture2D | null, isDrawRenderRect?: boolean) => Texture | RenderTexture2D"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "fromImage",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(url: string) => Sprite"
+            }
+          ],
+          "constructors": [
+            "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
+          ],
+          "indexSignatures": [],
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "DisplayObjectContainer"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "isFlashLoader",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Loader",
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "LoaderInfo",
+          "kind": "class",
+          "signature": "typeof LoaderInfo",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bytesLoaded",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bytesTotal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "content",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "DisplayObject"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "contentType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "height",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loader",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Loader"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "parameters",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Readonly<Record<string, string>>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "width",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
+          ],
+          "indexSignatures": [],
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "isFlashLoaderInfo",
+          "kind": "function",
+          "signature": "(value: unknown) => value is LoaderInfo",
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "NativeLoaderContentHost",
+          "kind": "class",
+          "signature": "typeof NativeLoaderContentHost",
+          "members": [
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "resolve",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(logicalURL: string) => NativeLoaderContentSource | null"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "NativeLoaderContentSource",
+          "kind": "class",
+          "signature": "typeof NativeLoaderContentSource",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "installNativeLoaderContentHost",
+          "kind": "function",
+          "signature": "(host: NativeLoaderContentHost) => void",
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "isNativeLoaderContentHost",
+          "kind": "function",
+          "signature": "(value: unknown) => value is NativeLoaderContentHost",
+          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "d10cea96ac7b453ba12c26dea6ae81cc8240eb847a3357b67c5e8083e023ca5c",
+          "sha256": "62ad5c0f2070ebb8d99410279fbe3f8ee283b01aa5b989be3847e9920dc83fc9",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -19264,6 +21991,7 @@
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
+            "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
@@ -19272,9 +22000,9 @@
             "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030",
-            "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
-            "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5",
+            "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d",
+            "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
             "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba",
             "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
@@ -29424,7 +32152,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
+          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a",
           "heritage": [
             {
               "kind": "extends",
@@ -29440,7 +32168,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
+          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -29450,7 +32178,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
+          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -29460,7 +32188,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
+          "sha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -32312,7 +35040,7 @@
             "new (token: typeof STATIC_TEXT_TOKEN): StaticText"
           ],
           "indexSignatures": [],
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2",
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17",
           "heritage": [
             {
               "kind": "extends",
@@ -32328,7 +35056,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
         }
       ],
       "evidence": [
@@ -32338,10 +35066,10 @@
           "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
           "capability": "api.flash.text",
           "covers": [
-            "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1",
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
+            "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
-            "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+            "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
           ]
         }
       ]
@@ -32406,7 +35134,7 @@
             "new (url?: string | null): URLRequest"
           ],
           "indexSignatures": [],
-          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34",
+          "sha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da",
           "heritage": []
         },
         {
@@ -32414,21 +35142,28 @@
           "export": "navigateToURL",
           "kind": "function",
           "signature": "(request: URLRequest, target: string) => void",
-          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+          "sha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
         },
         {
           "module": "src/layaAir/flash/net/URLRequest.ts",
           "export": "URLRequestHeader",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+          "sha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
         },
         {
           "module": "src/layaAir/flash/net/URLRequest.ts",
           "export": "isFlashURLRequest",
           "kind": "function",
           "signature": "(value: unknown) => value is URLRequest",
-          "sha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+          "sha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
+        },
+        {
+          "module": "src/layaAir/flash/net/URLRequest.ts",
+          "export": "snapshotNativeLoaderRequest",
+          "kind": "function",
+          "signature": "(request: URLRequest) => string",
+          "sha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
         },
         {
           "module": "src/layaAir/flash/net/URLLoaderDataFormat.ts",
@@ -32476,11 +35211,11 @@
         {
           "path": "tests/architecture/flashNetBridgeEvidence.test.ts",
           "test": "Flash net bridge compiler surface",
-          "sha256": "243a17269ff115b7db0f883b78df96167eaed601603caa92f891611ad33fba63",
+          "sha256": "424d1b645918bcf8fb36dc354d8b9d6ed411602a62286b1d006b55ced43b281d",
           "capability": "api.flash.net",
           "covers": [
             "488e2283709ccc98f16c469803d33b793e54e27e5e270937f6365259b925f341",
-            "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+            "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
           ]
         }
       ]
@@ -34042,28 +36777,28 @@
           "export": "AuthoredStaticGlyphConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
         },
         {
           "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "AuthoredStaticGlyphRunConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
         },
         {
           "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "AuthoredStaticTextConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
         },
         {
           "module": "src/layaAir/flash/text/StaticText.ts",
           "export": "createAuthoredStaticText",
           "kind": "function",
           "signature": "(configuration: AuthoredStaticTextConfiguration) => StaticText",
-          "sha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+          "sha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
         }
       ],
       "evidence": [
@@ -34073,7 +36808,7 @@
           "sha256": "9d02d757b33589360f4756f1662b9b6571ab1343eac57c57d3a96be28241eb3a",
           "capability": "text.authored-static-text-texture-foundation",
           "covers": [
-            "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+            "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
           ]
         }
       ]

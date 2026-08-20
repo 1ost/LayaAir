@@ -1,4 +1,5 @@
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Point as LayaPoint } from "../../laya/maths/Point";
 import { isFlashPoint, Point } from "../geom/Point";
 import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
@@ -25,6 +26,7 @@ class NativeDisplayObjectHost extends LayaSprite {
 
 const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
 const DISPLAY_OBJECT_VALUES = new WeakSet<object>();
+const destroyCanonicalDisplayObject = LayaSprite.prototype.destroy;
 
 /** @internal Read-only nominal proof for the canonical Flash display base. */
 export function isFlashDisplayObject(value: unknown): value is DisplayObject {
@@ -104,11 +106,13 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
     }
 
     override destroy(destroyChild = true): void {
-        const router = DISPLAY_EVENTS.get(this);
-        if (router) {
-            router.dispose();
-            DISPLAY_EVENTS.delete(this);
-        }
-        super.destroy(destroyChild);
+        runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            const router = DISPLAY_EVENTS.get(this);
+            if (router) {
+                router.dispose();
+                DISPLAY_EVENTS.delete(this);
+            }
+            destroyCanonicalDisplayObject.call(this, destroyChild);
+        });
     }
 }

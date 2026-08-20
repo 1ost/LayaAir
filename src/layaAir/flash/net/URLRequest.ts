@@ -54,6 +54,34 @@ export function isFlashURLRequest(value: unknown): value is URLRequest {
 }
 
 /**
+ * @internal Captures the only URLRequest shape admitted by the native-content
+ * Loader bridge without invoking overridable accessors on the request object.
+ */
+export function snapshotNativeLoaderRequest(request: URLRequest): string {
+    const state = typeof request === "object" && request !== null
+        ? URL_REQUEST_STATE.get(request)
+        : undefined;
+    if (!state || !URL_REQUEST_VALUES.has(request))
+        throw new TypeError("Loader.load requires a canonical URLRequest");
+    if (state.method !== "GET" || state.data !== null || state.contentType !== null
+        || state.headersAssigned || state.headersMutated || state.requestHeaders.length !== 0)
+        throw new UnsupportedFlashFeatureError(
+            "flash.display.Loader.load",
+            "native content accepts only GET requests without data, content type or headers"
+        );
+    if (state.url === null || state.url.trim().length === 0 || state.url !== state.url.trim())
+        throw new TypeError("Loader.load requires a non-empty canonical URL");
+    if (/^[\u0000-\u001f\u007f]|[\u0000-\u001f\u007f]/.test(state.url))
+        throw new TypeError("Loader.load URL contains control characters");
+    if (/^(?:data|javascript|blob):/i.test(state.url))
+        throw new UnsupportedFlashFeatureError(
+            "flash.display.Loader.load",
+            "data, javascript and blob sources are outside the native-content bridge"
+        );
+    return state.url;
+}
+
+/**
  * Source-shaped request descriptor. Transport, navigation and payload encoding
  * belong to their later browser adapters; this object never opens a socket.
  */

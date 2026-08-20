@@ -1,4 +1,5 @@
 import { Input as LayaInput, setInputEventOwner, type InputSelectionDirection } from "../../laya/display/Input";
+import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Text as LayaText, type ITextCmd, type ITextLine } from "../../laya/display/Text";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { HtmlParseOptions } from "../../laya/html/HtmlParseOptions";
@@ -27,6 +28,7 @@ import {
 } from "./TextFormat";
 
 const TEXT_FIELD_VALUES = new WeakSet<object>();
+const destroyCanonicalTextField = InteractiveObject.prototype.destroy;
 
 /** @internal Read-only nominal proof for canonical Flash text fields. */
 export function isFlashTextField(value: unknown): value is TextField {
@@ -615,13 +617,15 @@ export class TextField extends InteractiveObject {
 
     override destroy(destroyChild = true): void {
         if (this.destroyed) return;
-        this._nativeInputSession = null;
-        this._focusRequested = false;
-        this._nativeInput.offAllCaller(this);
-        setInputEventOwner(this._nativeInput, null);
-        this._nativeInput.focus = false;
-        this._nativeInput.destroy(true);
-        super.destroy(destroyChild);
+        runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            this._nativeInputSession = null;
+            this._focusRequested = false;
+            this._nativeInput.offAllCaller(this);
+            setInputEventOwner(this._nativeInput, null);
+            this._nativeInput.focus = false;
+            this._nativeInput.destroy(true);
+            destroyCanonicalTextField.call(this, destroyChild);
+        });
     }
 
     /** @internal Runtime probe for the composed native control; not source API. */

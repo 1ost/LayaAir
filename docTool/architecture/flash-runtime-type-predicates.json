@@ -16,7 +16,7 @@
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "f4ac9312387b9e57a5769e061cf8b19a8875239dfd697edb92628e67dde5a1f5"
+      "moduleSha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7"
     },
     {
       "sourceQName": "flash.display.BitmapData",
@@ -44,7 +44,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "d1fe09f8c2506ac83e723248d49fd3885462f63f458dcbd1924e18236789415e"
+      "moduleSha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -92,6 +92,40 @@
         "flash.display.DisplayObject"
       ],
       "moduleSha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
+    },
+    {
+      "sourceQName": "flash.display.Loader",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Loader.ts",
+      "constructorExport": "Loader",
+      "predicateExport": "isFlashLoader",
+      "constructorSignature": "typeof Loader",
+      "constructSignatures": [
+        "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
+      ],
+      "predicateSignature": "(value: unknown) => value is Loader",
+      "heritageClosure": [
+        "flash.display.DisplayObjectContainer",
+        "flash.display.InteractiveObject",
+        "flash.display.DisplayObject"
+      ],
+      "moduleSha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+    },
+    {
+      "sourceQName": "flash.display.LoaderInfo",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Loader.ts",
+      "constructorExport": "LoaderInfo",
+      "predicateExport": "isFlashLoaderInfo",
+      "constructorSignature": "typeof LoaderInfo",
+      "constructSignatures": [
+        "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
+      ],
+      "predicateSignature": "(value: unknown) => value is LoaderInfo",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
     },
     {
       "sourceQName": "flash.display.MovieClip",
@@ -528,7 +562,7 @@
       "predicateExport": "isFlashURLRequest",
       "predicateSignature": "(value: unknown) => value is URLRequest",
       "heritageClosure": [],
-      "moduleSha256": "c5d93ef09c064bece116e3b3c6f2f8116ba1aa2d344fc2d8f09e5811f1dd1a34"
+      "moduleSha256": "6ea409008eec8c5fc79516f6d683fac5696c7d41ad597ea9ac3214103e0544da"
     },
     {
       "sourceQName": "flash.text.StaticText",
@@ -544,7 +578,7 @@
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "a31b1259386d0699984e9c95af2e118828212d52068f32104d9fc56eb81c35d2"
+      "moduleSha256": "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
     },
     {
       "sourceQName": "flash.text.TextField",
@@ -561,7 +595,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "16c8c35ca7ce55083bf609fba9e2c0be97feea3aabbd237ccedd0d7015a3ced1"
+      "moduleSha256": "79558e85b09b4fbb6d81b0876685569976a7c66a1bb57685d8dd1dc81cfbea6a"
     },
     {
       "sourceQName": "flash.utils.Timer",

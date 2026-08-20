@@ -53,6 +53,8 @@ try {
             "flash.display.DisplayObjectContainer",
             "flash.display.Graphics",
             "flash.display.InteractiveObject",
+            "flash.display.Loader",
+            "flash.display.LoaderInfo",
             "flash.display.MovieClip",
             "flash.display.Shape",
             "flash.display.SimpleButton",

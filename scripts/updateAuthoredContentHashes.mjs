@@ -14,6 +14,22 @@ const runtimeTypeAuthority = JSON.parse(fs.readFileSync(runtimeTypeAuthorityPath
 if (ledger.hashMode !== "canonical-lf-utf8")
     throw new Error("Capability ledger must declare hashMode canonical-lf-utf8");
 
+for (const [sourceQName, targetCapabilityId, targetModule, constructorExport, predicateExport] of [
+    ["flash.display.Loader", "api.flash.display", "src/layaAir/flash/display/Loader.ts", "Loader", "isFlashLoader"],
+    ["flash.display.LoaderInfo", "api.flash.display", "src/layaAir/flash/display/Loader.ts", "LoaderInfo", "isFlashLoaderInfo"],
+    ["flash.events.ContextMenuEvent", "api.flash.events", "src/layaAir/flash/events/ContextMenuEvent.ts", "ContextMenuEvent", "isFlashContextMenuEvent"],
+    ["flash.events.HTTPStatusEvent", "api.flash.events", "src/layaAir/flash/events/HTTPStatusEvent.ts", "HTTPStatusEvent", "isFlashHTTPStatusEvent"],
+    ["flash.events.UncaughtErrorEvent", "api.flash.events", "src/layaAir/flash/events/UncaughtErrorEvent.ts", "UncaughtErrorEvent", "isFlashUncaughtErrorEvent"],
+]) {
+    let entry = runtimeTypeAuthority.types.find(item => item.sourceQName === sourceQName);
+    if (!entry) {
+        entry = { sourceQName };
+        runtimeTypeAuthority.types.push(entry);
+    }
+    Object.assign(entry, { targetCapabilityId, targetModule, constructorExport, predicateExport });
+}
+runtimeTypeAuthority.types.sort((left, right) => left.sourceQName.localeCompare(right.sourceQName));
+
 const eventCapability = ledger.capabilities.find(item => item.id === "api.flash.events");
 for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/events/ContextMenuEvent.ts", "ContextMenuEvent"],
@@ -48,6 +64,9 @@ for (const [module, exported, kind = "class"] of [
 }
 
 const displayCapability = ledger.capabilities.find(item => item.id === "api.flash.display");
+displayCapability.obligations = displayCapability.obligations.filter(item =>
+    item.module !== "src/layaAir/flash/display/LoaderInfo.ts"
+    && item.module !== "src/layaAir/flash/display/NativeLoaderContentHost.ts");
 for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/FlashDisplayRootBoundary.ts", "FlashDisplayRootBoundary"],
     ["src/layaAir/flash/display/FlashDisplayRootBoundary.ts", "FlashDisplayRootLease", "interface"],
@@ -78,6 +97,14 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/InteractiveObject.ts", "resolveFlashFocusOwner", "function"],
     ["src/layaAir/flash/display/MovieClip.ts", "FlashFrameReference", "type"],
     ["src/layaAir/flash/display/MovieClip.ts", "isFlashMovieClip", "function"],
+    ["src/layaAir/flash/display/Loader.ts", "Loader"],
+    ["src/layaAir/flash/display/Loader.ts", "isFlashLoader", "function"],
+    ["src/layaAir/flash/display/Loader.ts", "LoaderInfo"],
+    ["src/layaAir/flash/display/Loader.ts", "isFlashLoaderInfo", "function"],
+    ["src/layaAir/flash/display/Loader.ts", "NativeLoaderContentHost"],
+    ["src/layaAir/flash/display/Loader.ts", "NativeLoaderContentSource"],
+    ["src/layaAir/flash/display/Loader.ts", "installNativeLoaderContentHost", "function"],
+    ["src/layaAir/flash/display/Loader.ts", "isNativeLoaderContentHost", "function"],
     ["src/layaAir/flash/display/NativeMovieClipTimeline.ts", "NativeMovieClipTimeline", "interface"],
     ["src/layaAir/flash/display/Shape.ts", "isFlashShape", "function"],
     ["src/layaAir/flash/display/SimpleButton.ts", "isFlashSimpleButton", "function"],
@@ -281,6 +308,7 @@ const netSubjects = [
     ["src/layaAir/flash/net/URLRequest.ts", "navigateToURL", "function"],
     ["src/layaAir/flash/net/URLRequest.ts", "URLRequestHeader", "interface"],
     ["src/layaAir/flash/net/URLRequest.ts", "isFlashURLRequest", "function"],
+    ["src/layaAir/flash/net/URLRequest.ts", "snapshotNativeLoaderRequest", "function"],
     ["src/layaAir/flash/net/URLLoaderDataFormat.ts", "URLLoaderDataFormat", "class"],
 ];
 netCapability.obligations = netSubjects.map(([module, exported, kind]) =>
@@ -421,7 +449,7 @@ Object.assign(browserCapability, {
 delete browserCapability.blockingReason;
 
 const options = compilerOptions();
-const program = ts.createProgram({ rootNames: discoverCode(root), options });
+const program = ts.createProgram({ rootNames: compilerRoots(), options });
 const checker = program.getTypeChecker();
 
 updateRuntimeTypeAuthority();
@@ -491,20 +519,12 @@ function compilerOptions() {
     return fallback;
 }
 
-function discoverCode(directory) {
-    const skip = new Set([".git", "node_modules", "build", "bin", "coverage", ".idea", ".vscode"]);
-    const extensions = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
-    const result = [];
-    const visit = current => {
-        for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-            if (entry.isDirectory() && skip.has(entry.name)) continue;
-            const candidate = path.join(current, entry.name);
-            if (entry.isDirectory()) visit(candidate);
-            else if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) result.push(candidate);
-        }
-    };
-    visit(directory);
-    return result;
+function compilerRoots() {
+    const relative = new Set(runtimeTypeAuthority.types.map(entry => entry.targetModule));
+    for (const capability of ledger.capabilities) {
+        for (const obligation of capability.obligations || []) relative.add(obligation.module);
+    }
+    return [...relative].sort().map(file => path.join(root, file));
 }
 
 function updateSurface(obligation) {

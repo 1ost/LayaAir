@@ -1,9 +1,11 @@
 import { Texture } from "../../laya/resource/Texture";
+import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { DisplayObject } from "../display/DisplayObject";
 
 const STATIC_TEXT_TOKEN = Symbol("LayaAir.authored.StaticText");
 const STATIC_TEXT_VALUES = new WeakSet<object>();
 const STATIC_TEXT_CONTENT = new WeakMap<StaticText, string>();
+const destroyCanonicalStaticText = DisplayObject.prototype.destroy;
 
 /** @internal Read-only nominal proof for canonical Flash static text. */
 export function isFlashStaticText(value: unknown): value is StaticText {
@@ -34,8 +36,10 @@ export class StaticText extends DisplayObject {
 
     override destroy(destroyChild = true): void {
         if (this.destroyed) return;
-        STATIC_TEXT_CONTENT.delete(this);
-        super.destroy(destroyChild);
+        runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            STATIC_TEXT_CONTENT.delete(this);
+            destroyCanonicalStaticText.call(this, destroyChild);
+        });
     }
 }
 
