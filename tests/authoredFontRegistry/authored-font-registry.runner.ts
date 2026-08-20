@@ -269,6 +269,14 @@ test("ordinary Loader options cannot mint an authenticated font receipt", async 
     } as unknown as ILoadTask)), /requires an engine registry transaction/);
     assert.equal(harness.fetchCount.size, 0);
     assert.equal(harness.installed.size, 0);
+    assert.equal((harness.adapter as any).createAuthenticatedReceipt, undefined);
+    class ReceiptMintProbe extends FontAdapter {
+        exposeMint(): unknown {
+            // @ts-expect-error receipt construction is not a subclass surface
+            return this.createAuthenticatedReceipt;
+        }
+    }
+    assert.equal(new ReceiptMintProbe().exposeMint(), undefined);
 });
 
 test("raw SHA authenticates one fetched byte snapshot and rejects same-URL wrong bytes", async () => {

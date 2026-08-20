@@ -1,4 +1,4 @@
-import { flashFontRecordSnapshot } from "../../laya/platform/AuthoredFontRegistry";
+import { AuthoredFontRegistry } from "../../laya/platform/AuthoredFontRegistry";
 
 export interface FlashFontRegistration {
     readonly documentId: string;
@@ -26,7 +26,7 @@ export class Font {
 
     static enumerateFonts(enumerateDeviceFonts = false): Font[] {
         Boolean(enumerateDeviceFonts);
-        return flashFontRecordSnapshot().map(record => Object.freeze(new Font(
+        return AuthoredFontRegistry.enumeratePublishedFonts().map(record => Object.freeze(new Font(
             record.fontName, record.fontStyle, record.fontType, record.glyphCodePoints,
         )) as Font);
     }
@@ -37,7 +37,7 @@ export class Font {
         if (!property || !("value" in property) || !property.value || typeof property.value !== "object")
             throw new TypeError("Font class authoredFont must be an own data property");
         const registration = property.value as FlashFontRegistration;
-        const matches = flashFontRecordSnapshot().some(record =>
+        const matches = AuthoredFontRegistry.enumeratePublishedFonts().some(record =>
             record.documentId === registration.documentId
             && record.fontId === registration.fontId
             && record.fontStyle === registration.fontStyle
