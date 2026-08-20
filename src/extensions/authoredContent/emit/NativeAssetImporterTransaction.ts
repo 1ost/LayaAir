@@ -458,10 +458,13 @@ export async function listNativeAssetImporterRecoveryPaths(
     host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
 ): Promise<ReadonlyArray<string>> {
     const root = host.path.resolve(tempPath, "authored-content-native-transaction");
-    const value = await loadRecoveryJournal(root, host);
-    if (value.schema !== "laya-authored-content-recovery@2" || !Array.isArray(value.targets))
-        fail("RECOVERY_JOURNAL_INVALID", root);
-    const paths = value.targets.map(item => item?.relativePath);
+    const recoveryPath = host.path.join(root, "recovery.json");
+    const nextPath = host.path.join(root, "recovery.next.json");
+    const source = !await isMissing(recoveryPath, host) ? recoveryPath : nextPath;
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(source));
+    const value = JSON.parse(raw) as Partial<RecoveryJournal>;
+    assertRecoveryJournalShape(value, source, root, host);
+    const paths = value.targets!.map(item => item?.relativePath);
     if (paths.some(path => !isCanonicalRelativePath(path)) || new Set(paths).size !== paths.length)
         fail("RECOVERY_JOURNAL_INVALID", root);
     return Object.freeze(paths as string[]);
@@ -565,7 +568,7 @@ async function loadRecoveryJournal(
             const nextRaw = new TextDecoder("utf-8", { fatal: true }).decode(nextBytes);
             const nextValue = JSON.parse(nextRaw) as Partial<RecoveryJournal>;
             assertRecoveryJournalShape(nextValue, nextPath, root, host, expectedTargets);
-            if (published && !sameJournalTargetClosure(published.targets!, nextValue.targets!, host))
+            if (published && !sameJournalTargetClosure(published.targets!, nextValue.targets!))
                 fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", nextPath);
             await host.fs.promises.rename(nextPath, recoveryPath);
             await syncDirectory(root, host);
@@ -588,12 +591,11 @@ async function loadRecoveryJournal(
 
 function sameJournalTargetClosure(
     left: RecoveryJournal["targets"],
-    right: RecoveryJournal["targets"],
-    host: NativeAssetTransactionHost
+    right: RecoveryJournal["targets"]
 ): boolean {
     return left.length === right.length && left.every((item, index) =>
         item.relativePath === right[index].relativePath
-        && host.path.resolve(item.target) === host.path.resolve(right[index].target));
+        && item.target === right[index].target);
 }
 
 function assertRecoveryJournalShape(
@@ -633,7 +635,7 @@ function assertRecoveryJournalShape(
             fail("RECOVERY_JOURNAL_INVALID", label);
         const records = backup ? backupPaths : installedPaths;
         if (records.has(file.relativePath))
-            fail("RECOVERY_JOURNAL_INVALID", label);
+            fail(backup ? "RECOVERY_DUPLICATE_BACKUP" : "RECOVERY_DUPLICATE_INSTALLED", `${label}: ${file.relativePath}`);
         records.add(file.relativePath);
     };
     for (const file of value.installed) validateFile(file, false);
@@ -646,7 +648,7 @@ function assertRecoveryJournalShape(
             target: host.path.resolve(target)
         }));
         if (value.targets.length !== expected.length || value.targets.some((item, index) =>
-            item.relativePath !== expected[index].relativePath || host.path.resolve(item.target) !== expected[index].target))
+            item.relativePath !== expected[index].relativePath || item.target !== expected[index].target))
             fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", label);
     }
 }

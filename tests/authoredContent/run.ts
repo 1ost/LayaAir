@@ -850,7 +850,12 @@ async function main(): Promise<void> {
                 }
                 else {
                     const paths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
-                    assert(paths.join(",") === "asset.lh", `${fault} restart did not promote the complete newer journal`);
+                    assert(paths.join(",") === "asset.lh", `${fault} restart did not expose the durable target closure`);
+                    if (fault === "sync" || fault === "rename") {
+                        assert(!fs.existsSync(transaction.recoveryPath), `${fault} path discovery promoted state before registered binding`);
+                        assert(fs.existsSync(path.join(path.dirname(transaction.recoveryPath), "recovery.next.json")),
+                            `${fault} path discovery discarded the newer journal before registered binding`);
+                    }
                     await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
                     await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
                 }
@@ -884,8 +889,11 @@ async function main(): Promise<void> {
             assert(paths.join(",") === "asset.lh", "invalid newer journal replaced the published target closure");
             assert(fs.readFileSync(transaction.recoveryPath).equals(published),
                 "invalid newer journal replaced published recovery bytes");
+            assert(fs.existsSync(nextPath), "path discovery promoted or discarded unbound newer authority");
+            await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
             assert(fs.readdirSync(transactionRoot).some(name => name.startsWith("recovery.invalid-")),
                 "invalid newer journal evidence was not quarantined");
+            const reboundPublished = fs.readFileSync(transaction.recoveryPath);
 
             const authority = { byteLength: 1, sha256: "0".repeat(64) };
             fs.writeFileSync(nextPath, JSON.stringify({
@@ -900,13 +908,48 @@ async function main(): Promise<void> {
             }));
             const duplicatePaths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
             assert(duplicatePaths.join(",") === "asset.lh", "duplicate mutation records replaced published recovery");
-            assert(fs.readFileSync(transaction.recoveryPath).equals(published),
+            assert(fs.readFileSync(transaction.recoveryPath).equals(reboundPublished),
                 "duplicate mutation records changed published recovery bytes");
             await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
             await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
         }
         finally {
             fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    await test("duplicate installed and backup recovery records fail with exact diagnostics", async () => {
+        for (const kind of ["installed", "backups"] as const) {
+            const root = fs.mkdtempSync(path.join(os.tmpdir(), `laya-native-duplicate-${kind}-`));
+            try {
+                const tempPath = path.join(root, "temp");
+                const transactionRoot = path.join(tempPath, "authored-content-native-transaction");
+                fs.mkdirSync(transactionRoot, { recursive: true });
+                const target = path.resolve(root, "outputs", "asset.lh");
+                const authority = { byteLength: 1, sha256: "0".repeat(64), ...(kind === "backups" ? { exists: true } : {}) };
+                const record = {
+                    relativePath: "asset.lh",
+                    target,
+                    authority,
+                    ...(kind === "backups" ? { backup: path.join(transactionRoot, "backup", "0") } : {})
+                };
+                fs.writeFileSync(path.join(transactionRoot, "recovery.next.json"), JSON.stringify({
+                    schema: "laya-authored-content-recovery@2",
+                    targets: [{ relativePath: "asset.lh", target }],
+                    installed: kind === "installed" ? [record, record] : [],
+                    backups: kind === "backups" ? [record, record] : [],
+                    failures: []
+                }));
+                await assertRejects(
+                    () => listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost),
+                    kind === "installed" ? "RECOVERY_DUPLICATE_INSTALLED" : "RECOVERY_DUPLICATE_BACKUP"
+                );
+                const quarantine = await retireAbortedNativeAssetImporterPublication(tempPath, nativeTransactionHost);
+                assert(fs.existsSync(quarantine), `duplicate ${kind} evidence was not preserved`);
+            }
+            finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
         }
     });
 
