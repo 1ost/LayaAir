@@ -18,7 +18,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -36,7 +36,7 @@
           "capability": "library.symbol-linkage",
           "covers": [
             "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
           ]
         }
       ]
@@ -82,7 +82,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -100,7 +100,7 @@
           "capability": "display.hierarchy",
           "covers": [
             "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
           ]
         }
       ]
@@ -119,7 +119,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -137,7 +137,7 @@
           "capability": "display.instance-name",
           "covers": [
             "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "fdbfeed5550e8de74203d7dff8cc0072fd41778f4d2a6e1150fee07644706fc8"
+            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
           ]
         }
       ]

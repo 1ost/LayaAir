@@ -28,6 +28,20 @@ interface Symbol21BrowserBundle {
     readonly images: Readonly<Record<string, string>>;
 }
 
+interface AuthoredStageMetadata {
+    readonly width: number;
+    readonly height: number;
+    readonly frameRate: number;
+    readonly frameCount: number;
+    readonly backgroundColor: {
+        readonly alpha: number;
+        readonly color: number;
+    };
+}
+
+let stagePixelWidth = 0;
+let stagePixelHeight = 0;
+
 declare global {
     interface Window {
         __symbol21Bundle: Symbol21BrowserBundle;
@@ -49,10 +63,13 @@ void main().then(result => publish({ ok: true, result }), error => publish({
 }));
 
 async function main(): Promise<unknown> {
+    const authoredStage = readAuthoredStage(window.__symbol21Bundle.hierarchy);
+    stagePixelWidth = authoredStage.width;
+    stagePixelHeight = authoredStage.height;
     Config.isAlpha = false;
     Config.preserveDrawingBuffer = true;
-    await Laya.init(1250, 650);
-    Laya.stage.bgColor = "#000000";
+    await Laya.init(authoredStage.width, authoredStage.height);
+    Laya.stage.bgColor = rgbHex(authoredStage.backgroundColor.color);
     registerAuthoredContentPrimitives();
     registerAuthoredContentRuntime([{
         id: "Processors_Mini.Accessories.LoadingScreenSkin",
@@ -120,6 +137,7 @@ async function main(): Promise<unknown> {
         throw new Error(`Rendered loading screen is incomplete: ${JSON.stringify(summary)}`);
     return {
         renderer: document.querySelector("canvas")?.getContext("webgl2") ? "WebGL2" : "WebGL",
+        stage: authoredStage,
         childNames: [
             skin.HappyBear.name,
             skin.SP_ProgressBigBar.name,
@@ -184,9 +202,44 @@ function readPixels(): Uint8Array {
         || canvas?.getContext("webgl", { preserveDrawingBuffer: true });
     if (!gl) throw new Error("Laya WebGL context is unavailable.");
     gl.finish();
-    const pixels = new Uint8Array(1250 * 650 * 4);
-    gl.readPixels(0, 0, 1250, 650, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    const pixels = new Uint8Array(stagePixelWidth * stagePixelHeight * 4);
+    gl.readPixels(0, 0, stagePixelWidth, stagePixelHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     return pixels;
+}
+
+function readAuthoredStage(hierarchy: Record<string, unknown>): AuthoredStageMetadata {
+    const metadata = hierarchy._$authoredContent;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+        throw new Error("Emitted authored-content metadata is missing.");
+    const stage = (metadata as Record<string, unknown>).stage;
+    if (!stage || typeof stage !== "object" || Array.isArray(stage))
+        throw new Error("Emitted authored stage metadata is missing.");
+    const value = stage as Record<string, unknown>;
+    const background = value.backgroundColor;
+    if (!background || typeof background !== "object" || Array.isArray(background))
+        throw new Error("Emitted authored stage background is missing.");
+    const backgroundValue = background as Record<string, unknown>;
+    const width = exactPositiveInteger(value.width, "stage.width");
+    const height = exactPositiveInteger(value.height, "stage.height");
+    const frameRate = exactPositiveInteger(value.frameRate, "stage.frameRate");
+    const frameCount = exactPositiveInteger(value.frameCount, "stage.frameCount");
+    const alpha = backgroundValue.alpha;
+    const color = backgroundValue.color;
+    if (alpha !== 1)
+        throw new Error(`Emitted authored stage alpha '${String(alpha)}' is unsupported.`);
+    if (typeof color !== "number" || !Number.isInteger(color) || color < 0 || color > 0xffffff)
+        throw new Error(`Emitted authored stage color '${String(color)}' is invalid.`);
+    return { width, height, frameRate, frameCount, backgroundColor: { alpha, color } };
+}
+
+function exactPositiveInteger(value: unknown, label: string): number {
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1)
+        throw new Error(`Emitted authored ${label} '${String(value)}' is invalid.`);
+    return value;
+}
+
+function rgbHex(color: number): string {
+    return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 function decodeBase64(value: string): ArrayBuffer {

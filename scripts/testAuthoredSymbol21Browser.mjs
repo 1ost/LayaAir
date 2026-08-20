@@ -33,7 +33,7 @@ try {
     assert.equal(adversarial.status, 0, `symbol21 fail-closed verification failed:\n${adversarial.stderr}`);
     const rejected = JSON.parse(adversarial.stdout);
     assert.equal(rejected.phase, "adapter-parse");
-    assert.equal(rejected.rejected.length, 15);
+    assert.equal(rejected.rejected.length, 21);
 
     const emission = spawnSync(process.execPath, [
         join(root, "src/extensions/authoredContent/scripts/emitFlashLibrarySymbolBundle.cjs"),
@@ -108,6 +108,13 @@ try {
     assert.ok(match, `symbol21 result marker missing. Chromium stderr:\n${browser.stderr}\nDOM:\n${browser.stdout.slice(-6000)}`);
     const payload = JSON.parse(decodeHtml(match[1]));
     assert.equal(payload.ok, true, payload.error);
+    assert.deepEqual(payload.result.stage, {
+        width: 1250,
+        height: 650,
+        frameRate: 30,
+        frameCount: 1,
+        backgroundColor: { alpha: 1, color: 0 },
+    });
     assert.deepEqual(payload.result.childNames, [
         "HappyBear",
         "SP_ProgressBigBar",

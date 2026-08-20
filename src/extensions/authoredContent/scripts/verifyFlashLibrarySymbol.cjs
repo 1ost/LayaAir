@@ -69,6 +69,12 @@ else {
 
 function verifyFailClosedMutations(adapter, baseline) {
     const cases = [
+        ["stage frame rate mismatch", request => request.library.stage.frameRate = 24, /FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH/],
+        ["stage frame count mismatch", request => request.library.stage.frameCount = 2, /FLASH_LIBRARY_STAGE_FRAME_COUNT_MISMATCH/],
+        ["stage nonblack background", request => request.library.stage.backgroundColor.color = 0xff0000, /FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_UNSUPPORTED/],
+        ["stage translucent background", request => request.library.stage.backgroundColor.alpha = 0.5, /FLASH_LIBRARY_STAGE_BACKGROUND_ALPHA_UNSUPPORTED/],
+        ["stage unknown field", request => request.library.stage.quality = "high", /FLASH_LIBRARY_STAGE_FIELD_UNSUPPORTED/],
+        ["stage background unknown field", request => request.library.stage.backgroundColor.profile = "srgb", /FLASH_LIBRARY_STAGE_BACKGROUND_FIELD_UNSUPPORTED/],
         ["text html", request => firstTextField(request).html = true, /FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED/],
         ["text auto-size true", request => firstTextField(request).autoSize = true, /FLASH_LIBRARY_TEXT_AUTO_SIZE_UNSUPPORTED/],
         ["text auto-size non-none", request => firstTextField(request).autoSize = "left", /FLASH_LIBRARY_TEXT_AUTO_SIZE_UNSUPPORTED/],

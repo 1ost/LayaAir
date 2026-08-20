@@ -1417,6 +1417,34 @@ async function main(): Promise<void> {
         assert(metadata.nodes[1].animatorOwnerPath.join("/") === "titleField", "animator owner path is not root-relative");
     });
 
+    await test("stage metadata remains authoritative through normalization and native emission", () => {
+        const source = {
+            ...sourceDocument(),
+            stage: {
+                width: 200,
+                height: 100,
+                frameRate: 24,
+                frameCount: 24,
+                backgroundColor: { alpha: 1, color: 0 },
+            },
+        };
+        const content = normalizeNeutralAuthoredContent(source);
+        const metadata = NativeLayaEmitter.createMetadata(content, "timeline");
+        assert(metadata.stage !== undefined, "stage metadata was lost");
+        assert(metadata.stage.width === 200 && metadata.stage.height === 100, "stage dimensions were lost");
+        assert(metadata.stage.frameRate === 24 && metadata.stage.frameCount === 24, "stage timeline authority was lost");
+        assert(metadata.stage.backgroundColor.alpha === 1 && metadata.stage.backgroundColor.color === 0,
+            "stage background authority was lost");
+        assertThrows(() => normalizeNeutralAuthoredContent({
+            ...source,
+            stage: { ...source.stage, frameRate: 30 },
+        }), "AUTHORED_CONTENT_STAGE_FRAME_RATE_MISMATCH");
+        assertThrows(() => normalizeNeutralAuthoredContent({
+            ...source,
+            stage: { ...source.stage, frameCount: 1 },
+        }), "AUTHORED_CONTENT_STAGE_FRAME_COUNT_MISMATCH");
+    });
+
     await test("semantic subasset IDs are fixed and payload-independent", () => {
         const importerSource = require("fs").readFileSync(
             require("path").resolve(__dirname, "../../src/extensions/authoredContent/EnvMain.ts"),

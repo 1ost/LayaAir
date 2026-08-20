@@ -83,6 +83,7 @@ export class NativeLayaEmitter {
         return {
             schema: "laya-authored-content-metadata@1",
             documentId: content.documentId,
+            ...(content.stage === undefined ? {} : { stage: content.stage }),
             rootLinkageClass: content.root.linkage,
             timelineAssetId,
             nestedTimelines: [...nestedTimelineAssetIds].map(([semanticPath, assetId]) => ({
@@ -315,6 +316,7 @@ export interface NativeAuthoredContentResourceMetadata {
 export interface NativeAuthoredContentMetadata {
     readonly schema: "laya-authored-content-metadata@1";
     readonly documentId: string;
+    readonly stage?: NeutralAuthoredContentIR["stage"];
     readonly rootLinkageClass: string;
     readonly timelineAssetId: string;
     readonly nestedTimelines: ReadonlyArray<{

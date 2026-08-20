@@ -92,12 +92,24 @@ export interface NeutralTimeline {
     readonly tracks: ReadonlyArray<NeutralTimelineTrack>;
 }
 
+export interface NeutralAuthoredStage {
+    readonly width: number;
+    readonly height: number;
+    readonly frameRate: number;
+    readonly frameCount: number;
+    readonly backgroundColor: {
+        readonly alpha: number;
+        readonly color: number;
+    };
+}
+
 export interface NeutralAuthoredContentIR {
     readonly schema: typeof NEUTRAL_AUTHORED_CONTENT_SCHEMA;
     readonly documentId: string;
     readonly resources: ReadonlyArray<NeutralAuthoredResource>;
     readonly root: NeutralAuthoredNode;
     readonly timeline: NeutralTimeline;
+    readonly stage?: NeutralAuthoredStage;
 }
 
 const NODE_KINDS: ReadonlySet<string> = new Set(["container", "dynamic-text", "image", "text"]);
@@ -109,7 +121,7 @@ const SCALED_TRACK_PROPERTIES: ReadonlySet<string> = new Set(["x", "y"]);
 /** Validates untrusted adapter output and returns a deterministic normalized IR. */
 export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): NeutralAuthoredContentIR {
     const source = record(input, "document");
-    allowedKeys(source, ["schema", "documentId", "resources", "root", "timeline", "controller"], "document");
+    allowedKeys(source, ["schema", "documentId", "resources", "root", "timeline", "stage", "controller"], "document");
     if ("controller" in source)
         fail("AUTHORED_CONTENT_CONTROLLER_CAPTURE_REQUIRED", "Animation-controller capture is not implemented.");
     if (source.schema !== NEUTRAL_AUTHORED_CONTENT_SCHEMA)
@@ -125,7 +137,45 @@ export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): Neut
     validateResourceClosure(root, resources);
     const nodePaths = collectNodePaths(root);
     const timeline = normalizeTimeline(source.timeline, scale, nodePaths);
-    return { schema: NEUTRAL_AUTHORED_CONTENT_SCHEMA, documentId, resources, root, timeline };
+    const stage = source.stage === undefined ? undefined : normalizeStage(source.stage, scale);
+    if (stage !== undefined) {
+        if (root.width !== stage.width || root.height !== stage.height)
+            fail("AUTHORED_CONTENT_STAGE_BOUNDS_MISMATCH", "Stage dimensions must match the emitted document root.");
+        if (timeline.frameRate !== stage.frameRate)
+            fail("AUTHORED_CONTENT_STAGE_FRAME_RATE_MISMATCH", "Stage and root timeline frame rates must match.");
+        if (Math.abs(timeline.duration * timeline.frameRate - stage.frameCount) > 1e-9)
+            fail("AUTHORED_CONTENT_STAGE_FRAME_COUNT_MISMATCH", "Stage frame count must match the root timeline duration.");
+    }
+    return {
+        schema: NEUTRAL_AUTHORED_CONTENT_SCHEMA,
+        documentId,
+        resources,
+        root,
+        timeline,
+        ...(stage === undefined ? {} : { stage }),
+    };
+}
+
+function normalizeStage(value: unknown, scale: number): NeutralAuthoredStage {
+    const source = record(value, "stage");
+    allowedKeys(source, ["width", "height", "frameRate", "frameCount", "backgroundColor"], "stage");
+    const background = record(source.backgroundColor, "stage.backgroundColor");
+    allowedKeys(background, ["alpha", "color"], "stage.backgroundColor");
+    const width = positiveNumber(source.width, "stage.width") * scale;
+    const height = positiveNumber(source.height, "stage.height") * scale;
+    const frameRate = requiredFiniteNumber(source.frameRate, "stage.frameRate");
+    if (!Number.isInteger(frameRate) || frameRate < 1 || frameRate > 0x7fff)
+        fail("AUTHORED_CONTENT_FRAME_RATE_RANGE", "Stage frame rate must be an integer from 1 through 32767.");
+    const frameCount = requiredFiniteNumber(source.frameCount, "stage.frameCount");
+    if (!Number.isSafeInteger(frameCount) || frameCount < 1)
+        fail("AUTHORED_CONTENT_STAGE_FRAME_COUNT_INVALID", "Stage frame count must be a positive safe integer.");
+    const alpha = requiredFiniteNumber(background.alpha, "stage.backgroundColor.alpha");
+    if (alpha < 0 || alpha > 1)
+        fail("AUTHORED_CONTENT_STAGE_BACKGROUND_ALPHA_INVALID", "Stage background alpha must be between zero and one.");
+    const color = requiredFiniteNumber(background.color, "stage.backgroundColor.color");
+    if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+        fail("AUTHORED_CONTENT_STAGE_BACKGROUND_COLOR_INVALID", "Stage background color must be an RGB integer.");
+    return { width, height, frameRate, frameCount, backgroundColor: { alpha, color } };
 }
 
 function normalizeNode(

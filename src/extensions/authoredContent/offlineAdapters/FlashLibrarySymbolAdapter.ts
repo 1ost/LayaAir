@@ -17,6 +17,8 @@ const PLACEMENT_FIELDS = new Set(["characterId", "depth", "matrix", "move", "nam
 const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
 const TIMELINE_FIELDS = new Set(["frameCount", "frameRate", "frames", "schema", "symbolId", "symbolName"]);
 const FRAME_FIELDS = new Set(["durationTicks", "index", "labels", "operations", "sounds"]);
+const STAGE_FIELDS = new Set(["backgroundColor", "frameCount", "frameRate", "height", "width"]);
+const STAGE_BACKGROUND_FIELDS = new Set(["alpha", "color"]);
 const TEXT_FIELD_FIELDS = new Set([
     "align", "autoSize", "border", "color", "fieldType", "fontId", "fontSize", "html", "indent",
     "initialText", "leading", "leftMargin", "multiline", "password", "rightMargin", "selectable",
@@ -44,11 +46,32 @@ export class FlashLibrarySymbolAdapter {
         exactSchema(library, "flash-library@1", "library");
         const assets = object(library.assets, "library.assets");
         const stage = object(library.stage, "library.stage");
+        exactKeys(stage, STAGE_FIELDS, "library.stage", "FLASH_LIBRARY_STAGE_FIELD_UNSUPPORTED");
         const stageWidth = finite(stage.width, "library.stage.width");
         const stageHeight = finite(stage.height, "library.stage.height");
-        const stageFrameRate = finite(stage.frameRate, "library.stage.frameRate");
-        if (stageWidth <= 0 || stageHeight <= 0 || stageFrameRate <= 0)
-            fail("FLASH_LIBRARY_STAGE_INVALID", "Stage width, height, and frame rate must be positive.");
+        const stageFrameRate = positiveInteger(stage.frameRate, "library.stage.frameRate");
+        const stageFrameCount = positiveInteger(stage.frameCount, "library.stage.frameCount");
+        const stageBackground = object(stage.backgroundColor, "library.stage.backgroundColor");
+        exactKeys(stageBackground, STAGE_BACKGROUND_FIELDS, "library.stage.backgroundColor", "FLASH_LIBRARY_STAGE_BACKGROUND_FIELD_UNSUPPORTED");
+        const stageBackgroundAlpha = finite(stageBackground.alpha, "library.stage.backgroundColor.alpha");
+        const stageBackgroundColor = finite(stageBackground.color, "library.stage.backgroundColor.color");
+        if (stageWidth <= 0 || stageHeight <= 0)
+            fail("FLASH_LIBRARY_STAGE_INVALID", "Stage width and height must be positive.");
+        if (stageFrameRate > 0x7fff)
+            fail("FLASH_LIBRARY_STAGE_FRAME_RATE_INVALID", "Stage frame rate exceeds the signed native parser field.");
+        if (stageBackgroundAlpha !== 1)
+            fail("FLASH_LIBRARY_STAGE_BACKGROUND_ALPHA_UNSUPPORTED", "Only an opaque authored stage background is supported.");
+        if (!Number.isInteger(stageBackgroundColor) || stageBackgroundColor < 0 || stageBackgroundColor > 0xffffff)
+            fail("FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_INVALID", "Stage background color must be an RGB integer.");
+        if (stageBackgroundColor !== 0)
+            fail("FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_UNSUPPORTED", "This projection supports the authored opaque black stage background only.");
+        const entryTimeline = timeline(request.timelines, request.entrySymbolId);
+        const entryFrameRate = positiveInteger(entryTimeline.frameRate, `timeline ${request.entrySymbolId}.frameRate`);
+        const entryFrameCount = positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
+        if (entryFrameRate !== stageFrameRate)
+            fail("FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH", "Stage frame rate must match the entry-symbol timeline.");
+        if (entryFrameCount !== stageFrameCount)
+            fail("FLASH_LIBRARY_STAGE_FRAME_COUNT_MISMATCH", "Stage frame count must match the entry-symbol timeline.");
         const frameLabels = array(library.frameLabels, "library.frameLabels");
         if (frameLabels.length !== 0)
             fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", "This native projection requires an empty frame-label set.");
@@ -63,7 +86,6 @@ export class FlashLibrarySymbolAdapter {
             resources,
             true,
         );
-        const entryTimeline = timeline(request.timelines, request.entrySymbolId);
         const content = {
             schema: "neutral-authored-content@1",
             documentId: `flash-library-symbol-${request.entrySymbolId}`,
@@ -76,6 +98,16 @@ export class FlashLibrarySymbolAdapter {
                 timeline: undefined,
             },
             timeline: nativeTimeline(entryTimeline, root),
+            stage: {
+                width: stageWidth,
+                height: stageHeight,
+                frameRate: stageFrameRate,
+                frameCount: stageFrameCount,
+                backgroundColor: {
+                    alpha: stageBackgroundAlpha,
+                    color: stageBackgroundColor,
+                },
+            },
         };
         return normalizeNeutralAuthoredContent(content);
     }
