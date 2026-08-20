@@ -10,6 +10,10 @@ const stage: Stage = Stage.fromNative(nativeStage);
 const attached: Stage | null = Stage.forDisplayObject(display);
 const width: number = stage.stageWidth;
 const parameters: Readonly<Record<string, string>> = stage.loaderInfo.parameters;
+const viewport = FlashStageBoundary.claimViewport(nativeStage, { width: 1250, height: 650 });
+const viewportDisposed: boolean = viewport.disposed;
+viewport.resizeViewport(1024, 576);
+viewport.dispose();
 stage.align = "TL";
 stage.scaleMode = "noScale";
 stage.quality = "high";
@@ -27,4 +31,4 @@ const leaked: Stage = nativeStage;
 // @ts-expect-error Native boundary APIs retain native Stage authority.
 FlashStageBoundary.getWidth(stage);
 
-void [attached, width, parameters, leaked];
+void [attached, width, parameters, viewportDisposed, leaked];

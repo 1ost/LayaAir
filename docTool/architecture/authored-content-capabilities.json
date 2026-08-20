@@ -18867,7 +18867,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab",
+          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509",
           "heritage": []
         },
         {
@@ -18917,14 +18917,14 @@
           "export": "FlashStageBootstrap",
           "kind": "interface",
           "signature": "any",
-          "sha256": "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab"
+          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageBootstrapOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab"
+          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -19404,14 +19404,14 @@
           "export": "FlashStageViewport",
           "kind": "interface",
           "signature": "any",
-          "sha256": "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab"
+          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageViewportOwner",
           "kind": "interface",
           "signature": "any",
-          "sha256": "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab"
+          "sha256": "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509"
         },
         {
           "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
@@ -22461,7 +22461,7 @@
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
-            "34059cab320a3fb99c27e0666a12d812666927e47a0e02e5494d9d0827d10bab",
+            "3413d0cd3b445659126f96dccc9e3f929d15db7cd42fd6d06b9e5b8e2f8b1509",
             "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",

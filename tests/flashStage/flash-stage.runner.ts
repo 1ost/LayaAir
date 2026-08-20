@@ -127,6 +127,61 @@ test("Stage bootstrap mints one stable source view without modifying the native 
     }
 });
 
+test("viewport leases roll back failed mounts and fence stale generations on same-Stage remount", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const previousCanvas = Browser.mainCanvas;
+    const nativeStage = new LayaStage();
+    const scheduler = new FrameScheduler();
+    try {
+        install(nativeStage, scheduler);
+        const configured = FlashStageBoundary.configure(nativeStage, {
+            align: "TL", scaleMode: "noScale", quality: "best", showDefaultContextMenu: false,
+            loaderParameters: FlashStageBoundary.parseLoaderParameters("?mount=first"),
+        });
+        const sourceStage = Stage.fromNative(nativeStage);
+        let failedMountLease: ReturnType<typeof FlashStageBoundary.claimViewport> | undefined;
+        const failure = new Error("fixture later mount failure");
+        assert.throws(() => {
+            failedMountLease = FlashStageBoundary.claimViewport(nativeStage, { width: 1250, height: 650 });
+            throw failure;
+        }, error => error === failure);
+        failedMountLease!.dispose();
+        assert.equal(failedMountLease!.disposed, true);
+        assert.equal(Object.isFrozen(failedMountLease), true);
+        assert.throws(() => failedMountLease!.resizeViewport(1, 1), /exact engine-issued owner/);
+        assert.throws(() => failedMountLease!.stageWidth, /exact engine-issued owner/);
+        assert.throws(() => FlashStageBoundary.getWidth(nativeStage), /has not been claimed/);
+
+        const successor = FlashStageBoundary.claimViewport(nativeStage, { width: 1024, height: 576 });
+        failedMountLease!.dispose();
+        assert.deepEqual([successor.disposed, successor.stageWidth, successor.stageHeight],
+            [false, 1024, 576], "stale release cannot affect the successor generation");
+        successor.resizeViewport(1366, 768);
+        assert.deepEqual([sourceStage.stageWidth, sourceStage.stageHeight], [1366, 768]);
+        const disposeMethod = Object.getOwnPropertyDescriptor(
+            Object.getPrototypeOf(successor), "dispose")?.value;
+        assert.throws(() => Reflect.apply(disposeMethod, {}, []), /exact engine-issued owner/);
+
+        FlashStageBoundary.dispose(nativeStage);
+        assert.equal(successor.disposed, true, "Stage-boundary disposal releases current viewport ownership");
+        const remount = FlashStageBoundary.claimViewport(nativeStage, { width: 800, height: 600 });
+        assert.deepEqual([Stage.fromNative(nativeStage), FlashStageBoundary.getBootstrap(nativeStage),
+            remount.stageWidth, remount.stageHeight], [sourceStage, configured, 800, 600],
+        "same-Stage remount preserves public identity and bootstrap configuration");
+        successor.dispose();
+        assert.equal(remount.disposed, false, "a stale post-disposal lease cannot release the remount");
+        remount.dispose();
+        remount.dispose();
+        assert.equal(remount.disposed, true);
+    } finally {
+        FlashStageBoundary.dispose(nativeStage);
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+        Browser.mainCanvas = previousCanvas;
+    }
+});
+
 test("Stage child operations retain Laya attachment and Flash lifecycle semantics", () => {
     const previousStage = ILaya.stage;
     const previousTimer = ILaya.timer;

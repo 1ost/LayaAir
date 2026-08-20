@@ -19,12 +19,15 @@ const STAGE_ROUTERS = new WeakMap<object, FlashEventRouter>();
 const STAGE_BOOTSTRAPS = new WeakMap<object, FlashStageBootstrap>();
 const LOADER_PARAMETER_VALUES = new WeakSet<object>();
 const STAGE_VIEWPORT_OWNERS = new WeakMap<object, FlashStageViewportOwner>();
+const STAGE_VIEWPORT_GENERATIONS = new WeakMap<object, number>();
 const STAGE_EVENT_TARGETS = new WeakMap<object, Stage>();
 
 interface FlashStageViewportRecord {
     readonly stage: LayaStage;
+    readonly generation: number;
     width: number;
     height: number;
+    disposed: boolean;
 }
 
 const VIEWPORT_OWNER_RECORDS = new WeakMap<object, FlashStageViewportRecord>();
@@ -58,7 +61,9 @@ export interface FlashStageViewport {
 export interface FlashStageViewportOwner {
     readonly stageWidth: number;
     readonly stageHeight: number;
+    readonly disposed: boolean;
     resizeViewport(width: number, height: number): void;
+    dispose(): void;
 }
 
 function requireCurrentStage(stage: LayaStage): LayaStage {
@@ -73,22 +78,32 @@ function requireViewportDimension(value: number, name: "width" | "height"): numb
     return value;
 }
 
-function requireViewportOwner(value: unknown): FlashStageViewportRecord {
+function requireViewportRecord(value: unknown): FlashStageViewportRecord {
     if ((typeof value !== "object" && typeof value !== "function") || value === null)
-        throw new TypeError("Flash Stage viewport changes require the exact engine-issued owner");
+        throw new TypeError("Flash Stage viewport lifecycle requires the exact engine-issued owner");
     const record = VIEWPORT_OWNER_RECORDS.get(value as object);
-    if (!record || STAGE_VIEWPORT_OWNERS.get(record.stage as object) !== value)
+    if (!record)
+        throw new TypeError("Flash Stage viewport lifecycle requires the exact engine-issued owner");
+    return record;
+}
+
+function requireViewportOwner(value: unknown): FlashStageViewportRecord {
+    const record = requireViewportRecord(value);
+    if (record.disposed || STAGE_VIEWPORT_OWNERS.get(record.stage as object) !== value
+        || STAGE_VIEWPORT_GENERATIONS.get(record.stage as object) !== record.generation)
         throw new TypeError("Flash Stage viewport changes require the exact engine-issued owner");
     return record;
 }
 
 class EngineFlashStageViewportOwner implements FlashStageViewportOwner {
-    constructor(stage: LayaStage, width: number, height: number) {
-        VIEWPORT_OWNER_RECORDS.set(this, { stage, width, height });
+    constructor(stage: LayaStage, width: number, height: number, generation: number) {
+        VIEWPORT_OWNER_RECORDS.set(this, { stage, generation, width, height, disposed: false });
+        Object.freeze(this);
     }
 
     get stageWidth(): number { return requireViewportOwner(this).width; }
     get stageHeight(): number { return requireViewportOwner(this).height; }
+    get disposed(): boolean { return requireViewportRecord(this).disposed; }
 
     resizeViewport(width: number, height: number): void {
         const record = requireViewportOwner(this);
@@ -102,6 +117,15 @@ class EngineFlashStageViewportOwner implements FlashStageViewportOwner {
         record.width = nextWidth;
         record.height = nextHeight;
         FlashStageBoundary.dispatchEvent(record.stage, new Event(Event.RESIZE, false, false));
+    }
+
+    dispose(): void {
+        const record = requireViewportRecord(this);
+        if (record.disposed) return;
+        record.disposed = true;
+        if (STAGE_VIEWPORT_OWNERS.get(record.stage as object) === this
+            && STAGE_VIEWPORT_GENERATIONS.get(record.stage as object) === record.generation)
+            STAGE_VIEWPORT_OWNERS.delete(record.stage as object);
     }
 }
 
@@ -220,7 +244,9 @@ export class FlashStageBoundary {
         if (STAGE_VIEWPORT_OWNERS.has(stage as object))
             throw new Error("Flash Stage already has a viewport owner");
 
-        const owner = new EngineFlashStageViewportOwner(stage, nextWidth, nextHeight);
+        const generation = (STAGE_VIEWPORT_GENERATIONS.get(stage as object) ?? 0) + 1;
+        const owner = new EngineFlashStageViewportOwner(stage, nextWidth, nextHeight, generation);
+        STAGE_VIEWPORT_GENERATIONS.set(stage as object, generation);
         STAGE_VIEWPORT_OWNERS.set(stage as object, owner);
         return owner;
     }
@@ -299,6 +325,7 @@ export class FlashStageBoundary {
 
     static dispose(stage: LayaStage): void {
         this._requireCurrent(stage);
+        STAGE_VIEWPORT_OWNERS.get(stage as object)?.dispose();
         const router = STAGE_ROUTERS.get(stage as object);
         if (!router) return;
         router.dispose();

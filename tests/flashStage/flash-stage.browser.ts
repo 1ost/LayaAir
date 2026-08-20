@@ -33,8 +33,15 @@ try {
         align: "TL", scaleMode: "noScale", quality: "high", showDefaultContextMenu: false,
         loaderParameters: FlashStageBoundary.parseLoaderParameters("?browser=chromium"),
     });
-    FlashStageBoundary.claimViewport(stage, { width: 1250, height: 650 });
+    const firstViewport = FlashStageBoundary.claimViewport(stage, { width: 1250, height: 650 });
     const sourceStage = FlashStage.fromNative(stage);
+    firstViewport.dispose();
+    const viewport = FlashStageBoundary.claimViewport(stage, { width: 1024, height: 576 });
+    firstViewport.dispose();
+    viewport.resizeViewport(1250, 650);
+    if (firstViewport.disposed !== true || viewport.disposed !== false
+        || sourceStage.stageWidth !== 1250 || sourceStage.stageHeight !== 650)
+        throw new Error("actual Laya Stage did not fence stale viewport generations");
     const root = new Sprite();
     const identities: Array<[unknown, unknown]> = [];
     const observe = (event: Event): void => { identities.push([event.target, event.currentTarget]); };
@@ -66,8 +73,15 @@ try {
     stage.event(LayaEvent.RESIZE, new LayaEvent().setTo(LayaEvent.RESIZE, stage, stage));
     lease.dispose();
     timer._update(performance.now() + 34);
-    if (frames !== 1 || disposedEvents !== 0 || root.parent !== null || !lease.disposed)
+    if (frames !== 1 || disposedEvents !== 0 || root.parent !== null || !lease.disposed
+        || !viewport.disposed)
         throw new Error("actual Laya cleanup did not fence disposed Stage and display-root listeners");
+    const remount = FlashStageBoundary.claimViewport(stage, { width: 800, height: 600 });
+    firstViewport.dispose();
+    if (FlashStage.fromNative(stage) !== sourceStage || Number(sourceStage.stageWidth) !== 800
+        || Number(sourceStage.stageHeight) !== 600 || remount.disposed)
+        throw new Error("actual Laya Stage did not allow a same-Stage viewport remount");
+    remount.dispose();
     publish("passed", "Flash Stage identity/display-root Chromium gate passed");
 } catch (error) {
     publish("failed", error instanceof Error ? `${error.name}: ${error.message}` : String(error));
