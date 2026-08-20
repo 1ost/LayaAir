@@ -872,16 +872,36 @@ async function main(): Promise<void> {
             await transaction.stage("asset.lh", new Uint8Array([1]));
             const published = fs.readFileSync(transaction.recoveryPath);
             const transactionRoot = path.dirname(transaction.recoveryPath);
-            fs.writeFileSync(
-                path.join(transactionRoot, "recovery.next.json"),
-                '{"schema":"laya-authored-content-recovery@2","targets":[],"installed":[{}],"backups":[],"failures":[]}'
-            );
+            const nextPath = path.join(transactionRoot, "recovery.next.json");
+            fs.writeFileSync(nextPath, JSON.stringify({
+                schema: "laya-authored-content-recovery@2",
+                targets: [{ relativePath: "asset.lh", target: path.join(root, "changed-target.lh") }],
+                installed: [],
+                backups: [],
+                failures: []
+            }));
             const paths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
             assert(paths.join(",") === "asset.lh", "invalid newer journal replaced the published target closure");
             assert(fs.readFileSync(transaction.recoveryPath).equals(published),
                 "invalid newer journal replaced published recovery bytes");
             assert(fs.readdirSync(transactionRoot).some(name => name.startsWith("recovery.invalid-")),
                 "invalid newer journal evidence was not quarantined");
+
+            const authority = { byteLength: 1, sha256: "0".repeat(64) };
+            fs.writeFileSync(nextPath, JSON.stringify({
+                schema: "laya-authored-content-recovery@2",
+                targets: [{ relativePath: "asset.lh", target: targets.get("asset.lh") }],
+                installed: [
+                    { relativePath: "asset.lh", target: targets.get("asset.lh"), authority },
+                    { relativePath: "asset.lh", target: targets.get("asset.lh"), authority }
+                ],
+                backups: [],
+                failures: []
+            }));
+            const duplicatePaths = await listNativeAssetImporterRecoveryPaths(tempPath, nativeTransactionHost);
+            assert(duplicatePaths.join(",") === "asset.lh", "duplicate mutation records replaced published recovery");
+            assert(fs.readFileSync(transaction.recoveryPath).equals(published),
+                "duplicate mutation records changed published recovery bytes");
             await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
             await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
         }

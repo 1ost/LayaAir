@@ -556,9 +556,17 @@ async function loadRecoveryJournal(
         // untouched and fails closed.
         const nextBytes = await host.fs.promises.readFile(nextPath);
         try {
+            let published: Partial<RecoveryJournal> | undefined;
+            if (!await isMissing(recoveryPath, host)) {
+                const publishedRaw = new TextDecoder("utf-8", { fatal: true }).decode(await host.fs.promises.readFile(recoveryPath));
+                published = JSON.parse(publishedRaw) as Partial<RecoveryJournal>;
+                assertRecoveryJournalShape(published, recoveryPath, root, host, expectedTargets);
+            }
             const nextRaw = new TextDecoder("utf-8", { fatal: true }).decode(nextBytes);
             const nextValue = JSON.parse(nextRaw) as Partial<RecoveryJournal>;
             assertRecoveryJournalShape(nextValue, nextPath, root, host, expectedTargets);
+            if (published && !sameJournalTargetClosure(published.targets!, nextValue.targets!, host))
+                fail("RECOVERY_TARGET_AUTHORITY_MISMATCH", nextPath);
             await host.fs.promises.rename(nextPath, recoveryPath);
             await syncDirectory(root, host);
         }
@@ -578,6 +586,16 @@ async function loadRecoveryJournal(
     return value;
 }
 
+function sameJournalTargetClosure(
+    left: RecoveryJournal["targets"],
+    right: RecoveryJournal["targets"],
+    host: NativeAssetTransactionHost
+): boolean {
+    return left.length === right.length && left.every((item, index) =>
+        item.relativePath === right[index].relativePath
+        && host.path.resolve(item.target) === host.path.resolve(right[index].target));
+}
+
 function assertRecoveryJournalShape(
     value: Partial<RecoveryJournal>,
     label: string,
@@ -590,6 +608,18 @@ function assertRecoveryJournalShape(
         fail("RECOVERY_JOURNAL_INVALID", label);
     if (value.targets.some(item => !item || !isCanonicalRelativePath(item.relativePath) || typeof item.target !== "string"))
         fail("RECOVERY_JOURNAL_INVALID", label);
+    const targetByPath = new Map<string, string>();
+    const targetIdentities = new Set<string>();
+    for (const item of value.targets) {
+        const resolved = host.path.resolve(item.target);
+        const identity = host.path.sep === "\\" ? resolved.toLocaleLowerCase("en-US") : resolved;
+        if (targetByPath.has(item.relativePath) || targetIdentities.has(identity))
+            fail("RECOVERY_JOURNAL_INVALID", label);
+        targetByPath.set(item.relativePath, resolved);
+        targetIdentities.add(identity);
+    }
+    const installedPaths = new Set<string>();
+    const backupPaths = new Set<string>();
     const validateFile = (file: InstalledFile | BackupFile, backup: boolean): void => {
         if (!file || typeof file !== "object" || !isCanonicalRelativePath(file.relativePath)
             || typeof file.target !== "string" || !file.authority || typeof file.authority.byteLength !== "number"
@@ -599,6 +629,12 @@ function assertRecoveryJournalShape(
         if (backup && (!("backup" in file) || typeof file.backup !== "string"
             || !host.path.resolve(file.backup).startsWith(`${root}${host.path.sep}`)))
             fail("RECOVERY_JOURNAL_INVALID", label);
+        if (targetByPath.get(file.relativePath) !== host.path.resolve(file.target))
+            fail("RECOVERY_JOURNAL_INVALID", label);
+        const records = backup ? backupPaths : installedPaths;
+        if (records.has(file.relativePath))
+            fail("RECOVERY_JOURNAL_INVALID", label);
+        records.add(file.relativePath);
     };
     for (const file of value.installed) validateFile(file, false);
     for (const file of value.backups) validateFile(file, true);
