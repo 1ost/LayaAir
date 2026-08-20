@@ -3,6 +3,7 @@ import { getInputEventOwner } from "../../laya/display/Input";
 import { Node as LayaNode } from "../../laya/display/Node";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { Event as LayaEvent } from "../../laya/events/Event";
+import { ContextMenu, isFlashContextMenu } from "../ui/ContextMenu";
 import { DisplayObject } from "./DisplayObject";
 
 const FOCUS_MANAGERS = new WeakSet<object>();
@@ -75,6 +76,7 @@ export class InteractiveObject extends DisplayObject {
     private _tabIndex = -1;
     private _focusRect: object | boolean | null = null;
     private _focusIndicator: LayaSprite | null = null;
+    private _contextMenu: ContextMenu | null = null;
 
     get tabEnabled(): boolean { return this._tabEnabled; }
     set tabEnabled(value: boolean) { this._tabEnabled = !!value; }
@@ -92,6 +94,13 @@ export class InteractiveObject extends DisplayObject {
             throw new TypeError("InteractiveObject.focusRect must be an object, boolean or null");
         this._focusRect = value;
         if (this._focusIndicator) this._showFocusIndicator(value !== false && value !== null);
+    }
+
+    get contextMenu(): ContextMenu | null { return this._contextMenu; }
+    set contextMenu(value: ContextMenu | null) {
+        if (value !== null && !isFlashContextMenu(value))
+            throw new TypeError("InteractiveObject.contextMenu requires ContextMenu or null");
+        this._contextMenu = value;
     }
 
     constructor() {

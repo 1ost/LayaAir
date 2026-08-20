@@ -121,3 +121,17 @@ export { ExternalInterface, installNativeExternalInterfaceHost } from "./externa
 export type { ExternalInterfaceValue, NativeExternalInterfaceHost,
     NativeExternalInterfaceHostLease } from "./external/ExternalInterface";
 export { IllegalOperationError } from "./errors/IllegalOperationError";
+export { AccessibilityProperties, bindAccessibilityProperties } from "./accessibility/AccessibilityProperties";
+export type { AccessibilityPropertiesBinding } from "./accessibility/AccessibilityProperties";
+export { Clipboard, createBrowserClipboardHost, installNativeClipboardHost } from "./desktop/Clipboard";
+export type { NativeClipboardHost, NativeClipboardHostLease } from "./desktop/Clipboard";
+export { ClipboardFormats } from "./desktop/ClipboardFormats";
+export {
+    ContextMenu, ContextMenuItem, installNativeContextMenuHost,
+} from "./ui/ContextMenu";
+export type {
+    ContextMenuBuiltInItems, NativeContextMenuHostLease, NativeContextMenuHostOptions
+} from "./ui/ContextMenu";
+export { Keyboard, installNativeKeyboardStateHost } from "./ui/Keyboard";
+export type { FlashKeyboardStateLease } from "./ui/Keyboard";
+export { Mouse } from "./ui/Mouse";

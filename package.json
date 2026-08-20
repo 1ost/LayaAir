@@ -69,6 +69,9 @@
     "test:flash-system-host:declarations": "node --test tests/flashSystemHost/flash-system-host.declarations.test.mjs",
     "test:flash-system-host:public-root": "tsc -p tests/flashSystemHost/tsconfig.public-root.json --pretty false",
     "test:flash-system-host:bundle": "node scripts/testFlashSystemHostBundle.mjs",
+    "test:flash-ui-host": "node scripts/testFlashUiHost.mjs",
+    "test:flash-ui-host:types": "tsc -p tests/flashUiHost/tsconfig.json --pretty false",
+    "test:flash-ui-host:declarations": "node --test tests/flashUiHost/flash-ui-host.declarations.test.mjs",
     "buildCanver": "npm run buildDocTool && npm run buildDocToolRun"
   },
   "author": "Layabox Inc.",

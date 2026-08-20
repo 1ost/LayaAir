@@ -47,6 +47,7 @@ try {
         if (actualHash !== expectedHash) throw new Error("Flash runtime type predicate authority hash drift");
         const authority = JSON.parse(authorityText);
         const expectedSourceQNames = [
+            "flash.accessibility.AccessibilityProperties",
             "flash.display.Bitmap",
             "flash.display.BitmapData",
             "flash.display.DisplayObject",
@@ -93,6 +94,8 @@ try {
             "flash.net.URLVariables",
             "flash.text.StaticText",
             "flash.text.TextField",
+            "flash.ui.ContextMenu",
+            "flash.ui.ContextMenuItem",
             "flash.utils.Timer",
         ];
         const actualSourceQNames = authority.types.map(entry => entry.sourceQName);

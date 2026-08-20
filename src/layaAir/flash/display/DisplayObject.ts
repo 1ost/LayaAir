@@ -1,6 +1,9 @@
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Point as LayaPoint } from "../../laya/maths/Point";
+import {
+    AccessibilityProperties, isFlashAccessibilityProperties
+} from "../accessibility/AccessibilityProperties";
 import { isFlashPoint, Point } from "../geom/Point";
 import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
 import { Event } from "../events/Event";
@@ -40,6 +43,8 @@ function events(value: DisplayObject): FlashEventRouter {
 
 /** Flash display source shape backed by a real Laya Sprite. */
 export class DisplayObject extends NativeDisplayObjectHost implements IEventDispatcher {
+    private _accessibilityProperties: AccessibilityProperties | null = null;
+
     constructor() {
         super();
         DISPLAY_OBJECT_VALUES.add(this);
@@ -59,6 +64,12 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
     /** Flash returns detached arrays containing detached filter values. */
     override get filters(): BitmapFilter[] { return getDisplayObjectFilters(this); }
     override set filters(value: BitmapFilter[] | null) { setDisplayObjectFilters(this, value); }
+    get accessibilityProperties(): AccessibilityProperties | null { return this._accessibilityProperties; }
+    set accessibilityProperties(value: AccessibilityProperties | null) {
+        if (value !== null && !isFlashAccessibilityProperties(value))
+            throw new TypeError("DisplayObject.accessibilityProperties requires AccessibilityProperties or null");
+        this._accessibilityProperties = value;
+    }
     globalToLocal(point: Point): Point;
     globalToLocal(point: LayaPoint, createNewPoint?: boolean, globalNode?: LayaSprite): LayaPoint;
     globalToLocal(point: Point | LayaPoint, createNewPoint = false, globalNode?: LayaSprite): Point | LayaPoint {
@@ -107,6 +118,7 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
 
     override destroy(destroyChild = true): void {
         runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            this._accessibilityProperties = null;
             const router = DISPLAY_EVENTS.get(this);
             if (router) {
                 router.dispose();

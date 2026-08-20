@@ -442,19 +442,110 @@ if (!uiCapability) {
 }
 Object.assign(uiCapability, {
     status: "typescript-obligation",
-    obligations: [["src/layaAir/flash/ui/MouseCursor.ts", "MouseCursor", "class"]].map(
+    obligations: [
+        ["src/layaAir/flash/ui/MouseCursor.ts", "MouseCursor", "class"],
+        ["src/layaAir/flash/ui/Keyboard.ts", "Keyboard", "class"],
+        ["src/layaAir/flash/ui/Keyboard.ts", "FlashKeyboardStateLease", "interface"],
+        ["src/layaAir/flash/ui/Keyboard.ts", "installNativeKeyboardStateHost", "function"],
+        ["src/layaAir/flash/ui/Mouse.ts", "Mouse", "class"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenu", "class"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenuItem", "class"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "ContextMenuBuiltInItems", "interface"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "NativeContextMenuHostOptions", "interface"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "NativeContextMenuHostLease", "interface"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "installNativeContextMenuHost", "function"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "isFlashContextMenu", "function"],
+        ["src/layaAir/flash/ui/ContextMenu.ts", "isFlashContextMenuItem", "function"],
+    ].map(
         ([module, exported, kind]) => uiCapability.obligations?.find(
             item => item.module === module && item.export === exported)
-            || { module, export: exported, kind, signature: "", members: [], constructors: [], indexSignatures: [], sha256: "" }),
+            || { module, export: exported, kind, signature: "",
+                ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
     evidence: [{
-        path: "tests/architecture/flashConstantsBridgeEvidence.test.ts",
-        test: "Flash string constant compiler and runtime surface",
+        path: "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+        test: "Flash UI host compiler surface and browser producer ownership",
         sha256: "",
         capability: "api.flash.ui",
         covers: [],
     }],
+    heldSurfaces: [
+        { surface: "flash.ui.Mouse.registerCursor", reason: "HOLD: custom bitmap and animated cursors are not source-used and lack a cross-platform Laya cursor artifact contract." },
+        { surface: "flash.ui.ContextMenu built-in items", reason: "HOLD: browsers do not permit replacement or augmentation of their native built-in context menu; retained game code hides every built-in item." },
+        { surface: "flash.ui.ContextMenu clipboardItems", reason: "HOLD: retained game code does not use AIR clipboard-menu population and browsers do not expose an equivalent native menu surface." },
+        { surface: "flash.ui.ContextMenu on non-DOM platforms", reason: "HOLD: the source-used custom menu is implemented by the browser DOM producer; native and mini-game shells require a platform-owned menu host." },
+    ],
 });
 delete uiCapability.blockingReason;
+
+let desktopCapability = ledger.capabilities.find(item => item.id === "api.flash.desktop");
+if (!desktopCapability) {
+    desktopCapability = { id: "api.flash.desktop" };
+    ledger.capabilities.push(desktopCapability);
+}
+Object.assign(desktopCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/desktop/Clipboard.ts", "Clipboard", "class"],
+        ["src/layaAir/flash/desktop/Clipboard.ts", "NativeClipboardHost", "interface"],
+        ["src/layaAir/flash/desktop/Clipboard.ts", "NativeClipboardHostLease", "interface"],
+        ["src/layaAir/flash/desktop/Clipboard.ts", "installNativeClipboardHost", "function"],
+        ["src/layaAir/flash/desktop/Clipboard.ts", "createBrowserClipboardHost", "function"],
+        ["src/layaAir/flash/desktop/ClipboardFormats.ts", "ClipboardFormats", "class"],
+    ].map(([module, exported, kind]) => desktopCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+        test: "Flash desktop clipboard compiler surface and browser producer ownership",
+        sha256: "", capability: "api.flash.desktop", covers: [],
+    }],
+    heldSurfaces: [
+        { surface: "flash.desktop.Clipboard reads", reason: "HOLD: browser clipboard reads are asynchronous, permission-gated and cannot truthfully satisfy AIR's synchronous API." },
+        { surface: "flash.desktop.Clipboard non-text formats", reason: "HOLD: retained source publishes text only and no independently authenticated browser serialization contract exists for other AIR formats." },
+        { surface: "flash.desktop non-Clipboard APIs", reason: "HOLD: this capability admits only the source-used clipboard boundary; native process, tray, application and filesystem actions remain separate platform work." },
+    ],
+});
+delete desktopCapability.blockingReason;
+
+let accessibilityCapability = ledger.capabilities.find(item => item.id === "api.flash.accessibility");
+if (!accessibilityCapability) {
+    accessibilityCapability = { id: "api.flash.accessibility" };
+    ledger.capabilities.push(accessibilityCapability);
+}
+Object.assign(accessibilityCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/layaAir/flash/accessibility/AccessibilityProperties.ts", "AccessibilityProperties", "class"],
+        ["src/layaAir/flash/accessibility/AccessibilityProperties.ts", "AccessibilityPropertiesBinding", "interface"],
+        ["src/layaAir/flash/accessibility/AccessibilityProperties.ts", "bindAccessibilityProperties", "function"],
+        ["src/layaAir/flash/accessibility/AccessibilityProperties.ts", "isFlashAccessibilityProperties", "function"],
+    ].map(([module, exported, kind]) => accessibilityCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}), sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/flashUiHostBridgeEvidence.test.ts",
+        test: "Flash accessibility metadata compiler surface and DOM binding ownership",
+        sha256: "", capability: "api.flash.accessibility", covers: [],
+    }],
+    heldSurfaces: [{
+        surface: "automatic canvas accessibility-tree projection",
+        reason: "HOLD: the generic property/binding seam is admitted, but display geometry and action projection require a higher-level authored accessibility host.",
+    }],
+});
+delete accessibilityCapability.blockingReason;
+
+for (const [sourceQName, targetCapabilityId, targetModule, constructorExport, predicateExport] of [
+    ["flash.ui.ContextMenu", "api.flash.ui", "src/layaAir/flash/ui/ContextMenu.ts", "ContextMenu", "isFlashContextMenu"],
+    ["flash.ui.ContextMenuItem", "api.flash.ui", "src/layaAir/flash/ui/ContextMenu.ts", "ContextMenuItem", "isFlashContextMenuItem"],
+    ["flash.accessibility.AccessibilityProperties", "api.flash.accessibility", "src/layaAir/flash/accessibility/AccessibilityProperties.ts", "AccessibilityProperties", "isFlashAccessibilityProperties"],
+]) {
+    if (!runtimeTypeAuthority.types.some(item => item.sourceQName === sourceQName))
+        runtimeTypeAuthority.types.push({ sourceQName, targetCapabilityId, targetModule,
+            constructorExport, constructorSignature: "", constructSignatures: [], predicateExport,
+            predicateSignature: "", heritageClosure: [], moduleSha256: "" });
+}
 
 let filterCapability = ledger.capabilities.find(item => item.id === "api.flash.filters");
 if (!filterCapability) {

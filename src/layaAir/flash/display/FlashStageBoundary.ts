@@ -3,6 +3,7 @@ import { ILaya } from "../../ILaya";
 import { Node as LayaNode } from "../../laya/display/Node";
 import { isLayaStage, type Stage as LayaStage } from "../../laya/display/Stage";
 import { Render } from "../../laya/renders/Render";
+import { InputManager } from "../../laya/events/InputManager";
 import { Browser } from "../../laya/utils/Browser";
 import { Event } from "../events/Event";
 import { FlashEventListener, FlashEventRouter } from "../events/FlashEventRouter";
@@ -11,6 +12,9 @@ import {
     isFlashInteractiveObject, InteractiveObject, resolveFlashFocusOwner
 } from "./InteractiveObject";
 import { isFlashStage, Stage } from "./Stage";
+import {
+    installNativeContextMenuHost, NativeContextMenuHostLease
+} from "../ui/ContextMenu";
 
 type MutableStage = LayaStage & { focus: LayaNode | null };
 type FocusSeam = { _applyNativeFocus(value: boolean): void };
@@ -21,6 +25,7 @@ const LOADER_PARAMETER_VALUES = new WeakSet<object>();
 const STAGE_VIEWPORT_OWNERS = new WeakMap<object, FlashStageViewportOwner>();
 const STAGE_VIEWPORT_GENERATIONS = new WeakMap<object, number>();
 const STAGE_EVENT_TARGETS = new WeakMap<object, Stage>();
+const STAGE_CONTEXT_MENU_HOSTS = new WeakMap<object, NativeContextMenuHostLease>();
 
 interface FlashStageViewportRecord {
     readonly stage: LayaStage;
@@ -272,6 +277,15 @@ export class FlashStageBoundary {
         const canvas = Browser.mainCanvas?.source;
         if (!canvas) throw new Error("Laya main canvas is unavailable for Stage context-menu policy");
         canvas.oncontextmenu = () => false;
+        if (!STAGE_CONTEXT_MENU_HOSTS.has(stage as object)
+            && typeof document !== "undefined"
+            && typeof (canvas as { addEventListener?: unknown }).addEventListener === "function") {
+            STAGE_CONTEXT_MENU_HOSTS.set(stage as object, installNativeContextMenuHost({
+                canvas: canvas as HTMLCanvasElement,
+                document,
+                resolveTarget: () => InputManager.touchTarget,
+            }));
+        }
 
         if (previous && previous.quality === options.quality) return previous;
         const bootstrap = Object.freeze({
@@ -326,10 +340,13 @@ export class FlashStageBoundary {
     static dispose(stage: LayaStage): void {
         this._requireCurrent(stage);
         STAGE_VIEWPORT_OWNERS.get(stage as object)?.dispose();
+        STAGE_CONTEXT_MENU_HOSTS.get(stage as object)?.dispose();
+        STAGE_CONTEXT_MENU_HOSTS.delete(stage as object);
         const router = STAGE_ROUTERS.get(stage as object);
-        if (!router) return;
-        router.dispose();
-        STAGE_ROUTERS.delete(stage as object);
+        if (router) {
+            router.dispose();
+            STAGE_ROUTERS.delete(stage as object);
+        }
     }
 
     private static _router(stage: LayaStage): FlashEventRouter {

@@ -3,6 +3,20 @@
   "hashMode": "canonical-lf-utf8",
   "types": [
     {
+      "sourceQName": "flash.accessibility.AccessibilityProperties",
+      "targetCapabilityId": "api.flash.accessibility",
+      "targetModule": "src/layaAir/flash/accessibility/AccessibilityProperties.ts",
+      "constructorExport": "AccessibilityProperties",
+      "constructorSignature": "typeof AccessibilityProperties",
+      "constructSignatures": [
+        "new (): AccessibilityProperties"
+      ],
+      "predicateExport": "isFlashAccessibilityProperties",
+      "predicateSignature": "(value: unknown) => value is AccessibilityProperties",
+      "heritageClosure": [],
+      "moduleSha256": "4cbd6331b2440dba72b58fd9b52cbca03eddd710d86dabb22684e1b716f64641"
+    },
+    {
       "sourceQName": "flash.display.Bitmap",
       "targetCapabilityId": "api.flash.display",
       "targetModule": "src/layaAir/flash/display/Bitmap.ts",
@@ -44,7 +58,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d"
+      "moduleSha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -91,7 +105,7 @@
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee"
+      "moduleSha256": "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e"
     },
     {
       "sourceQName": "flash.display.Loader",
@@ -718,6 +732,38 @@
         "flash.display.DisplayObject"
       ],
       "moduleSha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
+    },
+    {
+      "sourceQName": "flash.ui.ContextMenu",
+      "targetCapabilityId": "api.flash.ui",
+      "targetModule": "src/layaAir/flash/ui/ContextMenu.ts",
+      "constructorExport": "ContextMenu",
+      "constructorSignature": "typeof ContextMenu",
+      "constructSignatures": [
+        "new (): ContextMenu"
+      ],
+      "predicateExport": "isFlashContextMenu",
+      "predicateSignature": "(value: unknown) => value is ContextMenu",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "a27271d322d5473eaa2f061e4b1383e4eb4fac5390f51b969b58df3a971ac4ef"
+    },
+    {
+      "sourceQName": "flash.ui.ContextMenuItem",
+      "targetCapabilityId": "api.flash.ui",
+      "targetModule": "src/layaAir/flash/ui/ContextMenu.ts",
+      "constructorExport": "ContextMenuItem",
+      "constructorSignature": "typeof ContextMenuItem",
+      "constructSignatures": [
+        "new (caption: string | null, separatorBefore?: boolean, enabled?: boolean, visible?: boolean): ContextMenuItem"
+      ],
+      "predicateExport": "isFlashContextMenuItem",
+      "predicateSignature": "(value: unknown) => value is ContextMenuItem",
+      "heritageClosure": [
+        "flash.events.EventDispatcher"
+      ],
+      "moduleSha256": "a27271d322d5473eaa2f061e4b1383e4eb4fac5390f51b969b58df3a971ac4ef"
     },
     {
       "sourceQName": "flash.utils.Timer",
