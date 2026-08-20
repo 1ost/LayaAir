@@ -5,6 +5,9 @@ import { BlurFilter } from "../../src/layaAir/flash/filters/BlurFilter";
 import { ColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFilter";
 import { DropShadowFilter } from "../../src/layaAir/flash/filters/DropShadowFilter";
 import { GlowFilter } from "../../src/layaAir/flash/filters/GlowFilter";
+import { GradientBevelFilter } from "../../src/layaAir/flash/filters/GradientBevelFilter";
+import { createFlashAuthoredBevelFilter } from "../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
+import { Filter } from "../../src/layaAir/laya/filters/Filter";
 import { PostProcess2D } from "../../src/layaAir/laya/display/PostProcess2D";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
 import "../../src/layaAir/laya/platform/BrowserAdapter";
@@ -72,6 +75,43 @@ async function main(): Promise<unknown> {
     assert(shadowBounds.count > 0, "DropShadow hideObject produced no colored shadow pixels");
     assert(shadowBounds.centerX > 28, `DropShadow angle/distance did not move right: ${JSON.stringify(shadowBounds)}`);
     assert(sourceAlpha(shadow) < 128, "DropShadow hideObject retained the opaque source");
+
+    const gradientBevel = await render(new GradientBevelFilter(
+        6, 45, [0x182848, 0xffffff, 0xff7a18], [230 / 255, 0, 242 / 255], [0, 128, 255],
+        6, 6, 1.7, 2, "full", false,
+    ), 0xffffff);
+    const authoredBevel = await render(createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 8, angleRadians: 205 * Math.PI / 180,
+        highlightColor: 0xff8822, highlightAlpha: 225 / 255,
+        shadowColor: 0x251a70, shadowAlpha: 195 / 255,
+        blurX: 9, blurY: 5, strength: 2.4, passes: 1,
+        innerShadow: true, onTop: false, knockout: true, compositeSource: false,
+    }), 0xffffff);
+    const outerKnockout = await render(new GradientBevelFilter(
+        10, 120, [0x160835, 0x8a2be2, 0x00ffc8, 0xfff066], [0, 180 / 255, 240 / 255, 1], [0, 31, 193, 255],
+        5, 9, 1.35, 1, "outer", true,
+    ), 0xffffff);
+    const authoredBevelRepeat = await render(createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 8, angleRadians: 205 * Math.PI / 180,
+        highlightColor: 0xff8822, highlightAlpha: 225 / 255,
+        shadowColor: 0x251a70, shadowAlpha: 195 / 255,
+        blurX: 9, blurY: 5, strength: 2.4, passes: 1,
+        innerShadow: true, onTop: false, knockout: true, compositeSource: false,
+    }), 0xffffff);
+    const gradientBevelFingerprint = fingerprint(gradientBevel);
+    const authoredBevelFingerprint = fingerprint(authoredBevel);
+    const outerKnockoutFingerprint = fingerprint(outerKnockout);
+    const authoredBevelRepeatFingerprint = fingerprint(authoredBevelRepeat);
+    // These are pinned readbacks from the real Laya WebGL command path above,
+    // not values produced by the CPU filter oracle.
+    assertFingerprint("GradientBevelFilter", gradientBevelFingerprint,
+        { width: 84, height: 84, hash: "265163fe", channels: [47950, 40274, 35883, 62550], alpha: 62550 });
+    assertFingerprint("authored BEVELFILTER", authoredBevelFingerprint,
+        { width: 88, height: 76, hash: "be43668a", channels: [3725, 2061, 1710, 6197], alpha: 6197 });
+    assertFingerprint("authored BEVELFILTER after teardown/reallocation", authoredBevelRepeatFingerprint,
+        { width: 88, height: 76, hash: "be43668a", channels: [3725, 2061, 1710, 6197], alpha: 6197 });
+    assertFingerprint("GradientBevelFilter outer knockout", outerKnockoutFingerprint,
+        { width: 78, height: 90, hash: "aada074d", channels: [334040, 993687, 1229230, 1497301], alpha: 1497301 });
 
     const stageShadowFilter = new DropShadowFilter(10, 0, 0x00ff00, 0.75, 4, 4, 2, 2, false, false, true);
     const stageShadow = await renderStage(stageShadowFilter, 0xffffff, 1);
@@ -171,6 +211,8 @@ async function main(): Promise<unknown> {
             qualityMass: [alphaMass(blurQualityOne), alphaMass(blurQualityThree)] },
         glow: { weak: redOutsideSource(glowWeak), strong: redOutsideSource(glowStrong) },
         shadow: { raw: shadowBounds, stage: stageShadowBounds, chained: stageChained },
+        bevel: { gradient: gradientBevelFingerprint, authored: authoredBevelFingerprint,
+            outerKnockout: outerKnockoutFingerprint, authoredRepeat: authoredBevelRepeatFingerprint },
         matrix: { offsetPixel, alphaToBlue: bluePixel, redToAlpha: redPixel,
             stageOwnerAlphaZero: stageOffsetPixel, stageOwnerAlphaHalf: fractionalPixel,
             stageOwnerAlphaTwoMatrices: twoMatrixPixel },
@@ -195,7 +237,7 @@ async function renderStage(filter: BitmapFilter | readonly BitmapFilter[] | null
     return { width: 64, height: 64, pixels };
 }
 
-async function render(filter: BlurFilter | GlowFilter | DropShadowFilter | ColorMatrixFilter | null, color: number): Promise<Readback> {
+async function render(filter: Filter | null, color: number): Promise<Readback> {
     const sprite = new DisplayObject();
     sprite.graphics.drawRect(24, 24, 8, 8, `#${color.toString(16).padStart(6, "0")}`);
     const source = sprite.drawToRenderTexture2D(64, 64, 0, 0);
@@ -242,6 +284,24 @@ function alphaMass(image: Readback): number {
     let result = 0;
     for (let i = 3; i < image.pixels.length; i += 4) result += image.pixels[i];
     return result;
+}
+
+function fingerprint(image: Readback) {
+    let hash = 0x811c9dc5;
+    const channels = [0, 0, 0, 0];
+    for (let index = 0; index < image.pixels.length; index++) {
+        const value = image.pixels[index];
+        channels[index & 3] += value;
+        hash ^= value;
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return { width: image.width, height: image.height, hash: hash.toString(16).padStart(8, "0"),
+        channels, alpha: channels[3] };
+}
+
+function assertFingerprint(label: string, actual: ReturnType<typeof fingerprint>, expected: ReturnType<typeof fingerprint>): void {
+    assert(JSON.stringify(actual) === JSON.stringify(expected),
+        `${label} GPU pixels drifted: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)} logs=${gpuLogs.join(" | ")}`);
 }
 
 function redOutsideSource(image: Readback): number {

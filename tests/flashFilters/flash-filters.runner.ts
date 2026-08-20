@@ -11,6 +11,10 @@ import { DropShadowFilter, isDropShadowFilter } from "../../src/layaAir/flash/fi
 import { FilterProxy } from "../../src/layaAir/flash/filters/FilterProxy";
 import { bitmapFilterEquals, isBitmapFilter } from "../../src/layaAir/flash/filters/FilterRegistry";
 import { GlowFilter, isGlowFilter } from "../../src/layaAir/flash/filters/GlowFilter";
+import { GradientBevelFilter, isGradientBevelFilter } from "../../src/layaAir/flash/filters/GradientBevelFilter";
+import {
+    createFlashAuthoredBevelFilter, FlashBevelEffect2D,
+} from "../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
 import {
     FLASH_IDENTITY_COLOR_MATRIX, FlashBlurEffect2D, FlashColorMatrixEffect2D, FlashShadowEffect2D,
     applyFlashColorMatrixPixel, flashBoxKernelMargins, flashBoxKernelOffsets,
@@ -116,6 +120,85 @@ test("ColorMatrixFilter copies on every boundary and retains exactly 20 values",
     assert.deepEqual(filter.matrix, Array.from({ length: 20 }, (_, index) => index + 1));
 });
 
+test("GradientBevelFilter matches the Pepper constructor, array, scalar, type, and clone oracle", () => {
+    const gradient = new GradientBevelFilter();
+    assert.deepEqual([
+        gradient.distance, gradient.angle, gradient.colors, gradient.alphas, gradient.ratios,
+        gradient.blurX, gradient.blurY, gradient.strength, gradient.quality, gradient.type, gradient.knockout,
+    ], [4, 45, null, null, null, 4, 4, 1, 1, "inner", false]);
+
+    const sourceColors = [0x12345678, 0x112233];
+    const sourceAlphas = [-1, 2];
+    const sourceRatios = [-2, 300];
+    gradient.colors = sourceColors; gradient.alphas = sourceAlphas; gradient.ratios = sourceRatios;
+    sourceColors[0] = 7; sourceAlphas[0] = 0.5; sourceRatios[0] = 8;
+    const readColors = gradient.colors!; const readAlphas = gradient.alphas!; const readRatios = gradient.ratios!;
+    readColors[1] = 9; readAlphas[1] = 0.25; readRatios[1] = 10;
+    assert.deepEqual([gradient.colors, gradient.alphas, gradient.ratios], [[3430008, 1122867], [0, 1], [0, 255]]);
+
+    gradient.colors = [-1, 0x12345678];
+    gradient.alphas = [Number.NaN, 0.25];
+    gradient.ratios = [31.75, 128.9];
+    assert.deepEqual([gradient.colors, gradient.alphas, gradient.ratios],
+        [[16777215, 3430008], [0, 63 / 255], [31, 128]]);
+    gradient.distance = -999; gradient.angle = -450; gradient.blurX = -1; gradient.blurY = 999;
+    gradient.strength = 999; gradient.quality = 99; gradient.type = "bogus"; gradient.knockout = 1 as any;
+    assert.deepEqual([
+        gradient.distance, gradient.angle, gradient.blurX, gradient.blurY,
+        gradient.strength, gradient.quality, gradient.type, gradient.knockout,
+    ], [-999, -90, 0, 255, 255, 15, "full", true]);
+
+    const clone = gradient.clone();
+    const cloneColors = clone.colors!; cloneColors[0] = 1; clone.colors = cloneColors;
+    assert.equal(isGradientBevelFilter(clone), true);
+    assert.deepEqual([gradient.colors![0], clone.colors![0]], [16777215, 1]);
+    assert.throws(() => { gradient.colors = null; }, TypeError);
+    assert.throws(() => { gradient.alphas = null; }, TypeError);
+    assert.throws(() => { gradient.ratios = null; }, TypeError);
+    assert.throws(() => { gradient.colors = new Uint32Array(2) as unknown as number[]; }, /non-null Array/);
+});
+
+test("authored BEVELFILTER maps exact FFDec flags and four-stop ramp into the shared native effect", () => {
+    const filter = createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 7, angleRadians: Math.PI / 3,
+        highlightColor: 0xff8822, highlightAlpha: 225 / 255,
+        shadowColor: 0x251a70, shadowAlpha: 195 / 255,
+        blurX: 9, blurY: 5, strength: 2.4, passes: 2,
+        innerShadow: false, onTop: true, knockout: true, compositeSource: false,
+    });
+    const effect = filter.getEffect();
+    assert.ok(effect instanceof FlashBevelEffect2D);
+    assert.deepEqual({
+        distance: effect.options.distance, angleRadians: effect.options.angleRadians,
+        blurX: effect.options.blurX, blurY: effect.options.blurY,
+        strength: effect.options.strength, quality: effect.options.quality,
+        type: effect.options.type, knockout: effect.options.knockout,
+        compositeSource: effect.options.compositeSource,
+        gradient: effect.options.gradient,
+    }, {
+        distance: 7, angleRadians: Math.PI / 3, blurX: 9, blurY: 5,
+        strength: 2.4, quality: 2, type: "full", knockout: true, compositeSource: false,
+        gradient: {
+            colors: [0x251a70, 0x251a70, 0xff8822, 0xff8822],
+            alphas: [195 / 255, 0, 0, 225 / 255], ratios: [0, 127 / 255, 128 / 255, 1],
+        },
+    });
+    const inner = createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 0, angleRadians: 0,
+        highlightColor: 0xffffff, highlightAlpha: 1, shadowColor: 0, shadowAlpha: 1,
+        blurX: 0, blurY: 0, strength: 1, passes: 0,
+        innerShadow: true, onTop: true, knockout: false, compositeSource: true,
+    }).getEffect() as FlashBevelEffect2D;
+    assert.equal(inner.options.type, "inner", "FFDec onTop does not override innerShadow");
+    assert.throws(() => createFlashAuthoredBevelFilter({ sourceType: "GRADIENTBEVELFILTER" } as any), /BEVELFILTER/);
+    assert.throws(() => createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 0, angleRadians: 0,
+        highlightColor: 0, highlightAlpha: 1, shadowColor: 0, shadowAlpha: 1,
+        blurX: 0, blurY: 0, strength: 1, passes: 16,
+        innerShadow: true, onTop: false, knockout: false, compositeSource: true,
+    }), /passes/);
+});
+
 test("DisplayObject.filters owns detached arrays and detached filter values", () => {
     const owner = new DetachedFilterDisplayObject();
     const original = new BlurFilter(4, 6, 2);
@@ -171,6 +254,15 @@ test("FilterProxy is sealed and forwards only explicit properties with structura
     assert.notEqual((owner.filters[1] as BlurFilter).blurX, 9);
     await Promise.resolve();
     assert.deepEqual([(owner.filters[1] as BlurFilter).blurX, (owner.filters[1] as BlurFilter).blurY], [9, 11]);
+    const gradientProxy = new FilterProxy(new GradientBevelFilter(4, 45, [0, 0xffffff], [1, 1], [0, 255]), false, false);
+    gradientProxy.applyFilter(owner);
+    gradientProxy.setProperty("distance", 12);
+    gradientProxy.setProperty("angle", 810);
+    gradientProxy.setProperty("strength", 3.5);
+    gradientProxy.setProperty("type", "outer");
+    const attachedGradient = owner.filters[2] as GradientBevelFilter;
+    assert.deepEqual([attachedGradient.distance, attachedGradient.angle, attachedGradient.strength, attachedGradient.type],
+        [12, 90, 3.5, "outer"]);
 });
 
 test("filter and display brands reject prototype, Proxy, and Symbol.hasInstance spoofing without traps", () => {
@@ -191,6 +283,7 @@ test("filter and display brands reject prototype, Proxy, and Symbol.hasInstance 
     assert.equal(isGlowFilter(new GlowFilter()), true);
     assert.equal(isDropShadowFilter(new DropShadowFilter()), true);
     assert.equal(isColorMatrixFilter(new ColorMatrixFilter()), true);
+    assert.equal(isGradientBevelFilter(new GradientBevelFilter()), true);
     for (const value of [prototypeSpoof, hostile, wrappedReal]) {
         assert.equal(isBitmapFilter(value), false);
         assert.equal(bitmapFilterEquals(blur, value as BitmapFilter), false);
@@ -226,7 +319,7 @@ test("filter and display brands reject prototype, Proxy, and Symbol.hasInstance 
 test("filter nominal authority exposes no generic or deep-importable mint seam", () => {
     const root = process.cwd();
     assert.equal(existsSync(join(root, "src/layaAir/laya/display/effect2d/FlashFilterBrands.ts")), false);
-    for (const file of ["BlurFilter.ts", "ColorMatrixFilter.ts", "DropShadowFilter.ts", "GlowFilter.ts"]) {
+    for (const file of ["BlurFilter.ts", "ColorMatrixFilter.ts", "DropShadowFilter.ts", "GlowFilter.ts", "GradientBevelFilter.ts"]) {
         const source = readFileSync(join(root, "src/layaAir/flash/filters", file), "utf8");
         assert.doesNotMatch(source, /export\s+function\s+(?:brand|register)/i, `${file} must expose only a read-only predicate`);
         assert.match(source, /new WeakMap<object,/, `${file} must own private nominal state`);
@@ -278,16 +371,19 @@ test("concrete filter constructors reject branded hostile subclasses before virt
     class HostileColorMatrixFilter extends ColorMatrixFilter {}
     class HostileGlowFilter extends GlowFilter {}
     class HostileDropShadowFilter extends DropShadowFilter {}
+    class HostileGradientBevelFilter extends GradientBevelFilter {}
     assert.throws(() => new HostileBlurFilter(), /not extensible/);
     assert.throws(() => new HostileColorMatrixFilter(), /not extensible/);
     assert.throws(() => new HostileGlowFilter(), /not extensible/);
     assert.throws(() => new HostileDropShadowFilter(), /not extensible/);
+    assert.throws(() => new HostileGradientBevelFilter(), /not extensible/);
     assert.equal(hostileCalls, 0);
     for (const [value, prototype] of [
         [new BlurFilter(), BlurFilter.prototype],
         [new ColorMatrixFilter(), ColorMatrixFilter.prototype],
         [new GlowFilter(), GlowFilter.prototype],
         [new DropShadowFilter(), DropShadowFilter.prototype],
+        [new GradientBevelFilter(), GradientBevelFilter.prototype],
     ] as const) {
         assert.equal(Object.getPrototypeOf(value), prototype);
         assert.equal(Object.isSealed(value), true);

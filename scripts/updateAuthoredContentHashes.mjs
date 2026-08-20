@@ -396,6 +396,8 @@ const filterSubjects = [
     ["src/layaAir/flash/filters/FilterRegistry.ts", "ConcreteBitmapFilter", "type"],
     ["src/layaAir/flash/filters/GlowFilter.ts", "GlowFilter", "class"],
     ["src/layaAir/flash/filters/GlowFilter.ts", "isGlowFilter", "function"],
+    ["src/layaAir/flash/filters/GradientBevelFilter.ts", "GradientBevelFilter", "class"],
+    ["src/layaAir/flash/filters/GradientBevelFilter.ts", "isGradientBevelFilter", "function"],
 ];
 filterCapability.obligations = filterSubjects.map(([module, exported, kind]) =>
     filterCapability.obligations.find(item => item.module === module && item.export === exported)
@@ -404,11 +406,18 @@ filterCapability.obligations = filterSubjects.map(([module, exported, kind]) =>
 const renderingFilterCapability = ledger.capabilities.find(item => item.id === "rendering.filter");
 Object.assign(renderingFilterCapability, {
     status: "native",
-    artifacts: [{
-        path: "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
-        export: "FlashBlurEffect2D",
-        sha256: "",
-    }],
+    artifacts: [
+        {
+            path: "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
+            export: "FlashBlurEffect2D",
+            sha256: "",
+        },
+        {
+            path: "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+            export: "FlashBevelEffect2D",
+            sha256: "",
+        },
+    ],
     evidence: [{
         path: "tests/architecture/flashFiltersBridgeEvidence.test.ts",
         test: "Flash filter bridge compiler surface and native effect ownership",
@@ -447,6 +456,21 @@ Object.assign(browserCapability, {
     }],
 });
 delete browserCapability.blockingReason;
+
+if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters.GradientBevelFilter")) {
+    runtimeTypeAuthority.types.push({
+        sourceQName: "flash.filters.GradientBevelFilter",
+        targetCapabilityId: "api.flash.filters",
+        targetModule: "src/layaAir/flash/filters/GradientBevelFilter.ts",
+        constructorExport: "GradientBevelFilter",
+        constructorSignature: "",
+        constructSignatures: [],
+        predicateExport: "isGradientBevelFilter",
+        predicateSignature: "",
+        heritageClosure: [],
+        moduleSha256: "",
+    });
+}
 
 const options = compilerOptions();
 const program = ts.createProgram({ rootNames: compilerRoots(), options });

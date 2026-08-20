@@ -4,10 +4,11 @@ import { isBlurFilter } from "./BlurFilter";
 import { isDropShadowFilter } from "./DropShadowFilter";
 import { bitmapFilterEquals, isBitmapFilter } from "./FilterRegistry";
 import { isGlowFilter } from "./GlowFilter";
+import { isGradientBevelFilter } from "./GradientBevelFilter";
 
 type FilterProxyProperty =
     "blurX" | "blurY" | "quality" | "color" | "alpha" | "strength"
-    | "inner" | "knockout" | "distance" | "angle" | "hideObject";
+    | "inner" | "knockout" | "distance" | "angle" | "hideObject" | "type";
 
 /**
  * Sealed native replacement for the source dynamic Proxy.
@@ -102,39 +103,40 @@ export class FilterProxy {
         }
     }
 
-    getProperty(name: FilterProxyProperty): number | boolean | null {
+    getProperty(name: FilterProxyProperty): number | boolean | string | null {
         const filter = this.filter;
         if (!filter) return null;
         switch (name) {
-            case "blurX": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.blurX : null;
-            case "blurY": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.blurY : null;
-            case "quality": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.quality : null;
+            case "blurX": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.blurX : null;
+            case "blurY": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.blurY : null;
+            case "quality": return isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.quality : null;
             case "color": return isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.color : null;
             case "alpha": return isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.alpha : null;
-            case "strength": return isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.strength : null;
+            case "strength": return isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.strength : null;
             case "inner": return isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.inner : null;
-            case "knockout": return isGlowFilter(filter) || isDropShadowFilter(filter) ? filter.knockout : null;
-            case "distance": return isDropShadowFilter(filter) ? filter.distance : null;
-            case "angle": return isDropShadowFilter(filter) ? filter.angle : null;
+            case "knockout": return isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.knockout : null;
+            case "distance": return isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.distance : null;
+            case "angle": return isDropShadowFilter(filter) || isGradientBevelFilter(filter) ? filter.angle : null;
             case "hideObject": return isDropShadowFilter(filter) ? filter.hideObject : null;
+            case "type": return isGradientBevelFilter(filter) ? filter.type : null;
         }
     }
 
-    setProperty(name: FilterProxyProperty, value: number | boolean): void {
+    setProperty(name: FilterProxyProperty, value: number | boolean | string): void {
         if (this.autoUpdateIndex) this.updateIndex();
         const filter = this.filter;
         if (filter) {
             switch (name) {
                 case "blurX":
-                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter)) filter.blurX = Number(value);
+                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.blurX = Number(value);
                     else this.unsupported(name);
                     break;
                 case "blurY":
-                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter)) filter.blurY = Number(value);
+                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.blurY = Number(value);
                     else this.unsupported(name);
                     break;
                 case "quality":
-                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter)) filter.quality = Number(value);
+                    if (isBlurFilter(filter) || isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.quality = Number(value);
                     else this.unsupported(name);
                     break;
                 case "color":
@@ -146,7 +148,7 @@ export class FilterProxy {
                     else this.unsupported(name);
                     break;
                 case "strength":
-                    if (isGlowFilter(filter) || isDropShadowFilter(filter)) filter.strength = Number(value);
+                    if (isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.strength = Number(value);
                     else this.unsupported(name);
                     break;
                 case "inner":
@@ -154,17 +156,20 @@ export class FilterProxy {
                     else this.unsupported(name);
                     break;
                 case "knockout":
-                    if (isGlowFilter(filter) || isDropShadowFilter(filter)) filter.knockout = Boolean(value);
+                    if (isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.knockout = Boolean(value);
                     else this.unsupported(name);
                     break;
                 case "distance":
-                    if (isDropShadowFilter(filter)) filter.distance = Number(value); else this.unsupported(name);
+                    if (isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.distance = Number(value); else this.unsupported(name);
                     break;
                 case "angle":
-                    if (isDropShadowFilter(filter)) filter.angle = Number(value); else this.unsupported(name);
+                    if (isDropShadowFilter(filter) || isGradientBevelFilter(filter)) filter.angle = Number(value); else this.unsupported(name);
                     break;
                 case "hideObject":
                     if (isDropShadowFilter(filter)) filter.hideObject = Boolean(value); else this.unsupported(name);
+                    break;
+                case "type":
+                    if (isGradientBevelFilter(filter)) filter.type = String(value); else this.unsupported(name);
                     break;
             }
         }

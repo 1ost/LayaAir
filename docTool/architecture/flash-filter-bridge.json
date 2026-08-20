@@ -13,20 +13,18 @@
     "flash.filters.ColorMatrixFilter",
     "flash.filters.DropShadowFilter",
     "flash.filters.GlowFilter",
+    "flash.filters.GradientBevelFilter",
     "flash.display.DisplayObject.filters",
-    "ghostcat.display.filter.FilterProxy.explicit-native-seam"
+    "ghostcat.display.filter.FilterProxy.explicit-native-seam",
+    "swf.BEVELFILTER.internal-native-effect"
   ],
   "rendering": {
     "blur": "separable-flash-box-kernel-with-independent-x-y-and-quality",
     "glowAndShadow": "premultiplied-alpha-mask-and-porter-duff-composition",
-    "colorMatrix": "straight-rgba-full-4x5-with-alpha-cross-terms-and-offsets"
+    "colorMatrix": "straight-rgba-full-4x5-with-alpha-cross-terms-and-offsets",
+    "bevelAndGradientBevel": "opposing-alpha-fields-ffdec-double-strength-ramp-and-inner-outer-full-composition"
   },
   "holds": [
-    {
-      "symbol": "flash.filters.GradientBevelFilter",
-      "status": "HOLD",
-      "reason": "The maintained constructor and FFDec pixels require the separate gradient-ramp bevel workpack; no partial class is exported."
-    },
     {
       "symbol": "flash.display.BitmapData.applyFilter",
       "status": "HOLD",

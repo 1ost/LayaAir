@@ -216,15 +216,21 @@
           "path": "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
           "export": "FlashBlurEffect2D",
           "sha256": "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+        },
+        {
+          "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
+          "export": "FlashBevelEffect2D",
+          "sha256": "35366f2d4f034891ffc0d16273b1a6cf6e52bb42f689bc9b34f67eb41b909146"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "c86e880556ec7ea0d444222c2a354bb0f32ad2988669edaebbfd6ab336bd0446",
+          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
           "capability": "rendering.filter",
           "covers": [
+            "35366f2d4f034891ffc0d16273b1a6cf6e52bb42f689bc9b34f67eb41b909146",
             "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
           ]
         }
@@ -36362,7 +36368,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(name: FilterProxyProperty) => number | boolean | null"
+              "signature": "(name: FilterProxyProperty) => number | boolean | string | null"
             },
             {
               "abstract": false,
@@ -36398,7 +36404,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(name: FilterProxyProperty, value: number | boolean) => void"
+              "signature": "(name: FilterProxyProperty, value: number | boolean | string) => void"
             },
             {
               "abstract": false,
@@ -36423,7 +36429,7 @@
             "new (filter?: BitmapFilter | null, autoUpdateIndex?: boolean, callLater?: boolean): FilterProxy"
           ],
           "indexSignatures": [],
-          "sha256": "99f07e15c0f32438cb428ffcb50de6cd8be2f581d603d51e545feeff76402655",
+          "sha256": "d5716301356aa958f50e5a8ce175af857faaa9a78ab1306af8693a3b0483606c",
           "heritage": []
         },
         {
@@ -36431,21 +36437,21 @@
           "export": "bitmapFilterEquals",
           "kind": "function",
           "signature": "(left: BitmapFilter | null, right: BitmapFilter | null) => boolean",
-          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
         },
         {
           "module": "src/layaAir/flash/filters/FilterRegistry.ts",
           "export": "isBitmapFilter",
           "kind": "function",
           "signature": "(value: unknown) => value is ConcreteBitmapFilter",
-          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
         },
         {
           "module": "src/layaAir/flash/filters/FilterRegistry.ts",
           "export": "ConcreteBitmapFilter",
           "kind": "type",
           "signature": "any",
-          "sha256": "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0"
+          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
         },
         {
           "module": "src/layaAir/flash/filters/GlowFilter.ts",
@@ -36634,22 +36640,238 @@
           "kind": "function",
           "signature": "(value: unknown) => value is GlowFilter",
           "sha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef"
+        },
+        {
+          "module": "src/layaAir/flash/filters/GradientBevelFilter.ts",
+          "export": "GradientBevelFilter",
+          "kind": "class",
+          "signature": "typeof GradientBevelFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alphas",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "angle",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => GradientBevelFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "colors",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "distance",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "knockout",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "quality",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "ratios",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "strength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            }
+          ],
+          "constructors": [
+            "new (distance?: number, angle?: number, colors?: readonly number[] | null, alphas?: readonly number[] | null, ratios?: readonly number[] | null, blurX?: number, blurY?: number, strength?: number, quality?: number, type?: string, knockout?: boolean): GradientBevelFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/GradientBevelFilter.ts",
+          "export": "isGradientBevelFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is GradientBevelFilter",
+          "sha256": "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "c86e880556ec7ea0d444222c2a354bb0f32ad2988669edaebbfd6ab336bd0446",
+          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
           "capability": "api.flash.filters",
           "covers": [
             "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",
-            "1eceedd8730fe88c2062363518cd8e962a7b3bffc6e648f901177d2600752ff0",
+            "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15",
             "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef",
             "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0",
-            "99f07e15c0f32438cb428ffcb50de6cd8be2f581d603d51e545feeff76402655",
+            "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d",
             "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d",
-            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
+            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538",
+            "d5716301356aa958f50e5a8ce175af857faaa9a78ab1306af8693a3b0483606c"
           ]
         }
       ]

@@ -67,6 +67,7 @@ export { BlurFilter } from "./filters/BlurFilter";
 export { ColorMatrixFilter } from "./filters/ColorMatrixFilter";
 export { DropShadowFilter } from "./filters/DropShadowFilter";
 export { GlowFilter } from "./filters/GlowFilter";
+export { GradientBevelFilter } from "./filters/GradientBevelFilter";
 export { FilterProxy } from "./filters/FilterProxy";
 export { FlashGlobalErrorBoundary } from "./browser/FlashGlobalErrorBoundary";
 export type {

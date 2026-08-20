@@ -77,6 +77,7 @@ try {
             "flash.filters.ColorMatrixFilter",
             "flash.filters.DropShadowFilter",
             "flash.filters.GlowFilter",
+            "flash.filters.GradientBevelFilter",
             "flash.geom.ColorTransform",
             "flash.geom.Matrix",
             "flash.geom.Point",

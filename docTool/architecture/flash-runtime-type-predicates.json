@@ -481,6 +481,20 @@
       "moduleSha256": "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef"
     },
     {
+      "sourceQName": "flash.filters.GradientBevelFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/GradientBevelFilter.ts",
+      "constructorExport": "GradientBevelFilter",
+      "constructorSignature": "typeof GradientBevelFilter",
+      "constructSignatures": [
+        "new (distance?: number, angle?: number, colors?: readonly number[] | null, alphas?: readonly number[] | null, ratios?: readonly number[] | null, blurX?: number, blurY?: number, strength?: number, quality?: number, type?: string, knockout?: boolean): GradientBevelFilter"
+      ],
+      "predicateExport": "isGradientBevelFilter",
+      "predicateSignature": "(value: unknown) => value is GradientBevelFilter",
+      "heritageClosure": [],
+      "moduleSha256": "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d"
+    },
+    {
       "sourceQName": "flash.geom.ColorTransform",
       "targetCapabilityId": "api.flash.geom",
       "targetModule": "src/layaAir/flash/geom/ColorTransform.ts",
