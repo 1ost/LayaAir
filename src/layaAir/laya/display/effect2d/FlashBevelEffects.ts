@@ -53,15 +53,13 @@ export interface FlashAuthoredBevelFilterOptions {
     readonly compositeSource: boolean;
 }
 
-/** Immutable normalized gradient consumed by the public LayaAir bevel bridge. */
-export interface FlashBevelGradient {
+interface FlashBevelGradient {
     readonly colors: readonly number[];
     readonly alphas: readonly number[];
     readonly ratios: readonly number[];
 }
 
-/** Fully normalized public snapshot retained by FlashBevelEffect2D. */
-export interface NormalizedFlashBevelEffectOptions extends Omit<FlashGradientBevelEffectOptions, "colors" | "alphas" | "ratios"> {
+interface NormalizedFlashBevelEffectOptions extends Omit<FlashGradientBevelEffectOptions, "colors" | "alphas" | "ratios"> {
     readonly gradient: FlashBevelGradient;
 }
 
@@ -447,7 +445,7 @@ class FlashAuthoredBevelFilter extends Filter {
     getEffect(): PostProcess2DEffect { return new FlashBevelEffect2D(this.options); }
 }
 
-/** Public LayaAir authored-content bridge for decoded SWF BEVELFILTER records. */
+/** Internal publisher/runtime seam for decoded SWF BEVELFILTER records. */
 export function createFlashAuthoredBevelFilter(options: Readonly<FlashAuthoredBevelFilterOptions>): Filter {
     if (!options || options.sourceType !== "BEVELFILTER") throw new TypeError("Authored bevel sourceType must be BEVELFILTER");
     const number = (name: keyof FlashAuthoredBevelFilterOptions, minimum: number, maximum: number, integer = false): number => {

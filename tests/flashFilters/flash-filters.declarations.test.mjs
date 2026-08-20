@@ -2,28 +2,25 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("generated declarations explicitly expose the complete LayaAir bevel bridge surface", async () => {
-    const declaration = await readFile(new URL("../../build/types/LayaAir.d.ts", import.meta.url), "utf8");
-    const publicNames = [
-        "FlashBevelPlacement",
-        "FlashGradientBevelEffectOptions",
-        "FlashAuthoredBevelFilterOptions",
-        "FlashBevelGradient",
-        "NormalizedFlashBevelEffectOptions",
-        "FlashBevelEffect2D",
+test("generated declarations expose GradientBevelFilter without internal bevel machinery", async () => {
+    const coreDeclaration = await readFile(new URL("../../build/types/LayaAir.d.ts", import.meta.url), "utf8");
+    const flashDeclaration = await readFile(new URL("../../build/types/LayaFlash.d.ts", import.meta.url), "utf8");
+    const internalNames = [
+        "FlashBevelPlacement", "FlashGradientBevelEffectOptions", "FlashAuthoredBevelFilterOptions",
+        "FlashBevelGradient", "NormalizedFlashBevelEffectOptions", "FlashBevelEffect2D",
         "createFlashAuthoredBevelFilter",
     ];
-    const exportStatement = declaration.match(/export \{[\s\S]*\};\s*$/)?.[0];
-    assert.ok(exportStatement, "LayaAir declaration bundle must end in an explicit export list");
-    for (const name of publicNames)
-        assert.match(exportStatement, new RegExp(`\\b${name}\\b`), `${name} must be explicitly public`);
-    assert.match(declaration, /interface FlashBevelGradient\s*\{/);
-    assert.match(declaration, /interface NormalizedFlashBevelEffectOptions\s+extends/);
-    assert.match(declaration, /readonly options: Readonly<NormalizedFlashBevelEffectOptions>/);
+    for (const name of internalNames) {
+        assert.doesNotMatch(coreDeclaration, new RegExp(`\\b${name}\\b`), `${name} must stay out of LayaAir.d.ts`);
+        assert.doesNotMatch(flashDeclaration, new RegExp(`\\b${name}\\b`), `${name} must stay out of LayaFlash.d.ts`);
+    }
+    assert.match(flashDeclaration, /class GradientBevelFilter extends BitmapFilter/);
 });
 
-test("generated core runtime deliberately exports the two value-level bevel bridges", async () => {
-    const bundle = await readFile(new URL("../../build/libs/laya.core.js", import.meta.url), "utf8");
-    assert.match(bundle, /exports\.FlashBevelEffect2D = FlashBevelEffect2D/);
-    assert.match(bundle, /exports\.createFlashAuthoredBevelFilter = createFlashAuthoredBevelFilter/);
+test("generated bundles keep bevel effect and authored factory private to the Flash bundle", async () => {
+    const coreBundle = await readFile(new URL("../../build/libs/laya.core.js", import.meta.url), "utf8");
+    const flashBundle = await readFile(new URL("../../build/libs/laya.flash.js", import.meta.url), "utf8");
+    assert.doesNotMatch(coreBundle, /\b(?:FlashBevelEffect2D|createFlashAuthoredBevelFilter)\b/);
+    assert.match(flashBundle, /class FlashBevelEffect2D extends/);
+    assert.doesNotMatch(flashBundle, /exports\.(?:FlashBevelEffect2D|createFlashAuthoredBevelFilter)\s*=/);
 });

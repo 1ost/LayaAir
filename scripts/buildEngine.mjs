@@ -120,10 +120,17 @@ async function buildBundles() {
         if (bundleDef.name === 'flash' && globalName !== 'LayaFlash')
             throw new Error("flash bundle must use the collision-free LayaFlash global");
         let files = await glob(bundleDef.input.map(e => "./layaAir/" + e), { cwd: path.join(process.cwd(), "./src"), realpath: false });
+        const excludedFiles = new Set(await glob((bundleDef.excludeInput || []).map(e => "./layaAir/" + e),
+            { cwd: path.join(process.cwd(), "./src"), realpath: false }));
+        const internalFiles = await glob((bundleDef.internalInput || []).map(e => "./layaAir/" + e),
+            { cwd: path.join(process.cwd(), "./src"), realpath: false });
+        files = files.filter(ele => !excludedFiles.has(ele));
         files.sort();
         files = files.filter(ele => ele.endsWith(".ts"))
             .map(ele => ele = ele.substring(0, ele.length - 3) + ".js");
-        let fileSet = new Set(files.map(ele => path.normalize(outPath + ele)));
+        const privateFiles = internalFiles.filter(ele => ele.endsWith(".ts"))
+            .map(ele => ele.substring(0, ele.length - 3) + ".js");
+        let fileSet = new Set([...files, ...privateFiles].map(ele => path.normalize(outPath + ele)));
         let sourcemap = !bundleDef.name.startsWith("adapter-");
 
         let config = {
@@ -268,6 +275,9 @@ async function buildDeclarations() {
         "SharedArrayBuffer",
     ]);
 
+    const internalDeclarationFiles = new Set(allBundles.flatMap(bundle => bundle.internalInput || [])
+        .filter(pattern => !/[?*\[\]{}]/.test(pattern))
+        .map(file => `/layaAir/${file.replace(/\.ts$/, ".d.ts")}`));
     let files = emitResult.getFiles();
     files.sort((a, b) => a.filePath.localeCompare(b.filePath));
     for (let file of files) {
@@ -275,6 +285,8 @@ async function buildDeclarations() {
             continue;
 
         const normalizedFilePath = file.filePath.replaceAll("\\", "/");
+        if ([...internalDeclarationFiles].some(internal => normalizedFilePath.endsWith(internal)))
+            continue;
         const inFlashNamespace = normalizedFilePath.includes("/flash/");
         let inNamespace = !file.filePath.endsWith("Laya.d.ts") && !file.filePath.endsWith("Laya3D.d.ts");
         let code = file.text;

@@ -2,6 +2,8 @@
  * @en Define the bundles of the engine.
  * - name: the name of the bundle. It will be used as the output file name. e.g. the output file name of the `core` bundle is `laya.core.js`.
  * - input: the list of files that will be compiled into the bundle. The path is relative to the src/layaAir directory. Patterns are supported.
+ * - internalInput: files available to imports inside this bundle but omitted from its public entry exports.
+ * - excludeInput: files matched by input that must not be compiled into this bundle.
  * - globalName: (Optional) The collision-free browser global used by the bundle. Defaults to `Laya`.
  * - copy: (Optional) the list of files that will be directly copied to the output directory. The path is relative to the src/layaAir directory.
  * - output: (Optional) If specified, the original output file will be merged with the specified files and re-output. The key is the output file name, and the value is the list of files that will be merged with the original output file. The path is relative to the src/layaAir directory.
@@ -61,6 +63,7 @@ export const allBundles = [{
         'laya/large/**/*.*',
         'laya/platform/**/*.*',
     ],
+    excludeInput: ['laya/display/effect2d/FlashBevelEffects.ts'],
     copy: ['jsLibs/laya.workerloader.js']
 },
 {
@@ -68,7 +71,8 @@ export const allBundles = [{
     globalName: 'LayaFlash',
     input: [
         'flash/**/*.ts'
-    ]
+    ],
+    internalInput: ['laya/display/effect2d/FlashBevelEffects.ts']
 },
 {
     name: 'd3',

@@ -16,7 +16,7 @@
     "flash.filters.GradientBevelFilter",
     "flash.display.DisplayObject.filters",
     "ghostcat.display.filter.FilterProxy.explicit-native-seam",
-    "swf.BEVELFILTER.public-laya-authored-bridge"
+    "swf.BEVELFILTER.internal-native-effect"
   ],
   "rendering": {
     "blur": "separable-flash-box-kernel-with-independent-x-y-and-quality",
