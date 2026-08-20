@@ -18,6 +18,12 @@ function checkedIndex(value: number, label: string): number {
     return value;
 }
 
+function checkedRangeEnd(start: number, length: number, label: string): number {
+    if (length > 0xffffffff - start)
+        throw new RangeError(`${label} exceeds the maximum ByteArray length`);
+    return start + length;
+}
+
 function copyInput(input: ByteArrayInput): ArrayBuffer {
     const source = ArrayBuffer.isView(input)
         ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
@@ -133,6 +139,42 @@ export class ByteArray {
     }
 
     /**
+     * Reads bytes from the current cursor into `bytes` at `offset`. A zero
+     * length consumes all remaining bytes. A distinct destination's cursor is
+     * not changed; a self-read finishes at the receiver's consumed position.
+     */
+    readBytes(bytes: ByteArray, offset = 0, length = 0): void {
+        if (!(bytes instanceof ByteArray))
+            throw new TypeError("ByteArray.readBytes requires a ByteArray");
+        const targetOffset = checkedIndex(offset, "ByteArray.readBytes offset");
+        const exactLength = length === 0
+            ? this.bytesAvailable
+            : checkedIndex(length, "ByteArray.readBytes length");
+        const sourcePosition = this._bytes.pos;
+        if (exactLength > this.bytesAvailable)
+            throw new OutOfRangeError(sourcePosition + exactLength);
+        if (exactLength === 0) return;
+        checkedRangeEnd(targetOffset, exactLength, "ByteArray.readBytes range");
+
+        const snapshot = new Uint8Array(this._bytes.buffer, sourcePosition, exactLength).slice();
+        if (bytes === this) {
+            this._bytes.pos = targetOffset;
+            this._bytes.writeArrayBuffer(snapshot.buffer);
+            this._bytes.pos = sourcePosition + exactLength;
+            this._mutationGeneration++;
+            return;
+        }
+
+        const targetPosition = bytes._bytes.pos;
+        bytes._bytes.pos = targetOffset;
+        bytes._bytes.writeArrayBuffer(snapshot.buffer);
+        bytes._bytes.pos = targetPosition;
+        bytes._mutationGeneration++;
+        this._bytes.pos = sourcePosition + exactLength;
+        this._mutationGeneration++;
+    }
+
+    /**
      * Decodes exactly `length` bytes with the WHATWG UTF-8 replacement policy.
      * NUL is preserved. Truncated or malformed sequences become U+FFFD and do
      * not consume bytes beyond the requested slice.
@@ -152,6 +194,29 @@ export class ByteArray {
 
     writeByte(value: number): void {
         this._bytes.writeByte(value);
+        this._mutationGeneration++;
+    }
+
+    /**
+     * Writes bytes from `bytes` into the receiver at its current cursor. A
+     * zero length selects the source remainder; out-of-range source spans are
+     * clamped to the source end. The source cursor is never changed.
+     */
+    writeBytes(bytes: ByteArray, offset = 0, length = 0): void {
+        if (!(bytes instanceof ByteArray))
+            throw new TypeError("ByteArray.writeBytes requires a ByteArray");
+        const exactOffset = checkedIndex(offset, "ByteArray.writeBytes offset");
+        const requestedLength = checkedIndex(length, "ByteArray.writeBytes length");
+        const sourceOffset = Math.min(exactOffset, bytes.length);
+        const available = bytes.length - sourceOffset;
+        const exactLength = requestedLength === 0
+            ? available
+            : Math.min(requestedLength, available);
+        if (exactLength === 0) return;
+        checkedRangeEnd(this._bytes.pos, exactLength, "ByteArray.writeBytes range");
+
+        const snapshot = new Uint8Array(bytes._bytes.buffer, sourceOffset, exactLength).slice();
+        this._bytes.writeArrayBuffer(snapshot.buffer);
         this._mutationGeneration++;
     }
 

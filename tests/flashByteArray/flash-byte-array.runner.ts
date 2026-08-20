@@ -93,6 +93,64 @@ test("constructor and buffer getter both have a copy policy", () => {
     assert.deepEqual(bytesOf(bytes), [8, 7, 6], "copied input must retain Laya Byte growth semantics");
 });
 
+test("readBytes transfers exact ranges, grows with zeros, and preserves the destination cursor", () => {
+    const source = new ByteArray(new Uint8Array([1, 2, 3, 4]));
+    source.position = 1;
+    const destination = new ByteArray(new Uint8Array([9]));
+    destination.position = 1;
+
+    source.readBytes(destination, 3);
+    assert.deepEqual(bytesOf(destination), [9, 0, 0, 2, 3, 4]);
+    assert.equal(destination.position, 1);
+    assert.deepEqual([source.position, source.bytesAvailable], [4, 0]);
+
+    const insufficient = new ByteArray(new Uint8Array([5, 6]));
+    insufficient.position = 1;
+    const unchanged = new ByteArray(new Uint8Array([7, 8]));
+    unchanged.position = 2;
+    assert.throws(() => insufficient.readBytes(unchanged, 4, 2), OutOfRangeError);
+    assert.deepEqual([bytesOf(insufficient), insufficient.position], [[5, 6], 1]);
+    assert.deepEqual([bytesOf(unchanged), unchanged.position], [[7, 8], 2]);
+});
+
+test("writeBytes clamps source ranges and preserves the source cursor", () => {
+    const source = new ByteArray(new Uint8Array([1, 2, 3, 4]));
+    source.position = 2;
+    const destination = new ByteArray(new Uint8Array([8]));
+    destination.position = 1;
+
+    destination.writeBytes(source, 2, 99);
+    assert.deepEqual([bytesOf(destination), destination.position], [[8, 3, 4], 3]);
+    assert.equal(source.position, 2);
+
+    destination.writeBytes(source, 99);
+    assert.deepEqual([bytesOf(destination), destination.position], [[8, 3, 4], 3]);
+    assert.equal(source.position, 2);
+});
+
+test("self readBytes and writeBytes snapshot overlapping ranges", () => {
+    const reading = new ByteArray(new Uint8Array([1, 2, 3, 4]));
+    reading.position = 1;
+    reading.readBytes(reading, 0, 3);
+    assert.deepEqual([bytesOf(reading), reading.position], [[2, 3, 4, 4], 4]);
+
+    const writing = new ByteArray(new Uint8Array([1, 2, 3, 4]));
+    writing.position = 1;
+    writing.writeBytes(writing, 0, 3);
+    assert.deepEqual([bytesOf(writing), writing.position], [[1, 1, 2, 3], 4]);
+});
+
+test("byte transfer arguments fail before mutating either side", () => {
+    const source = new ByteArray(new Uint8Array([1, 2, 3]));
+    const destination = new ByteArray(new Uint8Array([4, 5]));
+    assert.throws(() => source.readBytes(destination, -1), RangeError);
+    assert.throws(() => destination.writeBytes(source, 0, 1.5), RangeError);
+    assert.throws(() => source.readBytes({} as ByteArray), TypeError);
+    assert.throws(() => destination.writeBytes({} as ByteArray), TypeError);
+    assert.deepEqual([bytesOf(source), source.position], [[1, 2, 3], 0]);
+    assert.deepEqual([bytesOf(destination), destination.position], [[4, 5], 0]);
+});
+
 test("the default browser host decodes a zlib-wrapped version manifest atomically", async () => {
     const manifest = new ByteArray();
     manifest.endian = Endian.LITTLE_ENDIAN;

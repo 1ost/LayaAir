@@ -37620,6 +37620,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "readBytes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bytes: ByteArray, offset?: number, length?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "readUnsignedByte",
               "scope": "instance",
               "optional": false,
@@ -37674,6 +37683,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeBytes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bytes: ByteArray, offset?: number, length?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeShort",
               "scope": "instance",
               "optional": false,
@@ -37703,7 +37721,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283",
+          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81",
           "heritage": []
         },
         {
@@ -37711,14 +37729,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283"
+          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283"
+          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81"
         }
       ],
       "evidence": [
@@ -37728,7 +37746,7 @@
           "sha256": "f04563b45a76a2523cde4950d9854364ffbeb5af1050e22c3f62bed4bab66de4",
           "capability": "api.flash.utils",
           "covers": [
-            "47db7483f06e7ee6a47f7ead32702ec990f2e66c74e03c4f1bc3892f96ea3283",
+            "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"

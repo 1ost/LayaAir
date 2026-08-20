@@ -13,6 +13,10 @@ function snapshot(value: ByteArray): number[] {
     return [...new Uint8Array(value.buffer)];
 }
 
+function positionOf(value: ByteArray): number {
+    return value.position;
+}
+
 async function rejected(promise: Promise<unknown>, expected: (error: unknown) => boolean): Promise<void> {
     try {
         await promise;
@@ -26,6 +30,19 @@ async function rejected(promise: Promise<unknown>, expected: (error: unknown) =>
 async function run(): Promise<Record<string, unknown>> {
     const defaultCapability = typeof globalThis.DecompressionStream === "function";
     requireValue(defaultCapability, "Supported Chromium lacks DecompressionStream");
+
+    const transferSource = new ByteArray(new Uint8Array([1, 2, 3, 4]));
+    transferSource.position = 1;
+    const transferTarget = new ByteArray(new Uint8Array([9]));
+    transferTarget.position = 1;
+    transferSource.readBytes(transferTarget, 3);
+    requireValue(JSON.stringify(snapshot(transferTarget)) === "[9,0,0,2,3,4]"
+        && positionOf(transferTarget) === 1 && positionOf(transferSource) === 4,
+        "Browser readBytes transfer mismatch");
+    transferTarget.writeBytes(transferTarget, 0, 3);
+    requireValue(JSON.stringify(snapshot(transferTarget)) === "[9,9,0,0,3,4]"
+        && positionOf(transferTarget) === 4,
+        "Browser writeBytes self-overlap mismatch");
 
     const decoded = new ByteArray(ZLIB_BLEACH_NUL_BROWSER);
     await decoded.uncompressZlib();
@@ -70,6 +87,7 @@ async function run(): Promise<Record<string, unknown>> {
 
     return {
         defaultCapability,
+        transferPrimitives: true,
         defaultSuccess: true,
         malformedNoCommit: true,
         cancellationNoCommit: true,
