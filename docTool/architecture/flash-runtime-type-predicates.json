@@ -109,7 +109,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+      "moduleSha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
     },
     {
       "sourceQName": "flash.display.LoaderInfo",
@@ -125,7 +125,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+      "moduleSha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
     },
     {
       "sourceQName": "flash.display.MovieClip",

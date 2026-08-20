@@ -375,6 +375,10 @@ function validateHierarchyURL(value: string): void {
         throw new TypeError("Native Loader content host cannot resolve non-hierarchy executables");
 }
 
+function hasNativeParent(node: LayaNode, parent: LayaNode): boolean {
+    return node.parent === parent;
+}
+
 /**
  * Source-shaped Flash Loader whose production path is deliberately limited to
  * authenticated native Laya hierarchy assets. It never fetches or executes
@@ -476,7 +480,7 @@ export class Loader extends DisplayObjectContainer {
         this.#active = null;
         const content = this.#content;
         const first = this.#detachPublished(destroyChild, false);
-        if (content?.parent === this) {
+        if (content && hasNativeParent(content, this)) {
             if (first !== undefined) throw first;
             throw new Error("Loader content could not be detached before destroy");
         }
@@ -710,7 +714,7 @@ export class Loader extends DisplayObjectContainer {
             attachError = error;
         }
         if (attachError !== undefined || !this.#isCurrent(transaction)
-            || candidate.parent !== this || this.numChildren !== 1 || this.#content !== candidate) {
+            || !hasNativeParent(candidate, this) || this.numChildren !== 1 || this.#content !== candidate) {
             if (this.#content === candidate || CONTENT_OWNERS.get(candidate) === this)
                 this.#abortPublished(transaction, candidate, attachError);
             return;
@@ -722,7 +726,7 @@ export class Loader extends DisplayObjectContainer {
             this.#abortPublished(transaction, candidate, error);
             throw error;
         }
-        if (!this.#isCurrent(transaction) || candidate.parent !== this || this.#content !== candidate) {
+        if (!this.#isCurrent(transaction) || !hasNativeParent(candidate, this) || this.#content !== candidate) {
             if (this.#content === candidate || CONTENT_OWNERS.get(candidate) === this)
                 this.#abortPublished(transaction, candidate);
             return;
@@ -780,15 +784,15 @@ export class Loader extends DisplayObjectContainer {
         if (this.#content === candidate) this.#content = null;
         clearLoaderInfo(this.#contentLoaderInfo);
         let first = transaction.firstError;
-        if (candidate.parent === this) {
+        if (hasNativeParent(candidate, this)) {
             try { this.#removeOwnedContent(candidate); }
             catch (error) { if (first === undefined) first = error; }
         }
-        if (candidate.parent !== this && !candidate.destroyed) {
+        if (!hasNativeParent(candidate, this) && !candidate.destroyed) {
             try { this.#destroyOwnedContent(candidate); }
             catch (error) { if (first === undefined) first = error; }
         }
-        if (candidate.parent !== this && !this.children.includes(candidate)) this.#releaseOwnedContent(candidate);
+        if (!hasNativeParent(candidate, this) && !this.children.includes(candidate)) this.#releaseOwnedContent(candidate);
         transaction.firstError = first;
     }
 
@@ -806,15 +810,15 @@ export class Loader extends DisplayObjectContainer {
         clearLoaderInfo(this.#contentLoaderInfo);
 
         let first: unknown | undefined;
-        if (content.parent === this) {
+        if (hasNativeParent(content, this)) {
             try { this.#removeOwnedContent(content); }
             catch (error) { first = error; }
         }
-        if (destroy && content.parent !== this && !content.destroyed) {
+        if (destroy && !hasNativeParent(content, this) && !content.destroyed) {
             try { this.#destroyOwnedContent(content); }
             catch (error) { if (first === undefined) first = error; }
         }
-        if (content.parent !== this && !this.children.includes(content)) this.#releaseOwnedContent(content);
+        if (!hasNativeParent(content, this) && !this.children.includes(content)) this.#releaseOwnedContent(content);
         if (dispatchUnload) {
             try { dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.UNLOAD); }
             catch (error) { if (first === undefined) first = error; }
@@ -862,7 +866,7 @@ export class Loader extends DisplayObjectContainer {
     }
 
     #releaseOwnedContent(content: DisplayObject): void {
-        if (content.parent === this || this.children.includes(content))
+        if (hasNativeParent(content, this) || this.children.includes(content))
             throw new Error("Loader content mutation authority cannot be released while attached");
         const transaction = CONTENT_NODE_TRANSACTIONS.get(content);
         if (!transaction) return;

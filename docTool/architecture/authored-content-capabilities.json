@@ -21690,7 +21690,7 @@
             "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
           ],
           "indexSignatures": [],
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
           "heritage": [
             {
               "kind": "extends",
@@ -21703,7 +21703,7 @@
           "export": "isFlashLoader",
           "kind": "function",
           "signature": "(value: unknown) => value is Loader",
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -21905,7 +21905,7 @@
             "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
           ],
           "indexSignatures": [],
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
           "heritage": [
             {
               "kind": "extends",
@@ -21918,7 +21918,7 @@
           "export": "isFlashLoaderInfo",
           "kind": "function",
           "signature": "(value: unknown) => value is LoaderInfo",
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -21938,7 +21938,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
           "heritage": []
         },
         {
@@ -21959,7 +21959,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
           "heritage": []
         },
         {
@@ -21967,14 +21967,14 @@
           "export": "installNativeLoaderContentHost",
           "kind": "function",
           "signature": "(host: NativeLoaderContentHost) => void",
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
           "export": "isNativeLoaderContentHost",
           "kind": "function",
           "signature": "(value: unknown) => value is NativeLoaderContentHost",
-          "sha256": "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6"
+          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
         }
       ],
       "evidence": [
@@ -21999,10 +21999,10 @@
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "a7db8c34b1b7ce159fd27322b168e4ea2b04aa19eb49c4df480905256441d1ee",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
+            "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
             "b1fe734dd2a8d3a6a3e8b8bcf8db64e4ebffe7bab4c21fb4b366143ed3000030",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "ead28919fa2aa4325acc613fd70dbcd9377fa294c8ccf42b09f05c56911a202d",
-            "f44a55f59df99a8ebc76a9701e93dd0568839c6df57f2f0f9bf29a38176c02c6",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
             "f86296632290b741b90f630942b1684e918eb7fa8cd2405028f70142842947ba",
             "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
