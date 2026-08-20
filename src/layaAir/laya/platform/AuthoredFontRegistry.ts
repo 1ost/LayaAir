@@ -1,6 +1,4 @@
 import { ILaya } from "../../ILaya";
-import { FontStyle } from "../../flash/text/TextFormat";
-import { FontType } from "../../flash/text/FontType";
 import type {
     TextAdvanceProvider,
     TextFontFamilyResolver,
@@ -126,7 +124,7 @@ const GLYPH_KEYS = Object.freeze(["advance", "codePoint"]);
 const KEY_KEYS = Object.freeze(["documentId", "fontId", "fontStyle", "sourceSha256"]);
 const SHA256 = /^[a-f0-9]{64}$/;
 const FONT_EXTENSIONS = new Set(["ttf", "woff", "woff2", "otf"]);
-const STYLES = Object.freeze([FontStyle.REGULAR, FontStyle.BOLD, FontStyle.ITALIC, FontStyle.BOLD_ITALIC] as const);
+const STYLES = Object.freeze(["regular", "bold", "italic", "boldItalic"] as const);
 
 /** Explicit cancellation result: a cancelled/destroyed consumer is never bound. */
 export class AuthoredFontBindingCancelledError extends Error {
@@ -508,7 +506,7 @@ function normalizeEntry(value: unknown, index: number): FrozenEntry {
     const record = exactDataObject(value, ENTRY_KEYS, label);
     const key = normalizeKey(record, label);
     const fontName = requireNonemptyString(record.fontName, `${label}.fontName`);
-    if (record.fontType !== FontType.EMBEDDED && record.fontType !== FontType.EMBEDDED_CFF)
+    if (record.fontType !== "embedded" && record.fontType !== "embeddedCFF")
         throw new TypeError(`${label}.fontType must be embedded or embeddedCFF`);
     const sourceUrl = requireNonemptyString(record.sourceUrl, `${label}.sourceUrl`);
     const extension = sourceUrl.split(/[?#]/, 1)[0].split(".").pop()?.toLowerCase();
@@ -609,10 +607,10 @@ function requireStyle(value: unknown, label: string): AuthoredFontStyle {
 }
 
 function styleFor(bold: boolean, italic: boolean): AuthoredFontStyle {
-    if (bold && italic) return FontStyle.BOLD_ITALIC;
-    if (bold) return FontStyle.BOLD;
-    if (italic) return FontStyle.ITALIC;
-    return FontStyle.REGULAR;
+    if (bold && italic) return "boldItalic";
+    if (bold) return "bold";
+    if (italic) return "italic";
+    return "regular";
 }
 
 function scaleFontUnits(value: number, fontSize: number, unitsPerEm: number): number {
