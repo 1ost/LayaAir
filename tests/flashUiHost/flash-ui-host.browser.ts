@@ -31,6 +31,8 @@ interface BrowserGateState {
     disposeSelectionDispatches: number;
     successorSelectionDispatches: number;
     successorInstalled: boolean;
+    resolverStaleInert: boolean;
+    openingDismissStaleInert: boolean;
 }
 
 void BrowserAdapter;
@@ -48,6 +50,7 @@ const state: BrowserGateState = {
     syntheticKeyboardIgnored: false,
     clipboardFailClosedOutsideGesture: false,
     disposeSelectionDispatches: 0, successorSelectionDispatches: 0, successorInstalled: false,
+    resolverStaleInert: false, openingDismissStaleInert: false,
 };
 
 class TestOwner extends InteractiveObject {
@@ -56,11 +59,11 @@ class TestOwner extends InteractiveObject {
     }
 }
 
-function canvasAt(top: number): HTMLCanvasElement {
+function canvasAt(top: number, left = 10): HTMLCanvasElement {
     const canvas = document.createElement("canvas");
     canvas.width = 240;
     canvas.height = 70;
-    canvas.style.cssText = `position:absolute;left:10px;top:${top}px;width:240px;height:70px;border:1px solid black`;
+    canvas.style.cssText = `position:absolute;left:${left}px;top:${top}px;width:240px;height:70px;border:1px solid black`;
     document.body.appendChild(canvas);
     return canvas;
 }
@@ -189,8 +192,76 @@ successorSelectionCanvas.addEventListener("contextmenu", event => {
             canvas: successorSelectionCanvas, document, resolveTarget: () => successorSelectionOwner,
         });
         state.successorInstalled = true;
-    }, { once: true });
+}, { once: true });
 }, true);
+
+const resolverCanvas = canvasAt(10, 270);
+const resolverOwner = new TestOwner();
+const resolverMenu = new ContextMenu();
+resolverMenu.customItems.push(new ContextMenuItem("Resolver successor"));
+resolverOwner.contextMenu = resolverMenu;
+let resolverSuccessorHost: ReturnType<typeof installNativeContextMenuHost> | null = null;
+let resolverArmed = true;
+let resolverSuccessorReady = false;
+let resolverFocusBefore = 0;
+const resolverHost = installNativeContextMenuHost({
+    canvas: resolverCanvas, document, resolveTarget: () => {
+        if (resolverArmed) {
+            resolverArmed = false;
+            resolverFocusBefore = state.ownerFocused;
+            resolverSuccessorHost = installNativeContextMenuHost({
+                canvas: resolverCanvas, document,
+                resolveTarget: () => resolverSuccessorReady ? resolverOwner : null,
+            });
+        }
+        return resolverOwner;
+    },
+});
+resolverCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || !resolverSuccessorHost) return;
+    state.resolverStaleInert = !event.defaultPrevented && state.ownerFocused === resolverFocusBefore
+        && !resolverHost.open && !resolverSuccessorHost.open;
+    queueMicrotask(() => { resolverSuccessorReady = true; });
+});
+
+const openingDismissCanvas = canvasAt(100, 270);
+const openingDismissOwner = new TestOwner();
+const openingDismissMenu = new ContextMenu();
+openingDismissMenu.customItems.push(new ContextMenuItem("Opening dismiss successor"));
+openingDismissOwner.contextMenu = openingDismissMenu;
+const openingDismissRestore = document.createElement("button");
+openingDismissRestore.textContent = "opening dismiss restore";
+openingDismissRestore.style.cssText = "position:absolute;left:530px;top:100px";
+document.body.appendChild(openingDismissRestore);
+let openingDismissSuccessor: ReturnType<typeof installNativeContextMenuHost> | null = null;
+let openingDismissSuccessorReady = false;
+let openingDismissArmed = false;
+let openingDismissFocusBefore = 0;
+let openingDismissInitialContext = true;
+openingDismissCanvas.addEventListener("contextmenu", event => {
+    if (event.isTrusted && openingDismissInitialContext) {
+        openingDismissInitialContext = false;
+        openingDismissRestore.focus();
+    }
+}, true);
+const openingDismissHost = installNativeContextMenuHost({
+    canvas: openingDismissCanvas, document, resolveTarget: () => openingDismissOwner,
+});
+openingDismissRestore.addEventListener("focus", () => {
+    if (!openingDismissArmed) return;
+    openingDismissArmed = false;
+    openingDismissSuccessor = installNativeContextMenuHost({
+        canvas: openingDismissCanvas, document,
+        resolveTarget: () => openingDismissSuccessorReady ? openingDismissOwner : null,
+    });
+    setTimeout(() => { openingDismissSuccessorReady = true; }, 0);
+});
+openingDismissCanvas.addEventListener("contextmenu", event => {
+    if (!event.isTrusted || !openingDismissSuccessor) return;
+    state.openingDismissStaleInert = state.ownerFocused === openingDismissFocusBefore
+        && !openingDismissHost.open && !openingDismissSuccessor.open
+        && document.querySelectorAll("[data-flash-context-menu=true]").length === 0;
+});
 
 const accessible = document.createElement("div");
 accessible.setAttribute("aria-label", "original");
@@ -234,9 +305,18 @@ Object.assign(globalThis, {
     __flashUiHostTest: {
         state, firstHost, primaryHost, reentrantHost, forgedHost, structuralHost, prior,
         disposeSelectionHost, predecessorSelectionHost, disposeSelectionRestore, successorSelectionRestore,
+        openingDismissHost, openingDismissRestore,
         get successorSelectionOpen(): boolean { return successorSelectionHost?.open ?? false; },
+        get resolverSuccessorOpen(): boolean { return resolverSuccessorHost?.open ?? false; },
+        get openingDismissSuccessorOpen(): boolean { return openingDismissSuccessor?.open ?? false; },
+        get openingDismissSuccessorInstalled(): boolean { return openingDismissSuccessor !== null; },
+        get openingDismissFocusBefore(): number { return openingDismissFocusBefore; },
         armDisposeSelection(): void { disposeSelectionArmed = true; },
         armSuccessorSelection(): void { successorSelectionArmed = true; },
+        armOpeningDismiss(): void {
+            openingDismissFocusBefore = state.ownerFocused;
+            openingDismissArmed = true;
+        },
         programmaticSelection(): void {
             const before = state.route.length;
             document.querySelector<HTMLButtonElement>("[data-flash-context-menu=true] button:not(:disabled):last-of-type")?.click();
@@ -261,6 +341,10 @@ Object.assign(globalThis, {
             disposeSelectionHost.dispose();
             predecessorSelectionHost.dispose();
             successorSelectionHost?.dispose();
+            resolverHost.dispose();
+            resolverSuccessorHost?.dispose();
+            openingDismissHost.dispose();
+            openingDismissSuccessor?.dispose();
             clipboardLease.dispose();
             return result;
         },

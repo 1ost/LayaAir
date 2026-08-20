@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
     AccessibilityProperties, Clipboard, ClipboardFormats, ContextMenu, ContextMenuItem,
-    Keyboard, installNativeClipboardHost, installNativeContextMenuHost, installNativeKeyboardStateHost,
+    Keyboard, createBrowserClipboardHost, installNativeClipboardHost, installNativeContextMenuHost,
+    installNativeKeyboardStateHost, type NativeClipboardHost,
 } from "../../src/layaAir/flash";
 import { isFlashAccessibilityProperties } from "../../src/layaAir/flash/accessibility/AccessibilityProperties";
 import { isFlashContextMenu, isFlashContextMenuItem } from "../../src/layaAir/flash/ui/ContextMenu";
@@ -252,6 +253,72 @@ test("ContextMenu nested installation wins and failed replacement preserves its 
     finalLease.dispose();
 });
 
+test("ContextMenu authenticates one exact document window and failed window capture preserves its predecessor", () => {
+    type Listener = EventListenerOrEventListenerObject;
+    let label = "predecessor";
+    const owners = new Map<Listener, string>();
+    const calls: string[] = [];
+    const recordAdd = (scope: string, type: string, listener: Listener): void => {
+        owners.set(listener, label);
+        calls.push(`${label}:${scope}:add:${type}`);
+    };
+    const recordRemove = (scope: string, type: string, listener: Listener): void => {
+        calls.push(`${owners.get(listener) ?? label}:${scope}:remove:${type}`);
+        owners.delete(listener);
+    };
+    const canvas = {
+        addEventListener(type: string, listener: Listener): void { recordAdd("canvas", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("canvas", type, listener); },
+    } as unknown as HTMLElement;
+    const makeView = (name: string): Window => ({
+        addEventListener(type: string, listener: Listener): void { recordAdd(name, type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove(name, type, listener); },
+    } as unknown as Window);
+    const makeDocument = (view: Window | null): Document => ({
+        body: {}, defaultView: view,
+        addEventListener(type: string, listener: Listener): void { recordAdd("document", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("document", type, listener); },
+    } as unknown as Document);
+
+    const predecessorView = makeView("predecessor-window");
+    const predecessor = installNativeContextMenuHost({
+        canvas, document: makeDocument(predecessorView), resolveTarget: () => null,
+    });
+
+    label = "changing";
+    const firstView = makeView("first-window");
+    const secondView = makeView("second-window");
+    let reads = 0;
+    const changingDocument = {
+        body: {},
+        get defaultView(): Window { return ++reads === 1 ? firstView : secondView; },
+        addEventListener(type: string, listener: Listener): void { recordAdd("document", type, listener); },
+        removeEventListener(type: string, listener: Listener): void { recordRemove("document", type, listener); },
+    } as unknown as Document;
+    assert.throws(() => installNativeContextMenuHost({
+        canvas, document: changingDocument, resolveTarget: () => null,
+    }), /document window changed/);
+    const firstWindowAdd = calls.find(value => value === "changing:first-window:add:blur");
+    const firstWindowRemove = calls.find(value => value === "changing:first-window:remove:blur");
+    assert.ok(firstWindowAdd && firstWindowRemove,
+        "rollback removes the exact blur listener from the captured first window");
+    assert.equal(calls.some(value => value.includes("second-window") && value.includes(":remove:")), false);
+
+    label = "missing";
+    assert.throws(() => installNativeContextMenuHost({
+        canvas, document: makeDocument(null), resolveTarget: () => null,
+    }), /requires one live document window/);
+
+    label = "final";
+    const finalLease = installNativeContextMenuHost({
+        canvas, document: makeDocument(makeView("final-window")), resolveTarget: () => null,
+    });
+    assert.equal(calls.filter(value => value.startsWith("predecessor:") && value.includes(":remove:")).length, 4,
+        "both failed replacements preserve the predecessor until a successful successor retires it");
+    predecessor.dispose();
+    finalLease.dispose();
+});
+
 test("Clipboard synchronously publishes only source-used text and leases cannot clobber successors", () => {
     const first: string[] = [];
     const firstLease = installNativeClipboardHost({ writeText(value) { first.push(value); return true; } });
@@ -268,6 +335,105 @@ test("Clipboard synchronously publishes only source-used text and leases cannot 
     secondLease.dispose();
     assert.throws(() => Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, "orphan"),
         (error: unknown) => error instanceof UnsupportedFlashFeatureError);
+});
+
+test("Clipboard installation captures one callable and a hostile getter cannot overwrite its nested successor", () => {
+    const nestedWrites: string[] = [];
+    const outerWrites: string[] = [];
+    let nestedLease: ReturnType<typeof installNativeClipboardHost> | null = null;
+    const hostile = Object.create(null) as NativeClipboardHost;
+    Object.defineProperty(hostile, "writeText", {
+        get(): NativeClipboardHost["writeText"] {
+            nestedLease = installNativeClipboardHost({
+                writeText(value: string): boolean { nestedWrites.push(value); return true; },
+            });
+            return (value: string): boolean => { outerWrites.push(value); return true; };
+        },
+    });
+    assert.throws(() => installNativeClipboardHost(hostile), /superseded reentrantly/);
+    assert.equal(Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, "nested"), true);
+    assert.deepEqual(nestedWrites, ["nested"]);
+    assert.deepEqual(outerWrites, []);
+    nestedLease!.dispose();
+
+    const capturedWrites: string[] = [];
+    const replacedWrites: string[] = [];
+    const mutableHost: NativeClipboardHost = {
+        writeText(value: string): boolean { capturedWrites.push(value); return true; },
+    };
+    const capturedLease = installNativeClipboardHost(mutableHost);
+    mutableHost.writeText = (value: string): boolean => { replacedWrites.push(value); return true; };
+    assert.equal(Clipboard.generalClipboard.setData(ClipboardFormats.TEXT_FORMAT, "captured"), true);
+    assert.deepEqual(capturedWrites, ["captured"]);
+    assert.deepEqual(replacedWrites, []);
+    capturedLease.dispose();
+});
+
+test("browser Clipboard ignores nested synthetic copy and requires the genuine event to publish", () => {
+    type CopyListener = (event: Event) => void;
+    const listeners: CopyListener[] = [];
+    let addOptions: unknown = "unset";
+    let nested = false;
+    let syntheticWrites = 0;
+    const realWrites: Array<[string, string]> = [];
+    const syntheticEvent = {
+        isTrusted: false,
+        clipboardData: { setData(): void { syntheticWrites++; } },
+        preventDefault(): void {},
+    } as unknown as Event;
+    listeners.push(event => {
+        if (!event.isTrusted || nested) return;
+        nested = true;
+        for (const listener of [...listeners]) listener(syntheticEvent);
+    });
+    const document = {
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: unknown): void {
+            assert.equal(type, "copy");
+            addOptions = options;
+            listeners.push(listener as CopyListener);
+        },
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+            assert.equal(type, "copy");
+            const index = listeners.indexOf(listener as CopyListener);
+            if (index >= 0) listeners.splice(index, 1);
+        },
+        execCommand(command: string): boolean {
+            assert.equal(command, "copy");
+            const realEvent = {
+                isTrusted: true,
+                clipboardData: { setData(type: string, value: string): void { realWrites.push([type, value]); } },
+                preventDefault(): void {},
+            } as unknown as Event;
+            for (const listener of [...listeners]) listener(realEvent);
+            return true;
+        },
+    } as unknown as Document;
+    const host = createBrowserClipboardHost(document, {
+        userActivation: { isActive: true },
+    } as unknown as Navigator);
+    assert.equal(host.writeText("trusted"), true);
+    assert.equal(addOptions, undefined, "the real publisher is not a synthetic-consumable one-shot listener");
+    assert.equal(syntheticWrites, 0);
+    assert.deepEqual(realWrites, [["text/plain", "trusted"]]);
+    assert.equal(listeners.length, 1, "the exact publisher listener is removed after execCommand");
+
+    const syntheticOnlyListeners: CopyListener[] = [];
+    const syntheticOnlyDocument = {
+        addEventListener(_type: string, listener: EventListenerOrEventListenerObject): void {
+            syntheticOnlyListeners.push(listener as CopyListener);
+        },
+        removeEventListener(_type: string, listener: EventListenerOrEventListenerObject): void {
+            const index = syntheticOnlyListeners.indexOf(listener as CopyListener);
+            if (index >= 0) syntheticOnlyListeners.splice(index, 1);
+        },
+        execCommand(): boolean {
+            for (const listener of [...syntheticOnlyListeners]) listener(syntheticEvent);
+            return true;
+        },
+    } as unknown as Document;
+    assert.equal(createBrowserClipboardHost(syntheticOnlyDocument, {
+        userActivation: { isActive: true },
+    } as unknown as Navigator).writeText("not-published"), false);
 });
 
 test("AccessibilityProperties preserves Flash metadata and nominal identity", () => {

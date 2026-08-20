@@ -12,12 +12,22 @@ export interface NativeClipboardHostLease {
 
 let installedHost: NativeClipboardHost | null = null;
 let installedOwner: object | null = null;
+let clipboardInstallGeneration = 0;
 
 export function installNativeClipboardHost(host: NativeClipboardHost): NativeClipboardHostLease {
-    if (!host || typeof host.writeText !== "function")
+    if (!host) throw new TypeError("Native clipboard host requires writeText");
+    const installGeneration = ++clipboardInstallGeneration;
+    const writeText = host.writeText;
+    if (clipboardInstallGeneration !== installGeneration)
+        throw new Error("Native clipboard host installation was superseded reentrantly");
+    if (typeof writeText !== "function")
         throw new TypeError("Native clipboard host requires writeText");
     const owner = Object.freeze({});
-    installedHost = host;
+    installedHost = Object.freeze({
+        writeText(value: string): boolean {
+            return Reflect.apply(writeText, host, [value]) as boolean;
+        },
+    });
     installedOwner = owner;
     let disposed = false;
     return Object.freeze({
@@ -52,12 +62,12 @@ export function createBrowserClipboardHost(document: Document = globalThis.docum
             let produced = false;
             const publish = (event: Event): void => {
                 const clipboardEvent = event as ClipboardEvent;
-                if (!clipboardEvent.clipboardData) return;
+                if (!clipboardEvent.isTrusted || !clipboardEvent.clipboardData) return;
                 clipboardEvent.clipboardData.setData("text/plain", value);
                 clipboardEvent.preventDefault();
                 produced = true;
             };
-            document.addEventListener("copy", publish, { once: true });
+            document.addEventListener("copy", publish);
             let accepted = false;
             try { accepted = document.execCommand("copy"); }
             finally { document.removeEventListener("copy", publish); }

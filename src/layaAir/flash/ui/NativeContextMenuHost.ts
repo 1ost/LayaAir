@@ -46,12 +46,31 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
     const document = options.document ?? globalThis.document;
     if (!canvas || typeof canvas.addEventListener !== "function" || !document?.body)
         throw new TypeError("Native context-menu host requires a live canvas and document body");
-    if (typeof options.resolveTarget !== "function")
+    const resolveTarget = options.resolveTarget;
+    if (typeof resolveTarget !== "function")
         throw new TypeError("Native context-menu host requires a target resolver");
 
     const predecessor = CANVAS_AUTHORITIES.get(canvas);
     const installationToken = Object.freeze({});
     CANVAS_INSTALLATIONS.set(canvas, installationToken);
+    let view: Window;
+    try {
+        const candidate = document.defaultView;
+        if (!candidate || typeof candidate.addEventListener !== "function"
+            || typeof candidate.removeEventListener !== "function")
+            throw new TypeError("Native context-menu host requires one live document window");
+        view = candidate;
+    } catch (error) {
+        if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
+            CANVAS_INSTALLATIONS.delete(canvas);
+        throw error;
+    }
+    if (CANVAS_INSTALLATIONS.get(canvas) !== installationToken
+        || CANVAS_AUTHORITIES.get(canvas) !== predecessor) {
+        if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
+            CANVAS_INSTALLATIONS.delete(canvas);
+        throw new Error("Native context-menu host installation was superseded reentrantly");
+    }
     const token = Object.freeze({});
     let popup: HTMLDivElement | null = null;
     let previousFocus: HTMLElement | null = null;
@@ -88,18 +107,28 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
 
     const openFromEvent = (event: MouseEvent | KeyboardEvent, x: number, y: number): void => {
         if (!event.isTrusted || disposed || !ownsCanvas()) return;
-        const owner = findOwner(options.resolveTarget());
+        const resolvedTarget = Reflect.apply(resolveTarget, options, []) as unknown;
+        if (disposed || !ownsCanvas()) return;
+        const owner = findOwner(resolvedTarget);
+        if (disposed || !ownsCanvas()) return;
         if (!owner) return;
         const menu = owner.contextMenu;
+        if (disposed || !ownsCanvas()) return;
         if (!isFlashContextMenu(menu)) return;
-        event.preventDefault();
         const rawItems = menu.customItems ?? [];
+        if (disposed || !ownsCanvas()) return;
         const snapshot = Array.prototype.slice.call(rawItems) as unknown[];
-        if (!snapshot.every(isFlashContextMenuItem)) return;
+        if (disposed || !ownsCanvas()) return;
+        const canonicalItems = snapshot.every(isFlashContextMenuItem);
+        if (disposed || !ownsCanvas() || !canonicalItems) return;
 
+        event.preventDefault();
         dismiss();
         const callbackGeneration = generation;
-        previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        if (disposed || !ownsCanvas()) return;
+        const activeElement = document.activeElement;
+        if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
+        previousFocus = activeElement instanceof HTMLElement ? activeElement : null;
         try { (owner as unknown as { _applyNativeFocus(value: boolean): void })._applyNativeFocus(true); }
         catch (error) {
             dismiss();
@@ -117,7 +146,12 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
             return;
         }
 
-        const items = (snapshot as ContextMenuItem[]).filter(item => item.visible);
+        const items: ContextMenuItem[] = [];
+        for (const item of snapshot as ContextMenuItem[]) {
+            const visible = item.visible;
+            if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
+            if (visible) items.push(item);
+        }
         if (items.length === 0) {
             previousFocus = null;
             return;
@@ -134,7 +168,9 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         const buttons: HTMLButtonElement[] = [];
         const buttonItems = new Map<HTMLButtonElement, ContextMenuItem>();
         for (const item of items) {
-            if (item.separatorBefore) {
+            const separatorBefore = item.separatorBefore;
+            if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
+            if (separatorBefore) {
                 const separator = document.createElement("div");
                 separator.setAttribute("role", "separator");
                 separator.style.borderTop = "1px solid GrayText";
@@ -144,12 +180,16 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
             const button = document.createElement("button");
             button.type = "button";
             button.setAttribute("role", "menuitem");
-            button.textContent = item.caption ?? "";
-            button.disabled = !item.enabled;
+            const caption = item.caption;
+            if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
+            const enabled = item.enabled;
+            if (disposed || !ownsCanvas() || generation !== callbackGeneration) return;
+            button.textContent = caption ?? "";
+            button.disabled = !enabled;
             button.style.cssText = "display:block;width:100%;text-align:left;border:0;padding:4px 8px;background:transparent;color:inherit;font:inherit";
             button.addEventListener("click", clickEvent => activate(clickEvent, item, owner, callbackGeneration));
             container.appendChild(button);
-            if (item.enabled) {
+            if (enabled) {
                 buttons.push(button);
                 buttonItems.set(button, item);
             }
@@ -207,7 +247,7 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         capture(() => canvas.removeEventListener("contextmenu", onContextMenu));
         capture(() => canvas.removeEventListener("keydown", onCanvasKeyDown));
         capture(() => document.removeEventListener("pointerdown", onDocumentPointerDown, true));
-        capture(() => document.defaultView?.removeEventListener("blur", onWindowBlur));
+        capture(() => view.removeEventListener("blur", onWindowBlur));
         capture(dismiss);
         if (caught) throw firstError;
     };
@@ -218,7 +258,7 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
             () => canvas.removeEventListener("contextmenu", onContextMenu),
             () => canvas.removeEventListener("keydown", onCanvasKeyDown),
             () => document.removeEventListener("pointerdown", onDocumentPointerDown, true),
-            () => document.defaultView?.removeEventListener("blur", onWindowBlur),
+            () => view.removeEventListener("blur", onWindowBlur),
             dismiss,
         ]) {
             try { operation(); }
@@ -230,7 +270,7 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         canvas.addEventListener("contextmenu", onContextMenu);
         canvas.addEventListener("keydown", onCanvasKeyDown);
         document.addEventListener("pointerdown", onDocumentPointerDown, true);
-        document.defaultView?.addEventListener("blur", onWindowBlur);
+        view.addEventListener("blur", onWindowBlur);
     } catch (error) {
         if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
             CANVAS_INSTALLATIONS.delete(canvas);
@@ -238,10 +278,23 @@ export function installNativeContextMenuHost(options: NativeContextMenuHostOptio
         throw error;
     }
 
+    let currentView: Window | null;
+    try { currentView = document.defaultView; }
+    catch (error) {
+        if (CANVAS_INSTALLATIONS.get(canvas) === installationToken)
+            CANVAS_INSTALLATIONS.delete(canvas);
+        rollback();
+        throw error;
+    }
     if (CANVAS_INSTALLATIONS.get(canvas) !== installationToken
         || CANVAS_AUTHORITIES.get(canvas) !== predecessor) {
         rollback();
         throw new Error("Native context-menu host installation was superseded reentrantly");
+    }
+    if (currentView !== view) {
+        CANVAS_INSTALLATIONS.delete(canvas);
+        rollback();
+        throw new Error("Native context-menu host document window changed during installation");
     }
     try { predecessor?.retire(); }
     catch (error) {

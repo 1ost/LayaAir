@@ -52,6 +52,8 @@ try {
     assert.equal(payload.primaryOpen, false);
     assert.equal(payload.popupCount, 0);
     assert.equal(payload.selectionFocusRestored, true);
+    assert.equal(payload.resolverStaleInert, true);
+    assert.equal(payload.openingDismissStaleInert, true);
     assert.deepEqual(payload.trustedDefaultStates, [true, false]);
     assert.deepEqual(payload.trustedKeyboardDefaultStates, [true]);
     assert.ok(payload.route.includes("item:true:true:true"));
@@ -156,6 +158,48 @@ async function runChromiumGate(chromium, html, temporaryDirectory) {
         await client.waitFor("globalThis.__flashUiHostTest.successorSelectionOpen === true");
         await client.key("Escape", "Escape", 27);
         await client.waitFor("globalThis.__flashUiHostTest.successorSelectionOpen === false");
+
+        await client.mouse(290, 30, "right");
+        await client.evaluate("new Promise(resolve => setTimeout(resolve, 50))");
+        const resolverSnapshot = await client.evaluate(`({
+            inert: globalThis.__flashUiHostTest.state.resolverStaleInert,
+            predecessorOpen: globalThis.__flashUiHostTest.resolverHost?.open ?? null,
+            successorOpen: globalThis.__flashUiHostTest.resolverSuccessorOpen,
+            popupCount: document.querySelectorAll('[data-flash-context-menu=true]').length,
+            pointTag: document.elementFromPoint(290, 30)?.tagName ?? null
+        })`);
+        assert.deepEqual(resolverSnapshot, {
+            inert: true, predecessorOpen: null, successorOpen: false, popupCount: 0, pointTag: "CANVAS",
+        });
+        await client.mouse(290, 30, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.resolverSuccessorOpen === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.resolverSuccessorOpen === false");
+
+        await client.evaluate("globalThis.__flashUiHostTest.openingDismissRestore.focus()");
+        await client.mouse(290, 120, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.openingDismissHost.open === true");
+        await client.evaluate("globalThis.__flashUiHostTest.armOpeningDismiss()");
+        await client.mouse(280, 110, "right");
+        await client.evaluate("new Promise(resolve => setTimeout(resolve, 50))");
+        const openingDismissSnapshot = await client.evaluate(`({
+            inert: globalThis.__flashUiHostTest.state.openingDismissStaleInert,
+            predecessorOpen: globalThis.__flashUiHostTest.openingDismissHost.open,
+            successorInstalled: globalThis.__flashUiHostTest.openingDismissSuccessorInstalled,
+            successorOpen: globalThis.__flashUiHostTest.openingDismissSuccessorOpen,
+            focusBefore: globalThis.__flashUiHostTest.openingDismissFocusBefore,
+            focusAfter: globalThis.__flashUiHostTest.state.ownerFocused,
+            popupCount: document.querySelectorAll('[data-flash-context-menu=true]').length
+        })`);
+        assert.deepEqual(openingDismissSnapshot, {
+            inert: true, predecessorOpen: false, successorInstalled: true, successorOpen: false,
+            focusBefore: openingDismissSnapshot.focusBefore, focusAfter: openingDismissSnapshot.focusBefore,
+            popupCount: 0,
+        });
+        await client.mouse(290, 120, "right");
+        await client.waitFor("globalThis.__flashUiHostTest.openingDismissSuccessorOpen === true");
+        await client.key("Escape", "Escape", 27);
+        await client.waitFor("globalThis.__flashUiHostTest.openingDismissSuccessorOpen === false");
 
         await client.evaluate("document.querySelector('canvas').focus()");
         await client.key("ContextMenu", "ContextMenu", 93);
