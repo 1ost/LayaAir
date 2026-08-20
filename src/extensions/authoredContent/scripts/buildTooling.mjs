@@ -52,6 +52,18 @@ await Promise.all([
         entryPoints: [path.join(extensionRoot, "tooling/publish/AtomicAuthoredContentPublisher.ts")],
         format: "esm",
         outfile: path.join(repositoryRoot, "build/authored-content-tooling-tests/AtomicAuthoredContentPublisher.mjs")
+    }),
+    build({
+        ...shared,
+        entryPoints: [path.join(extensionRoot, "tooling/project/ProviderPreflight.ts")],
+        format: "esm",
+        outfile: path.join(repositoryRoot, "build/authored-content-tooling-tests/ProviderPreflight.mjs")
+    }),
+    build({
+        ...shared,
+        entryPoints: [path.join(extensionRoot, "tooling/project/AuthoredContentProject.ts")],
+        format: "esm",
+        outfile: path.join(repositoryRoot, "build/authored-content-tooling-tests/AuthoredContentProject.mjs")
     })
 ]);
 

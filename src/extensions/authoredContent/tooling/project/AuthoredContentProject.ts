@@ -35,6 +35,11 @@ export async function loadAuthoredContentProject(projectPath: string): Promise<L
     return { value, canonicalSha256: canonicalJsonSha256(value) };
 }
 
+/** Internal validator entrypoint used by the schema differential gate. */
+export function validateAuthoredContentProjectDocument(value: unknown): AuthoredContentProject {
+    return validateProject(value);
+}
+
 export async function verifyProjectInputs(
     project: AuthoredContentProject,
     workspaceRoot: string

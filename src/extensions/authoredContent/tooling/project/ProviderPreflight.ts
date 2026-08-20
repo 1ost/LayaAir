@@ -1,6 +1,6 @@
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { FileHandle, lstat, open, realpath } from "node:fs/promises";
 import { promisify } from "node:util";
 
 import {
@@ -22,9 +22,15 @@ export interface AuthoredContentProviderPreflight {
     readonly holds: readonly AuthoredContentHold[];
 }
 
+/** Internal test seam; neither this type nor preflight is exported by the package. */
+export interface AuthoredContentProviderPreflightHooks {
+    readonly verifyEvidence?: (root: string, authenticatedLedgerBytes: Buffer) => Promise<void>;
+}
+
 export async function preflightAuthoredContentProvider(
     project: AuthoredContentProject,
-    providerRoot: string
+    providerRoot: string,
+    hooks: AuthoredContentProviderPreflightHooks = {}
 ): Promise<AuthoredContentProviderPreflight> {
     const root = await realDirectory(providerRoot);
     const provider = project.provider;
@@ -43,84 +49,130 @@ export async function preflightAuthoredContentProvider(
         fail("AUTHORED_CONTENT_PROVIDER_REMOTE_REF_DRIFT", `provider remote ref is ${remoteCommit}; expected ${provider.remote.commit}.`);
 
     const ledgerPath = await containedProviderFile(root, provider.capabilityLedger.path);
-    const ledgerBytes = await readFile(ledgerPath);
-    const ledgerHash = canonicalLfSha256(ledgerBytes, "authored-content capability ledger");
-    if (ledgerHash !== provider.capabilityLedger.sha256)
-        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_DRIFT", `provider capability ledger digest is ${ledgerHash}; expected ${provider.capabilityLedger.sha256}.`);
-    const ledger = parseStrictJsonBytes(ledgerBytes, "authored-content capability ledger") as any;
-    if (ledger?.schema !== provider.capabilityLedger.schema || ledger?.hashMode !== provider.capabilityLedger.hashMode)
-        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_IDENTITY", "provider capability ledger schema or hash mode drifted.");
-    if (!Array.isArray(ledger.capabilities))
-        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_CAPABILITIES", "provider capability ledger has no capability array.");
-    const capabilities = new Map<string, any>();
-    for (const [index, item] of ledger.capabilities.entries()) {
-        if (!item || typeof item !== "object" || typeof item.id !== "string" || !DISPOSITIONS.has(item.status))
-            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_ROW", `provider capability row ${index} is invalid.`);
-        if (capabilities.has(item.id))
-            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_DUPLICATE", `provider capability ${item.id} is duplicated.`);
-        capabilities.set(item.id, item);
-    }
-
-    const holds: AuthoredContentHold[] = [];
-    if (provider.commit !== provider.remote.commit) {
-        holds.push({
-            code: "AUTHORED_CONTENT_PROVIDER_UNPUBLISHED",
-            jobId: null,
-            capability: null,
-            message: `Provider commit ${provider.commit} is not the authenticated published ref ${provider.remote.commit}.`
-        });
-    }
-    let requiresAuthoritativeEvidence = false;
-    for (const job of project.jobs) {
-        for (const capabilityId of job.requiredCapabilities) {
-            const capability = capabilities.get(capabilityId);
-            if (!capability)
-                fail("AUTHORED_CONTENT_REQUIRED_CAPABILITY_UNKNOWN", `${job.id} requests unknown capability ${capabilityId}.`);
-            if (capability.status === "blocking" || capability.status === "evidence") {
-                holds.push({
-                    code: capability.status === "blocking"
-                        ? "AUTHORED_CONTENT_CAPABILITY_BLOCKING"
-                        : "AUTHORED_CONTENT_CAPABILITY_EVIDENCE_ONLY",
-                    jobId: job.id,
-                    capability: capabilityId,
-                    message: capability.status === "blocking"
-                        ? String(capability.blockingReason || `Capability ${capabilityId} is blocking.`)
-                        : `Capability ${capabilityId} is evidence-only and cannot emit production output.`
-                });
-            }
-            else if (!Array.isArray(capability.evidence) || capability.evidence.length === 0) {
-                fail("AUTHORED_CONTENT_CAPABILITY_EVIDENCE_MISSING", `admitted capability ${capabilityId} has no evidence.`);
-            }
-            else requiresAuthoritativeEvidence = true;
+    const ledgerHandle = await open(ledgerPath, "r");
+    try {
+        const ledgerIdentity = await ledgerHandle.stat();
+        await requirePathIdentity(ledgerPath, ledgerIdentity, "before ledger authentication");
+        const ledgerBytes = await readExactHandle(ledgerHandle, ledgerIdentity.size);
+        const afterAuthentication = await ledgerHandle.stat();
+        requireSameSnapshot(ledgerIdentity, afterAuthentication, "capability ledger changed while it was authenticated");
+        const ledgerHash = canonicalLfSha256(ledgerBytes, "authored-content capability ledger");
+        if (ledgerHash !== provider.capabilityLedger.sha256)
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_DRIFT", `provider capability ledger digest is ${ledgerHash}; expected ${provider.capabilityLedger.sha256}.`);
+        const ledger = parseStrictJsonBytes(ledgerBytes, "authored-content capability ledger") as any;
+        if (ledger?.schema !== provider.capabilityLedger.schema || ledger?.hashMode !== provider.capabilityLedger.hashMode)
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_IDENTITY", "provider capability ledger schema or hash mode drifted.");
+        if (!Array.isArray(ledger.capabilities))
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_CAPABILITIES", "provider capability ledger has no capability array.");
+        const capabilities = new Map<string, any>();
+        for (const [index, item] of ledger.capabilities.entries()) {
+            if (!item || typeof item !== "object" || typeof item.id !== "string" || !DISPOSITIONS.has(item.status))
+                fail("AUTHORED_CONTENT_PROVIDER_LEDGER_ROW", `provider capability row ${index} is invalid.`);
+            if (capabilities.has(item.id))
+                fail("AUTHORED_CONTENT_PROVIDER_LEDGER_DUPLICATE", `provider capability ${item.id} is duplicated.`);
+            capabilities.set(item.id, item);
         }
-    }
 
-    const toolingSourceSha256 = await providerToolingSourceSha256(root);
-    if (toolingSourceSha256 !== AUTHORED_CONTENT_TOOL_SOURCE_SHA256)
-        fail("AUTHORED_CONTENT_PROVIDER_TOOLING_DRIFT", "running tooling does not match the authenticated provider commit.");
-    if (requiresAuthoritativeEvidence) {
-        await authoritativeEvidenceVerification(root);
-        const afterBytes = await readFile(ledgerPath);
-        if (!afterBytes.equals(ledgerBytes))
-            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", "capability ledger changed during authoritative evidence verification.");
-    }
-    await requireCleanProvider(root);
+        const holds: AuthoredContentHold[] = [];
+        if (provider.commit !== provider.remote.commit) {
+            holds.push({
+                code: "AUTHORED_CONTENT_PROVIDER_UNPUBLISHED",
+                jobId: null,
+                capability: null,
+                message: `Provider commit ${provider.commit} is not the authenticated published ref ${provider.remote.commit}.`
+            });
+        }
+        let requiresAuthoritativeEvidence = false;
+        for (const job of project.jobs) {
+            for (const capabilityId of job.requiredCapabilities) {
+                const capability = capabilities.get(capabilityId);
+                if (!capability)
+                    fail("AUTHORED_CONTENT_REQUIRED_CAPABILITY_UNKNOWN", `${job.id} requests unknown capability ${capabilityId}.`);
+                if (capability.status === "blocking" || capability.status === "evidence") {
+                    holds.push({
+                        code: capability.status === "blocking"
+                            ? "AUTHORED_CONTENT_CAPABILITY_BLOCKING"
+                            : "AUTHORED_CONTENT_CAPABILITY_EVIDENCE_ONLY",
+                        jobId: job.id,
+                        capability: capabilityId,
+                        message: capability.status === "blocking"
+                            ? String(capability.blockingReason || `Capability ${capabilityId} is blocking.`)
+                            : `Capability ${capabilityId} is evidence-only and cannot emit production output.`
+                    });
+                }
+                else if (!Array.isArray(capability.evidence) || capability.evidence.length === 0) {
+                    fail("AUTHORED_CONTENT_CAPABILITY_EVIDENCE_MISSING", `admitted capability ${capabilityId} has no evidence.`);
+                }
+                else requiresAuthoritativeEvidence = true;
+            }
+        }
 
-    const receipt: AuthoredContentProviderReceipt = {
-        repository: "LayaAir",
-        commit: provider.commit,
-        packageVersion: provider.packageVersion,
-        remote: provider.remote,
-        published: provider.commit === provider.remote.commit,
-        capabilityLedger: provider.capabilityLedger,
-        tooling: {
-            package: "@layabox/laya-authored-content",
-            version: AUTHORED_CONTENT_TOOL_VERSION,
+        const toolingSourceSha256 = await providerToolingSourceSha256(root);
+        if (toolingSourceSha256 !== AUTHORED_CONTENT_TOOL_SOURCE_SHA256)
+            fail("AUTHORED_CONTENT_PROVIDER_TOOLING_DRIFT", "running tooling does not match the authenticated provider commit.");
+        if (requiresAuthoritativeEvidence)
+            await (hooks.verifyEvidence ?? authoritativeEvidenceVerification)(root, ledgerBytes);
+        const afterEvidenceBytes = await readExactHandle(ledgerHandle, ledgerIdentity.size);
+        const afterEvidence = await ledgerHandle.stat();
+        requireSameSnapshot(ledgerIdentity, afterEvidence, "capability ledger changed during authoritative evidence verification");
+        if (!afterEvidenceBytes.equals(ledgerBytes))
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", "capability ledger bytes changed during authoritative evidence verification.");
+        await requirePathIdentity(ledgerPath, ledgerIdentity, "after authoritative evidence verification");
+        await requireCleanProvider(root);
+
+        const receipt: AuthoredContentProviderReceipt = {
+            repository: "LayaAir",
             commit: provider.commit,
-            sourceSha256: toolingSourceSha256
-        }
-    };
-    return { receipt, holds: holds.sort(compareHold) };
+            packageVersion: provider.packageVersion,
+            remote: provider.remote,
+            published: provider.commit === provider.remote.commit,
+            capabilityLedger: provider.capabilityLedger,
+            tooling: {
+                package: "@layabox/laya-authored-content",
+                version: AUTHORED_CONTENT_TOOL_VERSION,
+                commit: provider.commit,
+                sourceSha256: toolingSourceSha256
+            }
+        };
+        return { receipt, holds: holds.sort(compareHold) };
+    }
+    finally { await ledgerHandle.close(); }
+}
+
+async function readExactHandle(handle: FileHandle, size: number): Promise<Buffer> {
+    if (!Number.isSafeInteger(size) || size < 0)
+        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_SIZE", "capability ledger size is not a safe integer.");
+    const bytes = Buffer.alloc(size);
+    let offset = 0;
+    while (offset < size) {
+        const { bytesRead } = await handle.read(bytes, offset, size - offset, offset);
+        if (bytesRead === 0)
+            fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", "capability ledger ended before its authenticated size.");
+        offset += bytesRead;
+    }
+    const sentinel = Buffer.alloc(1);
+    if ((await handle.read(sentinel, 0, 1, size)).bytesRead !== 0)
+        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", "capability ledger grew beyond its authenticated size.");
+    return bytes;
+}
+
+function requireSameSnapshot(before: Awaited<ReturnType<FileHandle["stat"]>>, after: Awaited<ReturnType<FileHandle["stat"]>>, message: string): void {
+    if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size
+        || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs)
+        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_MUTATED", `${message}.`);
+}
+
+async function requirePathIdentity(file: string, identity: Awaited<ReturnType<FileHandle["stat"]>>, phase: string): Promise<void> {
+    const direct = await lstat(file);
+    if (direct.isSymbolicLink() || !direct.isFile() || direct.dev !== identity.dev || direct.ino !== identity.ino)
+        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_IDENTITY", `capability ledger path identity drifted ${phase}.`);
+    const resolved = await realpath(file);
+    if (!samePath(resolved, file))
+        fail("AUTHORED_CONTENT_PROVIDER_LEDGER_IDENTITY", `capability ledger path resolution drifted ${phase}.`);
+}
+
+function samePath(left: string, right: string): boolean {
+    return process.platform === "win32" ? left.toLocaleLowerCase("en-US") === right.toLocaleLowerCase("en-US") : left === right;
 }
 
 async function containedProviderFile(root: string, relative: string): Promise<string> {
@@ -173,15 +225,35 @@ async function providerToolingSourceSha256(root: string): Promise<string> {
     return sha256(`${listing.replace(/\r\n?/g, "\n")}\n`);
 }
 
-async function authoritativeEvidenceVerification(root: string): Promise<void> {
-    try {
-        await execute(process.execPath, [path.join(root, "scripts/checkAuthoredContentAdmission.mjs"), "--verify-evidence"], {
-            cwd: root, encoding: "utf8", windowsHide: true, maxBuffer: 16 * 1024 * 1024
-        });
-    }
-    catch (error) {
-        throw new AuthoredContentToolError("AUTHORED_CONTENT_PROVIDER_EVIDENCE_REJECTED", "authoritative capability evidence verification failed.", { cause: error as Error });
-    }
+async function authoritativeEvidenceVerification(root: string, authenticatedLedgerBytes: Buffer): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+        let stdout = "";
+        let stderr = "";
+        const child = spawn(process.execPath, [
+            path.join(root, "scripts/checkAuthoredContentAdmission.mjs"),
+            "--verify-evidence",
+            "--capability-ledger-stdin"
+        ], { cwd: root, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+        child.stdout.setEncoding("utf8");
+        child.stderr.setEncoding("utf8");
+        child.stdout.on("data", chunk => { stdout += chunk; });
+        child.stderr.on("data", chunk => { stderr += chunk; });
+        child.on("error", error => reject(new AuthoredContentToolError(
+            "AUTHORED_CONTENT_PROVIDER_EVIDENCE_REJECTED",
+            "authoritative capability evidence verification failed to start.",
+            { cause: error }
+        )));
+        child.on("exit", code => code === 0 ? resolve() : reject(new AuthoredContentToolError(
+            "AUTHORED_CONTENT_PROVIDER_EVIDENCE_REJECTED",
+            `authoritative capability evidence verification failed with exit ${code}: ${(stderr || stdout).trim()}`
+        )));
+        child.stdin.on("error", error => reject(new AuthoredContentToolError(
+            "AUTHORED_CONTENT_PROVIDER_EVIDENCE_REJECTED",
+            "authoritative capability evidence verification rejected authenticated ledger input.",
+            { cause: error }
+        )));
+        child.stdin.end(authenticatedLedgerBytes);
+    });
 }
 
 function compareHold(left: AuthoredContentHold, right: AuthoredContentHold): number {

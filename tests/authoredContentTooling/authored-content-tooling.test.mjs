@@ -11,6 +11,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const packageRoot = path.join(repositoryRoot, "build/npm-packages/laya-authored-content");
 const npmCli = path.join(path.dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
 const api = await import(pathToFileURL(path.join(packageRoot, "dist/index.mjs")));
+const projectValidator = await import(pathToFileURL(path.join(repositoryRoot, "build/authored-content-tooling-tests/AuthoredContentProject.mjs")));
 
 test("public package imports without IDE globals and exposes only the headless API", () => {
     assert.equal(globalThis.Laya, undefined);
@@ -99,6 +100,78 @@ test("input authentication rejects symbolic links", async t => {
     finally { await rm(external, { force: true }); await rm(fixture.workspace, { recursive: true, force: true }); }
 });
 
+test("project schema scalar constraints are differential-locked to the runtime validator", async t => {
+    const schema = JSON.parse(await readFile(path.join(repositoryRoot, "tooling/layaAuthoredContent/project-v1.json"), "utf8"));
+    const base = schemaProbeProject();
+    const scalar = (definition, value) => {
+        if (definition.type === "string" && typeof value !== "string") return false;
+        if (definition.type === "integer" && !Number.isInteger(value)) return false;
+        if (definition.minimum !== undefined && value < definition.minimum) return false;
+        if (definition.maximum !== undefined && value > definition.maximum) return false;
+        if (definition.pattern !== undefined && !new RegExp(definition.pattern, "u").test(value)) return false;
+        if (definition.enum !== undefined && !definition.enum.includes(value)) return false;
+        return true;
+    };
+    const runtime = (mutate, value) => {
+        const document = structuredClone(base);
+        mutate(document, value);
+        try { projectValidator.validateAuthoredContentProjectDocument(document); return true; }
+        catch { return false; }
+    };
+    const compare = async (label, definition, mutate, accepted, rejected) => t.test(label, () => {
+        for (const value of [...accepted, ...rejected])
+            assert.equal(runtime(mutate, value), scalar(definition, value), `${label}: ${JSON.stringify(value)}`);
+        for (const value of accepted) assert.equal(scalar(definition, value), true, `${label} accepted vector`);
+        for (const value of rejected) assert.equal(scalar(definition, value), false, `${label} rejected vector`);
+    });
+
+    const stable = schema.$defs.stableString;
+    await compare("packageVersion", stable, (p, v) => { p.provider.packageVersion = v; },
+        ["3.4.0", "release candidate", "a\nb", "caf\u00e9"],
+        ["", " x", "x ", "\tx", "x\n", "\ufeffx", "x\u00a0", "x\0y"]);
+    await compare("remote.url", stable, (p, v) => { p.provider.remote.url = v; },
+        ["https://example.invalid/LayaAir.git", "ssh://host/path with space", "a\nb"],
+        ["", " url", "url ", "\nurl", "url\r", "x\0y"]);
+
+    const relativePath = schema.$defs.relativePath;
+    const devices = ["con", "prn", "aux", "nul", ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`), ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`)];
+    const reserved = devices.flatMap(name => [name, name.toUpperCase(), `${name[0].toUpperCase()}${name.slice(1)}.txt`, `safe/${name.toUpperCase()}.bin`]);
+    await compare("relativePath", relativePath, (p, v) => { p.jobs[0].output = v; },
+        ["Root.lh", "safe/conductor.lh", "safe/com0.bin", "safe/com10.bin", "safe/auxiliary", "caf\u00e9/file"],
+        [...reserved, "", "/root", "C:/root", "a\\b", "a:b", "a//b", "a/./b", "a/../b", "a.", "a ", "a/", "a\u0001b"]);
+
+    const remoteRef = schema.$defs.remoteRef;
+    await compare("remote.ref", remoteRef, (p, v) => { p.provider.remote.ref = v; },
+        ["refs/remotes/origin/main", "refs/remotes/origin/feature /x", "refs/remotes/origin/x:y"],
+        ["", " refs/remotes/origin/main", "refs/remotes/origin/main ", "refs/heads/main", "refs/remotes/origin/../main", "refs/remotes/origin/x\0y"]);
+    await compare("id", schema.$defs.id, (p, v) => { p.jobs[0].id = v; },
+        ["job", "job-1", "a.b/c:d_1"], ["", " job", "job ", "-job", "j ob", "j\u00e9"]);
+    await compare("gitOid", schema.$defs.gitOid, (p, v) => { p.provider.commit = v; },
+        ["a".repeat(40)], ["A".repeat(40), "a".repeat(39), "g".repeat(40), 1]);
+    await compare("sha256", schema.$defs.sha256, (p, v) => { p.jobs[0].input.sha256 = v; },
+        ["b".repeat(64)], ["B".repeat(64), "b".repeat(63), "z".repeat(64), null]);
+
+    const size = schema.properties.jobs.items.properties.input.properties.size;
+    await compare("input.size", size, (p, v) => { p.jobs[0].input.size = v; },
+        [0, 1, Number.MAX_SAFE_INTEGER], [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, "1"]);
+    const kind = schema.properties.jobs.items.properties.input.properties.kind;
+    await compare("input.kind", kind, (p, v) => { p.jobs[0].input.kind = v; },
+        kind.enum, ["swf", "", null]);
+
+    await t.test("document-only cross-field constraints remain explicit and fail closed", () => {
+        assert.throws(() => projectValidator.validateAuthoredContentProjectDocument({
+            ...structuredClone(base),
+            provider: { ...structuredClone(base.provider), remote: { ...structuredClone(base.provider.remote), ref: "refs/remotes/upstream/main" } }
+        }), /REMOTE_REF/);
+        const duplicate = structuredClone(base);
+        duplicate.jobs.push(structuredClone(duplicate.jobs[0]));
+        assert.throws(() => projectValidator.validateAuthoredContentProjectDocument(duplicate), /unique/);
+        const overlap = structuredClone(base);
+        overlap.jobs.push({ ...structuredClone(overlap.jobs[0]), id: "second", output: "assets/root/child" });
+        assert.throws(() => projectValidator.validateAuthoredContentProjectDocument(overlap), /overlaps/);
+    });
+});
+
 test("generated package packs without IDE implementation sources and supports ESM, CJS, and its bin", async () => {
     const temporary = await mkdtemp(path.join(os.tmpdir(), "laya-authored-package-"));
     try {
@@ -171,6 +244,29 @@ async function projectFixture() {
     const projectPath = path.join(workspace, "project.json");
     await writeFile(projectPath, `${JSON.stringify(project, null, 2)}\n`);
     return { workspace, projectPath };
+}
+
+function schemaProbeProject() {
+    return {
+        schema: "laya-authored-content-project@1",
+        provider: {
+            repository: "LayaAir",
+            commit: "a".repeat(40),
+            packageVersion: "3.4.0",
+            remote: { name: "origin", url: "https://example.invalid/LayaAir.git", ref: "refs/remotes/origin/main", commit: "a".repeat(40) },
+            capabilityLedger: {
+                path: "docTool/architecture/authored-content-capabilities.json",
+                schema: "laya-authored-content-capabilities@1",
+                hashMode: "canonical-lf-utf8",
+                sha256: "b".repeat(64)
+            }
+        },
+        jobs: [{
+            id: "probe",
+            input: { kind: "neutral-ir", path: "input.json", sha256: "c".repeat(64), size: 0 },
+            entries: ["Root"], locales: [], output: "assets/root", requiredCapabilities: []
+        }]
+    };
 }
 
 function git(...args) {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const publisher = await import(pathToFileURL(path.join(repositoryRoot, "build/authored-content-tooling-tests/AtomicAuthoredContentPublisher.mjs")));
+const providerPreflight = await import(pathToFileURL(path.join(repositoryRoot, "build/authored-content-tooling-tests/ProviderPreflight.mjs")));
 const api = await import(pathToFileURL(path.join(repositoryRoot, "build/npm-packages/laya-authored-content/dist/index.mjs")));
 
 test("publication is atomic, exact, content addressed, and a verified no-op", async t => {
@@ -98,6 +99,28 @@ test("every commit boundary failpoint is fail-closed or reconciled after commit"
     });
 });
 
+test("the final pre-pointer callback cannot swap an authenticated Root.lh", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "laya-evil-root-"));
+    const receipt = makeReceipt([{ path: "Root.lh", bytes: Buffer.from("authenticated") }]);
+    const generationFile = path.join(
+        root,
+        ".laya-authored-content/generations",
+        receipt.receiptSubjectSha256,
+        "Root.lh"
+    );
+    await assert.rejects(publisher.publishAuthoredContentGeneration({
+        destinationRoot: root,
+        receipt,
+        writeStaging: stage => writeFile(path.join(stage, "Root.lh"), "authenticated", { flag: "wx" }),
+        failpoint: async name => {
+            if (name !== "before-pointer-rename") return;
+            await chmod(generationFile, 0o666);
+            await writeFile(generationFile, "evil Root.lh");
+        }
+    }), error => error.code === "AUTHORED_CONTENT_INVENTORY_MISMATCH");
+    await assert.rejects(readFile(path.join(root, ".laya-authored-content/current.json")));
+});
+
 test("rollback authenticates complete receipts and refuses forged generations", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "laya-authored-rollback-"));
     const first = makeReceipt([{ path: "Root.lh", bytes: Buffer.from("first") }]);
@@ -143,6 +166,56 @@ test("public check-delivery authenticates the stored receipt, provider, ledger, 
     await chmod(generationFile, 0o666);
     await writeFile(generationFile, "mutated");
     await assert.rejects(api.checkAuthoredContentDelivery({ deliveryRoot: root, providerRoot: repositoryRoot }));
+});
+
+test("provider evidence receives the one authenticated ledger identity across a path swap and restore", async () => {
+    const provider = await actualProvider();
+    const ledgerFile = path.join(repositoryRoot, provider.capabilityLedger.path);
+    const backup = `${ledgerFile}.preflight-swap-test`;
+    const authenticated = await readFile(ledgerFile);
+    let restored = false;
+    const project = {
+        schema: "laya-authored-content-project@1",
+        provider: {
+            repository: provider.repository,
+            commit: provider.commit,
+            packageVersion: provider.packageVersion,
+            remote: provider.remote,
+            capabilityLedger: provider.capabilityLedger
+        },
+        jobs: [{
+            id: "identity-probe",
+            input: { kind: "neutral-ir", path: "unused.json", sha256: digest("unused"), size: 6 },
+            entries: ["Root"], locales: [], output: "identity-probe", requiredCapabilities: ["api.flash.utils"]
+        }]
+    };
+    try {
+        const result = await providerPreflight.preflightAuthoredContentProvider(project, repositoryRoot, {
+            verifyEvidence: async (root, ledgerBytes) => {
+                assert.equal(root, repositoryRoot);
+                assert.deepEqual(ledgerBytes, authenticated);
+                await rename(ledgerFile, backup);
+                try {
+                    await writeFile(ledgerFile, '{"schema":"evil-ledger"}\n', { flag: "wx" });
+                    assert.notDeepEqual(await readFile(ledgerFile), ledgerBytes);
+                }
+                finally {
+                    await rm(ledgerFile, { force: true });
+                    await rename(backup, ledgerFile);
+                    restored = true;
+                }
+            }
+        });
+        assert.equal(restored, true);
+        assert.equal(result.receipt.capabilityLedger.sha256, provider.capabilityLedger.sha256);
+        assert.deepEqual(await readFile(ledgerFile), authenticated);
+    }
+    finally {
+        if (!restored && await exists(backup)) {
+            await rm(ledgerFile, { force: true });
+            await rename(backup, ledgerFile);
+        }
+    }
 });
 
 function makeReceipt(files, provider = undefined) {
@@ -191,3 +264,4 @@ function canonical(value) {
     return JSON.stringify(value);
 }
 function digest(value) { return crypto.createHash("sha256").update(value).digest("hex"); }
+async function exists(value) { try { await stat(value); return true; } catch { return false; } }

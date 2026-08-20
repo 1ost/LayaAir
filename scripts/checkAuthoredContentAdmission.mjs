@@ -848,8 +848,20 @@ function inspectPackages(root, files, policy, failures) {
     return [...new Set(productionTargets)];
 }
 
-function inspectCapabilityLedger(root, policy, code, failures) {
-    const ledger = readJson(root, policy.capabilityLedger, failures);
+function inspectCapabilityLedger(root, policy, code, failures, authenticatedLedgerBytes) {
+    let ledger;
+    if (authenticatedLedgerBytes === undefined)
+        ledger = readJson(root, policy.capabilityLedger, failures);
+    else {
+        try {
+            const decoder = new TextDecoder("utf-8", { fatal: true });
+            ledger = JSON.parse(decoder.decode(authenticatedLedgerBytes));
+        }
+        catch (error) {
+            failures.push(`${policy.capabilityLedger}: authenticated ledger input must contain valid UTF-8 JSON (${error.message})`);
+            ledger = null;
+        }
+    }
     const requiredIds = new Set(policy.requiredCapabilities);
     const statuses = new Set(policy.statuses);
     const blockingIds = [];
@@ -1495,7 +1507,7 @@ function inspectMandatoryScripts(root, failures) {
         failures.push(`${ROOT_PACKAGE}: build must be exactly '${build}'`);
 }
 
-export function inspectAuthoredContentAdmission(rootDirectory) {
+export function inspectAuthoredContentAdmission(rootDirectory, inspectionOptions = {}) {
     const root = path.resolve(rootDirectory);
     const failures = [];
     const policy = readJson(root, POLICY_FILE, failures);
@@ -1521,7 +1533,7 @@ export function inspectAuthoredContentAdmission(rootDirectory) {
     const packageRoots = inspectPackages(root, files, policy, failures);
     const syntheticBlockingCapabilities = new Set();
     inspectJsonDocuments(root, files, policy, requiredIds, failures, syntheticBlockingCapabilities);
-    const ledger = inspectCapabilityLedger(root, policy, code, failures);
+    const ledger = inspectCapabilityLedger(root, policy, code, failures, inspectionOptions.authenticatedCapabilityLedgerBytes);
     const reachable = productionReachability(root, files, policy, code.graph, packageRoots, failures);
     inspectProductionClosure(root, reachable, code, policy, failures);
     const runtimeReachable = [...reachable].some(file => {
@@ -1610,8 +1622,8 @@ export function inspectAuthoredContentAdmission(rootDirectory) {
     });
 }
 
-export function assertAuthoredContentAdmission(rootDirectory) {
-    const result = inspectAuthoredContentAdmission(rootDirectory);
+export function assertAuthoredContentAdmission(rootDirectory, options = {}) {
+    const result = inspectAuthoredContentAdmission(rootDirectory, options);
     if (result.failures.length > 0)
         throw new Error(["Authored-content admission guard failed:", ...result.failures.map(failure => `- ${failure}`)].join("\n"));
     return result;
@@ -1620,9 +1632,13 @@ export function assertAuthoredContentAdmission(rootDirectory) {
 if (process.argv[1] && path.resolve(process.argv[1]) === SCRIPT_FILE) {
     const arguments_ = process.argv.slice(2);
     const verifyEvidence = arguments_.includes("--verify-evidence");
+    const ledgerFromStdin = arguments_.includes("--capability-ledger-stdin");
+    if (ledgerFromStdin && !verifyEvidence)
+        throw new Error("--capability-ledger-stdin is only valid with --verify-evidence");
     const rootArgument = arguments_.find(argument => !argument.startsWith("--"));
     const root = rootArgument ? path.resolve(rootArgument) : path.resolve(path.dirname(SCRIPT_FILE), "..");
-    const result = assertAuthoredContentAdmission(root);
+    const authenticatedCapabilityLedgerBytes = ledgerFromStdin ? fs.readFileSync(0) : undefined;
+    const result = assertAuthoredContentAdmission(root, { authenticatedCapabilityLedgerBytes });
     if (verifyEvidence && result.evidenceFiles.length > 0) {
         const executed = spawnSync(process.execPath, ["--test", ...result.evidenceFiles], { cwd: root, stdio: "inherit" });
         if (executed.error)

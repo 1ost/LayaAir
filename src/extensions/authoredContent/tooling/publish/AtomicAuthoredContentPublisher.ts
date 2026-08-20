@@ -136,6 +136,12 @@ export async function publishAuthoredContentGeneration(
         const pointerTemporary = path.join(authorityRoot, `current.${token}.json`);
         await durableExclusiveWrite(pointerTemporary, Buffer.from(canonicalJson(pointer), "utf8"));
         await request.failpoint?.("before-pointer-rename");
+        // The callback is deliberately the final adversarial boundary.  It may
+        // yield to another task (or, in tests, mutate the generation), so the
+        // generation authenticated above is no longer authority after it
+        // returns.  Reauthenticate the exact receipt and complete byte
+        // inventory immediately before the one atomic visibility commit.
+        await verifyGeneration(generationRoot, request.receipt);
         await replaceFile(pointerTemporary, pointerPath);
         committed = true;
         try {
