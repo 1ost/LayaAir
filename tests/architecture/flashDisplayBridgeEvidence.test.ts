@@ -18,6 +18,7 @@ import type { AnimatorClip2DTimeline, NativeMovieClipTimeline } from "../../src/
 import type { SimpleButton, isFlashSimpleButton } from "../../src/layaAir/flash/display/SimpleButton.ts";
 import type { Shape, isFlashShape } from "../../src/layaAir/flash/display/Shape.ts";
 import type { Sprite, isFlashSprite } from "../../src/layaAir/flash/display/Sprite.ts";
+import type { Stage, FlashStageLoaderInfo, isFlashStage } from "../../src/layaAir/flash/display/Stage.ts";
 import type { Bitmap, isFlashBitmap } from "../../src/layaAir/flash/display/Bitmap.ts";
 import type { BitmapData, acquireBitmapDataTexture, isFlashBitmapData, observeBitmapData } from "../../src/layaAir/flash/display/BitmapData.ts";
 import type { BitmapDataChannel } from "../../src/layaAir/flash/display/BitmapDataChannel.ts";
@@ -39,7 +40,8 @@ test("Flash display bridge compiler surface", () => {
         FlashDisplayRootLease, FlashDisplayRootOptions,
         FlashStageViewport, FlashStageViewportOwner,
         typeof Graphics, IBitmapDrawable, typeof isFlashBitmapDrawable, typeof MovieClip, typeof AnimatorClip2DTimeline,
-        typeof Shape, typeof SimpleButton, typeof Sprite, typeof Bitmap, typeof BitmapData,
+        typeof Shape, typeof SimpleButton, typeof Sprite, typeof Stage, FlashStageLoaderInfo,
+        typeof isFlashStage, typeof Bitmap, typeof BitmapData,
         typeof BitmapDataChannel, typeof PixelSnapping,
         typeof StageAlign, typeof GradientType, typeof BlendMode, typeof StageQuality, typeof StageScaleMode,
         typeof Loader, typeof LoaderInfo, typeof NativeLoaderContentHost, typeof NativeLoaderContentSource,

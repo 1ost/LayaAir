@@ -23,6 +23,7 @@ if (ledger.hashMode !== "canonical-lf-utf8")
 for (const [sourceQName, targetCapabilityId, targetModule, constructorExport, predicateExport] of [
     ["flash.display.Loader", "api.flash.display", "src/layaAir/flash/display/Loader.ts", "Loader", "isFlashLoader"],
     ["flash.display.LoaderInfo", "api.flash.display", "src/layaAir/flash/display/Loader.ts", "LoaderInfo", "isFlashLoaderInfo"],
+    ["flash.display.Stage", "api.flash.display", "src/layaAir/flash/display/Stage.ts", "Stage", "isFlashStage"],
     ["flash.events.ContextMenuEvent", "api.flash.events", "src/layaAir/flash/events/ContextMenuEvent.ts", "ContextMenuEvent", "isFlashContextMenuEvent"],
     ["flash.events.HTTPStatusEvent", "api.flash.events", "src/layaAir/flash/events/HTTPStatusEvent.ts", "HTTPStatusEvent", "isFlashHTTPStatusEvent"],
     ["flash.events.UncaughtErrorEvent", "api.flash.events", "src/layaAir/flash/events/UncaughtErrorEvent.ts", "UncaughtErrorEvent", "isFlashUncaughtErrorEvent"],
@@ -87,6 +88,9 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/BlendMode.ts", "BlendMode"],
     ["src/layaAir/flash/display/StageQuality.ts", "StageQuality"],
     ["src/layaAir/flash/display/StageScaleMode.ts", "StageScaleMode"],
+    ["src/layaAir/flash/display/Stage.ts", "Stage"],
+    ["src/layaAir/flash/display/Stage.ts", "FlashStageLoaderInfo", "interface"],
+    ["src/layaAir/flash/display/Stage.ts", "isFlashStage", "function"],
     ["src/layaAir/flash/display/Bitmap.ts", "isFlashBitmap", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "acquireBitmapDataTexture", "function"],
     ["src/layaAir/flash/display/BitmapData.ts", "isFlashBitmapData", "function"],

@@ -46,6 +46,8 @@ interface FlashDisplayRootRecord<TRoot extends LayaNode = LayaNode> {
     root: TRoot | null;
     generation: number;
     frameScheduler: LayaTimer | null;
+    readonly frameCaller: object;
+    readonly frameMethod: (generation: number) => void;
     frameScheduled: boolean;
     frameCleanupPending: boolean;
     frameCleanupInProgress: boolean;
@@ -87,6 +89,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
     declare readonly [FLASH_DISPLAY_ROOT_LEASE]: true;
 
     constructor(stage: LayaStage, onFrame: (root: TRoot) => void, destroyRootOnDispose: boolean) {
+        const frameCaller = {};
         const record: FlashDisplayRootRecord<TRoot> = {
             stage,
             onFrame,
@@ -95,6 +98,8 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
             root: null,
             generation: 0,
             frameScheduler: null,
+            frameCaller,
+            frameMethod: generation => this._advanceFrame(generation),
             frameScheduled: false,
             frameCleanupPending: false,
             frameCleanupInProgress: false,
@@ -485,7 +490,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         record.frameScheduled = false;
         record.frameCleanupPending = true;
         try {
-            scheduler.frameLoop(1, this, this._advanceFrame, [generation], true);
+            scheduler.frameLoop(1, record.frameCaller, record.frameMethod, [generation], true);
         } catch (error) {
             // Fence and reacquire the exact scheduler even if a reentrant
             // lifecycle operation cleared the provisional flags before
@@ -532,7 +537,7 @@ class EngineFlashDisplayRootLease<TRoot extends LayaNode> implements FlashDispla
         record.frameCleanupPending = true;
         record.frameCleanupInProgress = true;
         try {
-            scheduler.clear(this, this._advanceFrame);
+            scheduler.clear(record.frameCaller, record.frameMethod);
         } catch (error) {
             throw error;
         } finally {

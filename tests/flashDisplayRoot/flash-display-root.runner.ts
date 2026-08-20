@@ -119,6 +119,36 @@ test("claim issues one frozen opaque lease for the exact live Stage", () => {
     }
 });
 
+test("the actual Laya Timer schedules through private extensible identity while the lease stays frozen", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const stage = new Stage();
+    const timer = new LayaTimer(false);
+    const root = new LayaNode();
+    let frames = 0;
+    try {
+        ILaya.stage = stage;
+        ILaya.timer = timer;
+        const lease = FlashDisplayRootBoundary.claim<LayaNode>(stage, () => frames++, {
+            destroyRootOnDispose: false
+        });
+        const publicKeys = Reflect.ownKeys(lease);
+        assert.equal(Object.isFrozen(lease), true);
+        assert.doesNotThrow(() => lease.attach(root),
+            "Laya Utils.getGID must never stamp the frozen public lease");
+        assert.deepEqual(Reflect.ownKeys(lease), publicKeys);
+
+        timer._update(performance.now() + 17);
+        assert.equal(frames, 1);
+        lease.dispose();
+        timer._update(performance.now() + 34);
+        assert.deepEqual([frames, root.parent, lease.disposed], [1, null, true]);
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+    }
+});
+
 test("claim rejects alternate, derived, dead, and reentrantly replaced Stages before publication", () => {
     const previousStage = ILaya.stage;
     const previousTimer = ILaya.timer;

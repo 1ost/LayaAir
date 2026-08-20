@@ -279,6 +279,11 @@ export class FlashStageBoundary {
         return this._router(stage).dispatchEvent(event, stage);
     }
 
+    static hasEventListener(stage: LayaStage, type: string): boolean {
+        const router = STAGE_ROUTERS.get(this._requireCurrent(stage) as object);
+        return router?.hasEventListener(type) ?? false;
+    }
+
     static dispose(stage: LayaStage): void {
         this._requireCurrent(stage);
         const router = STAGE_ROUTERS.get(stage as object);

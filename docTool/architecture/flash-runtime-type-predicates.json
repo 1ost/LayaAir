@@ -198,6 +198,20 @@
       "moduleSha256": "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6"
     },
     {
+      "sourceQName": "flash.display.Stage",
+      "targetCapabilityId": "api.flash.display",
+      "targetModule": "src/layaAir/flash/display/Stage.ts",
+      "constructorExport": "Stage",
+      "constructorSignature": "typeof Stage",
+      "constructSignatures": [
+        "new (token: typeof STAGE_TOKEN, nativeStage: LayaStage): Stage"
+      ],
+      "predicateExport": "isFlashStage",
+      "predicateSignature": "(value: unknown) => value is Stage",
+      "heritageClosure": [],
+      "moduleSha256": "966272643969879c98ddb83482972a269d092c661fd8dbdc103bc02334e1ed52"
+    },
+    {
       "sourceQName": "flash.events.ContextMenuEvent",
       "targetCapabilityId": "api.flash.events",
       "targetModule": "src/layaAir/flash/events/ContextMenuEvent.ts",

@@ -59,6 +59,7 @@ try {
             "flash.display.Shape",
             "flash.display.SimpleButton",
             "flash.display.Sprite",
+            "flash.display.Stage",
             "flash.events.ContextMenuEvent",
             "flash.events.ErrorEvent",
             "flash.events.Event",

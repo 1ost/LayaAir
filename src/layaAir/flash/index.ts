@@ -25,6 +25,8 @@ export { Sprite } from "./display/Sprite";
 export { Graphics } from "./display/Graphics";
 export type { IBitmapDrawable } from "./display/IBitmapDrawable";
 export { Shape } from "./display/Shape";
+export { Stage } from "./display/Stage";
+export type { FlashStageLoaderInfo } from "./display/Stage";
 export { FlashStageBoundary } from "./display/FlashStageBoundary";
 export type {
     FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageViewport, FlashStageViewportOwner
