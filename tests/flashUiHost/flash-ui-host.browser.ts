@@ -26,6 +26,7 @@ interface BrowserGateState {
     accessibilityBaselineRestored: boolean;
     mouseBrowserProjection: boolean;
     keyboardProducerTeardown: boolean;
+    syntheticKeyboardIgnored: boolean;
     clipboardFailClosedOutsideGesture: boolean;
     disposeSelectionDispatches: number;
     successorSelectionDispatches: number;
@@ -44,6 +45,7 @@ const state: BrowserGateState = {
     syntheticContextIgnored: false, programmaticSelectionIgnored: false,
     accessibilitySuccessorPreserved: false, accessibilityBaselineRestored: false,
     mouseBrowserProjection: false, keyboardProducerTeardown: false,
+    syntheticKeyboardIgnored: false,
     clipboardFailClosedOutsideGesture: false,
     disposeSelectionDispatches: 0, successorSelectionDispatches: 0, successorInstalled: false,
 };
@@ -208,6 +210,10 @@ state.accessibilityBaselineRestored = accessible.getAttribute("aria-label") === 
     && !accessible.hasAttribute("aria-description");
 
 const keyboardLease = installNativeKeyboardStateHost(window);
+const syntheticKeyboard = new KeyboardEvent("keydown", { key: "CapsLock" });
+Object.defineProperty(syntheticKeyboard, "getModifierState", { value: () => true });
+window.dispatchEvent(syntheticKeyboard);
+state.syntheticKeyboardIgnored = Keyboard.capsLock === false && Keyboard.numLock === false;
 keyboardLease.dispose();
 state.keyboardProducerTeardown = Keyboard.capsLock === false && Keyboard.numLock === false;
 

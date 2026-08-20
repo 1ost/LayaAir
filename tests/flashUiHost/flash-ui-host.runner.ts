@@ -29,10 +29,72 @@ test("source-used Keyboard constants and native lock-state lease are determinist
         value: (name: string) => name === "CapsLock",
     });
     target.dispatchEvent(event);
-    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock, Keyboard.isAccessible()], [true, false, true]);
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock, Keyboard.isAccessible()], [false, false, true],
+        "synthetic keyboard events cannot publish native lock state");
     lease.dispose();
     target.dispatchEvent(event);
     assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [false, false]);
+});
+
+test("Keyboard host publishes only after both listeners install and tears down transactionally", () => {
+    type KeyboardListener = (event: Event) => void;
+    const trusted = (capsLock: boolean, numLock: boolean): Event => ({
+        isTrusted: true,
+        getModifierState(name: string): boolean {
+            return name === "CapsLock" ? capsLock : name === "NumLock" ? numLock : false;
+        },
+    } as unknown as Event);
+    const predecessorListeners = new Map<string, KeyboardListener>();
+    const predecessor = {
+        addEventListener(type: string, listener: EventListener): void {
+            predecessorListeners.set(type, listener as KeyboardListener);
+        },
+        removeEventListener(type: string): void { predecessorListeners.delete(type); },
+    } as unknown as EventTarget;
+    const predecessorLease = installNativeKeyboardStateHost(predecessor);
+    predecessorListeners.get("keydown")!(trusted(true, false));
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [true, false]);
+
+    const installCalls: string[] = [];
+    const installPrimary = new Error("keyup installation failed");
+    const failedTarget = {
+        addEventListener(type: string): void {
+            installCalls.push(`add:${type}`);
+            if (type === "keyup") throw installPrimary;
+        },
+        removeEventListener(type: string): void {
+            installCalls.push(`remove:${type}`);
+            if (type === "keydown") throw new Error("rollback removal failed");
+        },
+    } as unknown as EventTarget;
+    assert.throws(() => installNativeKeyboardStateHost(failedTarget), error => error === installPrimary);
+    assert.deepEqual(installCalls, ["add:keydown", "add:keyup", "remove:keydown", "remove:keyup"]);
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [true, false],
+        "failed successor installation cannot replace published keyboard state");
+    predecessorLease.dispose();
+
+    const disposeCalls: string[] = [];
+    const disposePrimary = new Error("keydown removal failed");
+    const disposeListeners = new Map<string, KeyboardListener>();
+    const disposalTarget = {
+        addEventListener(type: string, listener: EventListener): void {
+            disposeListeners.set(type, listener as KeyboardListener);
+        },
+        removeEventListener(type: string): void {
+            disposeCalls.push(type);
+            if (type === "keydown") throw disposePrimary;
+            disposeListeners.delete(type);
+        },
+    } as unknown as EventTarget;
+    const disposalLease = installNativeKeyboardStateHost(disposalTarget);
+    disposeListeners.get("keydown")!(trusted(false, true));
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [false, true]);
+    assert.throws(() => disposalLease.dispose(), error => error === disposePrimary);
+    assert.deepEqual(disposeCalls, ["keydown", "keyup"]);
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [false, false]);
+    disposeListeners.get("keydown")!(trusted(true, true));
+    assert.deepEqual([Keyboard.capsLock, Keyboard.numLock], [false, false],
+        "a leaked listener is inert after ownership clears");
 });
 
 test("ContextMenu retains source-shaped item identity, mutation and dispatch", () => {

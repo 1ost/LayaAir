@@ -32,24 +32,42 @@ export function installNativeKeyboardStateHost(target: EventTarget): FlashKeyboa
         || typeof target.removeEventListener !== "function")
         throw new TypeError("Flash Keyboard state requires an EventTarget");
     const owner = Object.freeze({});
+    const update = (event: Event): void => {
+        if (event.isTrusted && currentKeyboardOwner === owner) currentLockState = readLockState(event);
+    };
+    try {
+        target.addEventListener("keydown", update);
+        target.addEventListener("keyup", update);
+    } catch (error) {
+        for (const type of ["keydown", "keyup"]) {
+            try { target.removeEventListener(type, update); }
+            catch { /* Preserve the installation failure after attempting both removals. */ }
+        }
+        throw error;
+    }
     currentKeyboardOwner = owner;
     currentLockState = null;
-    const update = (event: Event): void => {
-        if (currentKeyboardOwner === owner) currentLockState = readLockState(event);
-    };
-    target.addEventListener("keydown", update);
-    target.addEventListener("keyup", update);
     let disposed = false;
     return Object.freeze({
         dispose(): void {
             if (disposed) return;
             disposed = true;
-            target.removeEventListener("keydown", update);
-            target.removeEventListener("keyup", update);
             if (currentKeyboardOwner === owner) {
                 currentKeyboardOwner = null;
                 currentLockState = null;
             }
+            let caught = false;
+            let firstError: unknown;
+            for (const type of ["keydown", "keyup"]) {
+                try { target.removeEventListener(type, update); }
+                catch (error) {
+                    if (!caught) {
+                        caught = true;
+                        firstError = error;
+                    }
+                }
+            }
+            if (caught) throw firstError;
         },
     });
 }

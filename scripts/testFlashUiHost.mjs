@@ -44,6 +44,7 @@ try {
     assert.equal(payload.accessibilityBaselineRestored, true);
     assert.equal(payload.mouseBrowserProjection, true);
     assert.equal(payload.keyboardProducerTeardown, true);
+    assert.equal(payload.syntheticKeyboardIgnored, true);
     assert.equal(payload.clipboardFailClosedOutsideGesture, true);
     assert.equal(payload.reentrantOpen, false);
     assert.equal(payload.forgedOpen, false);
