@@ -100,6 +100,7 @@ class FontHarness {
     readonly fetchSequences = new Map<string, ArrayBuffer[]>();
     readonly faceDeferred = new Map<string, Deferred>();
     readonly rejectCommitFamilies = new Set<string>();
+    readonly rejectDisposeFamilies = new Set<string>();
     readonly adapter = new FontAdapter();
 
     constructor() {
@@ -113,7 +114,10 @@ class FontHarness {
                     if (this.rejectCommitFamilies.has(face.family)) throw new Error("platform commit rejected");
                     this.installed.add(face);
                 },
-                delete: (face: FakeFontFace) => this.installed.delete(face),
+                delete: (face: FakeFontFace) => {
+                    if (this.rejectDisposeFamilies.has(face.family)) throw new Error("platform dispose rejected");
+                    return this.installed.delete(face);
+                },
             },
         });
         (ILaya as any).loader = {
@@ -320,4 +324,22 @@ test("native authored loading fails closed when unregister is unavailable", asyn
     } finally {
         (PAL as any).g = previousGlobal;
     }
+});
+
+test("dispose failure invalidates the entire document and permits a fresh retry", async () => {
+    const authored = entry("dispose-retry", 1, "regular", "dispose-retry");
+    const harness = new FontHarness();
+    const registry = new AuthoredFontRegistry(manifest([authored]));
+    await registry.preload("dispose-retry");
+    const lease = registry.activateFlashBridge();
+    const family = registry.runtimeFamilyFor(keyOf(authored));
+    harness.rejectDisposeFamilies.add(family);
+    await assert.rejects(registry.disposeDocument("dispose-retry"), /platform dispose rejected/);
+    assert.equal(registry.isDocumentLoaded("dispose-retry"), false);
+    assert.deepEqual(Font.enumerateFonts(false), []);
+    lease.cancel();
+    harness.rejectDisposeFamilies.clear();
+    await registry.preload("dispose-retry");
+    assert.equal(registry.isDocumentLoaded("dispose-retry"), true);
+    await registry.dispose();
 });

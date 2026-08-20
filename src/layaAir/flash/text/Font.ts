@@ -349,15 +349,25 @@ export class AuthoredFontRegistry {
             const receipt = this.receiptsByKey.get(fontKey(entry));
             return receipt ? [receipt] : [];
         });
-        await disposeReceipts(receipts);
-        for (const entry of entries) {
-            const key = fontKey(entry);
-            this.receiptsByKey.delete(key);
-            this.loadedByKey.delete(key);
-            if (this.loadedRuntimeFamilies.get(entry.runtimeFamily) === key)
-                this.loadedRuntimeFamilies.delete(entry.runtimeFamily);
+        let disposalFailure: unknown;
+        try {
+            await disposeReceipts(receipts);
+        } catch (error) {
+            disposalFailure = error;
+        } finally {
+            // A receipt invalidates itself even when the platform's unregister
+            // hook rejects. Never leave an unusable half-disposed document
+            // published as loaded; callers may retry a fresh transaction.
+            for (const entry of entries) {
+                const key = fontKey(entry);
+                this.receiptsByKey.delete(key);
+                this.loadedByKey.delete(key);
+                if (this.loadedRuntimeFamilies.get(entry.runtimeFamily) === key)
+                    this.loadedRuntimeFamilies.delete(entry.runtimeFamily);
+            }
+            this.loadedDocuments.delete(id);
         }
-        this.loadedDocuments.delete(id);
+        if (disposalFailure !== undefined) throw disposalFailure;
     }
 
     async dispose(): Promise<void> {
