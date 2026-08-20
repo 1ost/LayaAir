@@ -11,6 +11,9 @@ test("generated LayaFlash declarations expose host/system surfaces and preserve 
     assert.doesNotMatch(declaration, /(?:abstract\s+)?class\s+Native(?:ExternalInterface|System)Host\b/);
     assert.match(declaration, /interface\s+NativeExternalInterfaceHost\b/);
     assert.match(declaration, /interface\s+NativeSystemHost\b/);
+    assert.match(declaration, /class\s+NativeExternalInterfaceHostLease\b[\s\S]*?#private;[\s\S]*?private constructor\(\)/);
+    assert.match(declaration, /class\s+NativeSystemHostLease\b[\s\S]*?#private;[\s\S]*?private constructor\(\)/);
+    assert.doesNotMatch(declaration, /NATIVE_(?:EXTERNAL_INTERFACE|SYSTEM)_HOST_LEASE/);
     assert.match(declaration, /installNativeExternalInterfaceHost\([^)]*\):\s*NativeExternalInterfaceHostLease/);
     assert.match(declaration, /installNativeSystemHost\([^)]*\):\s*NativeSystemHostLease/);
     for (const held of ["ApplicationDomain", "LoaderContext", "Security", "XMLNode"])

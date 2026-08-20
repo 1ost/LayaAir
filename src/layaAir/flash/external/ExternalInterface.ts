@@ -1,8 +1,6 @@
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 
 const FUNCTION_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
-declare const NATIVE_EXTERNAL_INTERFACE_HOST_LEASE: unique symbol;
-
 let externalHost: ExternalHostRecord | null = null;
 let installingExternalHost = false;
 
@@ -14,8 +12,9 @@ export interface NativeExternalInterfaceHost {
 }
 
 /** Opaque engine-issued ownership of the currently installed external host. */
-export interface NativeExternalInterfaceHostLease {
-    readonly [NATIVE_EXTERNAL_INTERFACE_HOST_LEASE]: true;
+export declare class NativeExternalInterfaceHostLease {
+    #private;
+    private constructor();
     readonly active: boolean;
     readonly disposed: boolean;
     dispose(): void;
@@ -29,9 +28,7 @@ interface ExternalHostRecord {
 
 const EXTERNAL_LEASE_RECORDS = new WeakMap<object, ExternalHostRecord>();
 
-class EngineNativeExternalInterfaceHostLease implements NativeExternalInterfaceHostLease {
-    declare readonly [NATIVE_EXTERNAL_INTERFACE_HOST_LEASE]: true;
-
+class EngineNativeExternalInterfaceHostLease {
     constructor(record: ExternalHostRecord) {
         EXTERNAL_LEASE_RECORDS.set(this, record);
         Object.defineProperties(this, {
@@ -74,7 +71,7 @@ export function installNativeExternalInterfaceHost(
         const lease = new EngineNativeExternalInterfaceHostLease(record);
         if (externalHost) retireExternalHost(externalHost);
         externalHost = record;
-        return lease;
+        return lease as unknown as NativeExternalInterfaceHostLease;
     } finally {
         installingExternalHost = false;
     }

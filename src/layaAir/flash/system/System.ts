@@ -1,8 +1,6 @@
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
 
 const UINT_MAX = 0xffffffff;
-declare const NATIVE_SYSTEM_HOST_LEASE: unique symbol;
-
 let systemHost: SystemHostRecord | null = null;
 let installingSystemHost = false;
 
@@ -12,8 +10,9 @@ export interface NativeSystemHost {
 }
 
 /** Opaque engine-issued ownership of the currently installed System host. */
-export interface NativeSystemHostLease {
-    readonly [NATIVE_SYSTEM_HOST_LEASE]: true;
+export declare class NativeSystemHostLease {
+    #private;
+    private constructor();
     readonly active: boolean;
     readonly disposed: boolean;
     dispose(): void;
@@ -31,9 +30,7 @@ interface BrowserHeapMemory {
 
 const SYSTEM_LEASE_RECORDS = new WeakMap<object, SystemHostRecord>();
 
-class EngineNativeSystemHostLease implements NativeSystemHostLease {
-    declare readonly [NATIVE_SYSTEM_HOST_LEASE]: true;
-
+class EngineNativeSystemHostLease {
     constructor(record: SystemHostRecord) {
         SYSTEM_LEASE_RECORDS.set(this, record);
         Object.defineProperties(this, {
@@ -83,7 +80,7 @@ export function installNativeSystemHost(host: NativeSystemHost): NativeSystemHos
         const lease = new EngineNativeSystemHostLease(record);
         if (systemHost) retireSystemHost(systemHost);
         systemHost = record;
-        return lease;
+        return lease as unknown as NativeSystemHostLease;
     } finally {
         installingSystemHost = false;
     }

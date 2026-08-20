@@ -13,5 +13,8 @@
     "../../src/layaAir/flash/system/**/*.ts",
     "../../src/layaAir/flash/external/**/*.ts",
     "../../src/layaAir/flash/errors/**/*.ts"
+  ],
+  "exclude": [
+    "./flash-system-host.public-root-negative.ts"
   ]
 }

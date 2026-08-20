@@ -3,12 +3,14 @@ import test from "node:test";
 
 import { IllegalOperationError } from "../../src/layaAir/flash/errors/IllegalOperationError";
 import {
-    ExternalInterface, ExternalInterfaceValue, NativeExternalInterfaceHostLease, installNativeExternalInterfaceHost,
+    ExternalInterface, ExternalInterfaceValue, installNativeExternalInterfaceHost,
 } from "../../src/layaAir/flash/external/ExternalInterface";
+import type { NativeExternalInterfaceHostLease } from "../../src/layaAir/flash/external/ExternalInterface";
 import * as externalModule from "../../src/layaAir/flash/external/ExternalInterface";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
 import { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy";
-import { NativeSystemHostLease, System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import { System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
+import type { NativeSystemHostLease } from "../../src/layaAir/flash/system/System";
 import * as systemModule from "../../src/layaAir/flash/system/System";
 import { UnsupportedFlashFeatureError } from "../../src/layaAir/flash/events/UnsupportedFlashFeatureError";
 

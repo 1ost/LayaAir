@@ -39529,7 +39529,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde",
+          "sha256": "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec",
           "heritage": []
         },
         {
@@ -39537,21 +39537,62 @@
           "export": "NativeSystemHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
+          "sha256": "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec"
         },
         {
           "module": "src/layaAir/flash/system/System.ts",
           "export": "NativeSystemHostLease",
-          "kind": "interface",
-          "signature": "any",
-          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
+          "kind": "class",
+          "signature": "typeof NativeSystemHostLease",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#private",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "any"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "active",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispose",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "disposed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec",
+          "heritage": []
         },
         {
           "module": "src/layaAir/flash/system/System.ts",
           "export": "installNativeSystemHost",
           "kind": "function",
           "signature": "(host: NativeSystemHost) => NativeSystemHostLease",
-          "sha256": "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
+          "sha256": "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec"
         }
       ],
       "evidence": [
@@ -39563,7 +39604,7 @@
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
-            "b311fec3fec81d65f78a389bfd6eea9911b7d5c8d0b1930a0531837d3b04cbde"
+            "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec"
           ]
         }
       ]
@@ -39599,7 +39640,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2",
+          "sha256": "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1",
           "heritage": []
         },
         {
@@ -39607,28 +39648,69 @@
           "export": "ExternalInterfaceValue",
           "kind": "type",
           "signature": "any",
-          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+          "sha256": "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
           "export": "NativeExternalInterfaceHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+          "sha256": "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
           "export": "NativeExternalInterfaceHostLease",
-          "kind": "interface",
-          "signature": "any",
-          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+          "kind": "class",
+          "signature": "typeof NativeExternalInterfaceHostLease",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#private",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "any"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "active",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispose",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "disposed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1",
+          "heritage": []
         },
         {
           "module": "src/layaAir/flash/external/ExternalInterface.ts",
           "export": "installNativeExternalInterfaceHost",
           "kind": "function",
           "signature": "(host: NativeExternalInterfaceHost) => NativeExternalInterfaceHostLease",
-          "sha256": "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+          "sha256": "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
         }
       ],
       "evidence": [
@@ -39638,7 +39720,7 @@
           "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
           "capability": "api.flash.external",
           "covers": [
-            "0ffafeeaf158e66374a54f6654325da091ae9ff4cdc9a06345a388539e85e2b2"
+            "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
           ]
         }
       ]

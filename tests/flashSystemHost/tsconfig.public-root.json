@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2022",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "files": [
+    "./flash-system-host.public-root-negative.ts"
+  ]
+}

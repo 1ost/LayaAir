@@ -570,7 +570,7 @@ ensureFlashCapability("api.flash.system", [
     ["src/layaAir/flash/system/ImageDecodingPolicy.ts", "ImageDecodingPolicy", "class"],
     ["src/layaAir/flash/system/System.ts", "System", "class"],
     ["src/layaAir/flash/system/System.ts", "NativeSystemHost", "interface"],
-    ["src/layaAir/flash/system/System.ts", "NativeSystemHostLease", "interface"],
+    ["src/layaAir/flash/system/System.ts", "NativeSystemHostLease", "class"],
     ["src/layaAir/flash/system/System.ts", "installNativeSystemHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash system bridge compiler surface and clean-break dispositions");
@@ -579,7 +579,7 @@ ensureFlashCapability("api.flash.external", [
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterface", "class"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterfaceValue", "type"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHost", "interface"],
-    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHostLease", "interface"],
+    ["src/layaAir/flash/external/ExternalInterface.ts", "NativeExternalInterfaceHostLease", "class"],
     ["src/layaAir/flash/external/ExternalInterface.ts", "installNativeExternalInterfaceHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash external call-only bridge compiler surface");
