@@ -7,6 +7,11 @@ export interface NativeAssetTransactionHost {
             copyFile(source: string, destination: string, flags: number): Promise<void>;
             lstat(file: string): Promise<{ isFile(): boolean }>;
             mkdir(directory: string, options: { recursive: boolean }): Promise<unknown>;
+            open(file: string, flags: string): Promise<{
+                writeFile(bytes: Uint8Array | string): Promise<void>;
+                sync(): Promise<void>;
+                close(): Promise<void>;
+            }>;
             readFile(file: string): Promise<Uint8Array>;
             rename(source: string, destination: string): Promise<void>;
             rm(file: string, options: { recursive?: boolean; force?: boolean }): Promise<void>;
@@ -25,7 +30,9 @@ export interface NativeAssetTransactionHost {
 
 export type NativeAssetTransactionEvent =
     | "before-target-verify"
+    | "after-backup-journal"
     | "after-backup"
+    | "after-install-journal"
     | "before-install"
     | "after-install"
     | "before-rollback-remove"
@@ -162,7 +169,6 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
             if (initial.exists) {
                 const backupPath = path.join(this.root, "backup", `${this.backups.size}`);
                 await fs.promises.mkdir(path.dirname(backupPath), { recursive: true });
-                await fs.promises.rename(staged.target, backupPath);
                 backup = {
                     relativePath,
                     target: staged.target,
@@ -170,6 +176,10 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                     authority: initial
                 };
                 this.backups.set(staged.target, backup);
+                await this.persistJournal();
+                await this.emit("after-backup-journal", staged, backupPath);
+                await fs.promises.rename(staged.target, backupPath);
+                await this.persistJournal();
                 await assertFileAuthority(backupPath, initial, `backup '${relativePath}'`, this.host);
                 await assertMissing(staged.target, `target '${relativePath}' after backup`, this.host);
                 await this.emit("after-backup", staged, backupPath);
@@ -177,9 +187,12 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
 
             await assertMissing(staged.target, `target '${relativePath}' before install`, this.host);
             await this.emit("before-install", staged, backup?.backup);
-            await fs.promises.copyFile(staged.stagePath, staged.target, fs.constants.COPYFILE_EXCL);
             const installed = { relativePath, target: staged.target, authority: staged.authority };
             this.installed.set(staged.target, installed);
+            await this.persistJournal();
+            await this.emit("after-install-journal", staged, backup?.backup);
+            await fs.promises.copyFile(staged.stagePath, staged.target, fs.constants.COPYFILE_EXCL);
+            await this.persistJournal();
             await assertFileAuthority(staged.target, staged.authority, `installed '${relativePath}'`, this.host);
             await this.emit("after-install", staged, backup?.backup);
         }
@@ -202,6 +215,11 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
         const failures: Error[] = [];
         for (const installed of [...this.installed.values()].reverse()) {
             try {
+                if (await isMissing(installed.target, this.host)) {
+                    this.installed.delete(installed.target);
+                    await this.persistJournal();
+                    continue;
+                }
                 await this.emit("before-rollback-remove", installed);
                 const quarantine = path.join(this.root, "rollback", `installed-${failures.length}-${this.installed.size}`);
                 await fs.promises.mkdir(path.dirname(quarantine), { recursive: true });
@@ -210,6 +228,7 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                     await assertFileAuthority(quarantine, installed.authority, `rollback installed '${installed.relativePath}'`, this.host);
                     await fs.promises.rm(quarantine, { force: true });
                     this.installed.delete(installed.target);
+                    await this.persistJournal();
                 }
                 catch (error) {
                     if (await isMissing(installed.target, this.host))
@@ -230,6 +249,12 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                     stagePath: "",
                     authority: backup.authority
                 }, backup.backup);
+                if (await isMissing(backup.backup, this.host)) {
+                    await assertFileAuthority(backup.target, backup.authority, `already restored '${backup.relativePath}'`, this.host);
+                    this.backups.delete(backup.target);
+                    await this.persistJournal();
+                    continue;
+                }
                 await assertMissing(backup.target, `rollback target '${backup.relativePath}'`, this.host);
                 await assertFileAuthority(backup.backup, backup.authority, `rollback backup '${backup.relativePath}'`, this.host);
                 await fs.promises.mkdir(path.dirname(backup.target), { recursive: true });
@@ -237,6 +262,7 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
                 await assertFileAuthority(backup.target, backup.authority, `restored '${backup.relativePath}'`, this.host);
                 await fs.promises.rm(backup.backup, { force: true });
                 this.backups.delete(backup.target);
+                await this.persistJournal();
             }
             catch (error) {
                 failures.push(asError(error));
@@ -245,16 +271,7 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
 
         if (failures.length !== 0) {
             try {
-                await persistRecoveryJournal(this.root, {
-                    schema: "laya-authored-content-recovery@2",
-                    targets: sortedTargets(this.targets).map(([relativePath, target]) => ({
-                        relativePath,
-                        target: this.host.path.resolve(target)
-                    })),
-                    failures: failures.map(error => error.message),
-                    installed: [...this.installed.values()],
-                    backups: [...this.backups.values()]
-                }, this.host);
+                await this.persistJournal(failures);
             }
             catch (evidenceError) {
                 failures.push(asError(evidenceError));
@@ -281,10 +298,24 @@ export class NativeAssetImporterTransaction implements NativeAuthoredContentTran
             this.initialTargets.set(target, await readInitialTargetAuthority(target, this.host));
         }
         this.initialized = true;
+        await this.persistJournal();
     }
 
     private async emit(event: NativeAssetTransactionEvent, file: StagedFile | InstalledFile, backup?: string): Promise<void> {
         await this.hook?.({ event, relativePath: file.relativePath, target: file.target, backup });
+    }
+
+    private async persistJournal(failures: ReadonlyArray<Error> = []): Promise<void> {
+        await persistRecoveryJournal(this.root, {
+            schema: "laya-authored-content-recovery@2",
+            targets: sortedTargets(this.targets).map(([relativePath, target]) => ({
+                relativePath,
+                target: this.host.path.resolve(target)
+            })),
+            failures: failures.map(error => error.message),
+            installed: [...this.installed.values()],
+            backups: [...this.backups.values()]
+        }, this.host);
     }
 
     private clearJournal(): void {
@@ -386,8 +417,40 @@ async function persistRecoveryJournal(
     if (!await isMissing(nextPath, host))
         fail("RECOVERY_UPDATE_PENDING", nextPath);
     const bytes = `${JSON.stringify(journal, null, 2)}\n`;
-    await host.fs.promises.writeFile(nextPath, bytes, { flag: "wx" });
+    const handle = await host.fs.promises.open(nextPath, "wx");
+    try {
+        await handle.writeFile(bytes);
+        await handle.sync();
+    }
+    finally {
+        await handle.close();
+    }
     await host.fs.promises.rename(nextPath, recoveryPath);
+    const directory = await host.fs.promises.open(root, "r");
+    try {
+        try {
+            await directory.sync();
+        }
+        catch (error) {
+            if (!isUnsupportedDirectorySync(error))
+                throw error;
+        }
+    }
+    finally {
+        await directory.close();
+    }
+}
+
+export async function isNativeAssetImporterRecoveryPending(
+    tempPath: string,
+    host: NativeAssetTransactionHost = createNativeAssetTransactionHost()
+): Promise<boolean> {
+    return !await isMissing(host.path.resolve(tempPath, "authored-content-native-transaction"), host);
+}
+
+function isUnsupportedDirectorySync(error: unknown): boolean {
+    return Boolean(error && typeof error === "object" && "code" in error
+        && ["EPERM", "EINVAL", "ENOTSUP"].includes(String((error as { code?: unknown }).code)));
 }
 
 async function readRecoveryJournal(

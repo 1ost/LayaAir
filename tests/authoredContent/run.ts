@@ -717,6 +717,69 @@ async function main(): Promise<void> {
         }
     });
 
+    await test("write-ahead journal recovers a new process at every target mutation boundary", async () => {
+        const cases: ReadonlyArray<[NativeAssetTransactionEvent, "existing" | "absent"]> = [
+            ["after-backup-journal", "existing"],
+            ["after-backup", "existing"],
+            ["after-install-journal", "existing"],
+            ["after-install", "existing"],
+            ["after-install-journal", "absent"],
+            ["after-install", "absent"]
+        ];
+        for (const [boundary, initialState] of cases) {
+            const root = fs.mkdtempSync(path.join(os.tmpdir(), `laya-native-crash-${boundary}-${initialState}-`));
+            try {
+                const bundle = await prepareNativeLayaAuthoredContentBundle(
+                    bitmapBundlePreparation(new Uint8Array([1, 2, 3, 4]))
+                );
+                const targets = new Map(bundle.files.map(file => [
+                    file.path,
+                    path.join(root, "outputs", ...file.path.split("/"))
+                ]));
+                const originals = new Map<string, Uint8Array>();
+                if (initialState === "existing") for (const target of targets.values()) {
+                    const bytes = new Uint8Array([11]);
+                    originals.set(target, bytes);
+                    fs.mkdirSync(path.dirname(target), { recursive: true });
+                    fs.writeFileSync(target, bytes);
+                }
+                const tempPath = path.join(root, "temp");
+                const interrupted = new NativeAssetImporterTransaction(
+                    tempPath,
+                    targets,
+                    context => {
+                        if (context.event === boundary && context.relativePath === "bitmap-hierarchy.mc")
+                            throw new Error(`simulated process interruption ${boundary}`);
+                    },
+                    nativeTransactionHost
+                );
+                for (const file of bundle.files)
+                    await interrupted.stage(file.path, file.bytes);
+                await assertRejects(
+                    () => interrupted.commit(),
+                    `simulated process interruption ${boundary}`
+                );
+                assert(fs.existsSync(interrupted.recoveryPath), `${boundary}/${initialState} had no durable write-ahead journal`);
+
+                await resumeNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+                await retireNativeAssetImporterRecovery(tempPath, targets, nativeTransactionHost);
+                for (const target of targets.values()) {
+                    if (initialState === "absent")
+                        assert(!fs.existsSync(target), `${boundary}/absent retained a partial target`);
+                    else {
+                        const actual = fs.readFileSync(target);
+                        const expected = originals.get(target)!;
+                        assert(actual.length === expected.length && actual.every((byte, index) => byte === expected[index]),
+                            `${boundary}/existing did not restore original target bytes`);
+                    }
+                }
+            }
+            finally {
+                fs.rmSync(root, { recursive: true, force: true });
+            }
+        }
+    });
+
     await test("real importer fails closed when a target is recreated during commit", async () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), "laya-native-transaction-recreate-"));
         try {

@@ -2,7 +2,12 @@ import { SwfXmlSourceAdapter } from "./offlineAdapters/SwfXmlSourceAdapter";
 import { XflBundleSourceAdapter } from "./offlineAdapters/XflBundleSourceAdapter";
 import { readAuthenticatedResourcePayloads } from "./core/SourceAdapter";
 import { NativeAnimationClip2DWriter } from "./emit/NativeAnimationClip2DWriter";
-import { NativeAssetImporterTransaction } from "./emit/NativeAssetImporterTransaction";
+import {
+    isNativeAssetImporterRecoveryPending,
+    NativeAssetImporterTransaction,
+    resumeNativeAssetImporterRecovery,
+    retireNativeAssetImporterRecovery
+} from "./emit/NativeAssetImporterTransaction";
 import { captureEditorSubAssetState, restoreEditorSubAssetState } from "./emit/EditorSubAssetState";
 import { NativeLayaEmitter } from "./emit/NativeLayaEmitter";
 import {
@@ -38,6 +43,18 @@ export class AuthoredContentImporter extends IEditorEnv.AssetImporter {
         const baseName = path.parse(this.asset.fileName).name;
         const prefabPath = `${baseName}.lh`;
         const timelinePath = `${baseName}.mc`;
+        if (await isNativeAssetImporterRecoveryPending(this.tempPath)) {
+            const registered = new Map(this.subAssets.map(asset => [asset.fileName, asset.fullPath]));
+            const recoveryTargets = new Map<string, string>();
+            for (const outputPath of [prefabPath, timelinePath, ...content.resources.map(resource => resource.outputPath)]) {
+                const target = registered.get(outputPath);
+                if (!target)
+                    throw new Error(`AUTHORED_CONTENT_RECOVERY_SUBASSET_MISSING: ${outputPath}`);
+                recoveryTargets.set(outputPath, target);
+            }
+            await resumeNativeAssetImporterRecovery(this.tempPath, recoveryTargets);
+            await retireNativeAssetImporterRecovery(this.tempPath, recoveryTargets);
+        }
         const priorEditorState = await captureEditorSubAssetState(this.subAssets);
         let libraryChanged = false;
         let nativeTimeline: Laya.AnimationClip2D | undefined;
