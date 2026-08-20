@@ -209,7 +209,7 @@
       "predicateExport": "isFlashStage",
       "predicateSignature": "(value: unknown) => value is Stage",
       "heritageClosure": [],
-      "moduleSha256": "966272643969879c98ddb83482972a269d092c661fd8dbdc103bc02334e1ed52"
+      "moduleSha256": "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1"
     },
     {
       "sourceQName": "flash.events.ContextMenuEvent",

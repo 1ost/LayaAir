@@ -9,6 +9,7 @@ import { Stage, isFlashStage } from "../../src/layaAir/flash/display/Stage";
 import { Event } from "../../src/layaAir/flash/events/Event";
 import { Node as LayaNode } from "../../src/layaAir/laya/display/Node";
 import { Stage as LayaStage } from "../../src/layaAir/laya/display/Stage";
+import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
 import { PAL } from "../../src/layaAir/laya/platform/PlatformAdapters";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
@@ -159,6 +160,57 @@ test("Stage child operations retain Laya attachment and Flash lifecycle semantic
         assert.throws(() => sourceStage.getChildAt(0), /canonical DisplayObject/,
             "source access never leaks an unadmitted native child");
         nativeStage.removeChild(raw);
+    } finally {
+        FlashStageBoundary.dispose(nativeStage);
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+        Browser.mainCanvas = previousCanvas;
+    }
+});
+
+test("Stage events expose only the stable public facade for programmatic and native producers", () => {
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const previousCanvas = Browser.mainCanvas;
+    const nativeStage = new LayaStage();
+    const scheduler = new FrameScheduler();
+    try {
+        install(nativeStage, scheduler);
+        const sourceStage = bootstrap(nativeStage).sourceStage;
+        const identities: Array<[unknown, unknown]> = [];
+        const observe = (event: Event): void => {
+            identities.push([event.target, event.currentTarget]);
+            assert.equal(event.target, sourceStage);
+            assert.equal(event.currentTarget, sourceStage);
+            assert.notEqual(event.target, nativeStage);
+            assert.notEqual(event.currentTarget, nativeStage);
+        };
+
+        sourceStage.addEventListener(Event.CHANGE, observe);
+        sourceStage.dispatchEvent(new Event(Event.CHANGE));
+        sourceStage.removeEventListener(Event.CHANGE, observe);
+        sourceStage.dispatchEvent(new Event(Event.CHANGE));
+        assert.equal(identities.length, 1, "removed programmatic listener stays detached");
+
+        sourceStage.addEventListener(Event.RESIZE, observe);
+        nativeStage.event(LayaEvent.RESIZE,
+            new LayaEvent().setTo(LayaEvent.RESIZE, nativeStage, nativeStage));
+        sourceStage.removeEventListener(Event.RESIZE, observe);
+
+        sourceStage.addEventListener(Event.ENTER_FRAME, observe);
+        assert.equal(scheduler.activeCount, 1);
+        scheduler.tick();
+        sourceStage.removeEventListener(Event.ENTER_FRAME, observe);
+        assert.equal(scheduler.activeCount, 0, "enterFrame removal clears the native scheduler subscription");
+
+        let disposedCalls = 0;
+        sourceStage.addEventListener(Event.RESIZE, () => disposedCalls++);
+        FlashStageBoundary.dispose(nativeStage);
+        nativeStage.event(LayaEvent.RESIZE,
+            new LayaEvent().setTo(LayaEvent.RESIZE, nativeStage, nativeStage));
+        scheduler.tick();
+        assert.deepEqual([identities.length, disposedCalls, sourceStage.hasEventListener(Event.RESIZE)],
+            [3, 0, false], "boundary disposal detaches native and timer producers");
     } finally {
         FlashStageBoundary.dispose(nativeStage);
         ILaya.stage = previousStage;

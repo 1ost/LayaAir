@@ -79,9 +79,12 @@ export class FlashEventRouter {
     private readonly _types = new Map<string, TypeEntry>();
     private _ordinal = 0;
 
-    constructor(readonly host: NativeEventHost) {
+    constructor(readonly host: NativeEventHost,
+        private readonly _eventTargetProjector: (target: unknown) => unknown = target => target) {
         if ((typeof host !== "object" && typeof host !== "function") || host === null)
             throw new TypeError("FlashEventRouter requires a native Laya event host");
+        if (typeof _eventTargetProjector !== "function")
+            throw new TypeError("FlashEventRouter event-target projector must be a function");
         if (HOST_ROUTERS.has(host as object)) throw new Error("A native host can own only one FlashEventRouter");
         HOST_ROUTERS.set(host as object, this);
     }
@@ -128,6 +131,7 @@ export class FlashEventRouter {
 
     dispatchEvent(event: Event, eventTarget: unknown = this.host): boolean {
         if (!(event instanceof Event)) throw new TypeError("dispatchEvent requires a flash.events.Event instance");
+        eventTarget = this._projectEventTarget(eventTarget);
         event._prepareForDispatch(eventTarget);
         this._route(event, eventTarget);
         return !event.isDefaultPrevented();
@@ -172,7 +176,7 @@ export class FlashEventRouter {
             let routed = ROUTED_NATIVE.get(value);
             if (!routed) ROUTED_NATIVE.set(value, routed = new Map());
             const nativeTarget = value.target ?? this.host;
-            const target = getInputEventOwner(nativeTarget) ?? nativeTarget;
+            const target = this._projectEventTarget(getInputEventOwner(nativeTarget) ?? nativeTarget);
             const startsAtTarget = value.currentTarget === nativeTarget;
             const active = routed.get(type);
             if (!startsAtTarget && active?.target === target) return;
@@ -192,15 +196,16 @@ export class FlashEventRouter {
         }
         const beforeInput = type === TextEvent.TEXT_INPUT
             ? readTextBeforeInputPayload(value, this.host, LayaEvent.BEFORE_INPUT) : null;
-        const event = this._projectNativeEvent(type, value, this.host, beforeInput?.snapshot.text);
-        event._prepareForDispatch(this.host);
+        const target = this._projectEventTarget(this.host);
+        const event = this._projectNativeEvent(type, value, target, beforeInput?.snapshot.text);
+        event._prepareForDispatch(target);
         if (beforeInput) {
             event._bindNativeControl({
                 preventDefault: beforeInput.preventDefault,
                 stopPropagation: beforeInput.stopPropagation,
             });
         }
-        this._route(event, this.host);
+        this._route(event, target);
     }
 
     private _projectNativeEvent(type: string, value: unknown, target: unknown, beforeInputText?: string): Event {
@@ -285,11 +290,15 @@ export class FlashEventRouter {
     private _invoke(event: Event, capture: boolean, phase: EventPhase): void {
         const entry = this._types.get(event.type);
         if (!entry) return;
-        event._setCurrentTarget(this.host, phase);
+        event._setCurrentTarget(this._projectEventTarget(this.host), phase);
         const list = capture ? entry.capture : entry.bubble;
         for (const item of list.slice()) {
             item.listener(event);
             if (event._isImmediatePropagationStopped) break;
         }
+    }
+
+    private _projectEventTarget(target: unknown): unknown {
+        return this._eventTargetProjector(target);
     }
 }

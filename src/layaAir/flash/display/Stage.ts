@@ -62,6 +62,7 @@ export class Stage {
         STAGE_VALUES.add(this);
         STAGE_NATIVE.set(this, stage);
         NATIVE_STAGE_VIEWS.set(stage as object, this);
+        FlashStageBoundary.registerStageView(stage, this);
         const loaderInfo = Object.freeze(Object.defineProperty({}, "parameters", {
             configurable: false,
             enumerable: true,

@@ -1,11 +1,16 @@
 import { ILaya } from "../../src/layaAir/ILaya";
 import { FlashDisplayRootBoundary } from "../../src/layaAir/flash/display/FlashDisplayRootBoundary";
+import { FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
-import { Stage } from "../../src/layaAir/laya/display/Stage";
+import { Stage as FlashStage } from "../../src/layaAir/flash/display/Stage";
+import { Event } from "../../src/layaAir/flash/events/Event";
+import { Stage as LayaStage } from "../../src/layaAir/laya/display/Stage";
+import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
 import { PAL } from "../../src/layaAir/laya/platform/PlatformAdapters";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
+import { Browser } from "../../src/layaAir/laya/utils/Browser";
 import { Timer } from "../../src/layaAir/laya/utils/Timer";
 
 function publish(result: "passed" | "failed", detail: string): void {
@@ -19,11 +24,28 @@ try {
     (PAL as any).browser ??= { on: (): void => undefined };
     (PAL as any).textInput ??= { target: null };
 
-    const stage = new Stage();
+    const stage = new LayaStage();
     const timer = new Timer(false);
     ILaya.stage = stage;
     ILaya.timer = timer;
+    Browser.mainCanvas = { source: document.createElement("canvas") } as any;
+    FlashStageBoundary.configure(stage, {
+        align: "TL", scaleMode: "noScale", quality: "high", showDefaultContextMenu: false,
+        loaderParameters: FlashStageBoundary.parseLoaderParameters("?browser=chromium"),
+    });
+    FlashStageBoundary.claimViewport(stage, { width: 1250, height: 650 });
+    const sourceStage = FlashStage.fromNative(stage);
     const root = new Sprite();
+    const identities: Array<[unknown, unknown]> = [];
+    const observe = (event: Event): void => { identities.push([event.target, event.currentTarget]); };
+
+    sourceStage.addEventListener(Event.CHANGE, observe);
+    sourceStage.dispatchEvent(new Event(Event.CHANGE));
+    sourceStage.removeEventListener(Event.CHANGE, observe);
+    sourceStage.addEventListener(Event.RESIZE, observe);
+    stage.event(LayaEvent.RESIZE, new LayaEvent().setTo(LayaEvent.RESIZE, stage, stage));
+    sourceStage.removeEventListener(Event.RESIZE, observe);
+    sourceStage.addEventListener(Event.ENTER_FRAME, observe);
     let frames = 0;
     const lease = FlashDisplayRootBoundary.claim<Sprite>(stage, () => frames++, {
         destroyRootOnDispose: false,
@@ -31,14 +53,22 @@ try {
     const leaseKeys = Reflect.ownKeys(lease);
     lease.attach(root);
     timer._update(performance.now() + 17);
-    if (frames !== 1 || root.parent !== stage || !lease.attached || !Object.isFrozen(lease)
+    sourceStage.removeEventListener(Event.ENTER_FRAME, observe);
+    if (frames !== 1 || identities.length !== 3
+        || identities.some(([target, currentTarget]) => target !== sourceStage || currentTarget !== sourceStage
+            || target === stage || currentTarget === stage)
+        || root.parent !== stage || !lease.attached || !Object.isFrozen(lease)
         || JSON.stringify(Reflect.ownKeys(lease).map(String)) !== JSON.stringify(leaseKeys.map(String)))
-        throw new Error("actual Laya frame attachment did not preserve the frozen public lease");
+        throw new Error("actual Laya producers did not preserve public Stage and frozen lease identity");
+    let disposedEvents = 0;
+    sourceStage.addEventListener(Event.RESIZE, () => disposedEvents++);
+    FlashStageBoundary.dispose(stage);
+    stage.event(LayaEvent.RESIZE, new LayaEvent().setTo(LayaEvent.RESIZE, stage, stage));
     lease.dispose();
     timer._update(performance.now() + 34);
-    if (frames !== 1 || root.parent !== null || !lease.disposed)
-        throw new Error("actual Laya timer cleanup did not fence the disposed root");
-    publish("passed", "Flash Stage/display-root Chromium scheduler gate passed");
+    if (frames !== 1 || disposedEvents !== 0 || root.parent !== null || !lease.disposed)
+        throw new Error("actual Laya cleanup did not fence disposed Stage and display-root listeners");
+    publish("passed", "Flash Stage identity/display-root Chromium gate passed");
 } catch (error) {
     publish("failed", error instanceof Error ? `${error.name}: ${error.message}` : String(error));
 }

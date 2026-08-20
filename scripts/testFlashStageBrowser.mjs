@@ -45,7 +45,7 @@ try {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /data-result="passed"/,
         `Chromium Stage gate failed:\n${result.stdout}\n${result.stderr}`);
-    console.log("Flash Stage/display-root Chromium scheduler gate passed");
+    console.log("Flash Stage identity/display-root Chromium gate passed");
 } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
 }

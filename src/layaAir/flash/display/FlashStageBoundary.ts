@@ -10,6 +10,7 @@ import { isFlashDisplayObject, DisplayObject } from "./DisplayObject";
 import {
     isFlashInteractiveObject, InteractiveObject, resolveFlashFocusOwner
 } from "./InteractiveObject";
+import { isFlashStage, Stage } from "./Stage";
 
 type MutableStage = LayaStage & { focus: LayaNode | null };
 type FocusSeam = { _applyNativeFocus(value: boolean): void };
@@ -18,6 +19,7 @@ const STAGE_ROUTERS = new WeakMap<object, FlashEventRouter>();
 const STAGE_BOOTSTRAPS = new WeakMap<object, FlashStageBootstrap>();
 const LOADER_PARAMETER_VALUES = new WeakSet<object>();
 const STAGE_VIEWPORT_OWNERS = new WeakMap<object, FlashStageViewportOwner>();
+const STAGE_EVENT_TARGETS = new WeakMap<object, Stage>();
 
 interface FlashStageViewportRecord {
     readonly stage: LayaStage;
@@ -279,6 +281,17 @@ export class FlashStageBoundary {
         return this._router(stage).dispatchEvent(event, stage);
     }
 
+    /** @internal Binds the unforgeable public Stage identity to its native producer. */
+    static registerStageView(stage: LayaStage, view: Stage): void {
+        this._requireCurrent(stage);
+        if (!isFlashStage(view) || Stage.fromNative(stage) !== view)
+            throw new TypeError("Flash Stage event target requires the canonical Stage view");
+        const existing = STAGE_EVENT_TARGETS.get(stage as object);
+        if (existing && existing !== view)
+            throw new Error("The live Laya Stage already has a different public event target");
+        STAGE_EVENT_TARGETS.set(stage as object, view);
+    }
+
     static hasEventListener(stage: LayaStage, type: string): boolean {
         const router = STAGE_ROUTERS.get(this._requireCurrent(stage) as object);
         return router?.hasEventListener(type) ?? false;
@@ -297,7 +310,8 @@ export class FlashStageBoundary {
         let router = STAGE_ROUTERS.get(stage as object);
         if (!router) {
             const existing = FlashEventRouter.forHost(stage);
-            router = existing ?? new FlashEventRouter(stage);
+            router = existing ?? new FlashEventRouter(stage,
+                target => target === stage ? STAGE_EVENT_TARGETS.get(stage as object) ?? stage : target);
             if (existing)
                 throw new Error("The native Stage already has a non-boundary Flash event owner");
             STAGE_ROUTERS.set(stage as object, router);
