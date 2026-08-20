@@ -235,7 +235,7 @@ class StrictXmlParser {
         const end = this.source.indexOf("?>", this.position + 5);
         if (end < 0) this.fail("Unterminated XML declaration");
         const raw = this.source.slice(this.position, end + 2);
-        const match = /^<\?xml[ \t\n]+version[ \t\n]*=[ \t\n]*(['"])1\.0\1(?:[ \t\n]+encoding[ \t\n]*=[ \t\n]*(['"])UTF-8\2)?(?:[ \t\n]+standalone[ \t\n]*=[ \t\n]*(['"])(yes|no)\3)?[ \t\n]*\?>$/i.exec(raw);
+        const match = /^<\?xml[ \t\n]+version[ \t\n]*=[ \t\n]*(['"])1\.0\1(?:[ \t\n]+encoding[ \t\n]*=[ \t\n]*(['"])[Uu][Tt][Ff]-8\2)?(?:[ \t\n]+standalone[ \t\n]*=[ \t\n]*(['"])(yes|no)\3)?[ \t\n]*\?>$/.exec(raw);
         if (!match) this.fail("Only an ordered XML 1.0 UTF-8 declaration is supported");
         this.position = end + 2;
         return Object.freeze({
@@ -273,7 +273,11 @@ class StrictXmlParser {
                 this.position++;
             }
             if (this.position === this.source.length) this.fail("Unterminated attribute value");
-            const value = this.decodeEntities(this.source.slice(start, this.position));
+            // XML 1.0 normalizes literal attribute whitespace to spaces before
+            // resolving character references. A referenced tab/LF/CR therefore
+            // remains that referenced character rather than being normalized.
+            const normalizedAttribute = this.source.slice(start, this.position).replace(/[\t\n]/g, " ");
+            const value = this.decodeEntities(normalizedAttribute);
             this.position++;
             this.accountAttribute();
             this.accountText(value);
@@ -345,10 +349,15 @@ class StrictXmlParser {
 
     private parseName(label: string): string {
         const start = this.position;
-        const first = this.source.charCodeAt(this.position);
+        if (this.source[this.position] === ":") this.fail("XML namespace syntax is not supported");
+        const first = this.source.codePointAt(this.position) ?? -1;
         if (!isNameStart(first)) this.fail(`Invalid ${label} name`);
-        this.position++;
-        while (isNameContinue(this.source.charCodeAt(this.position))) this.position++;
+        this.position += codePointWidth(first);
+        while (true) {
+            const codePoint = this.source.codePointAt(this.position) ?? -1;
+            if (!isNameContinue(codePoint)) break;
+            this.position += codePointWidth(codePoint);
+        }
         if (this.source[this.position] === ":") this.fail("XML namespace syntax is not supported");
         const name = this.source.slice(start, this.position);
         if (name === "xmlns") this.fail("XML namespace declarations are not supported");
@@ -368,8 +377,8 @@ class StrictXmlParser {
             const reference = raw.slice(ampersand + 1, semicolon);
             const predefined: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
             if (Object.prototype.hasOwnProperty.call(predefined, reference)) output += predefined[reference];
-            else if (/^#[0-9]+$/.test(reference) || /^#x[0-9a-f]+$/i.test(reference)) {
-                const hexadecimal = reference[1].toLowerCase() === "x";
+            else if (/^#[0-9]+$/.test(reference) || /^#x[0-9a-fA-F]+$/.test(reference)) {
+                const hexadecimal = reference[1] === "x";
                 const digits = reference.slice(hexadecimal ? 2 : 1);
                 const codePoint = Number.parseInt(digits, hexadecimal ? 16 : 10);
                 if (!isXmlCodePoint(codePoint)) this.fail(`Invalid numeric character reference &${reference};`);
@@ -465,11 +474,37 @@ function isWhitespace(value: number): boolean {
 }
 
 function isNameStart(value: number): boolean {
-    return value === 0x5f || value >= 0x41 && value <= 0x5a || value >= 0x61 && value <= 0x7a;
+    // XML 1.0 Fifth Edition NameStartChar, deliberately excluding colon so
+    // namespace syntax never enters this namespace-free resource model.
+    return value === 0x5f
+        || value >= 0x41 && value <= 0x5a
+        || value >= 0x61 && value <= 0x7a
+        || value >= 0xc0 && value <= 0xd6
+        || value >= 0xd8 && value <= 0xf6
+        || value >= 0xf8 && value <= 0x2ff
+        || value >= 0x370 && value <= 0x37d
+        || value >= 0x37f && value <= 0x1fff
+        || value >= 0x200c && value <= 0x200d
+        || value >= 0x2070 && value <= 0x218f
+        || value >= 0x2c00 && value <= 0x2fef
+        || value >= 0x3001 && value <= 0xd7ff
+        || value >= 0xf900 && value <= 0xfdcf
+        || value >= 0xfdf0 && value <= 0xfffd
+        || value >= 0x10000 && value <= 0xeffff;
 }
 
 function isNameContinue(value: number): boolean {
-    return isNameStart(value) || value >= 0x30 && value <= 0x39 || value === 0x2d || value === 0x2e;
+    return isNameStart(value)
+        || value >= 0x30 && value <= 0x39
+        || value === 0x2d
+        || value === 0x2e
+        || value === 0xb7
+        || value >= 0x300 && value <= 0x36f
+        || value >= 0x203f && value <= 0x2040;
+}
+
+function codePointWidth(value: number): number {
+    return value > 0xffff ? 2 : 1;
 }
 
 function requireLookupName(value: string): void {

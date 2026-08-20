@@ -37182,7 +37182,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c",
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e",
           "heritage": []
         },
         {
@@ -37190,63 +37190,63 @@
           "export": "StrictXmlLimits",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlDeclaration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlAttribute",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlText",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlCData",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlComment",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlElement",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlNode",
           "kind": "type",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         },
         {
           "module": "src/layaAir/flash/xml/StrictXmlDocument.ts",
           "export": "StrictXmlDocumentNode",
           "kind": "type",
           "signature": "any",
-          "sha256": "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+          "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
         }
       ],
       "evidence": [
@@ -37256,7 +37256,7 @@
           "sha256": "93d471d16220d01da0245804fc122f9a814ffcfe899b887b5af27b18de7c37dc",
           "capability": "api.flash.xml",
           "covers": [
-            "0c15721df349d36a4f7d69b5bc20e2c9bc0c99698369f81c4f4375b1748c683c"
+            "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
           ]
         }
       ]

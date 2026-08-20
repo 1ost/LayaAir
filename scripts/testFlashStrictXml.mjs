@@ -57,6 +57,7 @@ try {
     assert.deepEqual(payload.result.kinds, ["text", "element", "cdata", "comment", "element"]);
     assert.equal(payload.result.dtdRejected, true);
     assert.equal(payload.result.accessorReads, 0);
+    assert.equal(payload.result.attributeNormalized, true);
     console.log("Flash strict XML Chromium gate passed");
 } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });

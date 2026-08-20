@@ -37,8 +37,24 @@ test("normalizes XML line endings while preserving CDATA and text node boundarie
 test("supports predefined, decimal and hexadecimal entities and rejects non-XML scalar values", () => {
     assert.equal(StrictXmlDocument.parse("<r>&lt;&gt;&quot;&apos;&amp;&#9;&#x10ffff;</r>").root.textContent,
         "<>\"'&\t\udbff\udfff");
-    for (const source of ["<r>&bogus;</r>", "<r>&amp</r>", "<r>&#0;</r>", "<r>&#xD800;</r>", "<r>&#1114112;</r>"])
+    for (const source of ["<r>&bogus;</r>", "<r>&amp</r>", "<r>&#0;</r>", "<r>&#xD800;</r>", "<r>&#1114112;</r>", "<r>&#X41;</r>"])
         assert.throws(() => StrictXmlDocument.parse(source), SyntaxError, source);
+});
+
+test("accepts XML 1.0 Unicode names while keeping namespace syntax closed", () => {
+    const root = StrictXmlDocument.parse("<α β='v'><a·b/><𐀀 ź='ok'/></α>").root;
+    assert.equal(root.name, "α");
+    assert.equal(root.attribute("β"), "v");
+    assert.deepEqual(root.children().map(child => child.name), ["a·b", "𐀀"]);
+    assert.equal(root.children()[1].attribute("ź"), "ok");
+    for (const source of ["<α:β/>", "<α β:γ='v'/>", "<α xmlns='urn:test'/>"])
+        assert.throws(() => StrictXmlDocument.parse(source), SyntaxError, source);
+});
+
+test("normalizes literal attribute whitespace before resolving references", () => {
+    const root = StrictXmlDocument.parse("<r a='x\ty\nz\r\nw' b='&#9;&#10;&#13;'/>").root;
+    assert.equal(root.attribute("a"), "x y z w");
+    assert.equal(root.attribute("b"), "\t\n\r");
 });
 
 test("rejects DTDs, external entities, namespaces and processing instructions", () => {
@@ -67,7 +83,8 @@ test("accepts only the explicitly supported XML declaration", () => {
     for (const source of [
         " <?xml version='1.0'?><r/>", "<!--x--><?xml version='1.0'?><r/>", "<?xml version='1.1'?><r/>",
         "<?xml encoding='UTF-8' version='1.0'?><r/>", "<?xml version='1.0' encoding='UTF-16'?><r/>",
-        "<?xml version='1.0' foo='bar'?><r/>",
+        "<?xml version='1.0' foo='bar'?><r/>", "<?xml VERSION='1.0'?><r/>",
+        "<?xml version='1.0' standalone='YES'?><r/>",
     ]) assert.throws(() => StrictXmlDocument.parse(source), SyntaxError, source);
 });
 
