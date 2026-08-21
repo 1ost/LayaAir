@@ -1,14 +1,39 @@
 import { Graphics as LayaGraphics } from "../../laya/display/Graphics";
 import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
+import { isFlashMatrix, Matrix } from "../geom/Matrix";
 
-interface Paint { readonly color: string; }
-interface Stroke extends Paint { readonly thickness: number; }
+interface SolidPaint { readonly kind: "solid"; readonly color: string; readonly argb: number; }
+interface GradientPaint {
+    readonly kind: "linear-gradient";
+    readonly colors: readonly number[];
+    readonly alphas: readonly number[];
+    readonly ratios: readonly number[];
+    readonly matrix: Readonly<{ a: number; b: number; c: number; d: number; tx: number; ty: number }>;
+}
+type Paint = SolidPaint | GradientPaint;
+interface Stroke extends SolidPaint { readonly thickness: number; }
+
+/** @internal CPU-readable record shared with BitmapData.draw. */
+export interface FlashGraphicsRasterCommand {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+    readonly fill: Paint;
+}
 
 const GRAPHICS_VALUES = new WeakSet<object>();
+const GRAPHICS_RASTER_COMMANDS = new WeakMap<Graphics, FlashGraphicsRasterCommand[]>();
 
 /** @internal Read-only nominal proof for canonical Flash graphics values. */
 export function isFlashGraphics(value: unknown): value is Graphics {
     return typeof value === "object" && value !== null && GRAPHICS_VALUES.has(value);
+}
+
+/** @internal Authenticated retained vector records for synchronous BitmapData rasterization. */
+export function flashGraphicsRasterCommands(value: Graphics): readonly FlashGraphicsRasterCommand[] {
+    if (!isFlashGraphics(value)) throw new TypeError("value must be flash.display.Graphics");
+    return GRAPHICS_RASTER_COMMANDS.get(value)!;
 }
 
 function finite(value: number, label: string): number {
@@ -17,7 +42,7 @@ function finite(value: number, label: string): number {
     return value;
 }
 
-function paint(color: number, alpha: number, label: string): Paint {
+function paint(color: number, alpha: number, label: string): SolidPaint {
     if (typeof color !== "number" || !Number.isFinite(color))
         throw new TypeError(`${label}.color must be finite`);
     finite(alpha, `${label}.alpha`);
@@ -26,7 +51,76 @@ function paint(color: number, alpha: number, label: string): Paint {
     const green = rgb >>> 8 & 0xFF;
     const blue = rgb & 0xFF;
     const clampedAlpha = Math.max(0, Math.min(1, alpha));
-    return { color: `rgba(${red},${green},${blue},${clampedAlpha})` };
+    return {
+        kind: "solid",
+        color: `rgba(${red},${green},${blue},${clampedAlpha})`,
+        argb: ((Math.round(clampedAlpha * 255) << 24) | (rgb & 0x00ffffff)) >>> 0,
+    };
+}
+
+function gradientValues(values: readonly number[] | undefined, label: string): number[] {
+    if (!Array.isArray(values)) throw new TypeError(`${label} must be an Array`);
+    return values.map((value, index) => finite(value, `${label}[${index}]`));
+}
+
+function gradientPaint(type: string | undefined, colors: readonly number[] | undefined,
+    alphas: readonly number[] | undefined, ratios: readonly number[] | undefined,
+    matrix: unknown, spreadMethod: string, interpolationMethod: string,
+    focalPointRatio: number): GradientPaint {
+    if (type !== "linear")
+        throw new UnsupportedFlashFeatureError("flash.display.Graphics.beginGradientFill.type",
+            "the admitted retained bridge currently supports linear gradients");
+    if (spreadMethod !== "pad" || interpolationMethod !== "rgb" || focalPointRatio !== 0)
+        throw new UnsupportedFlashFeatureError("flash.display.Graphics.beginGradientFill.options",
+            "repeat/reflect, linearRGB and focal gradients require their dedicated raster workpacks");
+    const normalizedColors = gradientValues(colors, "Graphics.beginGradientFill.colors").map(value => value >>> 0);
+    const normalizedAlphas = gradientValues(alphas, "Graphics.beginGradientFill.alphas")
+        .map(value => Math.max(0, Math.min(1, value)));
+    const normalizedRatios = gradientValues(ratios, "Graphics.beginGradientFill.ratios")
+        .map(value => Math.max(0, Math.min(255, value >>> 0)));
+    if (normalizedColors.length < 2 || normalizedColors.length !== normalizedAlphas.length ||
+        normalizedColors.length !== normalizedRatios.length)
+        throw new RangeError("Graphics.beginGradientFill arrays must have the same length of at least two");
+    for (let index = 1; index < normalizedRatios.length; index++)
+        if (normalizedRatios[index] < normalizedRatios[index - 1])
+            throw new RangeError("Graphics.beginGradientFill.ratios must be ordered");
+    const source = matrix === null ? new Matrix() : matrix;
+    if (!isFlashMatrix(source)) throw new TypeError("Graphics.beginGradientFill.matrix must be a Matrix or null");
+    const snapshot = Object.freeze({
+        a: source.a, b: source.b, c: source.c, d: source.d, tx: source.tx, ty: source.ty,
+    });
+    if (!Number.isFinite(snapshot.a) || !Number.isFinite(snapshot.b) || !Number.isFinite(snapshot.c) ||
+        !Number.isFinite(snapshot.d) || !Number.isFinite(snapshot.tx) || !Number.isFinite(snapshot.ty) ||
+        snapshot.a * snapshot.d - snapshot.b * snapshot.c === 0)
+        throw new RangeError("Graphics.beginGradientFill.matrix must be finite and invertible");
+    return Object.freeze({
+        kind: "linear-gradient", colors: Object.freeze(normalizedColors),
+        alphas: Object.freeze(normalizedAlphas), ratios: Object.freeze(normalizedRatios), matrix: snapshot,
+    });
+}
+
+/** @internal Sample a retained Flash fill as straight ARGB. */
+export function sampleFlashGraphicsFill(fill: Paint, x: number, y: number): number {
+    if (fill.kind === "solid") return fill.argb;
+    const matrix = fill.matrix;
+    const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
+    const gradientX = (matrix.d * (x - matrix.tx) - matrix.c * (y - matrix.ty)) / determinant;
+    const ratio = Math.max(0, Math.min(255, (gradientX + 819.2) * 255 / 1638.4));
+    let upper = 1;
+    while (upper < fill.ratios.length && ratio > fill.ratios[upper]) upper++;
+    if (upper >= fill.ratios.length) upper = fill.ratios.length - 1;
+    const lower = Math.max(0, upper - 1);
+    const span = fill.ratios[upper] - fill.ratios[lower];
+    const amount = span === 0 ? 1 : Math.max(0, Math.min(1, (ratio - fill.ratios[lower]) / span));
+    const from = fill.colors[lower], to = fill.colors[upper];
+    const channel = (shift: number): number => Math.round(
+        ((from >>> shift) & 0xff) + (((to >>> shift) & 0xff) - ((from >>> shift) & 0xff)) * amount);
+    const alpha = Math.round((fill.alphas[lower] + (fill.alphas[upper] - fill.alphas[lower]) * amount) * 255);
+    return ((alpha << 24) | (channel(16) << 16) | (channel(8) << 8) | channel(0)) >>> 0;
+}
+
+function argbCss(value: number): string {
+    return `rgba(${value >>> 16 & 0xff},${value >>> 8 & 0xff},${value & 0xff},${(value >>> 24) / 255})`;
 }
 
 /**
@@ -44,6 +138,7 @@ export class Graphics extends LayaGraphics {
     constructor() {
         super();
         GRAPHICS_VALUES.add(this);
+        GRAPHICS_RASTER_COMMANDS.set(this, []);
     }
 
     beginFill(color: number, alpha = 1): void {
@@ -55,13 +150,10 @@ export class Graphics extends LayaGraphics {
         type?: string, colors?: readonly number[], alphas?: readonly number[],
         ratios?: readonly number[], matrix: unknown = null, spreadMethod = "pad",
         interpolationMethod = "rgb", focalPointRatio = 0
-    ): never {
-        void type; void colors; void alphas; void ratios; void matrix;
-        void spreadMethod; void interpolationMethod; void focalPointRatio;
-        throw new UnsupportedFlashFeatureError(
-            "flash.display.Graphics.beginGradientFill",
-            "gradient conversion requires the dedicated Matrix/gradient pixel workpack"
-        );
+    ): void {
+        this._flushPath();
+        this._fill = gradientPaint(type, colors, alphas, ratios, matrix,
+            spreadMethod, interpolationMethod, finite(focalPointRatio, "Graphics.beginGradientFill.focalPointRatio"));
     }
 
     endFill(): void {
@@ -119,6 +211,9 @@ export class Graphics extends LayaGraphics {
         const path = this._path;
         this._path = null;
         if (!path || path.length < 6 || !this._fill) return;
+        if (this._fill.kind !== "solid")
+            throw new UnsupportedFlashFeatureError("flash.display.Graphics.gradientPath",
+                "the admitted retained gradient bridge currently rasterizes rectangles");
         super.drawPoly(0, 0, path, this._fill.color,
             this._stroke?.color ?? null, this._stroke?.thickness ?? 1);
     }
@@ -136,7 +231,22 @@ export class Graphics extends LayaGraphics {
             return super.drawRect(x, y, width, height, fillColor, lineColor, lineWidth, percent);
         if (!this._fill && !this._stroke)
             return null as unknown as ReturnType<LayaGraphics["drawRect"]>;
-        return super.drawRect(x, y, width, height, this._fill?.color ?? null,
+        if (this._fill) {
+            GRAPHICS_RASTER_COMMANDS.get(this)!.push(Object.freeze({ x, y, width, height, fill: this._fill }));
+            if (this._fill.kind === "linear-gradient") {
+                const steps = Math.max(1, Math.min(256, Math.ceil(Math.abs(width))));
+                let result: ReturnType<LayaGraphics["drawRect"]> = null as unknown as ReturnType<LayaGraphics["drawRect"]>;
+                for (let index = 0; index < steps; index++) {
+                    const left = x + width * index / steps;
+                    const right = x + width * (index + 1) / steps;
+                    const color = argbCss(sampleFlashGraphicsFill(this._fill, (left + right) / 2, y + height / 2));
+                    result = super.drawRect(left, y, right - left, height, color, null, 0, false);
+                }
+                return result;
+            }
+        }
+        const activeFillColor = this._fill?.kind === "solid" ? this._fill.color : null;
+        return super.drawRect(x, y, width, height, activeFillColor,
             this._stroke?.color ?? null, this._stroke?.thickness ?? 1);
     }
 
@@ -166,9 +276,13 @@ export class Graphics extends LayaGraphics {
                 "flash.display.Graphics.drawRoundRect",
                 "non-circular corner ellipses require the vector pixel workpack"
             );
+        if (this._fill?.kind === "linear-gradient")
+            throw new UnsupportedFlashFeatureError("flash.display.Graphics.gradientRoundRect",
+                "the admitted retained gradient bridge currently rasterizes rectangles");
         const radius = ellipseWidth / 2;
+        const fillColor = this._fill?.kind === "solid" ? this._fill.color : null;
         return super.drawRoundRect(x, y, width, height, radius, radius, radius, radius,
-            this._fill?.color ?? null, this._stroke?.color ?? null, this._stroke?.thickness ?? 1);
+            fillColor, this._stroke?.color ?? null, this._stroke?.thickness ?? 1);
     }
 
     /** Preserve Laya's textured-triangle path and reject Flash vector triangles visibly. */
@@ -188,6 +302,7 @@ export class Graphics extends LayaGraphics {
         this._cursorX = 0;
         this._cursorY = 0;
         this._path = null;
+        GRAPHICS_RASTER_COMMANDS.get(this)!.length = 0;
         super.clear(recoverCmds);
     }
 }

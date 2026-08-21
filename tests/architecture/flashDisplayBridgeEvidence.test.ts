@@ -9,7 +9,10 @@ import type {
 import type {
     FlashDisplayRootBoundary, FlashDisplayRootLease, FlashDisplayRootOptions
 } from "../../src/layaAir/flash/display/FlashDisplayRootBoundary.ts";
-import type { Graphics, isFlashGraphics } from "../../src/layaAir/flash/display/Graphics.ts";
+import type {
+    FlashGraphicsRasterCommand, Graphics, flashGraphicsRasterCommands,
+    isFlashGraphics, sampleFlashGraphicsFill
+} from "../../src/layaAir/flash/display/Graphics.ts";
 import type { IBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { isFlashBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { InteractiveObject, isFlashInteractiveObject, resolveFlashFocusOwner } from "../../src/layaAir/flash/display/InteractiveObject.ts";
@@ -48,7 +51,9 @@ test("Flash display bridge compiler surface", () => {
         typeof installNativeLoaderContentHost, typeof isNativeLoaderContentHost,
         typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof isFlashBitmapData, typeof observeBitmapData,
         typeof isFlashDisplayObject, typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
-        typeof isFlashGraphics, typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,
+        FlashGraphicsRasterCommand, typeof flashGraphicsRasterCommands,
+        typeof isFlashGraphics, typeof sampleFlashGraphicsFill,
+        typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,
         FlashFrameReference, typeof isFlashMovieClip, NativeMovieClipTimeline,
         typeof isFlashShape, typeof isFlashSimpleButton, typeof isFlashSprite,
         typeof isFlashLoader, typeof isFlashLoaderInfo] extends readonly unknown[] ? boolean : never));

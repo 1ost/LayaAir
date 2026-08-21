@@ -1,5 +1,11 @@
 import { isFlashPoint, Point } from "../geom/Point";
+import { isFlashColorTransform, ColorTransform } from "../geom/ColorTransform";
+import { isFlashMatrix, Matrix } from "../geom/Matrix";
 import { isFlashRectangle, Rectangle } from "../geom/Rectangle";
+import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureError";
+import { isFlashDisplayObject } from "./DisplayObject";
+import { flashGraphicsRasterCommands, sampleFlashGraphicsFill } from "./Graphics";
+import type { IBitmapDrawable } from "./IBitmapDrawable";
 import { BitmapDataChannel } from "./BitmapDataChannel";
 import { FilterMode } from "../../laya/RenderEngine/RenderEnum/FilterMode";
 import { TextureFormat } from "../../laya/RenderEngine/RenderEnum/TextureFormat";
@@ -364,6 +370,106 @@ export class BitmapData {
             let output = shouldBlend ? composite(sourcePixel, destination.pixels![destinationIndex]) : sourcePixel;
             if (!destination.transparent) output = (output | 0xff000000) >>> 0;
             destination.pixels![destinationIndex] = output;
+            changed = true;
+        }
+        if (changed) markDirty(destination);
+    }
+
+    /**
+     * Synchronous CPU-backed Flash draw path for retained BitmapData and
+     * source-shaped rectangular Graphics fills. Unsupported renderer surfaces
+     * fail visibly instead of being approximated by a Bleach-local shim.
+     */
+    draw(source: IBitmapDrawable, matrix: Matrix | null = null,
+        colorTransform: ColorTransform | null = null, blendMode: string | null = null,
+        clipRect: Rectangle | null = null, smoothing = false): void {
+        const destination = bitmapDataValue(this, "BitmapData");
+        if (matrix !== null && !isFlashMatrix(matrix)) throw new TypeError("matrix must be a Matrix or null");
+        if (colorTransform !== null && !isFlashColorTransform(colorTransform))
+            throw new TypeError("colorTransform must be a ColorTransform or null");
+        if (blendMode !== null && blendMode !== "normal")
+            throw new UnsupportedFlashFeatureError("flash.display.BitmapData.draw.blendMode",
+                "the admitted synchronous raster path currently supports normal blending");
+        const clip = clipRect === null ? null : rectangleValue(clipRect, "clipRect");
+        const a = matrix?.a ?? 1, b = matrix?.b ?? 0, c = matrix?.c ?? 0,
+            d = matrix?.d ?? 1, tx = matrix?.tx ?? 0, ty = matrix?.ty ?? 0;
+        const determinant = a * d - b * c;
+        if (!Number.isFinite(determinant) || determinant === 0) return;
+
+        const sourceBitmap = isFlashBitmapData(source) ? bitmapDataValue(source, "source") : null;
+        const sourcePixels = sourceBitmap
+            ? (source === this ? sourceBitmap.pixels!.slice() : sourceBitmap.pixels!)
+            : null;
+        const rasterCommands = sourceBitmap ? null : isFlashDisplayObject(source)
+            ? flashGraphicsRasterCommands(source.graphics as import("./Graphics").Graphics)
+            : null;
+        if (!sourceBitmap && !rasterCommands) throw new TypeError("source must be an IBitmapDrawable");
+
+        const left = clip ? Math.max(0, Math.floor(clip.x)) : 0;
+        const top = clip ? Math.max(0, Math.floor(clip.y)) : 0;
+        const right = clip ? Math.min(destination.width, Math.ceil(clip.x + clip.width)) : destination.width;
+        const bottom = clip ? Math.min(destination.height, Math.ceil(clip.y + clip.height)) : destination.height;
+        let changed = false;
+        for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+            const localX = x + 0.5 - tx, localY = y + 0.5 - ty;
+            const sourceX = (d * localX - c * localY) / determinant;
+            const sourceY = (-b * localX + a * localY) / determinant;
+            let pixel: number | null = null;
+            if (sourceBitmap) {
+                if (sourceX >= 0 && sourceY >= 0 && sourceX < sourceBitmap.width && sourceY < sourceBitmap.height) {
+                    if (!smoothing) {
+                        const sx = Math.floor(sourceX), sy = Math.floor(sourceY);
+                        pixel = unpremultiplyPixel(sourcePixels![sy * sourceBitmap.width + sx]);
+                    } else {
+                        const sampleX = Math.max(0, Math.min(sourceBitmap.width - 1, sourceX - 0.5));
+                        const sampleY = Math.max(0, Math.min(sourceBitmap.height - 1, sourceY - 0.5));
+                        const x0 = Math.floor(sampleX);
+                        const y0 = Math.floor(sampleY);
+                        const x1 = Math.max(0, Math.min(sourceBitmap.width - 1, x0 + 1));
+                        const y1 = Math.max(0, Math.min(sourceBitmap.height - 1, y0 + 1));
+                        const amountX = sampleX - x0;
+                        const amountY = sampleY - y0;
+                        const p00 = sourcePixels![y0 * sourceBitmap.width + x0];
+                        const p10 = sourcePixels![y0 * sourceBitmap.width + x1];
+                        const p01 = sourcePixels![y1 * sourceBitmap.width + x0];
+                        const p11 = sourcePixels![y1 * sourceBitmap.width + x1];
+                        const interpolate = (shift: number): number => {
+                            const top = ((p00 >>> shift) & 0xff) * (1 - amountX) +
+                                ((p10 >>> shift) & 0xff) * amountX;
+                            const bottom = ((p01 >>> shift) & 0xff) * (1 - amountX) +
+                                ((p11 >>> shift) & 0xff) * amountX;
+                            return Math.round(top * (1 - amountY) + bottom * amountY);
+                        };
+                        pixel = unpremultiplyPixel(((interpolate(24) << 24) | (interpolate(16) << 16) |
+                            (interpolate(8) << 8) | interpolate(0)) >>> 0);
+                    }
+                }
+            } else {
+                for (let index = rasterCommands!.length - 1; index >= 0; index--) {
+                    const command = rasterCommands![index];
+                    const minX = Math.min(command.x, command.x + command.width);
+                    const maxX = Math.max(command.x, command.x + command.width);
+                    const minY = Math.min(command.y, command.y + command.height);
+                    const maxY = Math.max(command.y, command.y + command.height);
+                    if (sourceX >= minX && sourceX < maxX && sourceY >= minY && sourceY < maxY) {
+                        pixel = sampleFlashGraphicsFill(command.fill, sourceX, sourceY);
+                        break;
+                    }
+                }
+            }
+            if (pixel === null) continue;
+            if (colorTransform) {
+                const channel = (shift: number, multiplier: number, offset: number): number =>
+                    Math.max(0, Math.min(255, Math.round(((pixel! >>> shift) & 0xff) * multiplier + offset)));
+                pixel = ((channel(24, colorTransform.alphaMultiplier, colorTransform.alphaOffset) << 24) |
+                    (channel(16, colorTransform.redMultiplier, colorTransform.redOffset) << 16) |
+                    (channel(8, colorTransform.greenMultiplier, colorTransform.greenOffset) << 8) |
+                    channel(0, colorTransform.blueMultiplier, colorTransform.blueOffset)) >>> 0;
+            }
+            const index = y * destination.width + x;
+            let output = composite(premultiplyPixel(pixel, true), destination.pixels![index]);
+            if (!destination.transparent) output = (output | 0xff000000) >>> 0;
+            destination.pixels![index] = output;
             changed = true;
         }
         if (changed) markDirty(destination);

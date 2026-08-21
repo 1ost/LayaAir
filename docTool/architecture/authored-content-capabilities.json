@@ -601,7 +601,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(type?: string, colors?: readonly number[], alphas?: readonly number[], ratios?: readonly number[], matrix?: unknown, spreadMethod?: string, interpolationMethod?: string, focalPointRatio?: number) => never"
+              "signature": "(type?: string, colors?: readonly number[], alphas?: readonly number[], ratios?: readonly number[], matrix?: unknown, spreadMethod?: string, interpolationMethod?: string, focalPointRatio?: number) => void"
             },
             {
               "abstract": false,
@@ -1022,7 +1022,7 @@
             "new (): Graphics"
           ],
           "indexSignatures": [],
-          "sha256": "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92",
+          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
           "heritage": [
             {
               "kind": "extends",
@@ -18618,6 +18618,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "draw",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(source: IBitmapDrawable, matrix?: Matrix | null, colorTransform?: ColorTransform | null, blendMode?: string | null, clipRect?: Rectangle | null, smoothing?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "fillRect",
               "scope": "instance",
               "optional": false,
@@ -18737,7 +18746,7 @@
             "new (width: number, height: number, transparent?: boolean, fillColor?: number): BitmapData"
           ],
           "indexSignatures": [],
-          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
+          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
           "heritage": []
         },
         {
@@ -19008,21 +19017,21 @@
           "export": "acquireBitmapDataTexture",
           "kind": "function",
           "signature": "(value: BitmapData, smoothing: boolean) => Texture | null",
-          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "isFlashBitmapData",
           "kind": "function",
           "signature": "(value: unknown) => value is BitmapData",
-          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "observeBitmapData",
           "kind": "function",
           "signature": "(value: BitmapData, listener: InvalidationListener) => () => void",
-          "sha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObject.ts",
@@ -19057,7 +19066,7 @@
           "export": "isFlashGraphics",
           "kind": "function",
           "signature": "(value: unknown) => value is Graphics",
-          "sha256": "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
+          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
         },
         {
           "module": "src/layaAir/flash/display/IBitmapDrawable.ts",
@@ -22589,13 +22598,34 @@
           "kind": "function",
           "signature": "(value: unknown) => value is Stage",
           "sha256": "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1"
+        },
+        {
+          "module": "src/layaAir/flash/display/Graphics.ts",
+          "export": "FlashGraphicsRasterCommand",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+        },
+        {
+          "module": "src/layaAir/flash/display/Graphics.ts",
+          "export": "flashGraphicsRasterCommands",
+          "kind": "function",
+          "signature": "(value: Graphics) => readonly FlashGraphicsRasterCommand[]",
+          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+        },
+        {
+          "module": "src/layaAir/flash/display/Graphics.ts",
+          "export": "sampleFlashGraphicsFill",
+          "kind": "function",
+          "signature": "(fill: Paint, x: number, y: number) => number",
+          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "9c781258154a8328c79ec3404813c1770415cdfd8c4c94f33ca6843476525dd9",
+          "sha256": "62539714c1c25ef81a9c383225032ff966238d257c3a1a045124eda0de968324",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -22603,24 +22633,24 @@
             "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e",
             "2708bec5931d56f474e03eeb7dfe4ad61e327c8364f52a41c5aa65225ecde313",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
-            "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
+            "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
             "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "9211d03bc7ce9096658a1f1b87c84625fead0c9b8c50d6a1de569d6b7ee3ad18",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
+            "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99",
-            "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c",
-            "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
+            "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
         }
       ]

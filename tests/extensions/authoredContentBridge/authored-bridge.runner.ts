@@ -66,7 +66,7 @@ import {
     Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent, UncaughtErrorEvent,
     AntiAliasType, CSMSettings, GridFitType,
     StaticText, TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
-    Point, Rectangle, Bitmap, BitmapData, BitmapDataChannel, PixelSnapping, type IBitmapDrawable,
+    Point, Rectangle, Matrix, Bitmap, BitmapData, BitmapDataChannel, GradientType, PixelSnapping, type IBitmapDrawable,
     UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
@@ -347,7 +347,7 @@ test("Point and Rectangle retain Flash value semantics on native Laya values", (
 });
 
 test("BitmapData preserves premultiplied Flash pixel, clipping and disposal semantics", () => {
-    assert.equal("draw" in BitmapData.prototype, false);
+    assert.equal("draw" in BitmapData.prototype, true);
     assert.equal("applyFilter" in BitmapData.prototype, false);
     assert.equal(Object.isFrozen(BitmapDataChannel), true);
     assert.equal(Object.isFrozen(PixelSnapping), true);
@@ -361,6 +361,25 @@ test("BitmapData preserves premultiplied Flash pixel, clipping and disposal sema
     const explicitUndefined = new BitmapData(1, 1, undefined, 0x00112233);
     assert.equal(explicitUndefined.transparent, false);
     assert.equal(explicitUndefined.getPixel32(0, 0), 0xff112233);
+    const gradientMatrix = new Matrix();
+    gradientMatrix.createGradientBox(4, 1);
+    const gradientShape = new Shape();
+    gradientShape.graphics.beginGradientFill(GradientType.LINEAR,
+        [0x000000, 0xffffff], [1, 1], [0, 255], gradientMatrix);
+    gradientShape.graphics.drawRect(0, 0, 4, 1);
+    gradientShape.graphics.endFill();
+    const gradientPixels = new BitmapData(4, 1, false, 0xff000000);
+    gradientPixels.draw(gradientShape);
+    const palette = [0, 1, 2, 3].map(index => gradientPixels.getPixel(index, 0));
+    assert.equal(palette.every((value, index) => index === 0 || value > palette[index - 1]), true);
+    assert.equal(palette[0] < 0x404040, true);
+    assert.equal(palette[3] > 0xbfbfbf, true);
+    const scaleSource = new BitmapData(2, 1, false, 0xff000000);
+    scaleSource.setPixel32(1, 0, 0xffffffff);
+    const scaled = new BitmapData(4, 1, false, 0xff000000);
+    scaled.draw(scaleSource, new Matrix(2, 0, 0, 1), null, null, null, true);
+    assert.deepEqual([0, 1, 2, 3].map(index => scaled.getPixel(index, 0)),
+        [0x000000, 0x404040, 0xbfbfbf, 0xffffff]);
     assert.equal(new BitmapData("10.5" as unknown as number, 1).width, 10);
     assert.throws(() => new BitmapData(0, 1), RangeError);
     assert.throws(() => new BitmapData(1, -1), RangeError);
@@ -921,7 +940,14 @@ test("Flash Graphics owns state while preserving native command storage", () => 
     graphics.endFill();
     assert.equal(graphics.cmds.length, 1, "retained arrow path becomes one filled native polygon");
     assert.throws(() => graphics.lineStyle(2, 0, 1, true), UnsupportedFlashFeatureError);
-    assert.throws(() => graphics.beginGradientFill(), UnsupportedFlashFeatureError);
+    const gradient = new Matrix();
+    gradient.createGradientBox(8, 1);
+    graphics.beginGradientFill(GradientType.LINEAR, [0, 0xffffff], [1, 1], [0, 255], gradient);
+    graphics.drawRect(0, 0, 8, 1);
+    graphics.endFill();
+    assert.equal(graphics.cmds.length, 9, "linear gradient rectangle emits eight native strips");
+    assert.throws(() => graphics.beginGradientFill("radial", [0, 0xffffff], [1, 1], [0, 255], gradient),
+        UnsupportedFlashFeatureError);
 
     const fabricated = Object.create(Graphics.prototype) as Graphics;
     const proxy = new Proxy(new Graphics(), {});

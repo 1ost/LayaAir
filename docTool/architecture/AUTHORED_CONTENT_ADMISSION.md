@@ -88,9 +88,15 @@ The admitted bitmap bridge owns CPU pixel storage, native texture publication,
 `BitmapDataChannel`, and the source-visible `Bitmap` state surface. It does not
 claim a renderer implementation for `PixelSnapping.AUTO` or
 `PixelSnapping.ALWAYS`; those members remain a downstream mapping hold until a
-Bitmap-specific transform-aware render path exists. `BitmapData.draw` and
-`BitmapData.applyFilter` are intentionally absent rather than throw-only
-mapped stubs, and remain separate raster/filter workpacks.
+Bitmap-specific transform-aware render path exists. `BitmapData.draw` owns the
+synchronous CPU-backed retained raster path for BitmapData sources and
+source-shaped rectangular Graphics fills, including the admitted linear
+RGB/pad gradient rectangle used by palette generation and bilinear BitmapData
+scaling used by retained nine-slice rendering. Unsupported blend,
+radial/spread/interpolation, and non-rectangular gradient surfaces
+fail visibly and remain separate raster workpacks. `BitmapData.applyFilter` is
+intentionally absent rather than a throw-only mapped stub and remains a
+separate filter workpack.
 
 Run the mandatory gates with:
 

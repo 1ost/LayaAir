@@ -44,7 +44,7 @@
       "predicateExport": "isFlashBitmapData",
       "predicateSignature": "(value: unknown) => value is BitmapData",
       "heritageClosure": [],
-      "moduleSha256": "331ba1f88d33d4693ac8620b98e7282d23c80fdefeb6035d43600b0706df759b"
+      "moduleSha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
     },
     {
       "sourceQName": "flash.display.DisplayObject",
@@ -89,7 +89,7 @@
       "predicateExport": "isFlashGraphics",
       "predicateSignature": "(value: unknown) => value is Graphics",
       "heritageClosure": [],
-      "moduleSha256": "fae90799dc32791529017a32fdef9521b8a45c42e455da6f53ad11547b1adc92"
+      "moduleSha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
     },
     {
       "sourceQName": "flash.display.InteractiveObject",
