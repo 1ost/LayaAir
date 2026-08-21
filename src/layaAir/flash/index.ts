@@ -85,6 +85,8 @@ export { Endian } from "./utils/Endian";
 export { ByteArray } from "./utils/ByteArray";
 export type { ByteArrayInput, ZlibDecompressionHost } from "./utils/ByteArray";
 export { Dictionary } from "./utils/Dictionary";
+export { XML, XMLList } from "./utils/XML";
+export type { FlashXmlInput, FlashXmlChild } from "./utils/XML";
 export { MouseCursor } from "./ui/MouseCursor";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";

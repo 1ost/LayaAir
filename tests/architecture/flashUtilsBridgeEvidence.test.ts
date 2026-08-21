@@ -4,6 +4,7 @@ import type { Timer, isFlashTimer } from "../../src/layaAir/flash/utils/Timer.ts
 import type { Endian } from "../../src/layaAir/flash/utils/Endian.ts";
 import type { ByteArray, ByteArrayInput, ZlibDecompressionHost } from "../../src/layaAir/flash/utils/ByteArray.ts";
 import type { Dictionary } from "../../src/layaAir/flash/utils/Dictionary.ts";
+import type { XML, XMLList, FlashXmlInput, FlashXmlChild } from "../../src/layaAir/flash/utils/XML.ts";
 import type { encodeNativeObject, decodeNativeObject } from "../../src/layaAir/flash/utils/NativeObjectCodec.ts";
 import type { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from
     "../../src/layaAir/flash/utils/TimerFunctions.ts";
@@ -34,6 +35,10 @@ test("Flash utils compiler and runtime surface", () => {
         typeof Endian,
         typeof ByteArray,
         typeof Dictionary,
+        typeof XML,
+        typeof XMLList,
+        FlashXmlInput,
+        FlashXmlChild,
         typeof encodeNativeObject,
         typeof decodeNativeObject,
         typeof getTimer,

@@ -97,15 +97,15 @@
     {
       "requestedQName": "flash.utils.XML",
       "sourceQName": "XML",
-      "disposition": "invalid-qname-split-consumers",
-      "layaExport": "src/layaAir/flash/xml/StrictXmlDocument.ts#StrictXmlDocument",
+      "disposition": "native-mutable-xml-bridge",
+      "layaExport": "src/layaAir/flash/utils/XML.ts#XML",
       "sourceEvidence": [
         "game-client/tapplication_main/src/Foundation/Resources/Streamization/XML/TResourceUnstreamizerXml.as:35",
         "game-client/tapplication_main/src/Foundation/Resources/XML/TXml.as:11",
         "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:15"
       ],
-      "reason": "XML is a global AS3/E4X type, not flash.utils.XML. Immutable resource consumers may use StrictXmlDocument; describeType XML and E4X mutation/query consumers require application-specific native rewrites. LayaAir must not export an E4X facade.",
-      "hold": "Any consumer needing mutation, XMLList, namespaces, E4X operators, or serialization beyond the admitted strict resource parser remains HOLD until that exact behavior has a native owner and evidence."
+      "reason": "LayaAir owns a mutable parent-aware XML and XMLList bridge with explicit native traversal, attribute, mutation, ByteArray construction, and serialization operations while the immutable StrictXmlDocument remains the resource parser authority.",
+      "hold": "Consumers remain HOLD until E4X syntax is lowered to the authenticated explicit XML and XMLList methods and focused tests prove their exact queries and mutations."
     }
   ]
 }

@@ -17,7 +17,7 @@ const expected = new Map([
     ["flash.utils.getQualifiedClassName", "native-reflection-bridge"],
     ["flash.utils.getQualifiedSuperclassName", "native-reflection-bridge"],
     ["flash.utils.Proxy", "native-application-rewrite"],
-    ["flash.utils.XML", "invalid-qname-split-consumers"],
+    ["flash.utils.XML", "native-mutable-xml-bridge"],
 ]);
 
 function exportedNames(source) {
@@ -56,22 +56,28 @@ test("the public Flash barrel excludes registry and reflection-only utility subp
     for (const name of [
         "describeType", "flash_proxy", "getDefinitionByName",
         "getQualifiedClassName",
-        "getQualifiedSuperclassName", "Proxy", "XML",
+        "getQualifiedSuperclassName", "Proxy",
     ]) assert.equal(exports.has(name), false, `${name} must remain a native-port disposition`);
     assert.equal(exports.has("FilterProxy"), true);
     assert.equal(exports.has("Dictionary"), true);
     assert.equal(exports.has("StrictXmlDocument"), true);
+    assert.equal(exports.has("XML"), true);
+    assert.equal(exports.has("XMLList"), true);
 });
 
 test("the admitted replacements stay explicit and avoid Proxy or E4X machinery", () => {
     const filterProxy = fs.readFileSync(path.join(root, "src/layaAir/flash/filters/FilterProxy.ts"), "utf8");
     const strictXml = fs.readFileSync(path.join(root, "src/layaAir/flash/xml/StrictXmlDocument.ts"), "utf8");
+    const mutableXml = fs.readFileSync(path.join(root, "src/layaAir/flash/utils/XML.ts"), "utf8");
     const describeType = fs.readFileSync(path.join(root, "src/layaAir/flash/utils/describeType.ts"), "utf8");
     const qualifiedName = fs.readFileSync(path.join(root, "src/layaAir/flash/utils/getQualifiedClassName.ts"), "utf8");
     const authoredBootstrap = fs.readFileSync(path.join(root, "src/extensions/authoredContent/runtime/bootstrap.ts"), "utf8");
     assert.doesNotMatch(filterProxy, /new\s+globalThis\.Proxy|extends\s+Proxy|\[\s*flash_proxy\s*\]/);
     assert.match(filterProxy, /export\s+class\s+FilterProxy\b/);
     assert.match(strictXml, /export\s+class\s+StrictXmlDocument\b/);
+    assert.match(mutableXml, /export\s+class\s+XML\b/);
+    assert.match(mutableXml, /export\s+class\s+XMLList\b/);
+    assert.doesNotMatch(mutableXml, /new\s+globalThis\.Proxy|extends\s+Proxy|flash_proxy|AVM|QName|cinit/);
     assert.match(describeType, /export\s+function\s+describeType\b/);
     assert.match(qualifiedName, /export\s+function\s+getQualifiedClassName\b/);
     assert.doesNotMatch(strictXml,

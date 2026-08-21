@@ -38690,6 +38690,332 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/utils/XML.ts",
+          "export": "XML",
+          "kind": "class",
+          "signature": "typeof XML",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "appendChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(child: FlashXmlChild) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "attribute",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string) => string | undefined"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "childIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "children",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name?: string) => XMLList"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => XML"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "descendants",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name?: string) => XMLList"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "elements",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name?: string) => XMLList"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasAttribute",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string, value?: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasSimpleContent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "nodeName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => XML | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "prependChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(child: FlashXmlChild) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "remove",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeAttribute",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(child: XML) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeChildAt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(index: number) => XML | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "setAttribute",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string, value: unknown) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "textContent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toXMLString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "from",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(source: FlashXmlInput) => XML"
+            }
+          ],
+          "constructors": [
+            "new (source: FlashXmlInput): XML"
+          ],
+          "indexSignatures": [],
+          "sha256": "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/utils/XML.ts",
+          "export": "XMLList",
+          "kind": "class",
+          "signature": "typeof XMLList",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "__@iterator@2104",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Iterator<XML>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "at",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(index: number) => XML | undefined"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "attribute",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string) => readonly string[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "descendants",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name?: string) => XMLList"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "filter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(predicate: (node: XML, index: number) => boolean) => XMLList"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "item",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(index: number) => XML | undefined"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "length",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toArray",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => readonly XML[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toXMLString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            }
+          ],
+          "constructors": [
+            "new (items?: Iterable<XML>): XMLList"
+          ],
+          "indexSignatures": [],
+          "sha256": "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
+          "heritage": [
+            {
+              "kind": "implements",
+              "signature": "Iterable<XML>"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/utils/XML.ts",
+          "export": "FlashXmlInput",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b"
+        },
+        {
+          "module": "src/layaAir/flash/utils/XML.ts",
+          "export": "FlashXmlChild",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b"
+        },
+        {
           "module": "src/layaAir/flash/utils/NativeObjectCodec.ts",
           "export": "encodeNativeObject",
           "kind": "function",
@@ -38799,9 +39125,29 @@
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "54bf4757839a17d9090bd9905010e524433da88fe4a8aec1fb7e1a1b7cbeb654",
+          "sha256": "db40cf5033494b7b833947cdf2abad6984714cae47a2ae81e238d3d10aaafc77",
           "capability": "api.flash.utils",
           "covers": [
+            "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
+            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
+            "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
+            "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
+            "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
+            "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
+            "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501",
+            "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
+            "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
+            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
+          ]
+        },
+        {
+          "path": "tests/flashXml/flash-xml.runner.ts",
+          "test": "Mutable Flash XML and XMLList behavior",
+          "sha256": "d16103ff58da366a3cbd77ba39270f8211f221b2da6b275b7d6df3b0d5687be5",
+          "capability": "api.flash.utils",
+          "covers": [
+            "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
