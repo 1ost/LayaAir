@@ -5,8 +5,10 @@ import { ILaya } from "../../src/layaAir/ILaya";
 import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
+import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
 import { Shape } from "../../src/layaAir/flash/display/Shape";
+import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
 import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
 import "../../src/layaAir/laya/ModuleDef";
 
@@ -63,4 +65,19 @@ test("DisplayObject exposes retained Flash cache, geometry and collision behavio
     assert.equal(left.hitTestPoint(9, 21), false);
     assert.equal(left.hitTestPoint(11, 21, true), true);
     assert.throws(() => left.hitTestObject({} as DisplayObject), /requires a DisplayObject/);
+});
+
+test("native HTML links project to source-shaped TextEvent.LINK", () => {
+    const field = new DisplayObject();
+    let received: TextEvent | null = null;
+    field.addEventListener(TextEvent.LINK, event => { received = event as TextEvent; });
+
+    field.event(LayaEvent.LINK, "event:hero:17");
+
+    assert.ok(received instanceof TextEvent);
+    assert.equal(received.type, TextEvent.LINK);
+    assert.equal(received.text, "event:hero:17");
+    assert.equal(received.bubbles, true);
+    assert.equal(received.cancelable, false);
+    assert.equal(received.target, field);
 });

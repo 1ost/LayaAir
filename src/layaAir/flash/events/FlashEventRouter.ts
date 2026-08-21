@@ -62,6 +62,7 @@ const FLASH_TO_LAYA_EVENT: Readonly<Record<string, string>> = Object.freeze({
     [Event.ENTER_FRAME]: LayaEvent.FRAME,
     [FocusEvent.FOCUS_IN]: LayaEvent.FOCUS,
     [FocusEvent.FOCUS_OUT]: LayaEvent.BLUR,
+    [TextEvent.LINK]: LayaEvent.LINK,
     [TextEvent.TEXT_INPUT]: LayaEvent.BEFORE_INPUT,
     [IMEEvent.IME_COMPOSITION]: LayaEvent.COMPOSITION_UPDATE,
     [KeyboardEvent.KEY_DOWN]: LayaEvent.KEY_DOWN,
@@ -249,6 +250,11 @@ export class FlashEventRouter {
             if (beforeInputText === undefined)
                 throw new TypeError("Native textInput requires exact before-input text");
             return new TextEvent(type, true, true, beforeInputText);
+        }
+        if (type === TextEvent.LINK) {
+            if (typeof value !== "string")
+                throw new TypeError("Native link requires an exact string payload");
+            return new TextEvent(type, true, false, value);
         }
         if (type === IMEEvent.IME_COMPOSITION) {
             const data = readTextCompositionPayload(value, target, LayaEvent.COMPOSITION_UPDATE);
