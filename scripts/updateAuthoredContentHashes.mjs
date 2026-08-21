@@ -115,6 +115,7 @@ for (const [module, exported, kind = "class"] of [
     ["src/layaAir/flash/display/InteractiveObject.ts", "isFlashInteractiveObject", "function"],
     ["src/layaAir/flash/display/InteractiveObject.ts", "resolveFlashFocusOwner", "function"],
     ["src/layaAir/flash/display/MovieClip.ts", "FlashFrameReference", "type"],
+    ["src/layaAir/flash/display/MovieClip.ts", "FlashFrameScript", "type"],
     ["src/layaAir/flash/display/MovieClip.ts", "isFlashMovieClip", "function"],
     ["src/layaAir/flash/display/Loader.ts", "Loader"],
     ["src/layaAir/flash/display/Loader.ts", "isFlashLoader", "function"],

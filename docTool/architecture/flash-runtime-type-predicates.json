@@ -158,7 +158,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "9211d03bc7ce9096658a1f1b87c84625fead0c9b8c50d6a1de569d6b7ee3ad18"
+      "moduleSha256": "32b6c87378aecd3dbe8367c9feefeeac93fe69482c49fbd1be9615b3f943a5a7"
     },
     {
       "sourceQName": "flash.display.Shape",

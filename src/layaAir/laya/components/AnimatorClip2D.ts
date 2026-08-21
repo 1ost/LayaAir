@@ -202,6 +202,7 @@ export class AnimatorClip2D extends Animator2DBase {
 
         const animatorState = this._clipState;
         const playStateInfo = this._playStateInfo;
+        const previousFrame = this._currentFrameIndex();
         const speed = this.speed * animatorState.speed;
         const finish = playStateInfo._finish;
 
@@ -226,6 +227,18 @@ export class AnimatorClip2D extends Animator2DBase {
             this._updateEventScript(animatorState, playStateInfo);
         }
         this._updateStateFinish(animatorState, playStateInfo);
+        const forward = (elapsed >= 0) !== this._isPlayBack;
+        const owner = this.owner as Node & {
+            _onAnimatorClip2DFrame?(animator: AnimatorClip2D, previousFrame: number, currentFrame: number, forward: boolean): void;
+        };
+        owner._onAnimatorClip2DFrame?.(this, previousFrame, this._currentFrameIndex(), forward);
+    }
+
+    private _currentFrameIndex(): number {
+        const clip = this._clip!;
+        const totalFrames = Math.max(1, Math.round(clip._duration * clip._frameRate));
+        return Math.min(totalFrames - 1, Math.max(0,
+            Math.floor(this._playStateInfo._normalizedPlayTime * totalFrames + 1e-7)));
     }
 
     onDestroy(): void {

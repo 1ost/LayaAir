@@ -61,6 +61,8 @@
     "test:flash-loader:types": "tsc -p tests/flashLoader/tsconfig.json --pretty false",
     "test:flash-display-object": "node --max-old-space-size=512 scripts/testFlashDisplayObject.mjs",
     "test:flash-display-object:types": "tsc -p tests/flashDisplayObject/tsconfig.json --pretty false",
+    "test:flash-movie-clip-frame-scripts": "node --max-old-space-size=512 scripts/testFlashMovieClipFrameScripts.mjs",
+    "test:flash-movie-clip-frame-scripts:types": "tsc -p tests/flashMovieClipFrameScripts/tsconfig.json --pretty false",
     "test:flash-display-root": "node scripts/testFlashDisplayRoot.mjs",
     "test:flash-display-root:types": "tsc -p tests/flashDisplayRoot/tsconfig.json --pretty false",
     "test:flash-stage": "node --max-old-space-size=512 scripts/testFlashStage.mjs",

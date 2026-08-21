@@ -16,7 +16,7 @@ import type {
 import type { IBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { isFlashBitmapDrawable } from "../../src/layaAir/flash/display/IBitmapDrawable.ts";
 import type { InteractiveObject, isFlashInteractiveObject, resolveFlashFocusOwner } from "../../src/layaAir/flash/display/InteractiveObject.ts";
-import type { FlashFrameReference, MovieClip, isFlashMovieClip } from "../../src/layaAir/flash/display/MovieClip.ts";
+import type { FlashFrameReference, FlashFrameScript, MovieClip, isFlashMovieClip } from "../../src/layaAir/flash/display/MovieClip.ts";
 import type { AnimatorClip2DTimeline, NativeMovieClipTimeline } from "../../src/layaAir/flash/display/NativeMovieClipTimeline.ts";
 import type { SimpleButton, isFlashSimpleButton } from "../../src/layaAir/flash/display/SimpleButton.ts";
 import type { Shape, isFlashShape } from "../../src/layaAir/flash/display/Shape.ts";
@@ -54,7 +54,7 @@ test("Flash display bridge compiler surface", () => {
         FlashGraphicsRasterCommand, typeof flashGraphicsRasterCommands,
         typeof isFlashGraphics, typeof sampleFlashGraphicsFill,
         typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,
-        FlashFrameReference, typeof isFlashMovieClip, NativeMovieClipTimeline,
+        FlashFrameReference, FlashFrameScript, typeof isFlashMovieClip, NativeMovieClipTimeline,
         typeof isFlashShape, typeof isFlashSimpleButton, typeof isFlashSprite,
         typeof isFlashLoader, typeof isFlashLoaderInfo] extends readonly unknown[] ? boolean : never));
 });

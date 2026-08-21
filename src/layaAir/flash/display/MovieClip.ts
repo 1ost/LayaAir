@@ -4,6 +4,7 @@ import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureE
 import { Sprite } from "./Sprite";
 
 export type FlashFrameReference = number | string;
+export type FlashFrameScript = (() => void) | null;
 const LABEL = /^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/;
 const MOVIE_CLIP_VALUES = new WeakSet<object>();
 
@@ -40,7 +41,9 @@ function validateLabels(value: Record<string, number>, totalFrames: number): Rea
 /** Flash timeline source API over an authenticated native AnimatorClip2D/.mc. */
 export class MovieClip extends Sprite {
     private _nativeTimeline: NativeMovieClipTimeline | null = null;
+    private _nativeAnimator: AnimatorClip2D | null = null;
     private _flashFrameLabels: Readonly<Record<string, number>> = Object.freeze(Object.create(null));
+    private readonly _frameScripts = new Map<number, Exclude<FlashFrameScript, null>>();
 
     constructor() {
         super();
@@ -60,10 +63,12 @@ export class MovieClip extends Sprite {
     play(): void { const timeline = this._requireTimeline(); timeline.play(timeline.currentFrame); }
     stop(): void { this._requireTimeline().stop(); }
     gotoAndPlay(frame: FlashFrameReference, scene: string | null = null): void {
-        this._rejectScene(scene); const timeline = this._requireTimeline(); timeline.play(this._resolveFrame(frame, timeline));
+        this._rejectScene(scene); const timeline = this._requireTimeline();
+        const resolved = this._resolveFrame(frame, timeline); timeline.play(resolved); this._runFrameScript(resolved);
     }
     gotoAndStop(frame: FlashFrameReference, scene: string | null = null): void {
-        this._rejectScene(scene); const timeline = this._requireTimeline(); timeline.gotoAndStop(this._resolveFrame(frame, timeline));
+        this._rejectScene(scene); const timeline = this._requireTimeline();
+        const resolved = this._resolveFrame(frame, timeline); timeline.gotoAndStop(resolved); this._runFrameScript(resolved);
     }
     nextFrame(): void { this.gotoAndStop(Math.min(this.currentFrame + 1, this.totalFrames)); }
     prevFrame(): void { this.gotoAndStop(Math.max(this.currentFrame - 1, 1)); }
@@ -71,21 +76,59 @@ export class MovieClip extends Sprite {
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
         const animator = this.getComponent(AnimatorClip2D);
-        if (animator?.clip) this._bindNativeTimeline(new AnimatorClip2DTimeline(animator), this._flashFrameLabels as Record<string, number>);
+        if (animator?.clip) {
+            this._bindNativeTimeline(new AnimatorClip2DTimeline(animator), this._flashFrameLabels as Record<string, number>);
+            this._nativeAnimator = animator;
+        }
     }
 
     /** @internal Completes native timeline binding after component properties deserialize. */
     _onAnimatorClip2DReady(animator: AnimatorClip2D): void {
-        if (animator.owner === this && animator.clip)
+        if (animator.owner === this && animator.clip) {
             this._bindNativeTimeline(new AnimatorClip2DTimeline(animator), this._flashFrameLabels as Record<string, number>);
+            this._nativeAnimator = animator;
+        }
+    }
+
+    /** @internal Receives authenticated native frame transitions after pose application. */
+    _onAnimatorClip2DFrame(animator: AnimatorClip2D, previousFrame: number, currentFrame: number, forward: boolean): void {
+        if (animator !== this._nativeAnimator || this._nativeTimeline === null)
+            return;
+        this._runFrameTransition(previousFrame, currentFrame, forward);
     }
 
     /** @internal Atomic native factory seam: validation completes before state replacement. */
     _bindNativeTimeline(timeline: NativeMovieClipTimeline, labels: Record<string, number> = {}): void {
         validateTimeline(timeline);
         const validatedLabels = validateLabels(labels, timeline.totalFrames);
+        for (const frame of this._frameScripts.keys()) {
+            if (frame >= timeline.totalFrames)
+                throw new RangeError(`MovieClip frame script ${frame} is outside 0..${timeline.totalFrames - 1}`);
+        }
         this._nativeTimeline = timeline;
+        this._nativeAnimator = null;
         this._flashFrameLabels = validatedLabels;
+    }
+
+    addFrameScript(frame: number, script: FlashFrameScript, ...additional: Array<number | FlashFrameScript>): void {
+        const values: Array<number | FlashFrameScript> = [frame, script, ...additional];
+        if (values.length % 2 !== 0)
+            throw new TypeError("MovieClip.addFrameScript requires frame/callback pairs");
+        const timeline = this._requireTimeline();
+        const changes: Array<readonly [number, FlashFrameScript]> = [];
+        for (let index = 0; index < values.length; index += 2) {
+            const target = values[index];
+            const callback = values[index + 1];
+            if (!Number.isSafeInteger(target) || (target as number) < 0 || (target as number) >= timeline.totalFrames)
+                throw new RangeError(`MovieClip frame script ${String(target)} is outside 0..${timeline.totalFrames - 1}`);
+            if (callback !== null && typeof callback !== "function")
+                throw new TypeError("MovieClip frame script must be a function or null");
+            changes.push([target as number, callback as FlashFrameScript]);
+        }
+        for (const [target, callback] of changes) {
+            if (callback === null) this._frameScripts.delete(target);
+            else this._frameScripts.set(target, callback);
+        }
     }
 
     private _resolveFrame(frame: FlashFrameReference, timeline: NativeMovieClipTimeline): number {
@@ -102,7 +145,43 @@ export class MovieClip extends Sprite {
         validateTimeline(this._nativeTimeline);
         return this._nativeTimeline;
     }
+    private _runFrameScript(frame: number): void {
+        const callback = this._frameScripts.get(frame);
+        if (callback) callback();
+    }
+    private _runFrameTransition(previousFrame: number, currentFrame: number, forward: boolean): void {
+        const timeline = this._requireTimeline();
+        if (previousFrame === currentFrame) return;
+        const frames: number[] = [];
+        if (forward) {
+            if (currentFrame > previousFrame) {
+                for (let frame = previousFrame + 1; frame <= currentFrame; frame++) frames.push(frame);
+            } else {
+                for (let frame = previousFrame + 1; frame < timeline.totalFrames; frame++) frames.push(frame);
+                for (let frame = 0; frame <= currentFrame; frame++) frames.push(frame);
+            }
+        } else {
+            if (currentFrame < previousFrame) {
+                for (let frame = previousFrame - 1; frame >= currentFrame; frame--) frames.push(frame);
+            } else {
+                for (let frame = previousFrame - 1; frame >= 0; frame--) frames.push(frame);
+                for (let frame = timeline.totalFrames - 1; frame >= currentFrame; frame--) frames.push(frame);
+            }
+        }
+        for (const frame of frames) {
+            this._runFrameScript(frame);
+            if (this._nativeTimeline !== timeline || timeline.currentFrame !== currentFrame)
+                break;
+        }
+    }
     private _rejectScene(scene: string | null): void {
         if (scene !== null) throw new UnsupportedFlashFeatureError("flash.display.MovieClip.sceneNavigation", "Flash scenes are not admitted");
+    }
+
+    override destroy(destroyChild = true): void {
+        this._frameScripts.clear();
+        this._nativeTimeline = null;
+        this._nativeAnimator = null;
+        super.destroy(destroyChild);
     }
 }

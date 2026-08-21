@@ -36,7 +36,7 @@ export { FlashDisplayRootBoundary } from "./display/FlashDisplayRootBoundary";
 export type { FlashDisplayRootLease, FlashDisplayRootOptions } from "./display/FlashDisplayRootBoundary";
 export { SimpleButton } from "./display/SimpleButton";
 export { MovieClip } from "./display/MovieClip";
-export type { FlashFrameReference } from "./display/MovieClip";
+export type { FlashFrameReference, FlashFrameScript } from "./display/MovieClip";
 export * from "./display/NativeMovieClipTimeline";
 export { Bitmap } from "./display/Bitmap";
 export { BitmapData } from "./display/BitmapData";
