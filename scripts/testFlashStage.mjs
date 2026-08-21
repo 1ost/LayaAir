@@ -22,7 +22,9 @@ try {
         sourcemap: "inline",
         logLevel: "warning",
     });
-    const result = spawnSync(process.execPath, ["--test", output], { cwd: root, stdio: "inherit" });
+    const result = spawnSync(process.execPath,
+        ["--max-old-space-size=512", "--test", output],
+        { cwd: root, stdio: "inherit", timeout: 30_000 });
     if (result.error) throw result.error;
     process.exitCode = result.status ?? 1;
 } finally {

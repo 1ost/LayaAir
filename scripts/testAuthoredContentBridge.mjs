@@ -6,6 +6,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
+if (process.env.LAYA_RUN_AUTHORED_BRIDGE_LEAK_DIAGNOSTIC !== "1") {
+    throw new Error(
+        "test:authored-bridge is quarantined after repeat Node OOMs; " +
+        "run focused bridge gates instead. Set LAYA_RUN_AUTHORED_BRIDGE_LEAK_DIAGNOSTIC=1 only for isolated leak diagnosis."
+    );
+}
+
 const root = fileURLToPath(new URL("../", import.meta.url));
 const temporaryDirectory = await mkdtemp(join(tmpdir(), "layaair-authored-bridge-tests-"));
 const output = join(temporaryDirectory, "authored-bridge.test.mjs");
@@ -30,9 +37,10 @@ try {
         logLevel: "warning"
     });
 
-    const result = spawnSync(process.execPath, ["--test", output], {
+    const result = spawnSync(process.execPath, ["--max-old-space-size=512", "--test", output], {
         cwd: root,
-        stdio: "inherit"
+        stdio: "inherit",
+        timeout: 30_000,
     });
     if (result.error)
         throw result.error;

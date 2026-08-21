@@ -151,6 +151,8 @@ test("Loader publishes authenticated native content through stable LoaderInfo", 
 
     assert.deepEqual(sequence, [Event.OPEN, "progress:25", "progress:80", "progress:100", Event.INIT, Event.COMPLETE]);
     assert.equal(loader.content, candidate!);
+    assert.equal(candidate!.loaderInfo, info,
+        "published Loader content exposes the exact owning LoaderInfo");
     assert.equal(info.url, "ui/loading.swf");
     assert.equal(info.contentType, "application/x-laya-hierarchy");
     assert.equal(prefab.createCalls, 1);

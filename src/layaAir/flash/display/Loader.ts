@@ -14,7 +14,9 @@ import { IOErrorEvent } from "../events/IOErrorEvent";
 import { ProgressEvent } from "../events/ProgressEvent";
 import { SecurityErrorEvent } from "../events/SecurityErrorEvent";
 import { URLRequest, snapshotNativeLoaderRequest } from "../net/URLRequest";
-import { DisplayObject, isFlashDisplayObject } from "./DisplayObject";
+import {
+    bindDisplayObjectLoaderInfo, DisplayObject, isFlashDisplayObject, unbindDisplayObjectLoaderInfo
+} from "./DisplayObject";
 import { DisplayObjectContainer } from "./DisplayObjectContainer";
 
 const LOADER_VALUES = new WeakSet<object>();
@@ -310,6 +312,7 @@ function progressLoaderInfo(value: LoaderInfo, bytesLoaded: number): void {
 
 function publishLoaderInfo(value: LoaderInfo, content: DisplayObject): void {
     const state = readLoaderInfo(value);
+    bindDisplayObjectLoaderInfo(content, value);
     state.content = content;
     state.width = Number.isFinite(content.width) ? content.width : 0;
     state.height = Number.isFinite(content.height) ? content.height : 0;
@@ -317,6 +320,7 @@ function publishLoaderInfo(value: LoaderInfo, content: DisplayObject): void {
 
 function clearLoaderInfo(value: LoaderInfo): void {
     const state = readLoaderInfo(value);
+    if (state.content !== null) unbindDisplayObjectLoaderInfo(state.content, value);
     state.bytesLoaded = 0;
     state.bytesTotal = 0;
     state.content = null;

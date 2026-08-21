@@ -6,21 +6,23 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const temporaryDirectory = await mkdtemp(join(tmpdir(), "layaair-flash-loader-tests-"));
-const output = join(temporaryDirectory, "flash-loader.test.mjs");
+const temporaryDirectory = await mkdtemp(join(tmpdir(), "layaair-flash-display-object-tests-"));
+const output = join(temporaryDirectory, "flash-display-object.test.mjs");
 
 try {
     await build({
-        entryPoints: [join(root, "tests/flashLoader/flash-loader.runner.ts")],
+        entryPoints: [join(root, "tests/flashDisplayObject/flash-display-object.runner.ts")],
         outfile: output,
         bundle: true,
         platform: "node",
         format: "esm",
         target: "node18",
-        banner: { js: "globalThis.window = globalThis.window ?? globalThis; globalThis.document = globalThis.document ?? {}; Object.defineProperty(globalThis, 'navigator', { value: globalThis.navigator ?? {}, configurable: true });" },
+        banner: {
+            js: "globalThis.window = globalThis.window ?? globalThis; globalThis.document = globalThis.document ?? {};"
+        },
         loader: { ".glsl": "text", ".vs": "text", ".fs": "text" },
         sourcemap: "inline",
-        logLevel: "warning"
+        logLevel: "warning",
     });
     const result = spawnSync(process.execPath,
         ["--max-old-space-size=512", "--test", output],
