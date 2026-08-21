@@ -83,6 +83,7 @@ export { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from "
 export { Endian } from "./utils/Endian";
 export { ByteArray } from "./utils/ByteArray";
 export type { ByteArrayInput, ZlibDecompressionHost } from "./utils/ByteArray";
+export { Dictionary } from "./utils/Dictionary";
 export { MouseCursor } from "./ui/MouseCursor";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";

@@ -11,7 +11,7 @@ const index = fs.readFileSync(path.join(root, "src/layaAir/flash/index.ts"), "ut
 
 const expected = new Map([
     ["flash.utils.describeType", "native-reflection-bridge"],
-    ["flash.utils.Dictionary", "transpile-to-native-collection"],
+    ["flash.utils.Dictionary", "native-collection-bridge"],
     ["flash.utils.flash_proxy", "native-application-rewrite"],
     ["flash.utils.getDefinitionByName", "native-reflection-bridge"],
     ["flash.utils.getQualifiedClassName", "native-reflection-bridge"],
@@ -54,11 +54,12 @@ test("source-used utility dispositions are exhaustive and fail closed", () => {
 test("the public Flash barrel excludes registry and reflection-only utility subpaths", () => {
     const exports = exportedNames(index);
     for (const name of [
-        "describeType", "Dictionary", "flash_proxy", "getDefinitionByName",
+        "describeType", "flash_proxy", "getDefinitionByName",
         "getQualifiedClassName",
         "getQualifiedSuperclassName", "Proxy", "XML",
     ]) assert.equal(exports.has(name), false, `${name} must remain a native-port disposition`);
     assert.equal(exports.has("FilterProxy"), true);
+    assert.equal(exports.has("Dictionary"), true);
     assert.equal(exports.has("StrictXmlDocument"), true);
 });
 

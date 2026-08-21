@@ -4,10 +4,76 @@ import { deflateSync } from "node:zlib";
 import { OutOfRangeError } from "../../src/layaAir/laya/utils/Error";
 import { ByteArray, ZlibDecompressionHost } from "../../src/layaAir/flash/utils/ByteArray";
 import { Endian } from "../../src/layaAir/flash/utils/Endian";
+import { Dictionary } from "../../src/layaAir/flash/utils/Dictionary";
+import { registerClassAlias } from "../../src/layaAir/flash/net/ClassAlias";
 
 function bytesOf(value: ByteArray): number[] {
     return [...new Uint8Array(value.buffer)];
 }
+
+test("ByteArray object I/O preserves graphs, native values, and registered class identity", () => {
+    class Example {
+        value = 0;
+    }
+    registerClassAlias("tests::Example", Example);
+    const instance = new Example();
+    instance.value = 42;
+    const source: Record<string, unknown> = {
+        instance,
+        values: [undefined, NaN, Infinity, -Infinity, -0],
+        when: new Date(123456789),
+    };
+    source.self = source;
+
+    const bytes = new ByteArray();
+    bytes.writeObject(source);
+    const firstEncoding = bytesOf(bytes);
+    bytes.position = 0;
+    const decoded = bytes.readObject() as typeof source;
+    assert.notEqual(decoded, source);
+    assert.equal(decoded.self, decoded);
+    assert.ok(decoded.instance instanceof Example);
+    assert.equal((decoded.instance as Example).value, 42);
+    assert.deepEqual((decoded.values as unknown[]).slice(0, 4), [undefined, NaN, Infinity, -Infinity]);
+    assert.ok(Object.is((decoded.values as unknown[])[4], -0));
+    assert.equal((decoded.when as Date).getTime(), 123456789);
+    assert.equal(bytes.bytesAvailable, 0);
+
+    const repeated = new ByteArray();
+    repeated.writeObject(source);
+    assert.deepEqual(bytesOf(repeated), firstEncoding, "the same graph must encode deterministically");
+});
+
+test("ByteArray object reads fail atomically for truncated or malformed payloads", () => {
+    const truncated = new ByteArray(new Uint8Array([0, 0, 0, 4, 1, 2]));
+    assert.throws(() => truncated.readObject(), OutOfRangeError);
+    assert.equal(truncated.position, 0);
+
+    const malformed = new ByteArray(new Uint8Array([0, 0, 0, 2, 0xff, 0xff]));
+    assert.throws(() => malformed.readObject(), TypeError);
+    assert.equal(malformed.position, 0);
+});
+
+test("Dictionary preserves key identity, ordering, updates, deletion, and weak-key admission", () => {
+    const first = {};
+    const second = {};
+    const dictionary = new Dictionary<object | string, number>();
+    dictionary.set(first, 1).set("named", 2).set(second, 3).set(first, 4);
+    assert.deepEqual([...dictionary.entries()], [[first, 4], ["named", 2], [second, 3]]);
+    assert.equal(dictionary.size, 3);
+    assert.equal(dictionary.get({}), undefined);
+    assert.equal(dictionary.delete("named"), true);
+    assert.equal(dictionary.delete("named"), false);
+    assert.deepEqual([...dictionary.keys()], [first, second]);
+    dictionary.clear();
+    assert.equal(dictionary.size, 0);
+
+    const weak = new Dictionary<object | number, string>(true);
+    weak.set(first, "object").set(7, "primitive");
+    assert.equal(weak.weakKeys, true);
+    assert.deepEqual([...weak.values()], ["object", "primitive"]);
+    assert.equal(weak.get(first), "object");
+});
 
 test("ByteArray defaults to big endian and round-trips both byte orders", () => {
     const bytes = new ByteArray();

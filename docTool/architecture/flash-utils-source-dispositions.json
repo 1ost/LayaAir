@@ -21,15 +21,15 @@
     {
       "requestedQName": "flash.utils.Dictionary",
       "sourceQName": "flash.utils.Dictionary",
-      "disposition": "transpile-to-native-collection",
-      "layaExport": null,
+      "disposition": "native-collection-bridge",
+      "layaExport": "src/layaAir/flash/utils/Dictionary.ts#Dictionary",
       "sourceEvidence": [
         "game-client/tapplication_main/src/Foundation/Container/THashMap.as:3",
         "game-client/tmain/src/Processors_Mini/Accessories/TProcessorMiniLoad.as:21",
         "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:4"
       ],
-      "reason": "Strong dictionaries lower to Map and proven weak object-key dictionaries lower to WeakMap. Direct property access, delete, membership, and enumeration must be lowered by the transpiler or rewritten by the application owner; a second runtime Dictionary would duplicate that authority.",
-      "hold": "Any ambiguous receiver, alias, key kind, weak-key enumeration, or escaping aggregate remains HOLD at transpilation/application ownership instead of falling back to a compatibility object."
+      "reason": "LayaAir provides one reusable identity-keyed collection bridge with explicit native operations, insertion-ordered enumeration, and WeakMap/WeakRef authority for requested weak object keys.",
+      "hold": "Consumers remain HOLD until property syntax is lowered to the bridge's explicit operations and focused tests prove key identity, enumeration, and weak-key requirements."
     },
     {
       "requestedQName": "flash.utils.flash_proxy",

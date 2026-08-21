@@ -1,6 +1,7 @@
 import { Byte } from "../../laya/utils/Byte";
 import { OutOfRangeError } from "../../laya/utils/Error";
 import { Endian } from "./Endian";
+import { decodeNativeObject, encodeNativeObject } from "./NativeObjectCodec";
 
 export type ByteArrayInput = ArrayBufferLike | ArrayBufferView;
 
@@ -295,6 +296,33 @@ export class ByteArray {
         if (encoded.length > 0)
             this._bytes.writeArrayBuffer(encoded.buffer.slice(0, encoded.length));
         this._mutationGeneration++;
+    }
+
+    /** Writes one deterministic native object graph at the current cursor. */
+    writeObject(value: unknown): void {
+        const payload = encodeNativeObject(value);
+        if (payload.byteLength > 0xffffffff)
+            throw new RangeError("ByteArray object payload exceeds the maximum length");
+        checkedRangeEnd(this._bytes.pos, payload.byteLength + 4, "ByteArray.writeObject range");
+        const header = new Uint8Array(4);
+        new DataView(header.buffer).setUint32(0, payload.byteLength, false);
+        this._bytes.writeArrayBuffer(header.buffer);
+        this._bytes.writeArrayBuffer(payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength));
+        this._mutationGeneration++;
+    }
+
+    /** Reads one object graph atomically; malformed payloads leave the cursor unchanged. */
+    readObject(): unknown {
+        const start = this._bytes.pos;
+        if (this.bytesAvailable < 4) throw new OutOfRangeError(start + 4);
+        const source = new Uint8Array(this._bytes.buffer);
+        const length = new DataView(source.buffer, source.byteOffset + start, 4).getUint32(0, false);
+        const end = start + 4 + length;
+        if (end > this._bytes.length) throw new OutOfRangeError(end);
+        const value = decodeNativeObject(source.subarray(start + 4, end));
+        this._bytes.pos = end;
+        this._mutationGeneration++;
+        return value;
     }
 
     /**

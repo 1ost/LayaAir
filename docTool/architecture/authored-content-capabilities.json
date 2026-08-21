@@ -37674,6 +37674,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "readObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "readUnsignedByte",
               "scope": "instance",
               "optional": false,
@@ -37764,6 +37773,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: unknown) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeShort",
               "scope": "instance",
               "optional": false,
@@ -37802,7 +37820,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de",
+          "sha256": "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501",
           "heritage": []
         },
         {
@@ -37810,14 +37828,132 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de"
+          "sha256": "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de"
+          "sha256": "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501"
+        },
+        {
+          "module": "src/layaAir/flash/utils/Dictionary.ts",
+          "export": "Dictionary",
+          "kind": "class",
+          "signature": "typeof Dictionary",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clear",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "delete",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: K) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "entries",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => IterableIterator<[K, V]>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "get",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: K) => V | undefined"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "has",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: K) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "keys",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => IterableIterator<K>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "set",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: K, value: V) => this"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "size",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "values",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => IterableIterator<V>"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "weakKeys",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "boolean"
+            }
+          ],
+          "constructors": [
+            "new <K = unknown, V = unknown>(weakKeys?: boolean): Dictionary<K, V>"
+          ],
+          "indexSignatures": [],
+          "sha256": "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/utils/NativeObjectCodec.ts",
+          "export": "encodeNativeObject",
+          "kind": "function",
+          "signature": "(value: unknown) => Uint8Array",
+          "sha256": "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05"
+        },
+        {
+          "module": "src/layaAir/flash/utils/NativeObjectCodec.ts",
+          "export": "decodeNativeObject",
+          "kind": "function",
+          "signature": "(bytes: Uint8Array) => unknown",
+          "sha256": "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05"
         },
         {
           "module": "src/layaAir/flash/utils/getQualifiedClassName.ts",
@@ -37915,14 +38051,16 @@
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "db9f703440b66bbe211f84900f18ee13fe53af9b4c40dd083ef2d314aa29f8cb",
+          "sha256": "54bf4757839a17d9090bd9905010e524433da88fe4a8aec1fb7e1a1b7cbeb654",
           "capability": "api.flash.utils",
           "covers": [
-            "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
+            "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
+            "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501",
             "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
