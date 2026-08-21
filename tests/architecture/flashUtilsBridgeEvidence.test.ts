@@ -5,6 +5,16 @@ import type { Endian } from "../../src/layaAir/flash/utils/Endian.ts";
 import type { ByteArray, ByteArrayInput, ZlibDecompressionHost } from "../../src/layaAir/flash/utils/ByteArray.ts";
 import type { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from
     "../../src/layaAir/flash/utils/TimerFunctions.ts";
+import type { getQualifiedClassName } from "../../src/layaAir/flash/utils/getQualifiedClassName.ts";
+import type {
+    describeType,
+    FlashAccessorAccess,
+    FlashAccessorDescription,
+    FlashMethodDescription,
+    FlashTypeDescription,
+    FlashTypeMembers,
+    FlashVariableDescription,
+} from "../../src/layaAir/flash/utils/describeType.ts";
 
 test("Flash utils compiler and runtime surface", () => {
     assert.ok(true as boolean satisfies (ByteArrayInput extends ByteArrayInput
@@ -17,7 +27,24 @@ test("Flash utils compiler and runtime surface", () => {
                                 ? typeof setTimeout extends unknown
                                     ? typeof clearTimeout extends unknown
                                         ? typeof setInterval extends unknown
-                                            ? typeof clearInterval extends unknown ? boolean : never
+                                            ? typeof clearInterval extends unknown
+                                                ? typeof getQualifiedClassName extends unknown
+                                                    ? typeof describeType extends unknown
+                                                        ? FlashAccessorAccess extends FlashAccessorAccess
+                                                            ? FlashAccessorDescription extends FlashAccessorDescription
+                                                                ? FlashMethodDescription extends FlashMethodDescription
+                                                                    ? FlashTypeDescription extends FlashTypeDescription
+                                                                        ? FlashTypeMembers extends FlashTypeMembers
+                                                                            ? FlashVariableDescription extends FlashVariableDescription
+                                                                                ? boolean : never
+                                                                            : never
+                                                                        : never
+                                                                    : never
+                                                                : never
+                                                            : never
+                                                        : never
+                                                    : never
+                                                : never
                                             : never
                                         : never
                                     : never

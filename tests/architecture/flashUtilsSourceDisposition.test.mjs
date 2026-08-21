@@ -10,11 +10,11 @@ const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
 const index = fs.readFileSync(path.join(root, "src/layaAir/flash/index.ts"), "utf8");
 
 const expected = new Map([
-    ["flash.utils.describeType", "native-application-rewrite"],
+    ["flash.utils.describeType", "native-reflection-bridge"],
     ["flash.utils.Dictionary", "transpile-to-native-collection"],
     ["flash.utils.flash_proxy", "native-application-rewrite"],
     ["flash.utils.getDefinitionByName", "explicit-native-registry"],
-    ["flash.utils.getQualifiedClassName", "stable-native-identifier"],
+    ["flash.utils.getQualifiedClassName", "native-reflection-bridge"],
     ["flash.utils.getQualifiedSuperclassName", "explicit-native-metadata"],
     ["flash.utils.Proxy", "native-application-rewrite"],
     ["flash.utils.XML", "invalid-qname-split-consumers"],
@@ -51,11 +51,12 @@ test("source-used utility dispositions are exhaustive and fail closed", () => {
     }
 });
 
-test("the public Flash barrel does not recreate AVM utility APIs", () => {
+test("the public Flash barrel excludes registry and reflection-only utility subpaths", () => {
     const exports = exportedNames(index);
     for (const name of [
         "describeType", "Dictionary", "flash_proxy", "getDefinitionByName",
-        "getQualifiedClassName", "getQualifiedSuperclassName", "Proxy", "XML",
+        "getQualifiedClassName",
+        "getQualifiedSuperclassName", "Proxy", "XML",
     ]) assert.equal(exports.has(name), false, `${name} must remain a native-port disposition`);
     assert.equal(exports.has("FilterProxy"), true);
     assert.equal(exports.has("StrictXmlDocument"), true);
@@ -64,10 +65,14 @@ test("the public Flash barrel does not recreate AVM utility APIs", () => {
 test("the admitted replacements stay explicit and avoid Proxy or E4X machinery", () => {
     const filterProxy = fs.readFileSync(path.join(root, "src/layaAir/flash/filters/FilterProxy.ts"), "utf8");
     const strictXml = fs.readFileSync(path.join(root, "src/layaAir/flash/xml/StrictXmlDocument.ts"), "utf8");
+    const describeType = fs.readFileSync(path.join(root, "src/layaAir/flash/utils/describeType.ts"), "utf8");
+    const qualifiedName = fs.readFileSync(path.join(root, "src/layaAir/flash/utils/getQualifiedClassName.ts"), "utf8");
     const authoredBootstrap = fs.readFileSync(path.join(root, "src/extensions/authoredContent/runtime/bootstrap.ts"), "utf8");
     assert.doesNotMatch(filterProxy, /new\s+globalThis\.Proxy|extends\s+Proxy|\[\s*flash_proxy\s*\]/);
     assert.match(filterProxy, /export\s+class\s+FilterProxy\b/);
     assert.match(strictXml, /export\s+class\s+StrictXmlDocument\b/);
+    assert.match(describeType, /export\s+function\s+describeType\b/);
+    assert.match(qualifiedName, /export\s+function\s+getQualifiedClassName\b/);
     assert.doesNotMatch(strictXml,
         /export\s+(?:class|interface|type|const|function)\s+(?:XMLList|E4X|describeType)\b/);
     assert.match(authoredBootstrap, /export\s+function\s+registerAuthoredContentRuntime\b/);

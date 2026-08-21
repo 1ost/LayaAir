@@ -37620,11 +37620,47 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "readBoolean",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readByte",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "readBytes",
               "scope": "instance",
               "optional": false,
               "readonly": false,
               "signature": "(bytes: ByteArray, offset?: number, length?: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readDouble",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readFloat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
             },
             {
               "abstract": false,
@@ -37710,6 +37746,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeDouble",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeInt",
               "scope": "instance",
               "optional": false,
@@ -37757,7 +37802,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2",
+          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de",
           "heritage": []
         },
         {
@@ -37765,25 +37810,83 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2"
+          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2"
+          "sha256": "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de"
+        },
+        {
+          "module": "src/layaAir/flash/utils/getQualifiedClassName.ts",
+          "export": "getQualifiedClassName",
+          "kind": "function",
+          "signature": "(value: unknown) => string",
+          "sha256": "a56b58c379863ee28aa6a674b24cf0af3d9f116a9d83a7cdb3afc1f27037a95c"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "describeType",
+          "kind": "function",
+          "signature": "(value: unknown) => FlashTypeDescription",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashAccessorAccess",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashAccessorDescription",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashMethodDescription",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashTypeDescription",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashTypeMembers",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
+        },
+        {
+          "module": "src/layaAir/flash/utils/describeType.ts",
+          "export": "FlashVariableDescription",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "f04563b45a76a2523cde4950d9854364ffbeb5af1050e22c3f62bed4bab66de4",
+          "sha256": "9d33ff646645a4895054f8da0f7e52def92ab7bdde112bf968987fe309442efe",
           "capability": "api.flash.utils",
           "covers": [
-            "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2",
+            "4be4c3324e63e9cbdb1a10f163bf673b097d76bca796538da0db91145bb329de",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
+            "74377363fc90b2fd3aa3133bc4a16062a3466e8209af1d529cc89bf65b7c2005",
+            "a56b58c379863ee28aa6a674b24cf0af3d9f116a9d83a7cdb3afc1f27037a95c",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
           ]

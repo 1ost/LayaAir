@@ -421,6 +421,14 @@ Object.assign(utilsCapability, {
         ["src/layaAir/flash/utils/ByteArray.ts", "ByteArray", "class"],
         ["src/layaAir/flash/utils/ByteArray.ts", "ByteArrayInput", "type"],
         ["src/layaAir/flash/utils/ByteArray.ts", "ZlibDecompressionHost", "interface"],
+        ["src/layaAir/flash/utils/getQualifiedClassName.ts", "getQualifiedClassName", "function"],
+        ["src/layaAir/flash/utils/describeType.ts", "describeType", "function"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashAccessorAccess", "type"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashAccessorDescription", "interface"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashMethodDescription", "interface"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashTypeDescription", "interface"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashTypeMembers", "interface"],
+        ["src/layaAir/flash/utils/describeType.ts", "FlashVariableDescription", "interface"],
     ].map(([module, exported, kind]) =>
         utilsCapability.obligations?.find(item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "",

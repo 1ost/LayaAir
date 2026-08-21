@@ -8,15 +8,15 @@
     {
       "requestedQName": "flash.utils.describeType",
       "sourceQName": "flash.utils.describeType",
-      "disposition": "native-application-rewrite",
-      "layaExport": null,
+      "disposition": "native-reflection-bridge",
+      "layaExport": "src/layaAir/flash/utils/describeType.ts#describeType",
       "sourceEvidence": [
         "game-client/tapplication_main/src/Logging/TLogger.as:189",
         "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:35",
         "game-client/tapplication_main/src/ghostcat/util/core/AbstractUtil.as:42"
       ],
-      "reason": "The consumers request AVM trait XML. Port logging to ordinary value inspection and port reflective consumers to explicit native metadata; do not synthesize trait XML.",
-      "hold": "The three consumers remain HOLD until their owning application workpacks remove describeType and focused tests prove the replacement metadata or logging behavior."
+      "reason": "LayaAir provides one reusable native reflection descriptor for effective methods, accessors, variables, ownership, and class/factory surfaces without synthesizing AVM traits or E4X XML.",
+      "hold": "Consumers remain HOLD until they use the authenticated immutable descriptor and focused tests prove their exact reflection or logging behavior without E4X queries."
     },
     {
       "requestedQName": "flash.utils.Dictionary",
@@ -60,15 +60,15 @@
     {
       "requestedQName": "flash.utils.getQualifiedClassName",
       "sourceQName": "flash.utils.getQualifiedClassName",
-      "disposition": "stable-native-identifier",
-      "layaExport": null,
+      "disposition": "native-reflection-bridge",
+      "layaExport": "src/layaAir/flash/utils/getQualifiedClassName.ts#getQualifiedClassName",
       "sourceEvidence": [
         "game-client/tapplication_main/src/Foundation/Utilities/TUtilityReflection.as:147",
         "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:57",
         "game-client/tapplication_main/src/util/BrowserConsole.as:73"
       ],
-      "reason": "AVM-qualified runtime names are not stable JavaScript identities. Diagnostic consumers use explicit labels or constructor names; lookup consumers use registry-owned stable IDs.",
-      "hold": "Lookup and persistence consumers remain HOLD until their stable identifier contract is explicit; diagnostics may port directly without an engine bridge."
+      "reason": "LayaAir provides one reusable stable native identifier bridge using explicit registered names when present and constructor identities otherwise, without recreating a universal AVM definition registry.",
+      "hold": "Lookup and persistence consumers remain HOLD until required package-qualified identifiers are explicitly registered; diagnostics may consume the bridge directly."
     },
     {
       "requestedQName": "flash.utils.getQualifiedSuperclassName",

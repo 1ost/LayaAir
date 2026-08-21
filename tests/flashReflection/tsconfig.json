@@ -1,0 +1,19 @@
+{
+  "extends": "../../src/layaAir/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ES2022",
+    "composite": false,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "./**/*.ts",
+    "../../src/layaAir/**/*",
+    "../../node_modules/@webgpu/types",
+    "../../node_modules/minigame-api-typings/**/*.d.ts"
+  ]
+}
