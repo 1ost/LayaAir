@@ -138,6 +138,24 @@ export class ByteArray {
         return value;
     }
 
+    readInt(): number {
+        const value = this._bytes.readInt32();
+        this._mutationGeneration++;
+        return value;
+    }
+
+    readUTF(): string {
+        const start = this._bytes.pos;
+        try {
+            const value = this._bytes.readUTFString();
+            this._mutationGeneration++;
+            return value;
+        } catch (error) {
+            this._bytes.pos = start;
+            throw error;
+        }
+    }
+
     /**
      * Reads bytes from the current cursor into `bytes` at `offset`. A zero
      * length consumes all remaining bytes. A distinct destination's cursor is
@@ -225,6 +243,11 @@ export class ByteArray {
         this._mutationGeneration++;
     }
 
+    writeInt(value: number): void {
+        this._bytes.writeInt32(value);
+        this._mutationGeneration++;
+    }
+
     writeUnsignedInt(value: number): void {
         this._bytes.writeUint32(value);
         this._mutationGeneration++;
@@ -234,6 +257,17 @@ export class ByteArray {
         const start = this._bytes.pos;
         this._bytes.writeUTFBytes(value);
         if (this._bytes.pos !== start) this._mutationGeneration++;
+    }
+
+    writeUTF(value: string): void {
+        const encoded = new Byte();
+        encoded.writeUTFBytes(value);
+        if (encoded.length > 0xffff)
+            throw new RangeError("ByteArray.writeUTF encoded value exceeds 65535 bytes");
+        this._bytes.writeUint16(encoded.length);
+        if (encoded.length > 0)
+            this._bytes.writeArrayBuffer(encoded.buffer.slice(0, encoded.length));
+        this._mutationGeneration++;
     }
 
     /**

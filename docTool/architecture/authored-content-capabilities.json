@@ -37629,6 +37629,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "readInt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "readUnsignedByte",
               "scope": "instance",
               "optional": false,
@@ -37652,6 +37661,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "readUTF",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
             },
             {
               "abstract": false,
@@ -37692,6 +37710,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeInt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeShort",
               "scope": "instance",
               "optional": false,
@@ -37710,6 +37737,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeUTF",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: string) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeUTFBytes",
               "scope": "instance",
               "optional": false,
@@ -37721,7 +37757,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81",
+          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2",
           "heritage": []
         },
         {
@@ -37729,14 +37765,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81"
+          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81"
+          "sha256": "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2"
         }
       ],
       "evidence": [
@@ -37746,7 +37782,7 @@
           "sha256": "f04563b45a76a2523cde4950d9854364ffbeb5af1050e22c3f62bed4bab66de4",
           "capability": "api.flash.utils",
           "covers": [
-            "021dc7b4f34fcebaaa30b3ed2f9ce37010fb47ecfb797f515e326b4af91aac81",
+            "4b093c861c347f0e6b884b9ab5eb46d5133154e34466ca917ff8c0991a12f7d2",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"

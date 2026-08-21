@@ -64,6 +64,41 @@ test("UTF-8 and unsigned bytes preserve exact cursor movement", () => {
     assert.equal(bytes.position, 1);
 });
 
+test("signed integers and length-prefixed UTF strings round-trip in both byte orders", () => {
+    const bytes = new ByteArray();
+    bytes.writeInt(-0x1234567);
+    bytes.writeUTF("Squad \u9ed1\u5d0e \ud83d\udc3b");
+    assert.deepEqual(bytesOf(bytes).slice(0, 4), [0xfe, 0xdc, 0xba, 0x99]);
+    bytes.position = 0;
+    assert.equal(bytes.readInt(), -0x1234567);
+    assert.equal(bytes.readUTF(), "Squad \u9ed1\u5d0e \ud83d\udc3b");
+    assert.equal(bytes.bytesAvailable, 0);
+
+    bytes.clear();
+    bytes.endian = Endian.LITTLE_ENDIAN;
+    bytes.writeInt(-0x1234567);
+    bytes.writeUTF("\u20ac");
+    assert.deepEqual(bytesOf(bytes), [0x99, 0xba, 0xdc, 0xfe, 0x03, 0x00, 0xe2, 0x82, 0xac]);
+    bytes.position = 0;
+    assert.equal(bytes.readInt(), -0x1234567);
+    assert.equal(bytes.readUTF(), "\u20ac");
+});
+
+test("length-prefixed UTF failures do not partially consume the stream", () => {
+    const truncated = new ByteArray(new Uint8Array([0, 3, 0x41]));
+    assert.throws(() => truncated.readUTF(), OutOfRangeError);
+    assert.equal(truncated.position, 0, "the length prefix and payload form one failed read");
+
+    const missingPrefix = new ByteArray(new Uint8Array([0]));
+    assert.throws(() => missingPrefix.readUTF(), OutOfRangeError);
+    assert.equal(missingPrefix.position, 0, "a missing length prefix must not advance the cursor");
+
+    const oversized = new ByteArray(new Uint8Array([9, 8]));
+    oversized.position = 1;
+    assert.throws(() => oversized.writeUTF("a".repeat(0x10000)), RangeError);
+    assert.deepEqual([bytesOf(oversized), oversized.position], [[9, 8], 1]);
+});
+
 test("readUTFBytes preserves NUL and never overreads a truncated multibyte slice", () => {
     const nul = new ByteArray(new Uint8Array([0x41, 0x00, 0x42]));
     assert.equal(nul.readUTFBytes(3), "A\0B");
