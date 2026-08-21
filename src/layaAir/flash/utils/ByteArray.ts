@@ -148,6 +148,12 @@ export class ByteArray {
         return value;
     }
 
+    readDouble(): number {
+        const value = this._bytes.readFloat64();
+        this._mutationGeneration++;
+        return value;
+    }
+
     readUTF(): string {
         const start = this._bytes.pos;
         try {
@@ -249,6 +255,11 @@ export class ByteArray {
 
     writeInt(value: number): void {
         this._bytes.writeInt32(value);
+        this._mutationGeneration++;
+    }
+
+    writeDouble(value: number): void {
+        this._bytes.writeFloat64(value);
         this._mutationGeneration++;
     }
 

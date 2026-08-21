@@ -95,6 +95,32 @@ test("signed integers and length-prefixed UTF strings round-trip in both byte or
     assert.equal(bytes.readUTF(), "\u20ac");
 });
 
+test("double values preserve IEEE-754 bytes, endian, cursor, and special numbers", () => {
+    const bytes = new ByteArray();
+    bytes.writeDouble(Math.PI);
+    assert.deepEqual(bytesOf(bytes), [0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18]);
+    bytes.position = 0;
+    assert.equal(bytes.readDouble(), Math.PI);
+    assert.deepEqual([bytes.position, bytes.bytesAvailable], [8, 0]);
+
+    bytes.clear();
+    bytes.endian = Endian.LITTLE_ENDIAN;
+    bytes.writeDouble(Math.PI);
+    assert.deepEqual(bytesOf(bytes), [0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40]);
+    bytes.writeDouble(-0);
+    bytes.writeDouble(Infinity);
+    bytes.writeDouble(NaN);
+    bytes.position = 0;
+    assert.equal(bytes.readDouble(), Math.PI);
+    assert.equal(Object.is(bytes.readDouble(), -0), true);
+    assert.equal(bytes.readDouble(), Infinity);
+    assert.equal(Number.isNaN(bytes.readDouble()), true);
+
+    const truncated = new ByteArray(new Uint8Array(7));
+    assert.throws(() => truncated.readDouble(), OutOfRangeError);
+    assert.equal(truncated.position, 0, "a failed double read must not advance the cursor");
+});
+
 test("length-prefixed UTF failures do not partially consume the stream", () => {
     const truncated = new ByteArray(new Uint8Array([0, 3, 0x41]));
     assert.throws(() => truncated.readUTF(), OutOfRangeError);
