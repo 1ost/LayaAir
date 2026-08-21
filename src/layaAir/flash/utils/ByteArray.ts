@@ -126,6 +126,10 @@ export class ByteArray {
         return value;
     }
 
+    readBoolean(): boolean {
+        return this.readUnsignedByte() !== 0;
+    }
+
     readUnsignedShort(): number {
         const value = this._bytes.readUint16();
         this._mutationGeneration++;

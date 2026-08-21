@@ -50,6 +50,17 @@ test("cursor failures are stable and bytesAvailable never becomes negative", () 
     assert.throws(() => { bytes.length = 1.5; }, RangeError);
 });
 
+test("readBoolean consumes one byte and treats every nonzero value as true", () => {
+    const bytes = new ByteArray(new Uint8Array([0, 1, 2, 255]));
+    assert.deepEqual(
+        [bytes.readBoolean(), bytes.readBoolean(), bytes.readBoolean(), bytes.readBoolean()],
+        [false, true, true, true],
+    );
+    assert.deepEqual([bytes.position, bytes.bytesAvailable], [4, 0]);
+    assert.throws(() => bytes.readBoolean(), OutOfRangeError);
+    assert.equal(bytes.position, 4, "a failed Boolean read must not advance the cursor");
+});
+
 test("UTF-8 and unsigned bytes preserve exact cursor movement", () => {
     const bytes = new ByteArray();
     bytes.writeByte(-1);
