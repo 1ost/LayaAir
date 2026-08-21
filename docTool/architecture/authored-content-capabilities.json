@@ -2422,6 +2422,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "mouseEnabled",
               "scope": "instance",
@@ -4535,6 +4544,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -6682,6 +6700,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -8852,6 +8879,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -11121,6 +11157,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -13448,6 +13493,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "mouseEnabled",
               "scope": "instance",
@@ -15663,6 +15717,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "mouseEnabled",
               "scope": "instance",
@@ -17821,6 +17884,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -21271,6 +21343,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -31894,6 +31975,15 @@
             },
             {
               "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "mouseEnabled",
               "scope": "instance",
@@ -35013,6 +35103,15 @@
               "optional": false,
               "readonly": false,
               "signature": "Material"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "mouseChildren",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,

@@ -611,20 +611,22 @@ export class InputManager {
         if (!editing && sp.hitTestPrior && !sp.mouseThrough && sp != this._stage && !this.hitTest(sp, x, y))
             return null;
 
-        for (let i = sp._children.length - 1; i > -1; i--) {
-            let child = sp._children[i];
-            let childEditing = editing || child._getBit(NodeFlags.EDITING_NODE);
-            //只有接受交互事件的，才进行处理
-            if (!child._destroyed
-                && child._nodeType !== 1
-                && (childEditing ? (!child.hasHideFlag(HideFlags.HideInHierarchy) || child.mouseThrough)
-                    : (child._mouseState === 2 || child._mouseState === 0 && child._getBit(NodeFlags.CHECK_INPUT) || InputManager._previewFlag))
-                && child._struct.enabled) {
-                _tempPoint.setTo(x, y);
-                child.fromParentPoint(_tempPoint);
-                let ret = this.getSpriteUnderPoint(child, _tempPoint.x, _tempPoint.y);
-                if (ret)
-                    return ret;
+        if (sp.mouseChildren) {
+            for (let i = sp._children.length - 1; i > -1; i--) {
+                let child = sp._children[i];
+                let childEditing = editing || child._getBit(NodeFlags.EDITING_NODE);
+                //只有接受交互事件的，才进行处理
+                if (!child._destroyed
+                    && child._nodeType !== 1
+                    && (childEditing ? (!child.hasHideFlag(HideFlags.HideInHierarchy) || child.mouseThrough)
+                        : (child._mouseState === 2 || child._mouseState === 0 && child._getBit(NodeFlags.CHECK_INPUT) || InputManager._previewFlag))
+                    && child._struct.enabled) {
+                    _tempPoint.setTo(x, y);
+                    child.fromParentPoint(_tempPoint);
+                    let ret = this.getSpriteUnderPoint(child, _tempPoint.x, _tempPoint.y);
+                    if (ret)
+                        return ret;
+                }
             }
         }
 

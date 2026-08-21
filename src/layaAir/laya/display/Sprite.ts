@@ -200,6 +200,13 @@ export class Sprite extends Node {
      * 注意，可以设置skin属性的UI对象节点，当设置了skin纹理资源之后，该属性设置失效，纹理绘制的矩形区域内会始终处于不可穿透状态。除非不接受鼠标事件或设置不可点击区域。
      */
     mouseThrough: boolean = false;
+
+    /**
+     * @en Whether child display objects participate in mouse hit testing. When false,
+     * this sprite remains the hit target for points covered by its children.
+     * @zh 子显示对象是否参与鼠标命中测试。为 false 时，子对象覆盖的点以当前精灵为命中目标。
+     */
+    mouseChildren: boolean = true;
     /**
      * @en Under the premise that this object is non-penetrable (mouseThrough is false), specify whether the mouse event capture detection prioritizes this object.  When set to true, the object itself is prioritized for detection.  When set to false, the child objects are prioritized.
      * When set to prioritize the object itself, the object is detected first.  If the object itself is not hit, the detection is directly interrupted, indicating that no target was hit.  If the object itself is hit, further recursive detection is performed on its child objects until the final mouse hit target is found or all child nodes have been checked.

@@ -1440,6 +1440,24 @@ test("mouse local coordinates, buttons and roll non-bubbling semantics are proje
     assert.equal(parentRolls, 1);
 });
 
+test("DisplayObjectContainer mouseChildren redirects child hits to the container", () => {
+    const container = new DisplayObjectContainer();
+    const child = new DisplayObject();
+    container.size(40, 40);
+    child.size(20, 20);
+    container.mouseEnabled = true;
+    child.mouseEnabled = true;
+    container.addChild(child);
+    const manager = new InputManager();
+
+    assert.equal(container.mouseChildren, true);
+    assert.equal(manager.getSpriteUnderPoint(container as unknown as LayaSprite, 5, 5), child);
+    container.mouseChildren = false;
+    assert.equal(manager.getSpriteUnderPoint(container as unknown as LayaSprite, 5, 5), container);
+    container.mouseChildren = true;
+    assert.equal(manager.getSpriteUnderPoint(container as unknown as LayaSprite, 5, 5), child);
+});
+
 test("SimpleButton state replacement is clean and hitTestState drives InputManager", () => {
     const up = state(20, 10), over = state(20, 10), down = state(20, 10), hit = state(20, 10);
     const button = new SimpleButton(up, over, down, hit);
