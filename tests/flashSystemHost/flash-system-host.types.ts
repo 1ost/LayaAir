@@ -4,12 +4,16 @@ import type { NativeExternalInterfaceHost, NativeExternalInterfaceHostLease }
     from "../../src/layaAir/flash/external/ExternalInterface";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
 import { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy";
+import { Security } from "../../src/layaAir/flash/system/Security";
 import { System } from "../../src/layaAir/flash/system/System";
 import type { NativeSystemHost, NativeSystemHostLease } from "../../src/layaAir/flash/system/System";
 
 const version: string = Capabilities.version;
 const debugging: boolean = Capabilities.isDebugger;
 const policy: string = ImageDecodingPolicy.ON_LOAD;
+const sandbox: string = Security.sandboxType;
+Security.allowDomain("*");
+Security.allowInsecureDomain("example.invalid");
 const available: boolean = ExternalInterface.available;
 const result: unknown = ExternalInterface.call("host.call", 1);
 // @ts-expect-error host protocol admits only immutable primitive values
@@ -24,7 +28,7 @@ const forgedExternalLease: NativeExternalInterfaceHostLease = { active: true, di
 // @ts-expect-error bootstrap leases are engine-issued and structurally opaque
 const forgedSystemLease: NativeSystemHostLease = { active: true, disposed: false, dispose() {} };
 
-void [version, debugging, policy, available, result, memory, error] satisfies readonly unknown[];
+void [version, debugging, policy, sandbox, available, result, memory, error] satisfies readonly unknown[];
 void (false as boolean satisfies (Hosts extends readonly unknown[] ? boolean : never));
 void (false as boolean satisfies (Leases extends readonly unknown[] ? boolean : never));
 void [forgedExternalLease, forgedSystemLease];

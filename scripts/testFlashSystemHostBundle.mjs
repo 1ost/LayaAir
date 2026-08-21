@@ -28,6 +28,8 @@ try {
     && childDomain.hasDefinition("Object")
     && childDomain.getDefinition("Object") === Object
     && !childDomain.hasDefinition("tests.missing.Asset");
+  F.Security.allowDomain("*");
+  checks.security = F.Security.sandboxType === F.Security.LOCAL_WITH_FILE;
   checks.noExternalBase = F.NativeExternalInterfaceHost === undefined;
   checks.noSystemBase = F.NativeSystemHost === undefined;
   const craftedConstruct = (base, methodName) => {

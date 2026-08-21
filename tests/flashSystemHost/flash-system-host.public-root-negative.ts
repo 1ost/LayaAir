@@ -9,6 +9,9 @@ const systemHost: LayaFlash.NativeSystemHost = {
 const currentDomain: LayaFlash.ApplicationDomain = LayaFlash.ApplicationDomain.currentDomain;
 const childDomain = new LayaFlash.ApplicationDomain(currentDomain);
 void [childDomain.parentDomain, childDomain.hasDefinition("Object")];
+const sandbox: string = LayaFlash.Security.sandboxType;
+LayaFlash.Security.allowDomain("*");
+void sandbox;
 
 const externalLease = LayaFlash.installNativeExternalInterfaceHost(externalHost);
 const systemLease = LayaFlash.installNativeSystemHost(systemHost);

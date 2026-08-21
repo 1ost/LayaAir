@@ -9,6 +9,7 @@ import type { NativeExternalInterfaceHostLease } from "../../src/layaAir/flash/e
 import * as externalModule from "../../src/layaAir/flash/external/ExternalInterface";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
 import { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy";
+import { Security } from "../../src/layaAir/flash/system/Security";
 import { System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
 import type { NativeSystemHostLease } from "../../src/layaAir/flash/system/System";
 import * as systemModule from "../../src/layaAir/flash/system/System";
@@ -174,6 +175,17 @@ test("host/system bridge uses opaque replaceable leases and native-runtime seman
     assert.equal(Object.isFrozen(Capabilities.languages), true);
     assert.deepEqual([ImageDecodingPolicy.ON_DEMAND, ImageDecodingPolicy.ON_LOAD], ["onDemand", "onLoad"]);
     assert.equal(Object.isFrozen(ImageDecodingPolicy), true);
+    assert.deepEqual([
+        Security.APPLICATION, Security.LOCAL_TRUSTED, Security.LOCAL_WITH_FILE,
+        Security.LOCAL_WITH_NETWORK, Security.REMOTE,
+    ], ["application", "localTrusted", "localWithFile", "localWithNetwork", "remote"]);
+    assert.equal(Object.isFrozen(Security), true);
+    assert.equal(Security.sandboxType, Security.REMOTE);
+    let domainCoercions = 0;
+    const domain = { toString: () => { domainCoercions++; return "*"; } };
+    Security.allowDomain(domain as unknown as string);
+    Security.allowInsecureDomain(domain as unknown as string);
+    assert.equal(domainCoercions, 2);
 
     const error = new IllegalOperationError("blocked", 17.8);
     assert(error instanceof Error);

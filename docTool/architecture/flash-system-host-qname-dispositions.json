@@ -11,6 +11,10 @@
       "surface": "native image decode scheduling values"
     },
     {
+      "qname": "flash.system.Security",
+      "surface": "native browser sandbox classification; domain declarations preserve calls without weakening CORS, CSP or origin enforcement"
+    },
+    {
       "qname": "flash.system.System",
       "surface": "used heap diagnostics and explicit application clipboard host only"
     },
@@ -31,10 +35,6 @@
     {
       "qname": "flash.system.LoaderContext",
       "reason": "HOLD: reachable consumers attach ApplicationDomain to SWF/byte loading; native Loader accepts authenticated Laya hierarchies and deliberately rejects this context."
-    },
-    {
-      "qname": "flash.system.Security",
-      "reason": "HOLD: allowDomain and Flash policy files do not govern browser access; port bootstrap/network policy to CORS, CSP and authenticated providers."
     },
     {
       "qname": "flash.xml.XMLNode",

@@ -38901,7 +38901,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2104",
+              "name": "__@iterator@2107",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -42451,6 +42451,90 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/system/Security.ts",
+          "export": "Security",
+          "kind": "class",
+          "signature": "typeof Security",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "allowDomain",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(...domains: string[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "allowInsecureDomain",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(...domains: string[]) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "APPLICATION",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"application\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LOCAL_TRUSTED",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"localTrusted\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LOCAL_WITH_FILE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"localWithFile\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "LOCAL_WITH_NETWORK",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"localWithNetwork\""
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "REMOTE",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "\"remote\""
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "sandboxType",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "697bb4208a1a2ee1c5a3fa8a32ba750541353cb0b24105bd4f8c1f57d6e1071b",
+          "heritage": []
+        },
+        {
           "module": "src/layaAir/flash/system/System.ts",
           "export": "System",
           "kind": "class",
@@ -42556,11 +42640,12 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
+          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
+            "697bb4208a1a2ee1c5a3fa8a32ba750541353cb0b24105bd4f8c1f57d6e1071b",
             "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec",
             "d29e89638604ee28732d8dcedbef1fcfc7e9b6342ff54283584021ff8f6cc423"
           ]
@@ -42675,7 +42760,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
+          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
           "capability": "api.flash.external",
           "covers": [
             "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
@@ -42774,7 +42859,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
+          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
           "capability": "api.flash.errors",
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"

@@ -5,6 +5,7 @@ import * as externalModule from "../../src/layaAir/flash/external/ExternalInterf
 import { IllegalOperationError } from "../../src/layaAir/flash/errors/IllegalOperationError";
 import { UnsupportedFlashFeatureError } from "../../src/layaAir/flash/events/UnsupportedFlashFeatureError";
 import { Capabilities } from "../../src/layaAir/flash/system/Capabilities";
+import { Security } from "../../src/layaAir/flash/system/Security";
 import { System, installNativeSystemHost } from "../../src/layaAir/flash/system/System";
 import * as systemModule from "../../src/layaAir/flash/system/System";
 
@@ -59,6 +60,9 @@ try {
     const staleSystemSafe = replacementSystemLease.active && replacementSystem.clipboard === "replacement text";
     const illegal = new IllegalOperationError("blocked", 17);
     const descriptor = Object.getOwnPropertyDescriptor(illegal, "errorID");
+    Security.allowDomain("*");
+    Security.allowInsecureDomain("example.invalid");
+    const nativeSandbox = Security.sandboxType === Security.LOCAL_WITH_FILE;
     const availableBeforeDispose = ExternalInterface.available;
     replacementExternalLease.dispose();
     replacementSystemLease.dispose();
@@ -74,7 +78,8 @@ try {
             && craftedExternalRejected && craftedSystemRejected && staleExternalSafe && staleSystemSafe
             && externalDisposed && systemDisposed
             && invalidRejected && objectRejected && illegal.name === "Error"
-            && illegal.toString() === "Error: blocked" && descriptor?.writable === false,
+            && illegal.toString() === "Error: blocked" && descriptor?.writable === false
+            && nativeSandbox,
         version: Capabilities.version,
         language: Capabilities.language,
         os: Capabilities.os,
