@@ -148,6 +148,12 @@ export class ByteArray {
         return value;
     }
 
+    readFloat(): number {
+        const value = this._bytes.readFloat32();
+        this._mutationGeneration++;
+        return value;
+    }
+
     readDouble(): number {
         const value = this._bytes.readFloat64();
         this._mutationGeneration++;

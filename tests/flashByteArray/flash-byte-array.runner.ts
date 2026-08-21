@@ -121,6 +121,29 @@ test("double values preserve IEEE-754 bytes, endian, cursor, and special numbers
     assert.equal(truncated.position, 0, "a failed double read must not advance the cursor");
 });
 
+test("float values preserve IEEE-754 endian, cursor, and special numbers", () => {
+    const big = new ByteArray(new Uint8Array([0x40, 0x49, 0x0f, 0xdb]));
+    assert.equal(big.readFloat(), Math.fround(Math.PI));
+    assert.deepEqual([big.position, big.bytesAvailable], [4, 0]);
+
+    const little = new ByteArray(new Uint8Array([0xdb, 0x0f, 0x49, 0x40]));
+    little.endian = Endian.LITTLE_ENDIAN;
+    assert.equal(little.readFloat(), Math.fround(Math.PI));
+
+    const special = new ByteArray(new Uint8Array([
+        0x80, 0x00, 0x00, 0x00,
+        0x7f, 0x80, 0x00, 0x00,
+        0x7f, 0xc0, 0x00, 0x00,
+    ]));
+    assert.equal(Object.is(special.readFloat(), -0), true);
+    assert.equal(special.readFloat(), Infinity);
+    assert.equal(Number.isNaN(special.readFloat()), true);
+
+    const truncated = new ByteArray(new Uint8Array(3));
+    assert.throws(() => truncated.readFloat(), OutOfRangeError);
+    assert.equal(truncated.position, 0, "a failed float read must not advance the cursor");
+});
+
 test("length-prefixed UTF failures do not partially consume the stream", () => {
     const truncated = new ByteArray(new Uint8Array([0, 3, 0x41]));
     assert.throws(() => truncated.readUTF(), OutOfRangeError);
