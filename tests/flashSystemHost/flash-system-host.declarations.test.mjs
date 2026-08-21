@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("generated LayaFlash declarations expose host/system surfaces and preserve clean-break holds", async () => {
     const declaration = await readFile(new URL("../../build/types/LayaFlash.d.ts", import.meta.url), "utf8");
-    for (const name of ["Capabilities", "ImageDecodingPolicy", "System", "NativeSystemHost",
+    for (const name of ["ApplicationDomain", "Capabilities", "ImageDecodingPolicy", "System", "NativeSystemHost",
         "NativeSystemHostLease", "ExternalInterface", "ExternalInterfaceValue",
         "NativeExternalInterfaceHost", "NativeExternalInterfaceHostLease", "IllegalOperationError"])
         assert.match(declaration, new RegExp(`\\b${name}\\b`));
@@ -16,7 +16,7 @@ test("generated LayaFlash declarations expose host/system surfaces and preserve 
     assert.doesNotMatch(declaration, /NATIVE_(?:EXTERNAL_INTERFACE|SYSTEM)_HOST_LEASE/);
     assert.match(declaration, /installNativeExternalInterfaceHost\([^)]*\):\s*NativeExternalInterfaceHostLease/);
     assert.match(declaration, /installNativeSystemHost\([^)]*\):\s*NativeSystemHostLease/);
-    for (const held of ["ApplicationDomain", "LoaderContext", "Security", "XMLNode"])
+    for (const held of ["LoaderContext", "Security", "XMLNode"])
         assert.doesNotMatch(declaration, new RegExp(`\\b(?:class|interface|type|function|const)\\s+${held}\\b`));
     assert.doesNotMatch(declaration, /(?:__AS3__|QName|registerDefinition|addCallback)/);
 });

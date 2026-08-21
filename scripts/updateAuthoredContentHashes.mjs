@@ -676,6 +676,7 @@ const ensureFlashCapability = (id, subjects, evidencePath, evidenceTest) => {
 };
 
 ensureFlashCapability("api.flash.system", [
+    ["src/layaAir/flash/system/ApplicationDomain.ts", "ApplicationDomain", "class"],
     ["src/layaAir/flash/system/Capabilities.ts", "Capabilities", "class"],
     ["src/layaAir/flash/system/ImageDecodingPolicy.ts", "ImageDecodingPolicy", "class"],
     ["src/layaAir/flash/system/System.ts", "System", "class"],

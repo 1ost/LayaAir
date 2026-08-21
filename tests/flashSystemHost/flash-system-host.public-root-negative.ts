@@ -6,6 +6,9 @@ const externalHost: LayaFlash.NativeExternalInterfaceHost = {
 const systemHost: LayaFlash.NativeSystemHost = {
     setClipboard: _text => undefined,
 };
+const currentDomain: LayaFlash.ApplicationDomain = LayaFlash.ApplicationDomain.currentDomain;
+const childDomain = new LayaFlash.ApplicationDomain(currentDomain);
+void [childDomain.parentDomain, childDomain.hasDefinition("Object")];
 
 const externalLease = LayaFlash.installNativeExternalInterfaceHost(externalHost);
 const systemLease = LayaFlash.installNativeSystemHost(systemHost);

@@ -5,6 +5,7 @@ import type { IllegalOperationError } from "../../src/layaAir/flash/errors/Illeg
 import type { ExternalInterface, ExternalInterfaceValue, NativeExternalInterfaceHost,
     NativeExternalInterfaceHostLease,
     installNativeExternalInterfaceHost } from "../../src/layaAir/flash/external/ExternalInterface.ts";
+import type { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain.ts";
 import type { Capabilities } from "../../src/layaAir/flash/system/Capabilities.ts";
 import type { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy.ts";
 import type { NativeSystemHost, NativeSystemHostLease, System,
@@ -12,7 +13,8 @@ import type { NativeSystemHost, NativeSystemHostLease, System,
 
 test("Flash system bridge compiler surface and clean-break dispositions", () => {
     assert.ok(true as boolean satisfies (
-        typeof Capabilities extends unknown
+        typeof ApplicationDomain extends unknown
+            ? typeof Capabilities extends unknown
             ? typeof ImageDecodingPolicy extends unknown
                 ? typeof System extends unknown
                     ? NativeSystemHost extends NativeSystemHost
@@ -22,6 +24,7 @@ test("Flash system bridge compiler surface and clean-break dispositions", () => 
                         : never
                     : never
                 : never
+            : never
             : never));
 });
 

@@ -21,6 +21,13 @@ try {
 (() => {
   const F = globalThis.LayaFlash;
   const checks = {};
+  const currentDomain = F.ApplicationDomain.currentDomain;
+  const childDomain = new F.ApplicationDomain(currentDomain);
+  checks.applicationDomain = currentDomain.parentDomain === null
+    && childDomain.parentDomain === currentDomain
+    && childDomain.hasDefinition("Object")
+    && childDomain.getDefinition("Object") === Object
+    && !childDomain.hasDefinition("tests.missing.Asset");
   checks.noExternalBase = F.NativeExternalInterfaceHost === undefined;
   checks.noSystemBase = F.NativeSystemHost === undefined;
   const craftedConstruct = (base, methodName) => {

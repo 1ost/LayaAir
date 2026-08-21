@@ -54,6 +54,8 @@
     "test:flash-trace": "node --experimental-strip-types --test tests/flashTrace/flash-trace.test.ts",
     "test:flash-reflection": "node scripts/testFlashReflection.mjs",
     "test:flash-reflection:types": "tsc -p tests/flashReflection/tsconfig.json --pretty false",
+    "test:flash-application-domain": "node --max-old-space-size=512 scripts/testFlashApplicationDomain.mjs",
+    "test:flash-application-domain:types": "tsc -p tests/flashApplicationDomain/tsconfig.json --pretty false",
     "test:flash-utils-dispositions": "node --test tests/architecture/flashUtilsSourceDisposition.test.mjs",
     "test:flash-loader": "node --max-old-space-size=512 scripts/testFlashLoader.mjs",
     "test:flash-loader:types": "tsc -p tests/flashLoader/tsconfig.json --pretty false",

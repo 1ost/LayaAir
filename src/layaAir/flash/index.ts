@@ -116,6 +116,7 @@ export type {
     StrictXmlDocumentNode,
 } from "./xml/StrictXmlDocument";
 export { Capabilities } from "./system/Capabilities";
+export { ApplicationDomain } from "./system/ApplicationDomain";
 export { ImageDecodingPolicy } from "./system/ImageDecodingPolicy";
 export { System, installNativeSystemHost } from "./system/System";
 export type { NativeSystemHost, NativeSystemHostLease } from "./system/System";

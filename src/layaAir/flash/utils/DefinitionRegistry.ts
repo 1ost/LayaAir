@@ -30,6 +30,14 @@ export function getDefinitionByName(name: string): NativeDefinition {
     return definition;
 }
 
+export function hasDefinitionByName(name: string): boolean {
+    return definitions.has(normalizeDefinitionName(name));
+}
+
+export function getRegisteredDefinitionNames(): string[] {
+    return [...definitions.keys()].sort();
+}
+
 for (const definition of [
     Object, Array, String, Number, Boolean, Date, Function, Error, RegExp, Promise,
 ]) registerObservedDefinition(definition.name, definition);

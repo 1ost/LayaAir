@@ -58,7 +58,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+      "moduleSha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -123,7 +123,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+      "moduleSha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
     },
     {
       "sourceQName": "flash.display.LoaderInfo",
@@ -139,7 +139,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+      "moduleSha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
     },
     {
       "sourceQName": "flash.display.MovieClip",

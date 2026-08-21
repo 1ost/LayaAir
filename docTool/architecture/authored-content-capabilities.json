@@ -281,7 +281,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
         }
       ],
       "evidence": [
@@ -294,7 +294,7 @@
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
           ]
         }
       ]
@@ -316,7 +316,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
         }
       ],
       "evidence": [
@@ -327,8 +327,8 @@
           "capability": "rendering.color-transform",
           "covers": [
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
-            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
+            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
           ]
         }
       ]
@@ -1900,6 +1900,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -2139,7 +2148,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -2221,6 +2230,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -2342,11 +2360,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -2383,6 +2410,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -2572,6 +2608,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -2770,6 +2815,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Shape; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -4025,6 +4079,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -4264,7 +4327,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -4346,6 +4409,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -4467,11 +4539,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -4508,6 +4589,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -4697,6 +4787,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -4895,6 +4994,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObject; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -5279,7 +5387,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99",
+          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
           "heritage": [
             {
               "kind": "extends",
@@ -6154,6 +6262,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -6420,7 +6537,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -6502,6 +6619,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -6623,11 +6749,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -6664,6 +6799,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -6865,6 +7009,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "parent",
               "scope": "instance",
@@ -7060,6 +7213,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").DisplayObjectContainer; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -8333,6 +8495,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -8599,7 +8770,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -8681,6 +8852,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -8802,11 +8982,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -8843,6 +9032,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -9044,6 +9242,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "parent",
               "scope": "instance",
@@ -9239,6 +9446,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").InteractiveObject; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -10539,6 +10755,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -10850,7 +11075,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -10932,6 +11157,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -11071,11 +11305,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -11121,6 +11364,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -11328,6 +11580,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -11544,6 +11805,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").MovieClip; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -12917,6 +13187,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -13201,7 +13480,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -13283,6 +13562,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -13404,11 +13692,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -13454,6 +13751,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -13652,6 +13958,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -13859,6 +14174,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").SimpleButton; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -15168,6 +15492,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -15434,7 +15767,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -15516,6 +15849,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -15637,11 +15979,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -15678,6 +16029,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -15879,6 +16239,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "parent",
               "scope": "instance",
@@ -16074,6 +16443,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Sprite; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -17365,6 +17743,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -17604,7 +17991,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -17686,6 +18073,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -17807,11 +18203,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -17848,6 +18253,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -18037,6 +18451,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -18244,6 +18667,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Bitmap; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -19110,7 +19542,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99"
+          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -20752,6 +21184,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -21045,7 +21486,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -21127,6 +21568,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -21248,11 +21698,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -21307,6 +21766,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(_bytes: ArrayBuffer | Uint8Array, _context?: null) => never"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -21508,6 +21976,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "parent",
               "scope": "instance",
@@ -21703,6 +22180,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").Loader; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -22123,7 +22609,7 @@
             "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
           ],
           "indexSignatures": [],
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
           "heritage": [
             {
               "kind": "extends",
@@ -22136,7 +22622,7 @@
           "export": "isFlashLoader",
           "kind": "function",
           "signature": "(value: unknown) => value is Loader",
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22338,7 +22824,7 @@
             "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
           ],
           "indexSignatures": [],
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
           "heritage": [
             {
               "kind": "extends",
@@ -22351,7 +22837,7 @@
           "export": "isFlashLoaderInfo",
           "kind": "function",
           "signature": "(value: unknown) => value is LoaderInfo",
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22371,7 +22857,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
           "heritage": []
         },
         {
@@ -22392,7 +22878,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
           "heritage": []
         },
         {
@@ -22400,14 +22886,14 @@
           "export": "installNativeLoaderContentHost",
           "kind": "function",
           "signature": "(host: NativeLoaderContentHost) => void",
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
           "export": "isNativeLoaderContentHost",
           "kind": "function",
           "signature": "(value: unknown) => value is NativeLoaderContentHost",
-          "sha256": "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1"
+          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
         },
         {
           "module": "src/layaAir/flash/display/Stage.ts",
@@ -22723,14 +23209,14 @@
             "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
+            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
             "9211d03bc7ce9096658a1f1b87c84625fead0c9b8c50d6a1de569d6b7ee3ad18",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
             "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
-            "b019f9e8964178ced80087e6549f56125feddfc9ff1c8bbd3ac7ae665a56b3a1",
+            "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
-            "db8dca426224e75c91f2efd9eaae1f7369518c3f972af5a9e0e3fea7e8433a99",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
         }
@@ -26042,7 +26528,7 @@
             "new (host: NativeEventHost, _eventTargetProjector?: (target: unknown) => unknown): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "beeb3e91dee49ac224fba864765dc8f73e2406af399c24dbe771a6add682e6a1",
+          "sha256": "9c3c6b7e286d4992881efff73ad5c187650e0d32c4c106582961c08b458ee769",
           "heritage": []
         },
         {
@@ -28009,14 +28495,14 @@
           "export": "FlashEventListener",
           "kind": "type",
           "signature": "any",
-          "sha256": "beeb3e91dee49ac224fba864765dc8f73e2406af399c24dbe771a6add682e6a1"
+          "sha256": "9c3c6b7e286d4992881efff73ad5c187650e0d32c4c106582961c08b458ee769"
         },
         {
           "module": "src/layaAir/flash/events/FlashEventRouter.ts",
           "export": "NativeEventHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "beeb3e91dee49ac224fba864765dc8f73e2406af399c24dbe771a6add682e6a1"
+          "sha256": "9c3c6b7e286d4992881efff73ad5c187650e0d32c4c106582961c08b458ee769"
         },
         {
           "module": "src/layaAir/flash/events/FocusEvent.ts",
@@ -30279,9 +30765,9 @@
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
             "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e",
             "841a1398ad993736ef26b06c756d2c9749aa55a5185a76b2bcec31d07243d368",
+            "9c3c6b7e286d4992881efff73ad5c187650e0d32c4c106582961c08b458ee769",
             "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
-            "beeb3e91dee49ac224fba864765dc8f73e2406af399c24dbe771a6add682e6a1",
             "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
             "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
             "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
@@ -31183,6 +31669,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -31539,7 +32034,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -31715,6 +32210,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "getRepaint",
               "scope": "instance",
               "optional": false,
@@ -31850,11 +32354,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -31909,6 +32422,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -32155,6 +32677,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "parent",
               "scope": "instance",
@@ -32377,6 +32908,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").TextField; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -34584,6 +35124,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "cacheAsBitmap",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "callLater",
               "scope": "instance",
@@ -34823,7 +35372,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(out?: Rectangle) => Rectangle"
+              "signature": "{ (targetCoordinateSpace: DisplayObject): Rectangle; (out?: LayaRectangle): LayaRectangle; }"
             },
             {
               "abstract": false,
@@ -34905,6 +35454,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => Readonly<Point>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(targetCoordinateSpace: DisplayObject) => Rectangle"
             },
             {
               "abstract": false,
@@ -35026,11 +35584,20 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "hitTestObject",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: DisplayObject) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hitTestPoint",
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(x: number, y: number) => boolean"
+              "signature": "(x: number, y: number, shapeFlag?: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -35067,6 +35634,15 @@
               "optional": false,
               "readonly": false,
               "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "loaderInfo",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "LoaderInfo"
             },
             {
               "abstract": false,
@@ -35256,6 +35832,15 @@
               "optional": false,
               "readonly": false,
               "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "opaqueBackground",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
             },
             {
               "abstract": false,
@@ -35454,6 +36039,15 @@
               "optional": false,
               "readonly": false,
               "signature": "{ (x: number, y: number): this; (x: number, y: number, speedMode: boolean): import(\"repo:/src/layaAir/flash/index\").StaticText; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "scale9Grid",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Rectangle"
             },
             {
               "abstract": false,
@@ -38103,28 +38697,28 @@
           "export": "getDefinitionByName",
           "kind": "function",
           "signature": "(name: string) => NativeDefinition",
-          "sha256": "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c"
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
         },
         {
           "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
           "export": "registerDefinitionByName",
           "kind": "function",
           "signature": "(name: string, definition: NativeDefinition) => void",
-          "sha256": "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c"
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
         },
         {
           "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
           "export": "registerObservedDefinition",
           "kind": "function",
           "signature": "(name: string, definition: NativeDefinition) => void",
-          "sha256": "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c"
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
         },
         {
           "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
           "export": "NativeDefinition",
           "kind": "type",
           "signature": "any",
-          "sha256": "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c"
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
         },
         {
           "module": "src/layaAir/flash/utils/describeType.ts",
@@ -38184,9 +38778,9 @@
           "capability": "api.flash.utils",
           "covers": [
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
+            "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "a7eebb0af8b2fbe4f0af402fe43a36b9dba1864eb7e7c452885269d758fa654c",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "d09c055da9ddef66b0ff5a06585be4077d24aea73f5fcfbca50c5c02bd51e501",
@@ -41311,6 +41905,74 @@
       "status": "typescript-obligation",
       "obligations": [
         {
+          "module": "src/layaAir/flash/system/ApplicationDomain.ts",
+          "export": "ApplicationDomain",
+          "kind": "class",
+          "signature": "typeof ApplicationDomain",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getDefinition",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string) => NativeDefinition"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getQualifiedDefinitionNames",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasDefinition",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "parentDomain",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ApplicationDomain"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "registerDefinition",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(name: string, definition: NativeDefinition) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "currentDomain",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "ApplicationDomain"
+            }
+          ],
+          "constructors": [
+            "new (parentDomain?: ApplicationDomain | null): ApplicationDomain"
+          ],
+          "indexSignatures": [],
+          "sha256": "d29e89638604ee28732d8dcedbef1fcfc7e9b6342ff54283584021ff8f6cc423",
+          "heritage": []
+        },
+        {
           "module": "src/layaAir/flash/system/Capabilities.ts",
           "export": "Capabilities",
           "kind": "class",
@@ -41523,12 +42185,13 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
+          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
-            "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec"
+            "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec",
+            "d29e89638604ee28732d8dcedbef1fcfc7e9b6342ff54283584021ff8f6cc423"
           ]
         }
       ]
@@ -41641,7 +42304,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
+          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
           "capability": "api.flash.external",
           "covers": [
             "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
@@ -41740,7 +42403,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "6a18d7d125bf731f6f0d1f7dc555419c55bbbbe290d10f947aaaf3f611c68d65",
+          "sha256": "e087f8873e9ef8e4dfed9da95518a7f59350de86b96b1b4a5b0b146908333d72",
           "capability": "api.flash.errors",
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"
