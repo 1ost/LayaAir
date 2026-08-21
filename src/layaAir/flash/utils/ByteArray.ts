@@ -126,6 +126,12 @@ export class ByteArray {
         return value;
     }
 
+    readByte(): number {
+        const value = this._bytes.readByte();
+        this._mutationGeneration++;
+        return value;
+    }
+
     readBoolean(): boolean {
         return this.readUnsignedByte() !== 0;
     }

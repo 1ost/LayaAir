@@ -61,6 +61,17 @@ test("readBoolean consumes one byte and treats every nonzero value as true", () 
     assert.equal(bytes.position, 4, "a failed Boolean read must not advance the cursor");
 });
 
+test("readByte preserves signed byte values and cursor failure semantics", () => {
+    const bytes = new ByteArray(new Uint8Array([0x00, 0x7f, 0x80, 0xff]));
+    assert.deepEqual(
+        [bytes.readByte(), bytes.readByte(), bytes.readByte(), bytes.readByte()],
+        [0, 127, -128, -1],
+    );
+    assert.deepEqual([bytes.position, bytes.bytesAvailable], [4, 0]);
+    assert.throws(() => bytes.readByte(), OutOfRangeError);
+    assert.equal(bytes.position, 4, "a failed signed-byte read must not advance the cursor");
+});
+
 test("UTF-8 and unsigned bytes preserve exact cursor movement", () => {
     const bytes = new ByteArray();
     bytes.writeByte(-1);
