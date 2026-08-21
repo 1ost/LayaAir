@@ -1,3 +1,5 @@
+import { registerObservedDefinition } from "./DefinitionRegistry";
+
 const FLASH_CLASS_IDENTIFIER = Symbol.for("laya.flash.classIdentifier");
 
 type NamedConstructor = Function & {
@@ -40,8 +42,10 @@ export function getQualifiedClassName(value: unknown): string {
     if (typeof constructor !== "function")
         return "Object";
 
-    return normalizeClassIdentifier(constructor[FLASH_CLASS_IDENTIFIER])
+    const name = normalizeClassIdentifier(constructor[FLASH_CLASS_IDENTIFIER])
         ?? normalizeClassIdentifier(constructor.__className)
         ?? constructor.name
         ?? "Object";
+    registerObservedDefinition(name, constructor);
+    return name;
 }

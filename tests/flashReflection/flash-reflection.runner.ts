@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { describeType } from "../../src/layaAir/flash/utils/describeType";
+import {
+    getDefinitionByName,
+    registerDefinitionByName,
+} from "../../src/layaAir/flash/utils/DefinitionRegistry";
 import { getQualifiedClassName } from "../../src/layaAir/flash/utils/getQualifiedClassName";
+import { getQualifiedSuperclassName } from "../../src/layaAir/flash/utils/getQualifiedSuperclassName";
 
 class AbstractModel {
     static readonly __className: string = "example.models.AbstractModel";
@@ -106,4 +111,26 @@ test("class descriptions separate static and factory member surfaces", () => {
         true,
     );
     assert.equal(description.factory.variables.length, 0);
+});
+
+test("superclass names round-trip through the finite observed definition registry", () => {
+    assert.equal(
+        getQualifiedSuperclassName(ConcreteModel),
+        "example.models::AbstractModel",
+    );
+    assert.equal(
+        getDefinitionByName("example.models.AbstractModel"),
+        AbstractModel,
+    );
+    assert.equal(getQualifiedSuperclassName(AbstractModel), "Object");
+    assert.equal(getDefinitionByName("Object"), Object);
+    assert.equal(getQualifiedSuperclassName(Object), null);
+});
+
+test("explicit definition registration resolves finite names and rejects unknown names", () => {
+    class RegisteredModel {
+    }
+    registerDefinitionByName("example.registered.Model", RegisteredModel);
+    assert.equal(getDefinitionByName("example.registered::Model"), RegisteredModel);
+    assert.throws(() => getDefinitionByName("example.missing::Model"), ReferenceError);
 });

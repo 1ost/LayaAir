@@ -47,15 +47,15 @@
     {
       "requestedQName": "flash.utils.getDefinitionByName",
       "sourceQName": "flash.utils.getDefinitionByName",
-      "disposition": "explicit-native-registry",
-      "layaExport": "src/extensions/authoredContent/runtime/bootstrap.ts#registerAuthoredContentRuntime",
+      "disposition": "native-reflection-bridge",
+      "layaExport": "src/layaAir/flash/utils/DefinitionRegistry.ts#getDefinitionByName",
       "sourceEvidence": [
         "game-client/tmain/src/utils/BrowserConsole.as:46",
         "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:41",
         "game-client/tapplication_main/src/ghostcat/util/ReflectUtil.as:56"
       ],
-      "reason": "Converted authored symbols use the existing explicit linkage registry. Logger discovery becomes host injection, and other dynamic application factories must register their supported stable identifiers locally. A universal definition lookup is forbidden.",
-      "hold": "Each non-authored lookup remains HOLD until its owner identifies the finite names, registers explicit native factories or injects the host dependency, and tests unknown-name failure."
+      "reason": "LayaAir provides a finite explicit native definition registry with built-in constructors and observed or producer-registered class identifiers; it does not scan modules or recreate an AVM application domain.",
+      "hold": "Dynamic consumers remain HOLD until every supported name is observed or registered by its producer and focused tests prove unknown-name failure."
     },
     {
       "requestedQName": "flash.utils.getQualifiedClassName",
@@ -73,14 +73,14 @@
     {
       "requestedQName": "flash.utils.getQualifiedSuperclassName",
       "sourceQName": "flash.utils.getQualifiedSuperclassName",
-      "disposition": "explicit-native-metadata",
-      "layaExport": null,
+      "disposition": "native-reflection-bridge",
+      "layaExport": "src/layaAir/flash/utils/getQualifiedSuperclassName.ts#getQualifiedSuperclassName",
       "sourceEvidence": [
         "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:36",
         "game-client/tapplication_main/src/Foundation/Utilities/TUtilityRTTI.as:47"
       ],
-      "reason": "The sole owner performs AVM RTTI traversal. Port it to an explicit application registry or ordinary prototype relationships only for supported native classes.",
-      "hold": "TUtilityRTTI remains HOLD until its finite class and factory consumers are identified and tested without qualified-name reconstruction."
+      "reason": "LayaAir exposes immediate native prototype ancestry through the same stable identifier and finite definition registry authority, without AVM trait traversal.",
+      "hold": "Consumers remain HOLD until focused tests prove required superclass round trips and null-root behavior for their supported native classes."
     },
     {
       "requestedQName": "flash.utils.Proxy",

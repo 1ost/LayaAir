@@ -13,9 +13,9 @@ const expected = new Map([
     ["flash.utils.describeType", "native-reflection-bridge"],
     ["flash.utils.Dictionary", "transpile-to-native-collection"],
     ["flash.utils.flash_proxy", "native-application-rewrite"],
-    ["flash.utils.getDefinitionByName", "explicit-native-registry"],
+    ["flash.utils.getDefinitionByName", "native-reflection-bridge"],
     ["flash.utils.getQualifiedClassName", "native-reflection-bridge"],
-    ["flash.utils.getQualifiedSuperclassName", "explicit-native-metadata"],
+    ["flash.utils.getQualifiedSuperclassName", "native-reflection-bridge"],
     ["flash.utils.Proxy", "native-application-rewrite"],
     ["flash.utils.XML", "invalid-qname-split-consumers"],
 ]);

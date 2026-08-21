@@ -6,6 +6,13 @@ import type { ByteArray, ByteArrayInput, ZlibDecompressionHost } from "../../src
 import type { getTimer, setTimeout, clearTimeout, setInterval, clearInterval } from
     "../../src/layaAir/flash/utils/TimerFunctions.ts";
 import type { getQualifiedClassName } from "../../src/layaAir/flash/utils/getQualifiedClassName.ts";
+import type { getQualifiedSuperclassName } from "../../src/layaAir/flash/utils/getQualifiedSuperclassName.ts";
+import type {
+    getDefinitionByName,
+    NativeDefinition,
+    registerDefinitionByName,
+    registerObservedDefinition,
+} from "../../src/layaAir/flash/utils/DefinitionRegistry.ts";
 import type {
     describeType,
     FlashAccessorAccess,
@@ -17,44 +24,32 @@ import type {
 } from "../../src/layaAir/flash/utils/describeType.ts";
 
 test("Flash utils compiler and runtime surface", () => {
-    assert.ok(true as boolean satisfies (ByteArrayInput extends ByteArrayInput
-        ? ZlibDecompressionHost extends ZlibDecompressionHost
-            ? typeof Timer extends unknown
-                ? typeof isFlashTimer extends unknown
-                    ? typeof Endian extends unknown
-                        ? typeof ByteArray extends unknown
-                            ? typeof getTimer extends unknown
-                                ? typeof setTimeout extends unknown
-                                    ? typeof clearTimeout extends unknown
-                                        ? typeof setInterval extends unknown
-                                            ? typeof clearInterval extends unknown
-                                                ? typeof getQualifiedClassName extends unknown
-                                                    ? typeof describeType extends unknown
-                                                        ? FlashAccessorAccess extends FlashAccessorAccess
-                                                            ? FlashAccessorDescription extends FlashAccessorDescription
-                                                                ? FlashMethodDescription extends FlashMethodDescription
-                                                                    ? FlashTypeDescription extends FlashTypeDescription
-                                                                        ? FlashTypeMembers extends FlashTypeMembers
-                                                                            ? FlashVariableDescription extends FlashVariableDescription
-                                                                                ? boolean : never
-                                                                            : never
-                                                                        : never
-                                                                    : never
-                                                                : never
-                                                            : never
-                                                        : never
-                                                    : never
-                                                : never
-                                            : never
-                                        : never
-                                    : never
-                                : never
-                            : never
-                        : never
-                    : never
-                : never
-            : never
-        : never));
+    assert.ok(true as boolean satisfies ([
+        ByteArrayInput,
+        ZlibDecompressionHost,
+        typeof Timer,
+        typeof isFlashTimer,
+        typeof Endian,
+        typeof ByteArray,
+        typeof getTimer,
+        typeof setTimeout,
+        typeof clearTimeout,
+        typeof setInterval,
+        typeof clearInterval,
+        typeof getQualifiedClassName,
+        typeof getQualifiedSuperclassName,
+        typeof getDefinitionByName,
+        typeof registerDefinitionByName,
+        typeof registerObservedDefinition,
+        NativeDefinition,
+        typeof describeType,
+        FlashAccessorAccess,
+        FlashAccessorDescription,
+        FlashMethodDescription,
+        FlashTypeDescription,
+        FlashTypeMembers,
+        FlashVariableDescription,
+    ] extends readonly unknown[] ? boolean : never));
 });
 
 test("Flash timer utility policy HOLDs remain explicit", () => {
