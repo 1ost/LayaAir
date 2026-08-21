@@ -41933,6 +41933,30 @@
           "reason": "HOLD: the generic property/binding seam is admitted, but display geometry and action projection require a higher-level authored accessibility host."
         }
       ]
+    },
+    {
+      "id": "api.flash.debug",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/debug/trace.ts",
+          "export": "trace",
+          "kind": "function",
+          "signature": "(...values: unknown[]) => void",
+          "sha256": "ee60b1521aeb082197ac9e93ac419cbfaaf98e4b7494ef28b19ddb14fcefd6e8"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashDebugBridgeEvidence.test.ts",
+          "test": "Flash debug compiler surface",
+          "sha256": "4177a40c37c10e51cdba6969307f78ff270b1a8a2b0f97363b212412f435e98b",
+          "capability": "api.flash.debug",
+          "covers": [
+            "ee60b1521aeb082197ac9e93ac419cbfaaf98e4b7494ef28b19ddb14fcefd6e8"
+          ]
+        }
+      ]
     }
   ]
 }

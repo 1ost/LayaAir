@@ -21,7 +21,8 @@
     "flash.xml",
     "flash.system",
     "flash.external",
-    "flash.errors"
+    "flash.errors",
+    "flash.debug"
   ],
   "capabilityLedger": "docTool/architecture/authored-content-capabilities.json",
   "capabilitySchema": "laya-authored-content-capabilities@1",
@@ -97,7 +98,8 @@
     "api.flash.xml",
     "api.flash.system",
     "api.flash.external",
-    "api.flash.errors"
+    "api.flash.errors",
+    "api.flash.debug"
   ],
   "statuses": [
     "native",

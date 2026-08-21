@@ -695,6 +695,11 @@ ensureFlashCapability("api.flash.errors", [
     ["src/layaAir/flash/errors/IllegalOperationError.ts", "IllegalOperationError", "class"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash native illegal-operation error compiler surface");
+
+ensureFlashCapability("api.flash.debug", [
+    ["src/layaAir/flash/debug/trace.ts", "trace", "function"],
+], "tests/architecture/flashDebugBridgeEvidence.test.ts",
+"Flash debug compiler surface");
 const authoredBitmapHierarchySubjects = {
     normalize: ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "normalizeNeutralAuthoredContent", "function"],
     parseXml: ["src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter.ts", "parseSwfAuthoredContentXml", "function"],

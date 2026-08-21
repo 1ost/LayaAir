@@ -1,4 +1,5 @@
 export { Event, EventPhase } from "./events/Event";
+export { trace } from "./debug/trace";
 export { EventDispatcher } from "./events/EventDispatcher";
 export type { IEventDispatcher } from "./events/EventDispatcher";
 export { MouseEvent } from "./events/MouseEvent";
