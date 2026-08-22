@@ -13,6 +13,13 @@ import { WrapMode } from "../../laya/RenderEngine/RenderEnum/WrapMode";
 import { LayaGL } from "../../laya/layagl/LayaGL";
 import { Texture } from "../../laya/resource/Texture";
 import { Texture2D } from "../../laya/resource/Texture2D";
+import { BitmapFilter } from "../filters/BitmapFilter";
+import { isBlurFilter } from "../filters/BlurFilter";
+import { isColorMatrixFilter } from "../filters/ColorMatrixFilter";
+import { isDropShadowFilter } from "../filters/DropShadowFilter";
+import { isGlowFilter } from "../filters/GlowFilter";
+import { isGradientBevelFilter } from "../filters/GradientBevelFilter";
+import { ConcreteBitmapFilter, isBitmapFilter } from "../filters/FilterRegistry";
 
 type InvalidationListener = () => void;
 
@@ -175,6 +182,304 @@ function composite(source: number, destination: number): number {
     return ((blend(24) << 24) | (blend(16) << 16) | (blend(8) << 8) | blend(0)) >>> 0;
 }
 
+interface FilterMargins { left: number; top: number; right: number; bottom: number; }
+interface FilterRaster {
+    pixels: Uint32Array;
+    width: number;
+    height: number;
+    writeX: number;
+    writeY: number;
+    writeWidth: number;
+    writeHeight: number;
+    destinationX: number;
+    destinationY: number;
+}
+
+const EMPTY_FILTER_MARGINS: Readonly<FilterMargins> = Object.freeze({ left: 0, top: 0, right: 0, bottom: 0 });
+
+function blurMargin(value: number, quality: number): number {
+    if (!Number.isFinite(value) || value <= 1 || quality <= 0) return 0;
+    return Math.ceil((value - 1) * quality / 2);
+}
+
+function blurMargins(blurX: number, blurY: number, quality: number): FilterMargins {
+    const x = blurMargin(blurX, quality), y = blurMargin(blurY, quality);
+    return { left: x, top: y, right: x, bottom: y };
+}
+
+function addFilterOffset(margins: FilterMargins, dx: number, dy: number): void {
+    const epsilon = 1e-6;
+    if (dx > epsilon) margins.right += Math.ceil(dx - epsilon);
+    else if (dx < -epsilon) margins.left += Math.ceil(-dx - epsilon);
+    if (dy > epsilon) margins.bottom += Math.ceil(dy - epsilon);
+    else if (dy < -epsilon) margins.top += Math.ceil(-dy - epsilon);
+}
+
+function filterMargins(filter: ConcreteBitmapFilter): FilterMargins {
+    if (isBlurFilter(filter)) return blurMargins(filter.blurX, filter.blurY, filter.quality);
+    if (isColorMatrixFilter(filter)) return { ...EMPTY_FILTER_MARGINS };
+    if (isGlowFilter(filter)) return filter.inner
+        ? { ...EMPTY_FILTER_MARGINS }
+        : blurMargins(filter.blurX, filter.blurY, filter.quality);
+    if (isDropShadowFilter(filter)) {
+        if (filter.inner) return { ...EMPTY_FILTER_MARGINS };
+        const margins = blurMargins(filter.blurX, filter.blurY, filter.quality);
+        const radians = filter.angle * Math.PI / 180;
+        addFilterOffset(margins, filter.distance * Math.cos(radians), filter.distance * Math.sin(radians));
+        return margins;
+    }
+    const margins = blurMargins(filter.blurX, filter.blurY, filter.quality);
+    const radians = filter.angle * Math.PI / 180;
+    const dx = filter.distance * Math.cos(radians), dy = filter.distance * Math.sin(radians);
+    addFilterOffset(margins, dx, dy);
+    addFilterOffset(margins, -dx, -dy);
+    return margins;
+}
+
+function sourceRectangle(rect: Rectangle): { x: number; y: number; width: number; height: number } {
+    const finite = (value: number): number => Number.isFinite(Number(value)) ? Number(value) : 0;
+    return {
+        x: Math.floor(finite(rect.x)),
+        y: Math.floor(finite(rect.y)),
+        width: Math.max(0, Math.ceil(finite(rect.width))),
+        height: Math.max(0, Math.ceil(finite(rect.height))),
+    };
+}
+
+function packChannels(red: number, green: number, blue: number, alpha: number): number {
+    const byte = (value: number): number => Math.max(0, Math.min(255, Math.round(value)));
+    return ((byte(alpha) << 24) | (byte(red) << 16) | (byte(green) << 8) | byte(blue)) >>> 0;
+}
+
+function boxBlurAxis(input: Uint32Array, width: number, height: number, taps: number, horizontal: boolean): Uint32Array {
+    if (taps <= 1) return input.slice();
+    const output = new Uint32Array(input.length);
+    const first = -Math.floor(taps / 2), last = first + taps - 1;
+    const lines = horizontal ? height : width, length = horizontal ? width : height;
+    const index = (line: number, position: number): number => horizontal
+        ? line * width + position
+        : position * width + line;
+    for (let line = 0; line < lines; line++) {
+        let red = 0, green = 0, blue = 0, alpha = 0;
+        for (let sample = first; sample <= last; sample++) if (sample >= 0 && sample < length) {
+            const pixel = input[index(line, sample)];
+            alpha += pixel >>> 24; red += pixel >>> 16 & 0xff;
+            green += pixel >>> 8 & 0xff; blue += pixel & 0xff;
+        }
+        for (let position = 0; position < length; position++) {
+            output[index(line, position)] = packChannels(red / taps, green / taps, blue / taps, alpha / taps);
+            const removed = position + first;
+            if (removed >= 0 && removed < length) {
+                const pixel = input[index(line, removed)];
+                alpha -= pixel >>> 24; red -= pixel >>> 16 & 0xff;
+                green -= pixel >>> 8 & 0xff; blue -= pixel & 0xff;
+            }
+            const added = position + last + 1;
+            if (added >= 0 && added < length) {
+                const pixel = input[index(line, added)];
+                alpha += pixel >>> 24; red += pixel >>> 16 & 0xff;
+                green += pixel >>> 8 & 0xff; blue += pixel & 0xff;
+            }
+        }
+    }
+    return output;
+}
+
+function boxBlur(input: Uint32Array, width: number, height: number,
+    blurX: number, blurY: number, quality: number): Uint32Array {
+    let output = input.slice();
+    const horizontalTaps = Math.max(1, Math.round(Number.isFinite(blurX) ? blurX : 0));
+    const verticalTaps = Math.max(1, Math.round(Number.isFinite(blurY) ? blurY : 0));
+    for (let pass = 0; pass < quality; pass++) {
+        output = boxBlurAxis(output, width, height, horizontalTaps, true);
+        output = boxBlurAxis(output, width, height, verticalTaps, false);
+    }
+    return output;
+}
+
+function sampleAlpha(pixels: Uint32Array, width: number, height: number, x: number, y: number): number {
+    const x0 = Math.floor(x), y0 = Math.floor(y), amountX = x - x0, amountY = y - y0;
+    const channel = (sampleX: number, sampleY: number): number =>
+        sampleX < 0 || sampleY < 0 || sampleX >= width || sampleY >= height
+            ? 0 : pixels[sampleY * width + sampleX] >>> 24;
+    const top = channel(x0, y0) * (1 - amountX) + channel(x0 + 1, y0) * amountX;
+    const bottom = channel(x0, y0 + 1) * (1 - amountX) + channel(x0 + 1, y0 + 1) * amountX;
+    return (top * (1 - amountY) + bottom * amountY) / 255;
+}
+
+function multiplyPremultiplied(pixel: number, factor: number): number {
+    return packChannels((pixel >>> 16 & 0xff) * factor, (pixel >>> 8 & 0xff) * factor,
+        (pixel & 0xff) * factor, (pixel >>> 24) * factor);
+}
+
+function addPremultiplied(source: number, destination: number, destinationFactor: number): number {
+    return packChannels(
+        (source >>> 16 & 0xff) + (destination >>> 16 & 0xff) * destinationFactor,
+        (source >>> 8 & 0xff) + (destination >>> 8 & 0xff) * destinationFactor,
+        (source & 0xff) + (destination & 0xff) * destinationFactor,
+        (source >>> 24) + (destination >>> 24) * destinationFactor,
+    );
+}
+
+function applyShadowRaster(original: Uint32Array, width: number, height: number,
+    filter: import("../filters/DropShadowFilter").DropShadowFilter | import("../filters/GlowFilter").GlowFilter): Uint32Array {
+    const isGlow = isGlowFilter(filter);
+    const radians = isGlow ? 0 : filter.angle * Math.PI / 180;
+    const distance = isGlow ? 0 : filter.distance;
+    const offsetX = distance * Math.cos(radians), offsetY = distance * Math.sin(radians);
+    const seed = new Uint32Array(original.length);
+    const colorRed = filter.color >>> 16 & 0xff, colorGreen = filter.color >>> 8 & 0xff, colorBlue = filter.color & 0xff;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        let alpha = sampleAlpha(original, width, height, x - offsetX, y - offsetY);
+        if (filter.inner) alpha = 1 - alpha;
+        alpha *= filter.alpha;
+        seed[y * width + x] = packChannels(colorRed * alpha, colorGreen * alpha, colorBlue * alpha, 255 * alpha);
+    }
+    const field = boxBlur(seed, width, height, filter.blurX, filter.blurY, filter.quality);
+    const output = new Uint32Array(original.length);
+    for (let index = 0; index < output.length; index++) {
+        const source = original[index], sourceAlpha = (source >>> 24) / 255;
+        const shadow = packChannels(
+            Math.min(255, (field[index] >>> 16 & 0xff) * filter.strength),
+            Math.min(255, (field[index] >>> 8 & 0xff) * filter.strength),
+            Math.min(255, (field[index] & 0xff) * filter.strength),
+            Math.min(255, (field[index] >>> 24) * filter.strength),
+        );
+        const shadowAlpha = (shadow >>> 24) / 255;
+        if (filter.inner) output[index] = filter.knockout || (!isGlow && filter.hideObject)
+            ? multiplyPremultiplied(shadow, sourceAlpha)
+            : addPremultiplied(multiplyPremultiplied(shadow, sourceAlpha), source, 1 - shadowAlpha);
+        else if (filter.knockout) output[index] = multiplyPremultiplied(shadow, 1 - sourceAlpha);
+        else output[index] = !isGlow && filter.hideObject
+            ? shadow
+            : addPremultiplied(source, shadow, 1 - sourceAlpha);
+    }
+    return output;
+}
+
+function normalizedGradient(filter: import("../filters/GradientBevelFilter").GradientBevelFilter):
+    ReadonlyArray<{ color: number; alpha: number; ratio: number }> {
+    const colors = filter.colors, alphas = filter.alphas, ratios = filter.ratios;
+    if (!colors || !alphas || !ratios) return [{ color: 0, alpha: 0, ratio: 0 }];
+    const count = Math.min(15, colors.length, alphas.length, ratios.length);
+    if (count === 0) return [{ color: 0, alpha: 0, ratio: 0 }];
+    return Array.from({ length: count }, (_, index) => ({
+        color: colors[index] >>> 0 & 0xffffff,
+        alpha: Math.max(0, Math.min(1, Number.isFinite(alphas[index]) ? alphas[index] : 0)),
+        ratio: Math.max(0, Math.min(255, Number.isFinite(ratios[index]) ? ratios[index] : 0)) / 255,
+        index,
+    })).sort((left, right) => left.ratio - right.ratio || left.index - right.index);
+}
+
+function gradientPixel(stops: ReadonlyArray<{ color: number; alpha: number; ratio: number }>, position: number): number {
+    let previous = stops[0];
+    if (position <= previous.ratio) return premultiplyPixel(((Math.round(previous.alpha * 255) << 24) | previous.color) >>> 0, true);
+    for (let index = 1; index < stops.length; index++) {
+        const next = stops[index];
+        if (position <= next.ratio) {
+            const span = next.ratio - previous.ratio;
+            const amount = span <= 0 ? 1 : Math.max(0, Math.min(1, (position - previous.ratio) / span));
+            const channel = (shift: number): number => ((previous.color >>> shift) & 0xff) * (1 - amount)
+                + ((next.color >>> shift) & 0xff) * amount;
+            const alpha = previous.alpha * (1 - amount) + next.alpha * amount;
+            return premultiplyPixel(packChannels(channel(16), channel(8), channel(0), alpha * 255), true);
+        }
+        previous = next;
+    }
+    return premultiplyPixel(((Math.round(previous.alpha * 255) << 24) | previous.color) >>> 0, true);
+}
+
+function applyGradientBevelRaster(original: Uint32Array, width: number, height: number,
+    filter: import("../filters/GradientBevelFilter").GradientBevelFilter): Uint32Array {
+    const radians = filter.angle * Math.PI / 180;
+    const offsetX = filter.distance * Math.cos(radians), offsetY = filter.distance * Math.sin(radians);
+    const seed = new Uint32Array(original.length);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        const center = (original[y * width + x] >>> 24) / 255;
+        const positive = sampleAlpha(original, width, height, x - offsetX, y - offsetY);
+        const negative = sampleAlpha(original, width, height, x + offsetX, y + offsetY);
+        const highlightInnerBase = Math.min(1, (1 - positive) * filter.strength) * center;
+        const shadowInnerBase = Math.min(1, (1 - negative) * filter.strength) * center;
+        const highlightInner = highlightInnerBase * (1 - shadowInnerBase);
+        const shadowInner = shadowInnerBase * (1 - highlightInnerBase);
+        const highlightOuterBase = Math.min(1, negative * filter.strength) * (1 - center);
+        const shadowOuterBase = Math.min(1, positive * filter.strength) * (1 - center);
+        const highlightOuter = highlightOuterBase * (1 - shadowOuterBase);
+        const shadowOuter = shadowOuterBase * (1 - highlightOuterBase);
+        const highlight = highlightInner + highlightOuter * (1 - highlightInner);
+        const shadow = shadowInner + shadowOuter * (1 - shadowInner);
+        seed[y * width + x] = packChannels(highlight * 255, 0, shadow * (1 - highlight) * 255, 255);
+    }
+    const field = boxBlur(seed, width, height, filter.blurX, filter.blurY, filter.quality);
+    const stops = normalizedGradient(filter), output = new Uint32Array(original.length);
+    for (let index = 0; index < output.length; index++) {
+        const source = original[index], sourceAlpha = (source >>> 24) / 255;
+        const signedLevel = Math.max(-1, Math.min(1,
+            ((field[index] >>> 16 & 0xff) - (field[index] & 0xff)) / 255 * filter.strength));
+        const bevel = gradientPixel(stops, (255 + signedLevel * 255) / 511);
+        const bevelAlpha = (bevel >>> 24) / 255;
+        if (filter.type === "inner") output[index] = filter.knockout
+            ? multiplyPremultiplied(bevel, sourceAlpha)
+            : addPremultiplied(multiplyPremultiplied(bevel, sourceAlpha), source, 1 - bevelAlpha);
+        else if (filter.type === "outer") output[index] = filter.knockout
+            ? multiplyPremultiplied(bevel, 1 - sourceAlpha)
+            : addPremultiplied(source, bevel, 1 - sourceAlpha);
+        else output[index] = filter.knockout ? bevel : addPremultiplied(bevel, source, 1 - bevelAlpha);
+    }
+    return output;
+}
+
+function applyColorMatrixRaster(original: Uint32Array, matrix: readonly number[]): Uint32Array {
+    const output = new Uint32Array(original.length);
+    const clamp = (value: number): number => Math.max(0, Math.min(255, value));
+    for (let index = 0; index < original.length; index++) {
+        const pixel = unpremultiplyPixel(original[index]);
+        const input = [pixel >>> 16 & 0xff, pixel >>> 8 & 0xff, pixel & 0xff, pixel >>> 24];
+        const channel = (row: number): number => clamp(matrix[row * 5] * input[0] + matrix[row * 5 + 1] * input[1]
+            + matrix[row * 5 + 2] * input[2] + matrix[row * 5 + 3] * input[3] + matrix[row * 5 + 4]);
+        output[index] = premultiplyPixel(packChannels(channel(0), channel(1), channel(2), channel(3)), true);
+    }
+    return output;
+}
+
+function filterRaster(source: BitmapDataState, rect: { x: number; y: number; width: number; height: number },
+    destinationX: number, destinationY: number, filter: ConcreteBitmapFilter, destinationTransparent: boolean): FilterRaster {
+    const margins = filterMargins(filter);
+    const sampleRing = isBlurFilter(filter) ? margins : EMPTY_FILTER_MARGINS;
+    const pad = {
+        left: margins.left + sampleRing.left, top: margins.top + sampleRing.top,
+        right: margins.right + sampleRing.right, bottom: margins.bottom + sampleRing.bottom,
+    };
+    const width = rect.width + pad.left + pad.right, height = rect.height + pad.top + pad.bottom;
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width * height > MAX_BITMAP_PIXELS)
+        throw new RangeError("BitmapData filter temporary exceeds the Flash allocation limit");
+    const original = new Uint32Array(width * height);
+    const grow = isBlurFilter(filter) ? pad : EMPTY_FILTER_MARGINS;
+    const copyX0 = Math.max(0, rect.x - grow.left), copyY0 = Math.max(0, rect.y - grow.top);
+    const copyX1 = Math.min(source.width, rect.x + rect.width + grow.right);
+    const copyY1 = Math.min(source.height, rect.y + rect.height + grow.bottom);
+    const originX = rect.x - pad.left, originY = rect.y - pad.top;
+    for (let y = copyY0; y < copyY1; y++) for (let x = copyX0; x < copyX1; x++) {
+        let pixel = source.pixels![y * source.width + x];
+        if (!destinationTransparent && isBlurFilter(filter))
+            pixel = premultiplyPixel(unpremultiplyPixel(pixel) | 0xff000000, false);
+        original[(y - originY) * width + x - originX] = pixel;
+    }
+    let pixels: Uint32Array;
+    if (isBlurFilter(filter)) pixels = boxBlur(original, width, height, filter.blurX, filter.blurY, filter.quality);
+    else if (isColorMatrixFilter(filter)) pixels = applyColorMatrixRaster(original, filter.matrix);
+    else if (isGradientBevelFilter(filter)) pixels = applyGradientBevelRaster(original, width, height, filter);
+    else pixels = applyShadowRaster(original, width, height, filter);
+    return {
+        pixels, width, height,
+        writeX: sampleRing.left, writeY: sampleRing.top,
+        writeWidth: rect.width + margins.left + margins.right,
+        writeHeight: rect.height + margins.top + margins.bottom,
+        destinationX: destinationX - margins.left,
+        destinationY: destinationY - margins.top,
+    };
+}
+
 /**
  * CPU-backed source-visible `flash.display.BitmapData`.
  *
@@ -291,6 +596,49 @@ export class BitmapData {
         const pixel = premultiplyPixel(color, state.transparent);
         for (let y = y0; y < y1; y++) state.pixels!.fill(pixel, y * state.width + x0, y * state.width + x1);
         markDirty(state);
+    }
+
+    generateFilterRect(sourceRect: Rectangle, filter: BitmapFilter): Rectangle {
+        bitmapDataValue(this, "BitmapData");
+        const rect = sourceRectangle(rectangleValue(sourceRect, "sourceRect"));
+        if (!isBitmapFilter(filter)) throw new TypeError("filter must be a BitmapFilter");
+        const margins = filterMargins(filter);
+        return new Rectangle(
+            rect.x - margins.left,
+            rect.y - margins.top,
+            rect.width + margins.left + margins.right,
+            rect.height + margins.top + margins.bottom,
+        );
+    }
+
+    /**
+     * Synchronous CPU-backed Flash filter path. The temporary source is padded
+     * by the same margins reported by generateFilterRect; BlurFilter receives
+     * a second sampling ring so real pixels outside sourceRect contribute just
+     * as they do in Flash Player. Same-bitmap calls are inherently staged in
+     * the temporary raster before any destination pixel is replaced.
+     */
+    applyFilter(sourceBitmapData: BitmapData, sourceRect: Rectangle, destPoint: Point, filter: BitmapFilter): void {
+        const destination = bitmapDataValue(this, "BitmapData");
+        const source = bitmapDataValue(sourceBitmapData, "sourceBitmapData");
+        const rect = sourceRectangle(rectangleValue(sourceRect, "sourceRect"));
+        const point = pointValue(destPoint, "destPoint");
+        if (!isBitmapFilter(filter)) throw new TypeError("filter must be a BitmapFilter");
+        if (!destination.transparent && (isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)))
+            throw new TypeError("Glow, shadow, and bevel filters require a transparent destination BitmapData");
+        const margins = filterMargins(filter);
+        if (rect.width + margins.left + margins.right <= 0 || rect.height + margins.top + margins.bottom <= 0) return;
+        const raster = filterRaster(source, rect, intValue(point.x), intValue(point.y), filter, destination.transparent);
+        let changed = false;
+        for (let row = 0; row < raster.writeHeight; row++) for (let column = 0; column < raster.writeWidth; column++) {
+            const dx = raster.destinationX + column, dy = raster.destinationY + row;
+            if (dx < 0 || dy < 0 || dx >= destination.width || dy >= destination.height) continue;
+            let pixel = raster.pixels[(raster.writeY + row) * raster.width + raster.writeX + column];
+            if (!destination.transparent) pixel = (pixel | 0xff000000) >>> 0;
+            destination.pixels![dy * destination.width + dx] = pixel;
+            changed = true;
+        }
+        if (changed) markDirty(destination);
     }
 
     copyChannel(sourceBitmapData: BitmapData, sourceRect: Rectangle, destPoint: Point,

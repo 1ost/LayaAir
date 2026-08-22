@@ -44,7 +44,7 @@
       "predicateExport": "isFlashBitmapData",
       "predicateSignature": "(value: unknown) => value is BitmapData",
       "heritageClosure": [],
-      "moduleSha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
+      "moduleSha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
     },
     {
       "sourceQName": "flash.display.DisplayObject",

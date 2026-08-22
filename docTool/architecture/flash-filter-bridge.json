@@ -14,6 +14,8 @@
     "flash.filters.DropShadowFilter",
     "flash.filters.GlowFilter",
     "flash.filters.GradientBevelFilter",
+    "flash.display.BitmapData.applyFilter",
+    "flash.display.BitmapData.generateFilterRect",
     "flash.display.DisplayObject.filters",
     "ghostcat.display.filter.FilterProxy.explicit-native-seam",
     "swf.BEVELFILTER.internal-native-effect"
@@ -24,13 +26,7 @@
     "colorMatrix": "straight-rgba-full-4x5-with-alpha-cross-terms-and-offsets",
     "bevelAndGradientBevel": "opposing-alpha-fields-ffdec-double-strength-ramp-and-inner-outer-full-composition"
   },
-  "holds": [
-    {
-      "symbol": "flash.display.BitmapData.applyFilter",
-      "status": "HOLD",
-      "reason": "Same-source temporary-copy, transparency, rectangle growth, and per-filter pixel behavior are not yet admitted; FilterProxy rejects this path explicitly."
-    }
-  ],
+  "holds": [],
   "gates": [
     "npm run test:flash-filters",
     "npm run test:flash-filters:types",

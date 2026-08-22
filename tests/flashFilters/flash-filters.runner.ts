@@ -3,7 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { ILaya } from "../../src/layaAir/ILaya";
+import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
+import { Point } from "../../src/layaAir/flash/geom/Point";
+import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
 import { BitmapFilter } from "../../src/layaAir/flash/filters/BitmapFilter";
 import { BlurFilter, isBlurFilter } from "../../src/layaAir/flash/filters/BlurFilter";
 import { ColorMatrixFilter, isColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFilter";
@@ -158,6 +161,61 @@ test("GradientBevelFilter matches the Pepper constructor, array, scalar, type, a
     assert.throws(() => { gradient.colors = new Uint32Array(2) as unknown as number[]; }, /non-null Array/);
 });
 
+test("BitmapData filter rectangles use Flash write margins and directional offsets", () => {
+    const bitmap = new BitmapData(100, 100, true, 0);
+    const source = new Rectangle(10, 10, 40, 10);
+    assert.deepEqual(bitmap.generateFilterRect(source, new BlurFilter()), new Rectangle(8, 8, 44, 14));
+    assert.deepEqual(bitmap.generateFilterRect(source, new GlowFilter(0, 1, 6, 4, 1, 1, true)), source);
+    assert.deepEqual(bitmap.generateFilterRect(source,
+        new DropShadowFilter(4, 0, 0, 1, 4, 4, 1, 1)), new Rectangle(8, 8, 48, 14));
+    assert.deepEqual(bitmap.generateFilterRect(source,
+        new GradientBevelFilter(4, 0, [0, 0xffffff], [1, 1], [0, 255], 4, 4)),
+    new Rectangle(4, 8, 52, 14));
+    assert.throws(() => bitmap.generateFilterRect(source, {} as BitmapFilter), /BitmapFilter/);
+});
+
+test("BitmapData.applyFilter stages same-source blur and samples real neighbors outside sourceRect", () => {
+    const bitmap = new BitmapData(3, 1, true, 0);
+    bitmap.setPixel32(0, 0, 0xffff0000);
+    bitmap.applyFilter(bitmap, new Rectangle(1, 0, 1, 1), new Point(1, 0), new BlurFilter(3, 1, 1));
+    assert.deepEqual(Array.from({ length: 3 }, (_, x) => bitmap.getPixel32(x, 0)),
+        [0x55ff0000, 0x55ff0000, 0]);
+});
+
+test("BitmapData.applyFilter covers color matrix, shadow, glow, and gradient bevel CPU paths", () => {
+    const colorSource = new BitmapData(1, 1, true, 0xff102030);
+    const colorDestination = new BitmapData(1, 1, true, 0);
+    colorDestination.applyFilter(colorSource, colorSource.rect, new Point(), new ColorMatrixFilter([
+        0, 0, 1, 0, 0,
+        1, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+        0, 0, 0, 1, 0,
+    ]));
+    assert.equal(colorDestination.getPixel32(0, 0), 0xff301020);
+
+    const shadowSource = new BitmapData(1, 1, true, 0xffffffff);
+    const shadowDestination = new BitmapData(2, 1, true, 0xffffffff);
+    shadowDestination.applyFilter(shadowSource, shadowSource.rect, new Point(),
+        new DropShadowFilter(1, 0, 0xff0000, 1, 1, 1, 1, 1, false, false, true));
+    assert.deepEqual([shadowDestination.getPixel32(0, 0), shadowDestination.getPixel32(1, 0)],
+        [0, 0xffff0000]);
+
+    const alphaSource = new BitmapData(1, 1, true, 0x80ffffff);
+    const glowDestination = new BitmapData(1, 1, true, 0);
+    glowDestination.applyFilter(alphaSource, alphaSource.rect, new Point(),
+        new GlowFilter(0x00ff00, 1, 1, 1, 1, 1, true, true));
+    assert.equal(glowDestination.getPixel32(0, 0) >>> 24, 64);
+
+    const bevelDestination = new BitmapData(1, 1, true, 0);
+    bevelDestination.applyFilter(alphaSource, alphaSource.rect, new Point(),
+        new GradientBevelFilter(0, 0, [0, 0xffffff], [1, 1], [0, 255], 1, 1, 1, 1, "inner"));
+    assert.ok(bevelDestination.getPixel32(0, 0) >>> 24 > 0);
+
+    const opaque = new BitmapData(2, 2, false, 0);
+    assert.throws(() => opaque.applyFilter(shadowSource, shadowSource.rect, new Point(), new GlowFilter()),
+        /transparent destination/);
+});
+
 test("authored BEVELFILTER maps exact FFDec flags and four-stop ramp into the shared native effect", () => {
     const filter = createFlashAuthoredBevelFilter({
         sourceType: "BEVELFILTER", distance: 7, angleRadians: Math.PI / 3,
@@ -254,6 +312,9 @@ test("FilterProxy is sealed and forwards only explicit properties with structura
     assert.notEqual((owner.filters[1] as BlurFilter).blurX, 9);
     await Promise.resolve();
     assert.deepEqual([(owner.filters[1] as BlurFilter).blurX, (owner.filters[1] as BlurFilter).blurY], [9, 11]);
+    const pixels = new BitmapData(1, 1, true, 0xff123456);
+    new FilterProxy(new ColorMatrixFilter(), false, false).applyFilter(pixels);
+    assert.equal(pixels.getPixel32(0, 0), 0xff123456, "BitmapData follows its synchronous native applyFilter path");
     const gradientProxy = new FilterProxy(new GradientBevelFilter(4, 45, [0, 0xffffff], [1, 1], [0, 255]), false, false);
     gradientProxy.applyFilter(owner);
     gradientProxy.setProperty("distance", 12);

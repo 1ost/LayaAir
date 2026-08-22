@@ -1,4 +1,6 @@
 import { DisplayObject, isFlashDisplayObject } from "../display/DisplayObject";
+import { BitmapData, isFlashBitmapData } from "../display/BitmapData";
+import { Point } from "../geom/Point";
 import { BitmapFilter } from "./BitmapFilter";
 import { isBlurFilter } from "./BlurFilter";
 import { isDropShadowFilter } from "./DropShadowFilter";
@@ -65,9 +67,15 @@ export class FilterProxy {
         return -1;
     }
 
-    applyFilter(owner: DisplayObject): void {
+    applyFilter(owner: DisplayObject | BitmapData): void {
+        if (isFlashBitmapData(owner)) {
+            if (!this.filter) return;
+            owner.applyFilter(owner, owner.rect, new Point(), this.filter);
+            if (this.callLater) this.scheduleUpdate();
+            return;
+        }
         if (!isFlashDisplayObject(owner))
-            throw new TypeError("FilterProxy.applyFilter requires a native flash.display.DisplayObject; BitmapData.applyFilter is HOLD");
+            throw new TypeError("FilterProxy.applyFilter requires a native flash.display.DisplayObject or BitmapData");
         if (!this.filter) return;
         this.owner = owner;
         const values = owner.filters;

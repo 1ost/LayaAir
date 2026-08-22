@@ -362,7 +362,7 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
+          "sha256": "1d953b57cba89d8bb025f9bd0e1415466abcd6a8fb874659e2a621b6e2766242",
           "capability": "rendering.filter",
           "covers": [
             "35366f2d4f034891ffc0d16273b1a6cf6e52bb42f689bc9b34f67eb41b909146",
@@ -19104,6 +19104,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "applyFilter",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sourceBitmapData: BitmapData, sourceRect: Rectangle, destPoint: Point, filter: BitmapFilter) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "clone",
               "scope": "instance",
               "optional": false,
@@ -19154,6 +19163,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(rect: Rectangle, color: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "generateFilterRect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(sourceRect: Rectangle, filter: BitmapFilter) => Rectangle"
             },
             {
               "abstract": false,
@@ -19268,7 +19286,7 @@
             "new (width: number, height: number, transparent?: boolean, fillColor?: number): BitmapData"
           ],
           "indexSignatures": [],
-          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
+          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00",
           "heritage": []
         },
         {
@@ -19539,21 +19557,21 @@
           "export": "acquireBitmapDataTexture",
           "kind": "function",
           "signature": "(value: BitmapData, smoothing: boolean) => Texture | null",
-          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
+          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "isFlashBitmapData",
           "kind": "function",
           "signature": "(value: unknown) => value is BitmapData",
-          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
+          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "observeBitmapData",
           "kind": "function",
           "signature": "(value: BitmapData, listener: InvalidationListener) => () => void",
-          "sha256": "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2"
+          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObject.ts",
@@ -23239,7 +23257,7 @@
             "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
-            "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
+            "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
@@ -38988,7 +39006,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2141",
+              "name": "__@iterator@2150",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -39905,7 +39923,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(owner: DisplayObject) => void"
+              "signature": "(owner: DisplayObject | BitmapData) => void"
             },
             {
               "abstract": false,
@@ -40047,7 +40065,7 @@
             "new (filter?: BitmapFilter | null, autoUpdateIndex?: boolean, callLater?: boolean): FilterProxy"
           ],
           "indexSignatures": [],
-          "sha256": "d5716301356aa958f50e5a8ce175af857faaa9a78ab1306af8693a3b0483606c",
+          "sha256": "a456cd4c496155bd41f09e8e1426aa38ca100c03a4ed8f321113b7825bc186f0",
           "heritage": []
         },
         {
@@ -40479,17 +40497,17 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "d0fee59a4425331fc78c87e0b2d32c2429f3cd6c792241ce849ad230319eca41",
+          "sha256": "1d953b57cba89d8bb025f9bd0e1415466abcd6a8fb874659e2a621b6e2766242",
           "capability": "api.flash.filters",
           "covers": [
             "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",
             "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15",
             "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef",
             "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0",
+            "a456cd4c496155bd41f09e8e1426aa38ca100c03a4ed8f321113b7825bc186f0",
             "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d",
             "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d",
-            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538",
-            "d5716301356aa958f50e5a8ce175af857faaa9a78ab1306af8693a3b0483606c"
+            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
           ]
         }
       ]

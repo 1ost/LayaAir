@@ -39,17 +39,19 @@ test("DisplayObject.filters accepts direct nullable source clears", () => {
     assert.equal(typeof compileNullableFilterClear, "function");
 });
 
-test("GradientBevelFilter is native while BitmapData.applyFilter remains an explicit HOLD", () => {
+test("GradientBevelFilter and synchronous BitmapData filtering are native", () => {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), "docTool/architecture/flash-filter-bridge.json"), "utf8"));
     assert.equal(manifest.schema, "laya-flash-filter-bridge@1");
     assert.ok(manifest.implemented.includes("flash.filters.GradientBevelFilter"));
     assert.ok(manifest.implemented.includes("swf.BEVELFILTER.internal-native-effect"));
-    assert.deepEqual(manifest.holds.map((entry: any) => [entry.symbol, entry.status]),
-        [["flash.display.BitmapData.applyFilter", "HOLD"]]);
+    assert.ok(manifest.implemented.includes("flash.display.BitmapData.applyFilter"));
+    assert.ok(manifest.implemented.includes("flash.display.BitmapData.generateFilterRect"));
+    assert.deepEqual(manifest.holds, []);
     const barrel = readFileSync(join(process.cwd(), "src/layaAir/flash/index.ts"), "utf8");
     assert.match(barrel, /export \{ GradientBevelFilter \} from "\.\/filters\/GradientBevelFilter"/);
     assert.doesNotMatch(barrel, /export\s*\{\s*(?:BevelFilter|createFlashAuthoredBevelFilter)\s*\}/,
         "authored BEVELFILTER stays engine-internal and no public BevelFilter is invented");
     const bitmapData = readFileSync(join(process.cwd(), "src/layaAir/flash/display/BitmapData.ts"), "utf8");
-    assert.doesNotMatch(bitmapData, /\bapplyFilter\s*\(/);
+    assert.match(bitmapData, /\bapplyFilter\s*\(/);
+    assert.match(bitmapData, /\bgenerateFilterRect\s*\(/);
 });

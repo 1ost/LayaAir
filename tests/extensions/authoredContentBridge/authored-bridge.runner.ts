@@ -348,7 +348,7 @@ test("Point and Rectangle retain Flash value semantics on native Laya values", (
 
 test("BitmapData preserves premultiplied Flash pixel, clipping and disposal semantics", () => {
     assert.equal("draw" in BitmapData.prototype, true);
-    assert.equal("applyFilter" in BitmapData.prototype, false);
+    assert.equal("applyFilter" in BitmapData.prototype, true);
     assert.equal(Object.isFrozen(BitmapDataChannel), true);
     assert.equal(Object.isFrozen(PixelSnapping), true);
     assert.deepEqual([BitmapDataChannel.RED, BitmapDataChannel.GREEN, BitmapDataChannel.BLUE, BitmapDataChannel.ALPHA],
