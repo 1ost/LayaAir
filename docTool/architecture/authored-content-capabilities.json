@@ -21774,7 +21774,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(request: URLRequest, context?: null) => void"
+              "signature": "(request: URLRequest, context?: LoaderContext | null) => void"
             },
             {
               "abstract": false,
@@ -21783,7 +21783,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(_bytes: ArrayBuffer | Uint8Array, _context?: null) => never"
+              "signature": "(_bytes: ArrayBuffer | Uint8Array, _context?: LoaderContext | null) => never"
             },
             {
               "abstract": false,
@@ -22627,7 +22627,7 @@
             "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
           ],
           "indexSignatures": [],
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c",
           "heritage": [
             {
               "kind": "extends",
@@ -22640,7 +22640,7 @@
           "export": "isFlashLoader",
           "kind": "function",
           "signature": "(value: unknown) => value is Loader",
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22842,7 +22842,7 @@
             "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
           ],
           "indexSignatures": [],
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c",
           "heritage": [
             {
               "kind": "extends",
@@ -22855,7 +22855,7 @@
           "export": "isFlashLoaderInfo",
           "kind": "function",
           "signature": "(value: unknown) => value is LoaderInfo",
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22875,7 +22875,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c",
           "heritage": []
         },
         {
@@ -22896,7 +22896,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c",
           "heritage": []
         },
         {
@@ -22904,14 +22904,14 @@
           "export": "installNativeLoaderContentHost",
           "kind": "function",
           "signature": "(host: NativeLoaderContentHost) => void",
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
           "export": "isNativeLoaderContentHost",
           "kind": "function",
           "signature": "(value: unknown) => value is NativeLoaderContentHost",
-          "sha256": "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27"
+          "sha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
         },
         {
           "module": "src/layaAir/flash/display/Stage.ts",
@@ -23225,6 +23225,7 @@
             "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e",
             "2708bec5931d56f474e03eeb7dfe4ad61e327c8364f52a41c5aa65225ecde313",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
+            "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c",
             "32b6c87378aecd3dbe8367c9feefeeac93fe69482c49fbd1be9615b3f943a5a7",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
@@ -23240,7 +23241,6 @@
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
             "a16fe4a969bf5c972e6bdf522eea44a762dadfd3e473bfc983ebff76bfbbcbc2",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
-            "d26da7019b9073c79a67ac7eef5f9c191e97f21ee7d2a85d56b14ab5cf0ffc27",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
@@ -38708,6 +38708,66 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/utils/Proxy.ts",
+          "export": "Proxy",
+          "kind": "class",
+          "signature": "typeof Proxy",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "call",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(receiver: Proxy, name: FlashProxyName, args: readonly unknown[]) => unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "flashProxyDeclaredProperties",
+              "scope": "static",
+              "optional": false,
+              "readonly": true,
+              "signature": "readonly PropertyKey[]"
+            }
+          ],
+          "constructors": [
+            "new (): Proxy"
+          ],
+          "indexSignatures": [],
+          "sha256": "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/utils/Proxy.ts",
+          "export": "flash_proxy",
+          "kind": "const",
+          "signature": "\"http://www.adobe.com/2006/actionscript/flash/proxy\"",
+          "sha256": "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2"
+        },
+        {
+          "module": "src/layaAir/flash/utils/Proxy.ts",
+          "export": "FlashProxyName",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2"
+        },
+        {
+          "module": "src/layaAir/flash/utils/Proxy.ts",
+          "export": "declareFlashProxyProperties",
+          "kind": "function",
+          "signature": "(...names: readonly PropertyKey[]) => readonly PropertyKey[]",
+          "sha256": "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2"
+        },
+        {
+          "module": "src/layaAir/flash/utils/Proxy.ts",
+          "export": "callFlashProxyProperty",
+          "kind": "function",
+          "signature": "(receiver: Proxy, name: FlashProxyName, ...args: readonly unknown[]) => unknown",
+          "sha256": "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2"
+        },
+        {
           "module": "src/layaAir/flash/utils/XML.ts",
           "export": "XML",
           "kind": "class",
@@ -38919,7 +38979,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2110",
+              "name": "__@iterator@2141",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -39143,7 +39203,7 @@
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "db40cf5033494b7b833947cdf2abad6984714cae47a2ae81e238d3d10aaafc77",
+          "sha256": "88565f166639352900ae75f2dc4a03f93f1bd1743aa1bc26df33875c8cc7622e",
           "capability": "api.flash.utils",
           "covers": [
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
@@ -39154,6 +39214,7 @@
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
             "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
@@ -39162,7 +39223,7 @@
         {
           "path": "tests/flashXml/flash-xml.runner.ts",
           "test": "Mutable Flash XML and XMLList behavior",
-          "sha256": "d16103ff58da366a3cbd77ba39270f8211f221b2da6b275b7d6df3b0d5687be5",
+          "sha256": "391d62218c39b73278a781816fb1c072e64bfc527dc6bd49ac3de247862d6411",
           "capability": "api.flash.utils",
           "covers": [
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
@@ -39173,6 +39234,7 @@
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
             "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
@@ -39192,6 +39254,7 @@
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
             "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
@@ -39211,6 +39274,7 @@
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
+            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
             "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
@@ -42084,16 +42148,229 @@
           "kind": "type",
           "signature": "any",
           "sha256": "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
+        },
+        {
+          "module": "src/layaAir/flash/xml/XMLNode.ts",
+          "export": "XMLNode",
+          "kind": "class",
+          "signature": "typeof XMLNode",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "#adopt",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: XMLNode, index: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "appendChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: XMLNode) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "attributes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Record<string, string>"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "childNodes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode[]"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "cloneNode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(deep: boolean) => XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "firstChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getNamespaceForPrefix",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(prefix: string) => string | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getPrefixForNamespace",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(namespaceURI: string) => string | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasChildNodes",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "insertBefore",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(node: XMLNode, before: XMLNode | null) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "lastChild",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "localName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "namespaceURI",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "nextSibling",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "nodeName",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "nodeType",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "nodeValue",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "parentNode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "prefix",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "previousSibling",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "XMLNode"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeNode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "toString",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => string"
+            }
+          ],
+          "constructors": [
+            "new (type: number, value: string): XMLNode"
+          ],
+          "indexSignatures": [],
+          "sha256": "871819c9fd8c02dc99807baf7ca8d50d92541547e12afb3a5c45ac4d75e6ee21",
+          "heritage": []
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashXmlBridgeEvidence.test.ts",
           "test": "Strict immutable XML resource compiler surface",
-          "sha256": "93d471d16220d01da0245804fc122f9a814ffcfe899b887b5af27b18de7c37dc",
+          "sha256": "742d2da8007d8343c6cba4032b2329a7b77faf226fddc46871d2aab1e0ca923f",
           "capability": "api.flash.xml",
           "covers": [
-            "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e"
+            "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e",
+            "871819c9fd8c02dc99807baf7ca8d50d92541547e12afb3a5c45ac4d75e6ee21"
           ]
         }
       ]
@@ -42507,6 +42784,92 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/system/LoaderContext.ts",
+          "export": "LoaderContext",
+          "kind": "class",
+          "signature": "typeof LoaderContext",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "allowCodeImport",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "allowLoadBytesCodeExecution",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "applicationDomain",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ApplicationDomain"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "checkPolicyFile",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "imageDecodingPolicy",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "parameters",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Record<string, unknown>"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "requestedContentParent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "securityDomain",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "unknown"
+            }
+          ],
+          "constructors": [
+            "new (checkPolicyFile?: boolean, applicationDomain?: ApplicationDomain | null, securityDomain?: unknown | null): LoaderContext"
+          ],
+          "indexSignatures": [],
+          "sha256": "986fb4584605bb1d11d78d578ddd2117e73770d898e77e5e81c89c83efb72450",
+          "heritage": []
+        },
+        {
           "module": "src/layaAir/flash/system/Security.ts",
           "export": "Security",
           "kind": "class",
@@ -42696,13 +43059,14 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
+          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
             "23276a54344f290ad93ff11fb95a0c17a069eb7cf7f2ad1c93ea2d97a4d0bb37",
             "697bb4208a1a2ee1c5a3fa8a32ba750541353cb0b24105bd4f8c1f57d6e1071b",
             "786e0bea4f22ba86aa3e031ef86dffe0a410b9a8a0f036506056209ce67899ec",
+            "986fb4584605bb1d11d78d578ddd2117e73770d898e77e5e81c89c83efb72450",
             "d29e89638604ee28732d8dcedbef1fcfc7e9b6342ff54283584021ff8f6cc423"
           ]
         }
@@ -42816,7 +43180,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
+          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
           "capability": "api.flash.external",
           "covers": [
             "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
@@ -42915,7 +43279,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "7c8e3aee5149b65386fcb16cdd6ecb3decaf755fc3819c20c94f4e437403d1e1",
+          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
           "capability": "api.flash.errors",
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"
@@ -43258,6 +43622,569 @@
           "capability": "api.flash.debug",
           "covers": [
             "ee60b1521aeb082197ac9e93ac419cbfaaf98e4b7494ef28b19ddb14fcefd6e8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api.flash.media",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/media/Sound.ts",
+          "export": "Sound",
+          "kind": "class",
+          "signature": "typeof Sound",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#context",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SoundLoaderContext"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bytesLoaded",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "bytesTotal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "close",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "id3",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "Readonly<Record<string, never>>"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "isBuffering",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "length",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "load",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(stream: URLRequest, context?: SoundLoaderContext | null) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "play",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(startTime?: number, loops?: number, soundTransform?: SoundTransform | null) => SoundChannel | null"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "url",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (stream?: URLRequest | null, context?: SoundLoaderContext | null): Sound"
+          ],
+          "indexSignatures": [],
+          "sha256": "b01d7a95254d26bd8c9dbdc3a17d441234eca733592e6d1d70b2b04e8f834eff",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundChannel.ts",
+          "export": "SoundChannel",
+          "kind": "class",
+          "signature": "typeof SoundChannel",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#completed",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#native",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "LayaSoundChannel"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#transform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SoundTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "addEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "complete",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(success: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispatchEvent",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(event: Event) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "leftPeak",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "position",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "removeEventListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "rightPeak",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "soundTransform",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "SoundTransform"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "stop",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "willTrigger",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            }
+          ],
+          "constructors": [
+            "new (token: typeof SOUND_CHANNEL_TOKEN, native: LayaSoundChannel): SoundChannel"
+          ],
+          "indexSignatures": [],
+          "sha256": "c40413a0bc4e6016fa673f367cd12c7bcdea0dc0e7bceef0c4c8f774356c2943",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "EventDispatcher"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundLoaderContext.ts",
+          "export": "SoundLoaderContext",
+          "kind": "class",
+          "signature": "typeof SoundLoaderContext",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "bufferTime",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "checkPolicyFile",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            }
+          ],
+          "constructors": [
+            "new (bufferTime?: number, checkPolicyFile?: boolean): SoundLoaderContext"
+          ],
+          "indexSignatures": [],
+          "sha256": "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundTransform.ts",
+          "export": "SoundTransform",
+          "kind": "class",
+          "signature": "typeof SoundTransform",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "leftToLeft",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "leftToRight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "pan",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "rightToLeft",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "rightToRight",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "volume",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "copy",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: SoundTransform | null) => SoundTransform"
+            }
+          ],
+          "constructors": [
+            "new (volume?: number, panning?: number): SoundTransform"
+          ],
+          "indexSignatures": [],
+          "sha256": "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25",
+          "heritage": []
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/flashMediaBridgeEvidence.test.ts",
+          "test": "Flash media bridge compiler surface",
+          "sha256": "ef15366af0b67f3d71b1fc15fa233d39a11a8a1d5f94f8f5f4ee1ba3c6f04912",
+          "capability": "api.flash.media",
+          "covers": [
+            "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25",
+            "b01d7a95254d26bd8c9dbdc3a17d441234eca733592e6d1d70b2b04e8f834eff",
+            "c40413a0bc4e6016fa673f367cd12c7bcdea0dc0e7bceef0c4c8f774356c2943",
+            "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0"
           ]
         }
       ]

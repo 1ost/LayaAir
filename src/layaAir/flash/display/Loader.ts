@@ -14,6 +14,7 @@ import { IOErrorEvent } from "../events/IOErrorEvent";
 import { ProgressEvent } from "../events/ProgressEvent";
 import { SecurityErrorEvent } from "../events/SecurityErrorEvent";
 import { URLRequest, snapshotNativeLoaderRequest } from "../net/URLRequest";
+import { LoaderContext, snapshotNativeLoaderContext } from "../system/LoaderContext";
 import {
     bindDisplayObjectLoaderInfo, DisplayObject, isFlashDisplayObject, unbindDisplayObjectLoaderInfo
 } from "./DisplayObject";
@@ -415,12 +416,8 @@ export class Loader extends DisplayObjectContainer {
     get content(): DisplayObject | null { return this.#content; }
     get contentLoaderInfo(): LoaderInfo { return this.#contentLoaderInfo; }
 
-    load(request: URLRequest, context: null = null): void {
-        if (context !== null)
-            throw new UnsupportedFlashFeatureError(
-                "flash.display.Loader.load.context",
-                "ApplicationDomain and LoaderContext are outside the native-content bridge"
-            );
+    load(request: URLRequest, context: LoaderContext | null = null): void {
+        if (context !== null) snapshotNativeLoaderContext(context);
 
         // Snapshot and resolve the complete authority before invalidating any
         // existing generation or display ownership.
@@ -450,7 +447,7 @@ export class Loader extends DisplayObjectContainer {
         this.#begin(source);
     }
 
-    loadBytes(_bytes: ArrayBuffer | Uint8Array, _context: null = null): never {
+    loadBytes(_bytes: ArrayBuffer | Uint8Array, _context: LoaderContext | null = null): never {
         throw new UnsupportedFlashFeatureError(
             "flash.display.Loader.loadBytes",
             "runtime executable and arbitrary byte decoding is forbidden"

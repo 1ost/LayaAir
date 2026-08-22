@@ -12,8 +12,12 @@ import type {
     StrictXmlNode,
     StrictXmlDocumentNode,
 } from "../../src/layaAir/flash/xml/StrictXmlDocument.ts";
+import type { XMLNode } from "../../src/layaAir/flash/xml/XMLNode.ts";
 
 test("Strict immutable XML resource compiler surface", () => {
+    type LegacyXmlNodeSurface = typeof XMLNode extends unknown ? true : never;
+    const legacy: LegacyXmlNodeSurface = true;
+    void legacy;
     assert.ok(true as boolean satisfies (
         typeof StrictXmlDocument extends unknown
             ? StrictXmlLimits extends StrictXmlLimits

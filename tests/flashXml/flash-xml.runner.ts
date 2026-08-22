@@ -3,6 +3,33 @@ import test from "node:test";
 
 import { ByteArray } from "../../src/layaAir/flash/utils/ByteArray";
 import { XML, XMLList } from "../../src/layaAir/flash/utils/XML";
+import { XMLNode } from "../../src/layaAir/flash/xml/XMLNode";
+
+test("preserves the legacy XMLNode tree, namespace and serialization surface", () => {
+    const root = new XMLNode(1, "ns:root");
+    root.attributes["xmlns:ns"] = "urn:test";
+    root.attributes.answer = "1&2";
+    const first = new XMLNode(1, "first");
+    const text = new XMLNode(3, "<&");
+    const last = new XMLNode(1, "last");
+    root.appendChild(first);
+    root.appendChild(last);
+    root.insertBefore(text, last);
+    assert.equal(root.firstChild, first);
+    assert.equal(text.previousSibling, first);
+    assert.equal(text.nextSibling, last);
+    assert.equal(root.localName, "root");
+    assert.equal(root.prefix, "ns");
+    assert.equal(root.namespaceURI, "urn:test");
+    assert.equal(last.getPrefixForNamespace("urn:test"), "ns");
+    assert.equal(root.toString(), '<ns:root xmlns:ns="urn:test" answer="1&amp;2"><first />&lt;&amp;<last /></ns:root>');
+    const copy = root.cloneNode(true);
+    assert.equal(copy.toString(), root.toString());
+    text.removeNode();
+    assert.equal(text.parentNode, null);
+    assert.equal(root.childNodes.length, 2);
+    assert.throws(() => first.appendChild(root), /ancestor/);
+});
 
 test("parses mutable XML without weakening the strict parser boundary", () => {
     const root = new XML("<root a='1'>before<group><item id='x'/><item id='y'>Y&amp;Z</item></group><!--note--><![CDATA[raw<&]]></root>");

@@ -31,6 +31,8 @@ import { SimpleButton } from "../../src/layaAir/flash/display/SimpleButton";
 import { StaticText } from "../../src/layaAir/flash/text/StaticText";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
 import { URLRequest } from "../../src/layaAir/flash/net/URLRequest";
+import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain";
+import { LoaderContext } from "../../src/layaAir/flash/system/LoaderContext";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -156,6 +158,38 @@ test("Loader publishes authenticated native content through stable LoaderInfo", 
     assert.equal(info.url, "ui/loading.swf");
     assert.equal(info.contentType, "application/x-laya-hierarchy");
     assert.equal(prefab.createCalls, 1);
+});
+
+test("LoaderContext admits native domains while rejecting executable and security domains", () => {
+    const admitted = fixture("context.logical");
+    const context = new LoaderContext(false, ApplicationDomain.currentDomain);
+    admitted.loader.load(admitted.request, context);
+    assert.equal(admitted.host.resolveCalls, 1);
+    assert.equal(admitted.native.calls.length, 1);
+
+    const forged = fixture("forged-context.logical");
+    assert.throws(
+        () => forged.loader.load(forged.request, {} as LoaderContext),
+        /canonical LoaderContext/,
+    );
+    assert.equal(forged.host.resolveCalls, 0);
+
+    const executable = fixture("executable-context.logical");
+    const executableContext = new LoaderContext();
+    executableContext.allowCodeImport = true;
+    assert.throws(
+        () => executable.loader.load(executable.request, executableContext),
+        /runtime executable code import is forbidden/,
+    );
+    assert.equal(executable.host.resolveCalls, 0);
+
+    const security = fixture("security-context.logical");
+    const securityContext = new LoaderContext(false, null, {});
+    assert.throws(
+        () => security.loader.load(security.request, securityContext),
+        /does not admit Flash security domains/,
+    );
+    assert.equal(security.host.resolveCalls, 0);
 });
 
 test("authentication and native failures are typed and side effects are ordered", () => {

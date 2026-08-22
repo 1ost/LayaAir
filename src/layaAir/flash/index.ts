@@ -68,6 +68,10 @@ export { LocalConnection } from "./net/LocalConnection";
 export { FileReference } from "./net/FileReference";
 export { sendToURL } from "./net/sendToURL";
 export { registerClassAlias } from "./net/ClassAlias";
+export { Sound } from "./media/Sound";
+export { SoundChannel } from "./media/SoundChannel";
+export { SoundLoaderContext } from "./media/SoundLoaderContext";
+export { SoundTransform } from "./media/SoundTransform";
 export {
     FlashHTTPHost, installFlashHTTPHost,
 } from "./net/FlashHTTPTransport";
@@ -118,8 +122,14 @@ export type {
     StrictXmlNode,
     StrictXmlDocumentNode,
 } from "./xml/StrictXmlDocument";
+export { XMLNode } from "./xml/XMLNode";
+export {
+    Proxy, callFlashProxyProperty, declareFlashProxyProperties, flash_proxy,
+} from "./utils/Proxy";
+export type { FlashProxyName } from "./utils/Proxy";
 export { Capabilities } from "./system/Capabilities";
 export { ApplicationDomain } from "./system/ApplicationDomain";
+export { LoaderContext } from "./system/LoaderContext";
 export { ImageDecodingPolicy } from "./system/ImageDecodingPolicy";
 export { Security } from "./system/Security";
 export { System, installNativeSystemHost } from "./system/System";

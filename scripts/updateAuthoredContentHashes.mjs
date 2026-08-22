@@ -426,6 +426,11 @@ Object.assign(utilsCapability, {
         ["src/layaAir/flash/utils/ByteArray.ts", "ByteArrayInput", "type"],
         ["src/layaAir/flash/utils/ByteArray.ts", "ZlibDecompressionHost", "interface"],
         ["src/layaAir/flash/utils/Dictionary.ts", "Dictionary", "class"],
+        ["src/layaAir/flash/utils/Proxy.ts", "Proxy", "class"],
+        ["src/layaAir/flash/utils/Proxy.ts", "flash_proxy", "const"],
+        ["src/layaAir/flash/utils/Proxy.ts", "FlashProxyName", "type"],
+        ["src/layaAir/flash/utils/Proxy.ts", "declareFlashProxyProperties", "function"],
+        ["src/layaAir/flash/utils/Proxy.ts", "callFlashProxyProperty", "function"],
         ["src/layaAir/flash/utils/XML.ts", "XML", "class"],
         ["src/layaAir/flash/utils/XML.ts", "XMLList", "class"],
         ["src/layaAir/flash/utils/XML.ts", "FlashXmlInput", "type"],
@@ -702,6 +707,7 @@ ensureFlashCapability("api.flash.system", [
     ["src/layaAir/flash/system/ApplicationDomain.ts", "ApplicationDomain", "class"],
     ["src/layaAir/flash/system/Capabilities.ts", "Capabilities", "class"],
     ["src/layaAir/flash/system/ImageDecodingPolicy.ts", "ImageDecodingPolicy", "class"],
+    ["src/layaAir/flash/system/LoaderContext.ts", "LoaderContext", "class"],
     ["src/layaAir/flash/system/Security.ts", "Security", "class"],
     ["src/layaAir/flash/system/System.ts", "System", "class"],
     ["src/layaAir/flash/system/System.ts", "NativeSystemHost", "interface"],
@@ -709,6 +715,14 @@ ensureFlashCapability("api.flash.system", [
     ["src/layaAir/flash/system/System.ts", "installNativeSystemHost", "function"],
 ], "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
 "Flash system bridge compiler surface and clean-break dispositions");
+
+ensureFlashCapability("api.flash.media", [
+    ["src/layaAir/flash/media/Sound.ts", "Sound", "class"],
+    ["src/layaAir/flash/media/SoundChannel.ts", "SoundChannel", "class"],
+    ["src/layaAir/flash/media/SoundLoaderContext.ts", "SoundLoaderContext", "class"],
+    ["src/layaAir/flash/media/SoundTransform.ts", "SoundTransform", "class"],
+], "tests/architecture/flashMediaBridgeEvidence.test.ts",
+"Flash media bridge compiler surface");
 
 ensureFlashCapability("api.flash.external", [
     ["src/layaAir/flash/external/ExternalInterface.ts", "ExternalInterface", "class"],
@@ -805,6 +819,7 @@ Object.assign(xmlCapability, {
         ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlElement", "interface"],
         ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlNode", "type"],
         ["src/layaAir/flash/xml/StrictXmlDocument.ts", "StrictXmlDocumentNode", "type"],
+        ["src/layaAir/flash/xml/XMLNode.ts", "XMLNode", "class"],
     ].map(([module, exported, kind]) => xmlCapability.obligations?.find(
         item => item.module === module && item.export === exported)
         || { module, export: exported, kind, signature: "",

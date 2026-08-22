@@ -8,6 +8,7 @@ import type { ExternalInterface, ExternalInterfaceValue, NativeExternalInterface
 import type { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain.ts";
 import type { Capabilities } from "../../src/layaAir/flash/system/Capabilities.ts";
 import type { ImageDecodingPolicy } from "../../src/layaAir/flash/system/ImageDecodingPolicy.ts";
+import type { LoaderContext } from "../../src/layaAir/flash/system/LoaderContext.ts";
 import type { Security } from "../../src/layaAir/flash/system/Security.ts";
 import type { NativeSystemHost, NativeSystemHostLease, System,
     installNativeSystemHost } from "../../src/layaAir/flash/system/System.ts";
@@ -17,6 +18,7 @@ test("Flash system bridge compiler surface and clean-break dispositions", () => 
         typeof ApplicationDomain extends unknown
             ? typeof Capabilities extends unknown
             ? typeof ImageDecodingPolicy extends unknown
+                ? typeof LoaderContext extends unknown
                 ? typeof Security extends unknown
                 ? typeof System extends unknown
                     ? NativeSystemHost extends NativeSystemHost
@@ -25,6 +27,7 @@ test("Flash system bridge compiler surface and clean-break dispositions", () => 
                             : never
                         : never
                     : never
+                : never
                 : never
                 : never
             : never
