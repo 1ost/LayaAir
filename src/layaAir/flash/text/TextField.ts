@@ -288,6 +288,17 @@ export class TextField extends InteractiveObject {
         this._defaultFormatInitialized = true;
     }
 
+    /** Flash TextField.textColor, applied to both existing and future text. */
+    get textColor(): number { return this._currentFormat().color ?? 0; }
+    set textColor(value: number) {
+        const color = Number(value) >>> 0;
+        const format = new TextFormat(null, null, color);
+        this._captureDefaultFormat();
+        this._defaultFormat.color = color;
+        if (this.length) this.setTextFormat(format);
+        else this._applyFormat(format);
+    }
+
     get displayAsPassword(): boolean { return this._displayAsPassword; }
     set displayAsPassword(value: boolean) {
         this._displayAsPassword = !!value;

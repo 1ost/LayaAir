@@ -11,6 +11,7 @@ import {
 import { Font } from "../../src/layaAir/flash/text/Font";
 import { FontType } from "../../src/layaAir/flash/text/FontType";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
+import { TextFormat } from "../../src/layaAir/flash/text/TextFormat";
 import { ILaya } from "../../src/layaAir/ILaya";
 import { Text } from "../../src/layaAir/laya/display/Text";
 import { Render2DProcessor } from "../../src/layaAir/laya/display/Render2DProcessor";
@@ -78,6 +79,26 @@ function entry(
 function manifest(fonts: readonly AuthoredFontManifestEntry[]): AuthoredFontManifest {
     return { schema: "laya-authored-font-manifest@1", fonts };
 }
+
+test("TextField.textColor recolors existing text and remains the insertion default", () => {
+    const field = new TextField();
+    try {
+        assert.equal(field.textColor, 0);
+        field.text = "AB";
+        field.setTextFormat(new TextFormat(null, null, 0xff0000), 0, 1);
+
+        field.textColor = 0x12ab34;
+        assert.equal(field.textColor, 0x12ab34);
+        assert.equal(field.defaultTextFormat.color, 0x12ab34);
+        assert.equal(field.getTextFormat(0, 1).color, 0x12ab34);
+        assert.equal(field.getTextFormat(1, 2).color, 0x12ab34);
+
+        field.appendText("C");
+        assert.equal(field.getTextFormat(2, 3).color, 0x12ab34);
+    } finally {
+        field.destroy(true);
+    }
+});
 
 function keyOf(value: AuthoredFontManifestEntry) {
     return {
