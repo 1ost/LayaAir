@@ -8,6 +8,7 @@ import {
 } from "../../src/layaAir/flash/utils/DefinitionRegistry";
 import { getQualifiedClassName } from "../../src/layaAir/flash/utils/getQualifiedClassName";
 import { getQualifiedSuperclassName } from "../../src/layaAir/flash/utils/getQualifiedSuperclassName";
+import { isFlashQName, QName } from "../../src/layaAir/flash/utils/QName";
 
 class AbstractModel {
     static readonly __className: string = "example.models.AbstractModel";
@@ -46,6 +47,36 @@ class ConcreteModel extends AbstractModel {
     set both(_value: string) {
     }
 }
+
+test("QName preserves source-visible URI and local-name forms", () => {
+    const empty = new QName();
+    assert.equal(empty.uri, "");
+    assert.equal(empty.localName, "");
+    assert.equal(empty.toString(), "");
+
+    const ordinary = new QName("urn:bleach", "member");
+    assert.equal(ordinary.uri, "urn:bleach");
+    assert.equal(ordinary.localName, "member");
+    assert.equal(ordinary.toString(), "urn:bleach::member");
+
+    assert.equal(new QName("", "member").toString(), "member");
+    assert.equal(new QName(null, "member").toString(), "*::member");
+});
+
+test("QName copies nominal values and applies constructor string conversion", () => {
+    const original = new QName("urn:original", "leaf");
+    const copy = new QName(original);
+    assert.notEqual(copy, original);
+    assert.equal(copy.uri, original.uri);
+    assert.equal(copy.localName, original.localName);
+
+    assert.equal(new QName("single").toString(), "single");
+    assert.equal(new QName(42, 7).toString(), "42::7");
+    assert.equal(new QName("urn:other", original).localName, "leaf");
+    assert.equal(original.valueOf(), original);
+    assert.equal(isFlashQName(original), true);
+    assert.equal(isFlashQName({ uri: "urn:original", localName: "leaf" }), false);
+});
 
 test("getQualifiedClassName covers primitives, classes, and registered native names", () => {
     assert.equal(getQualifiedClassName(null), "null");
