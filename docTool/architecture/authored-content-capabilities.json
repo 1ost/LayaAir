@@ -33260,6 +33260,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "textColor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
               "kind": "get",
               "name": "textHeight",
               "scope": "instance",
@@ -33506,7 +33515,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a",
+          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6",
           "heritage": [
             {
               "kind": "extends",
@@ -33522,7 +33531,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
+          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -33532,7 +33541,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
+          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -33542,7 +33551,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a"
+          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -36582,7 +36591,7 @@
           "capability": "api.flash.text",
           "covers": [
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
-            "428fb44c425056d43f6f265020f8834354c1af799f17e3185f7713053b82854a",
+            "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6",
             "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
@@ -38901,7 +38910,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2107",
+              "name": "__@iterator@2110",
               "scope": "instance",
               "optional": false,
               "readonly": false,
