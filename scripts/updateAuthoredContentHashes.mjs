@@ -461,6 +461,18 @@ Object.assign(utilsCapability, {
         sha256: "",
         capability: "api.flash.utils",
         covers: [],
+    }, {
+        path: "tests/flashByteArray/flash-byte-array.runner.ts",
+        test: "Flash ByteArray binary and synchronous zlib behavior",
+        sha256: "",
+        capability: "api.flash.utils",
+        covers: [],
+    }, {
+        path: "tests/flashByteArray/flash-byte-array.browser.ts",
+        test: "Flash ByteArray browser zlib behavior",
+        sha256: "",
+        capability: "api.flash.utils",
+        covers: [],
     }],
 });
 delete utilsCapability.blockingReason;

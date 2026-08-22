@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deflateSync } from "node:zlib";
+import { constants, deflateSync } from "node:zlib";
 import { OutOfRangeError } from "../../src/layaAir/laya/utils/Error";
 import { ByteArray, ZlibDecompressionHost } from "../../src/layaAir/flash/utils/ByteArray";
 import { Endian } from "../../src/layaAir/flash/utils/Endian";
@@ -339,6 +339,71 @@ test("the default browser host decodes a zlib-wrapped version manifest atomicall
     assert.equal(compressed.readUnsignedShort(), 1);
     assert.equal(compressed.readUTFBytes(compressed.readUnsignedShort()), "TApplication.swf");
     assert.equal(compressed.readUTFBytes(compressed.readUnsignedShort()), "2013070522");
+});
+
+test("synchronous Flash uncompress decodes stored, fixed, and dynamic zlib blocks", () => {
+    const fixtures = [
+        new Uint8Array([0, 1, 2, 3, 4, 5, 0, 255]),
+        new TextEncoder().encode("Bleach map ".repeat(64)),
+        new Uint8Array(Array.from({ length: 4096 }, (_, index) => (index * 37 + (index >>> 3)) & 0xff)),
+    ];
+    const options = [
+        { level: 0 },
+        { level: 9, strategy: constants.Z_FIXED },
+        { level: 6 },
+    ];
+    for (let index = 0; index < fixtures.length; index++) {
+        const compressed = new ByteArray(deflateSync(fixtures[index], options[index]));
+        compressed.endian = Endian.LITTLE_ENDIAN;
+        compressed.position = compressed.length;
+        compressed.uncompress();
+        assert.deepEqual(bytesOf(compressed), [...fixtures[index]]);
+        assert.equal(compressed.position, 0);
+        assert.equal(compressed.endian, Endian.LITTLE_ENDIAN);
+    }
+});
+
+test("synchronous Flash uncompress matches zlib across deterministic block shapes", () => {
+    let state = 0x1badb002;
+    const next = (): number => {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return state;
+    };
+    for (let fixtureIndex = 0; fixtureIndex < 72; fixtureIndex++) {
+        const length = fixtureIndex < 8 ? fixtureIndex : next() % 12000;
+        const source = new Uint8Array(length);
+        for (let index = 0; index < source.length; index++) {
+            const selector = fixtureIndex % 4;
+            source[index] = selector === 0 ? next() & 0xff
+                : selector === 1 ? index & 7
+                : selector === 2 ? (index >>> 5) & 0xff
+                : (next() & 7) === 0 ? next() & 0xff : 65;
+        }
+        const level = fixtureIndex % 10;
+        const strategy = fixtureIndex % 3 === 0 ? constants.Z_FIXED : constants.Z_DEFAULT_STRATEGY;
+        const bytes = new ByteArray(deflateSync(source, { level, strategy }));
+        bytes.uncompress();
+        assert.deepEqual(bytesOf(bytes), [...source], `fixture ${fixtureIndex}, level ${level}`);
+    }
+});
+
+test("synchronous Flash uncompress rejects malformed streams atomically", () => {
+    const valid = new Uint8Array(deflateSync(new TextEncoder().encode("map payload")));
+    const cases = [
+        new Uint8Array([1, 2, 3]),
+        valid.map((value, index) => index === 1 ? value ^ 1 : value),
+        valid.map((value, index) => index === valid.length - 1 ? value ^ 1 : value),
+        valid.slice(0, -2),
+    ];
+    for (const fixture of cases) {
+        const bytes = new ByteArray(fixture);
+        bytes.position = Math.min(2, bytes.length);
+        const before = bytesOf(bytes);
+        const position = bytes.position;
+        assert.throws(() => bytes.uncompress(), TypeError);
+        assert.deepEqual(bytesOf(bytes), before);
+        assert.equal(bytes.position, position);
+    }
 });
 
 test("malformed zlib and host failures leave the receiver unchanged", async () => {

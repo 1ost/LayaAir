@@ -4,6 +4,10 @@ const ZLIB_BLEACH_NUL_BROWSER = new Uint8Array([
     120, 156, 115, 202, 73, 77, 76, 206, 96, 72, 42, 202,
     47, 47, 78, 45, 2, 0, 37, 137, 5, 68
 ]);
+const ZLIB_BLEACH_MAP_SYNC = new Uint8Array([
+    120, 156, 115, 202, 73, 77, 76, 206, 80, 200, 77, 44, 80,
+    40, 174, 204, 75, 86, 72, 42, 202, 76, 73, 79, 5, 0, 90, 126, 8, 8
+]);
 
 function requireValue(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
@@ -48,6 +52,19 @@ async function run(): Promise<Record<string, unknown>> {
     await decoded.uncompressZlib();
     requireValue(decoded.readUTFBytes() === "Bleach\0browser", "Default browser zlib decode mismatch");
 
+    const synchronous = new ByteArray(ZLIB_BLEACH_MAP_SYNC);
+    synchronous.position = synchronous.length;
+    synchronous.uncompress();
+    requireValue(synchronous.position === 0 && synchronous.readUTFBytes() === "Bleach map sync bridge",
+        "Synchronous browser zlib decode mismatch");
+    const corruptSynchronous = new ByteArray(ZLIB_BLEACH_MAP_SYNC.map((value, index) =>
+        index === ZLIB_BLEACH_MAP_SYNC.length - 1 ? value ^ 1 : value));
+    const corruptSnapshot = JSON.stringify(snapshot(corruptSynchronous));
+    let syncRejected = false;
+    try { corruptSynchronous.uncompress(); } catch { syncRejected = true; }
+    requireValue(syncRejected && JSON.stringify(snapshot(corruptSynchronous)) === corruptSnapshot,
+        "Malformed synchronous browser decode partially committed");
+
     const malformed = new ByteArray(new Uint8Array([1, 2, 3, 4]));
     malformed.position = 2;
     await rejected(malformed.uncompressZlib(), () => true);
@@ -89,6 +106,7 @@ async function run(): Promise<Record<string, unknown>> {
         defaultCapability,
         transferPrimitives: true,
         defaultSuccess: true,
+        synchronousSuccess: true,
         malformedNoCommit: true,
         cancellationNoCommit: true,
         missingCapabilityRejects: true,
