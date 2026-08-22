@@ -38612,8 +38612,13 @@
           "constructors": [
             "new (input?: ByteArrayInput): ByteArray"
           ],
-          "indexSignatures": [],
-          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
+          "indexSignatures": [
+            {
+              "key": "number",
+              "signature": "number"
+            }
+          ],
+          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
           "heritage": []
         },
         {
@@ -38621,14 +38626,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e"
+          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e"
+          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d"
         },
         {
           "module": "src/layaAir/flash/utils/Dictionary.ts",
@@ -39237,8 +39242,8 @@
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
+            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39257,8 +39262,8 @@
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
+            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39270,15 +39275,15 @@
         {
           "path": "tests/flashByteArray/flash-byte-array.runner.ts",
           "test": "Flash ByteArray binary and synchronous zlib behavior",
-          "sha256": "0d35934a489c091bfd79f4b1493129fea2ef9dc06efaffbc9ad84bbcfe2d345e",
+          "sha256": "42716098b266fd624cc82c8d4e67c6d0424e93a846b7f5a57dfbaa8f3dacba00",
           "capability": "api.flash.utils",
           "covers": [
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
+            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39290,15 +39295,15 @@
         {
           "path": "tests/flashByteArray/flash-byte-array.browser.ts",
           "test": "Flash ByteArray browser zlib behavior",
-          "sha256": "fc348f51281d71aac0a6d2bd78bce296c01cf5d529418222b394e130e0d7d879",
+          "sha256": "9c7268b7e02308f1e41b9b7877684f600f8b347381e90ac3303b94090419032b",
           "capability": "api.flash.utils",
           "covers": [
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
+            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",

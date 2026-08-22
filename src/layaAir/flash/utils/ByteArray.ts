@@ -315,6 +315,32 @@ const WEB_ZLIB_HOST: ZlibDecompressionHost = Object.freeze({
     }
 });
 
+const READ_INDEXED_BYTE = Symbol("ByteArray.readIndexedByte");
+const WRITE_INDEXED_BYTE = Symbol("ByteArray.writeIndexedByte");
+const DECIMAL_INDEX = /^(?:0|[1-9][0-9]*)$/;
+
+function parseIndexedByteProperty(property: PropertyKey): number | null {
+    if (typeof property !== "string" || !DECIMAL_INDEX.test(property)) return null;
+    const index = Number(property);
+    return Number.isSafeInteger(index) && index <= 0xffffffff ? index : null;
+}
+
+const INDEXED_BYTE_HANDLER: ProxyHandler<ByteArray> = Object.freeze({
+    get(target: ByteArray, property: PropertyKey, receiver: any) {
+        const index = parseIndexedByteProperty(property);
+        if (index !== null) return (target as any)[READ_INDEXED_BYTE](index);
+        return Reflect.get(target, property, receiver);
+    },
+    set(target: ByteArray, property: PropertyKey, value: any, receiver: any) {
+        const index = parseIndexedByteProperty(property);
+        if (index !== null) {
+            (target as any)[WRITE_INDEXED_BYTE](index, value);
+            return true;
+        }
+        return Reflect.set(target, property, value, receiver);
+    },
+});
+
 /**
  * Launch-oriented Flash ByteArray bridge backed by Laya's native Byte utility.
  *
@@ -325,6 +351,8 @@ const WEB_ZLIB_HOST: ZlibDecompressionHost = Object.freeze({
  * browser/host acceleration, but never selects a silent fallback.
  */
 export class ByteArray {
+    [index: number]: number;
+
     private _bytes: Byte;
     private _decompressing = false;
     private _mutationGeneration = 0;
@@ -336,6 +364,26 @@ export class ByteArray {
             this._bytes.pos = 0;
         }
         this._bytes.endian = Endian.BIG_ENDIAN;
+        return new Proxy(this, INDEXED_BYTE_HANDLER);
+    }
+
+    /** @internal Implements Flash's direct `byteArray[index]` read semantics. */
+    private [READ_INDEXED_BYTE](index: number): number {
+        if (index >= this._bytes.length) return undefined as unknown as number;
+        return new Uint8Array(this._bytes.rawBuffer)[index];
+    }
+
+    /** @internal Implements Flash's direct `byteArray[index] = value` write semantics. */
+    private [WRITE_INDEXED_BYTE](index: number, value: number): void {
+        checkedRangeEnd(index, 1, "ByteArray indexed write");
+        const position = this._bytes.pos;
+        try {
+            this._bytes.pos = index;
+            this._bytes.writeUint8(value);
+            this._mutationGeneration++;
+        } finally {
+            this._bytes.pos = position;
+        }
     }
 
     get buffer(): ArrayBuffer {

@@ -133,6 +133,20 @@ test("cursor failures are stable and bytesAvailable never becomes negative", () 
     assert.throws(() => { bytes.length = 1.5; }, RangeError);
 });
 
+test("numeric index access reads and writes bytes without moving the cursor", () => {
+    const bytes = new ByteArray(new Uint8Array([10, 20]));
+    bytes.position = 1;
+
+    assert.deepEqual([bytes[0], bytes[1], bytes[2]], [10, 20, undefined]);
+    assert.equal(bytes.position, 1);
+
+    bytes[1] = 300;
+    bytes[4] = 0x1ff;
+    assert.deepEqual(bytesOf(bytes), [10, 44, 0, 0, 255]);
+    assert.equal(bytes.position, 1);
+    assert.equal(bytes instanceof ByteArray, true);
+});
+
 test("readBoolean consumes one byte and treats every nonzero value as true", () => {
     const bytes = new ByteArray(new Uint8Array([0, 1, 2, 255]));
     assert.deepEqual(

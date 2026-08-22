@@ -35,6 +35,14 @@ async function run(): Promise<Record<string, unknown>> {
     const defaultCapability = typeof globalThis.DecompressionStream === "function";
     requireValue(defaultCapability, "Supported Chromium lacks DecompressionStream");
 
+    const indexed = new ByteArray(new Uint8Array([3, 4]));
+    indexed.position = 1;
+    indexed[0] = 259;
+    indexed[4] = 511;
+    requireValue(JSON.stringify(snapshot(indexed)) === "[3,4,0,0,255]"
+        && indexed[0] === 3 && indexed[4] === 255 && indexed.position === 1,
+        "Browser numeric indexed access mismatch");
+
     const transferSource = new ByteArray(new Uint8Array([1, 2, 3, 4]));
     transferSource.position = 1;
     const transferTarget = new ByteArray(new Uint8Array([9]));
@@ -104,6 +112,7 @@ async function run(): Promise<Record<string, unknown>> {
 
     return {
         defaultCapability,
+        indexedAccess: true,
         transferPrimitives: true,
         defaultSuccess: true,
         synchronousSuccess: true,
