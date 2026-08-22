@@ -97,6 +97,23 @@ test("ByteArray defaults to big endian and round-trips both byte orders", () => 
     assert.equal(bytes.endian, Endian.LITTLE_ENDIAN, "invalid endian must not mutate state");
 });
 
+test("readShort preserves signed 16-bit values in both byte orders", () => {
+    for (const endian of [Endian.BIG_ENDIAN, Endian.LITTLE_ENDIAN]) {
+        const bytes = new ByteArray();
+        bytes.endian = endian;
+        bytes.writeShort(-0x8000);
+        bytes.writeShort(-1);
+        bytes.writeShort(0x7fff);
+        bytes.position = 0;
+        assert.deepEqual(
+            [bytes.readShort(), bytes.readShort(), bytes.readShort()],
+            [-0x8000, -1, 0x7fff],
+        );
+        assert.throws(() => bytes.readShort(), OutOfRangeError);
+        assert.equal(bytes.position, bytes.length, "a failed signed-short read must not advance");
+    }
+});
+
 test("cursor failures are stable and bytesAvailable never becomes negative", () => {
     const bytes = new ByteArray(new Uint8Array([1, 2, 3]));
     bytes.position = 3;

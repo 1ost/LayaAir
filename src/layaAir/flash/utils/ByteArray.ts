@@ -409,6 +409,12 @@ export class ByteArray {
         return value;
     }
 
+    readShort(): number {
+        const value = this._bytes.readInt16();
+        this._mutationGeneration++;
+        return value;
+    }
+
     readUnsignedInt(): number {
         const value = this._bytes.readUint32();
         this._mutationGeneration++;

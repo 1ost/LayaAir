@@ -38440,6 +38440,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "readShort",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "readUnsignedByte",
               "scope": "instance",
               "optional": false,
@@ -38586,7 +38595,7 @@
             "new (input?: ByteArrayInput): ByteArray"
           ],
           "indexSignatures": [],
-          "sha256": "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8",
+          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
           "heritage": []
         },
         {
@@ -38594,14 +38603,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8"
+          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8"
+          "sha256": "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e"
         },
         {
           "module": "src/layaAir/flash/utils/Dictionary.ts",
@@ -39210,7 +39219,7 @@
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8",
+            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
@@ -39230,7 +39239,7 @@
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8",
+            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
@@ -39243,14 +39252,14 @@
         {
           "path": "tests/flashByteArray/flash-byte-array.runner.ts",
           "test": "Flash ByteArray binary and synchronous zlib behavior",
-          "sha256": "4593df4dc81725537dfebaf438f54c7aeb6cf2eb4be3d6fc8a4df1a083e38898",
+          "sha256": "0d35934a489c091bfd79f4b1493129fea2ef9dc06efaffbc9ad84bbcfe2d345e",
           "capability": "api.flash.utils",
           "covers": [
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8",
+            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
@@ -39270,7 +39279,7 @@
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "9271769dffb1278d06fb084a87469f0770d688d3de796bcdd3e973320a9acaf8",
+            "84b0fe573d7e474674643f9a77197d19349876dece6c3f4aa0831ca5f640c28e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
