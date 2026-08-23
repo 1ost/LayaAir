@@ -1,5 +1,6 @@
 import { SoundManager } from "../../laya/media/SoundManager";
 import { EventDispatcher } from "../events/EventDispatcher";
+import { IOErrorEvent } from "../events/IOErrorEvent";
 import { URLRequest, snapshotNativeLoaderRequest } from "../net/URLRequest";
 import {
     createFlashSoundChannel, SoundChannel,
@@ -48,15 +49,26 @@ export class Sound extends EventDispatcher {
         if (this.#url === null) return null;
         const startSeconds = Math.max(0, Number(startTime) || 0) / 1000;
         let channel: SoundChannel | null = null;
+        let pendingTerminal: boolean | null = null;
+        const complete = (success?: boolean): void => {
+            const succeeded = success === true;
+            if (channel === null) {
+                if (pendingTerminal === null) pendingTerminal = succeeded;
+                return;
+            }
+            if (channel.complete(succeeded))
+                this.dispatchEvent(new IOErrorEvent(IOErrorEvent.IO_ERROR));
+        };
         const native = SoundManager.playSound(
             this.#url,
             flashLoopCount(loops),
-            ((success?: boolean) => channel?.complete(success === true)) as () => void,
+            complete as () => void,
             startSeconds,
         );
         if (native == null) return null;
         channel = createFlashSoundChannel(native);
         channel.soundTransform = SoundTransform.copy(soundTransform);
+        if (pendingTerminal !== null) complete(pendingTerminal);
         return channel;
     }
 

@@ -43907,7 +43907,7 @@
             "new (stream?: URLRequest | null, context?: SoundLoaderContext | null): Sound"
           ],
           "indexSignatures": [],
-          "sha256": "b01d7a95254d26bd8c9dbdc3a17d441234eca733592e6d1d70b2b04e8f834eff",
+          "sha256": "1a23ec893dbed187ecbf6d7affcac0e03dd2874b2e537a8e5169fd5d99d91716",
           "heritage": [
             {
               "kind": "extends",
@@ -43924,20 +43924,20 @@
             {
               "abstract": false,
               "kind": "property",
-              "name": "#completed",
-              "scope": "instance",
-              "optional": false,
-              "readonly": false,
-              "signature": "boolean"
-            },
-            {
-              "abstract": false,
-              "kind": "property",
               "name": "#native",
               "scope": "instance",
               "optional": false,
               "readonly": true,
               "signature": "LayaSoundChannel"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "#terminal",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
             },
             {
               "abstract": false,
@@ -43964,7 +43964,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(success: boolean) => void"
+              "signature": "(success: boolean) => boolean"
             },
             {
               "abstract": false,
@@ -44115,7 +44115,7 @@
             "new (token: typeof SOUND_CHANNEL_TOKEN, native: LayaSoundChannel): SoundChannel"
           ],
           "indexSignatures": [],
-          "sha256": "c40413a0bc4e6016fa673f367cd12c7bcdea0dc0e7bceef0c4c8f774356c2943",
+          "sha256": "00759be91c9d962263b76ce44dd438055a6213fb7d062b0602eb218c74c32ec5",
           "heritage": [
             {
               "kind": "extends",
@@ -44240,9 +44240,9 @@
           "sha256": "ef15366af0b67f3d71b1fc15fa233d39a11a8a1d5f94f8f5f4ee1ba3c6f04912",
           "capability": "api.flash.media",
           "covers": [
+            "00759be91c9d962263b76ce44dd438055a6213fb7d062b0602eb218c74c32ec5",
+            "1a23ec893dbed187ecbf6d7affcac0e03dd2874b2e537a8e5169fd5d99d91716",
             "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25",
-            "b01d7a95254d26bd8c9dbdc3a17d441234eca733592e6d1d70b2b04e8f834eff",
-            "c40413a0bc4e6016fa673f367cd12c7bcdea0dc0e7bceef0c4c8f774356c2943",
             "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0"
           ]
         }

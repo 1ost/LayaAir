@@ -10,7 +10,7 @@ const SOUND_CHANNEL_VALUES = new WeakSet<object>();
 export class SoundChannel extends EventDispatcher {
     readonly #native: LayaSoundChannel;
     #transform = new SoundTransform();
-    #completed = false;
+    #terminal = false;
 
     /** @internal Sound creates channels after native playback admission succeeds. */
     constructor(token: typeof SOUND_CHANNEL_TOKEN, native: LayaSoundChannel) {
@@ -40,14 +40,20 @@ export class SoundChannel extends EventDispatcher {
     }
 
     stop(): void {
+        this.#terminal = true;
         this.#native.stop();
     }
 
-    /** @internal Converts one successful Laya completion into Flash SOUND_COMPLETE. */
-    complete(success: boolean): void {
-        if (!success || this.#completed) return;
-        this.#completed = true;
+    /**
+     * @internal Converts one native terminal callback into Flash semantics.
+     * Returns true only when the owning Sound must publish IOErrorEvent.IO_ERROR.
+     */
+    complete(success: boolean): boolean {
+        if (this.#terminal) return false;
+        this.#terminal = true;
+        if (!success) return true;
         this.dispatchEvent(new Event(Event.SOUND_COMPLETE));
+        return false;
     }
 }
 

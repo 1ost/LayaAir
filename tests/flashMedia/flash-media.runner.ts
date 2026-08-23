@@ -4,6 +4,7 @@ import test from "node:test";
 import type { SoundChannel as LayaSoundChannel } from "../../src/layaAir/laya/media/SoundChannel";
 import { SoundManager } from "../../src/layaAir/laya/media/SoundManager";
 import { Event } from "../../src/layaAir/flash/events/Event";
+import { IOErrorEvent, isFlashIOErrorEvent } from "../../src/layaAir/flash/events/IOErrorEvent";
 import { Sound, isFlashSound } from "../../src/layaAir/flash/media/Sound";
 import { isFlashSoundChannel } from "../../src/layaAir/flash/media/SoundChannel";
 import {
@@ -83,7 +84,6 @@ test("Sound maps Flash milliseconds, additional loops, transforms, stop, and com
         const seen: Event[] = [];
         channel.addEventListener(Event.SOUND_COMPLETE, event => seen.push(event));
         assert.ok(complete);
-        complete(false);
         complete(true);
         complete(true);
         assert.equal(seen.length, 1);
@@ -97,6 +97,78 @@ test("Sound maps Flash milliseconds, additional loops, transforms, stop, and com
         assert.deepEqual([native.volume, native.pan], [0.3, 0.2]);
         channel.stop();
         assert.equal(native.stopped, 1);
+    } finally {
+        SoundManager.playSound = original;
+    }
+});
+
+test("Sound publishes one canonical IO error for failure and never SOUND_COMPLETE", () => {
+    const original = SoundManager.playSound;
+    const native: NativeProbe = {
+        position: 0,
+        volume: 1,
+        pan: 0,
+        stopped: 0,
+        stop(): void { this.stopped++; },
+    };
+    let complete: ((success?: boolean) => void) | null = null;
+    SoundManager.playSound = ((...args: unknown[]) => {
+        complete = args[2] as (success?: boolean) => void;
+        return native as unknown as LayaSoundChannel;
+    }) as typeof SoundManager.playSound;
+    try {
+        const sound = new Sound(new URLRequest("missing.mp3"));
+        const channel = sound.play();
+        assert.ok(channel);
+        const errors: IOErrorEvent[] = [];
+        const completions: Event[] = [];
+        sound.addEventListener(IOErrorEvent.IO_ERROR, event => errors.push(event as IOErrorEvent));
+        channel.addEventListener(Event.SOUND_COMPLETE, event => completions.push(event));
+
+        assert.ok(complete);
+        complete(false);
+        complete(false);
+        complete(true);
+
+        assert.equal(errors.length, 1);
+        assert.equal(isFlashIOErrorEvent(errors[0]), true);
+        assert.equal(errors[0].target, sound);
+        assert.equal(errors[0].currentTarget, sound);
+        assert.equal(completions.length, 0);
+    } finally {
+        SoundManager.playSound = original;
+    }
+});
+
+test("explicit SoundChannel stop does not publish an IO error", () => {
+    const original = SoundManager.playSound;
+    let complete: ((success?: boolean) => void) | null = null;
+    const native: NativeProbe = {
+        position: 0,
+        volume: 1,
+        pan: 0,
+        stopped: 0,
+        stop(): void {
+            this.stopped++;
+            complete?.(false);
+        },
+    };
+    SoundManager.playSound = ((...args: unknown[]) => {
+        complete = args[2] as (success?: boolean) => void;
+        return native as unknown as LayaSoundChannel;
+    }) as typeof SoundManager.playSound;
+    try {
+        const sound = new Sound(new URLRequest("effect.wav"));
+        const channel = sound.play();
+        assert.ok(channel);
+        const terminals: string[] = [];
+        sound.addEventListener(IOErrorEvent.IO_ERROR, () => terminals.push(IOErrorEvent.IO_ERROR));
+        channel.addEventListener(Event.SOUND_COMPLETE, () => terminals.push(Event.SOUND_COMPLETE));
+
+        channel.stop();
+
+        assert.equal(native.stopped, 1);
+        assert.deepEqual(terminals, []);
     } finally {
         SoundManager.playSound = original;
     }
