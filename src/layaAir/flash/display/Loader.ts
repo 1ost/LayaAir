@@ -18,6 +18,8 @@ import { LoaderContext, snapshotNativeLoaderContext } from "../system/LoaderCont
 import {
     bindDisplayObjectLoaderInfo, DisplayObject, isFlashDisplayObject, unbindDisplayObjectLoaderInfo
 } from "./DisplayObject";
+import { Bitmap } from "./Bitmap";
+import { BitmapData, isFlashBitmapData } from "./BitmapData";
 import { DisplayObjectContainer } from "./DisplayObjectContainer";
 
 const LOADER_VALUES = new WeakSet<object>();
@@ -32,6 +34,7 @@ const LOADER_INFO_STATE = new WeakMap<LoaderInfo, LoaderInfoState>();
 const LOADER_INFO_ROUTERS = new WeakMap<LoaderInfo, LoaderInfoRouterState>();
 const EMPTY_PARAMETERS = Object.freeze(Object.create(null)) as Readonly<Record<string, string>>;
 const HOST_VALUES = new WeakSet<object>();
+const IMAGE_HOST_VALUES = new WeakSet<object>();
 const SOURCE_VALUES = new WeakMap<object, NativeLoaderContentSourceState>();
 const HIERARCHY_CONTENT_TYPE = "application/x-laya-hierarchy";
 const SAFE_CONTENT_URL = /^(?![\u0000-\u001f\u007f])[^\u0000-\u001f\u007f]{1,4096}$/;
@@ -54,6 +57,11 @@ const LOADER_INFO_LIFECYCLE_EVENTS = new Set<string>([
     SecurityErrorEvent.SECURITY_ERROR,
 ]);
 let defaultHost: NativeLoaderContentHost | null = null;
+
+const JPEG_SIGNATURE = Object.freeze([0xff, 0xd8, 0xff]);
+const PNG_SIGNATURE = Object.freeze([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const GIF87_SIGNATURE = Object.freeze([0x47, 0x49, 0x46, 0x38, 0x37, 0x61]);
+const GIF89_SIGNATURE = Object.freeze([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
 
 interface LoaderInfoState {
     readonly loader: Loader;
@@ -206,16 +214,93 @@ export function isNativeLoaderContentHost(value: unknown): value is NativeLoader
     return typeof value === "object" && value !== null && HOST_VALUES.has(value);
 }
 
+/**
+ * Narrow image-decoding capability used by Loader.loadBytes. Implementations
+ * may decode only the already-admitted JPEG, PNG and GIF formats and must
+ * return a canonical, CPU-backed BitmapData.
+ */
+export abstract class NativeLoaderImageHost {
+    protected constructor() { IMAGE_HOST_VALUES.add(this); }
+
+    /** Returns a fresh BitmapData whose unpublished lifetime transfers to Loader. */
+    abstract decode(bytes: Uint8Array, contentType: string): Promise<BitmapData>;
+}
+
+/** @internal Read-only nominal proof for native image-decoding hosts. */
+export function isNativeLoaderImageHost(value: unknown): value is NativeLoaderImageHost {
+    return typeof value === "object" && value !== null && IMAGE_HOST_VALUES.has(value);
+}
+
+interface NativeLoaderCanvasContext {
+    drawImage(image: CanvasImageSource, dx: number, dy: number): void;
+    getImageData(sx: number, sy: number, sw: number, sh: number): ImageData;
+}
+
+class BrowserNativeLoaderImageHost extends NativeLoaderImageHost {
+    constructor() { super(); }
+
+    override async decode(bytes: Uint8Array, contentType: string): Promise<BitmapData> {
+        if (typeof globalThis.createImageBitmap !== "function" || typeof globalThis.Blob !== "function")
+            throw new Error("Browser image decoding is unavailable");
+        const payload = bytes.slice().buffer as ArrayBuffer;
+        const image = await globalThis.createImageBitmap(new Blob([payload], { type: contentType }));
+        try {
+            const width = image.width;
+            const height = image.height;
+            let canvas: OffscreenCanvas | HTMLCanvasElement;
+            if (typeof globalThis.OffscreenCanvas === "function") {
+                canvas = new globalThis.OffscreenCanvas(width, height);
+            } else if (globalThis.document && typeof globalThis.document.createElement === "function") {
+                canvas = globalThis.document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+            } else {
+                throw new Error("Browser image rasterization is unavailable");
+            }
+            const context = canvas.getContext("2d", { willReadFrequently: true }) as NativeLoaderCanvasContext | null;
+            if (context === null) throw new Error("Browser image rasterization context is unavailable");
+            context.drawImage(image, 0, 0);
+            const rgba = context.getImageData(0, 0, width, height).data;
+            const bitmapData = new BitmapData(width, height, true, 0);
+            bitmapData.lock();
+            try {
+                for (let index = 0, pixel = 0; index < rgba.length; index += 4, pixel++) {
+                    bitmapData.setPixel32(pixel % width, Math.floor(pixel / width),
+                        ((rgba[index + 3] << 24) | (rgba[index] << 16) |
+                            (rgba[index + 1] << 8) | rgba[index + 2]) >>> 0);
+                }
+            } finally {
+                bitmapData.unlock();
+            }
+            return bitmapData;
+        } finally {
+            image.close?.();
+        }
+    }
+}
+
+const DEFAULT_IMAGE_HOST = new BrowserNativeLoaderImageHost();
+
 interface NativeSourceSnapshot {
+    readonly kind: "hierarchy";
     readonly logicalURL: string;
     readonly nativeHierarchyURL: string;
     readonly bytesTotal: number;
     readonly contentType: string;
 }
 
+interface NativeImageSnapshot {
+    readonly kind: "image";
+    readonly logicalURL: string;
+    readonly bytesTotal: number;
+    readonly contentType: string;
+}
+
+type NativeLoadSourceSnapshot = NativeSourceSnapshot | NativeImageSnapshot;
+
 interface LoadTransaction {
     readonly generation: number;
-    readonly source: NativeSourceSnapshot;
+    readonly source: NativeLoadSourceSnapshot;
     bytesLoaded: number;
     firstError?: unknown;
     terminal: boolean;
@@ -311,12 +396,12 @@ function progressLoaderInfo(value: LoaderInfo, bytesLoaded: number): void {
         state.bytesLoaded, state.bytesTotal));
 }
 
-function publishLoaderInfo(value: LoaderInfo, content: DisplayObject): void {
+function publishLoaderInfo(value: LoaderInfo, content: DisplayObject, width?: number, height?: number): void {
     const state = readLoaderInfo(value);
     bindDisplayObjectLoaderInfo(content, value);
     state.content = content;
-    state.width = Number.isFinite(content.width) ? content.width : 0;
-    state.height = Number.isFinite(content.height) ? content.height : 0;
+    state.width = width !== undefined ? width : Number.isFinite(content.width) ? content.width : 0;
+    state.height = height !== undefined ? height : Number.isFinite(content.height) ? content.height : 0;
 }
 
 function clearLoaderInfo(value: LoaderInfo): void {
@@ -354,6 +439,7 @@ function readNativeLoaderContentSource(
     if (!state || state.owner !== host || state.logicalURL !== logicalURL)
         throw new TypeError("Native Loader content source is not authentic for this host and URL");
     return Object.freeze({
+        kind: "hierarchy",
         logicalURL: state.logicalURL,
         nativeHierarchyURL: state.nativeHierarchyURL,
         bytesTotal: state.bytesTotal,
@@ -380,30 +466,51 @@ function validateHierarchyURL(value: string): void {
         throw new TypeError("Native Loader content host cannot resolve non-hierarchy executables");
 }
 
+function hasByteSignature(bytes: Uint8Array, signature: readonly number[]): boolean {
+    if (bytes.length < signature.length) return false;
+    for (let index = 0; index < signature.length; index++) {
+        if (bytes[index] !== signature[index]) return false;
+    }
+    return true;
+}
+
+function admittedImageContentType(bytes: Uint8Array): string | null {
+    if (hasByteSignature(bytes, JPEG_SIGNATURE)) return "image/jpeg";
+    if (hasByteSignature(bytes, PNG_SIGNATURE)) return "image/png";
+    if (hasByteSignature(bytes, GIF87_SIGNATURE) || hasByteSignature(bytes, GIF89_SIGNATURE)) return "image/gif";
+    return null;
+}
+
 function hasNativeParent(node: LayaNode, parent: LayaNode): boolean {
     return node.parent === parent;
 }
 
 /**
  * Source-shaped Flash Loader whose production path is deliberately limited to
- * authenticated native Laya hierarchy assets. It never fetches or executes
- * legacy bytecode, ApplicationDomain content or arbitrary byte input.
+ * authenticated native Laya hierarchy assets and signature-admitted image
+ * bytes. It never fetches or executes legacy bytecode, ApplicationDomain
+ * content or arbitrary byte input.
  */
 export class Loader extends DisplayObjectContainer {
     readonly #contentLoaderInfo: LoaderInfo;
     readonly #explicitHost: NativeLoaderContentHost | null;
+    readonly #imageHost: NativeLoaderImageHost;
     #active: LoadTransaction | null = null;
     #content: DisplayObject | null = null;
     #generation = 0;
     #internalChildMutation = false;
     readonly #nodeTransaction: NodeMutationTransaction;
 
-    constructor(nativeContentHost: NativeLoaderContentHost | null = null) {
+    constructor(nativeContentHost: NativeLoaderContentHost | null = null,
+        nativeImageHost: NativeLoaderImageHost = DEFAULT_IMAGE_HOST) {
         super();
         LOADER_VALUES.add(this);
         if (nativeContentHost !== null && !isNativeLoaderContentHost(nativeContentHost))
             throw new TypeError("Loader nativeContentHost must be a nominal Laya capability");
+        if (!isNativeLoaderImageHost(nativeImageHost))
+            throw new TypeError("Loader nativeImageHost must be a nominal Laya capability");
         this.#explicitHost = nativeContentHost;
+        this.#imageHost = nativeImageHost;
         this.#contentLoaderInfo = new LoaderInfo(LOADER_INFO_TOKEN, this);
         this.#nodeTransaction = beginNodeMutationTransaction([this],
             operation => this.#rejectNodeMutation(operation), LOADER_NODE_GUARDED_OPERATIONS);
@@ -447,11 +554,20 @@ export class Loader extends DisplayObjectContainer {
         this.#begin(source);
     }
 
-    loadBytes(_bytes: ArrayBuffer | Uint8Array, _context: LoaderContext | null = null): never {
-        throw new UnsupportedFlashFeatureError(
-            "flash.display.Loader.loadBytes",
-            "runtime executable and arbitrary byte decoding is forbidden"
-        );
+    loadBytes(bytes: ArrayBuffer | Uint8Array, context: LoaderContext | null = null): void {
+        if (context !== null) snapshotNativeLoaderContext(context);
+        let input: Uint8Array;
+        if (bytes instanceof Uint8Array) input = bytes.slice();
+        else if (bytes instanceof ArrayBuffer) input = new Uint8Array(bytes.slice(0));
+        else throw new TypeError("Loader.loadBytes requires an ArrayBuffer or Uint8Array");
+        const contentType = admittedImageContentType(input);
+        if (contentType === null) {
+            throw new UnsupportedFlashFeatureError(
+                "flash.display.Loader.loadBytes",
+                "runtime executable and arbitrary byte decoding is forbidden; only JPEG, PNG and GIF images are admitted"
+            );
+        }
+        this.#beginImage(input, contentType);
     }
 
     close(): void {
@@ -599,6 +715,54 @@ export class Loader extends DisplayObjectContainer {
         });
     }
 
+    #beginImage(bytes: Uint8Array, contentType: string): void {
+        const generation = ++this.#generation;
+        this.#active = null;
+        const unloadError = this.#detachPublished(false, true);
+        if (unloadError !== undefined) throw unloadError;
+        if (this.#generation !== generation) return;
+
+        const source: NativeImageSnapshot = Object.freeze({
+            kind: "image",
+            logicalURL: "",
+            bytesTotal: bytes.byteLength,
+            contentType,
+        });
+        const transaction: LoadTransaction = {
+            generation,
+            source,
+            bytesLoaded: 0,
+            terminal: false,
+        };
+        this.#active = transaction;
+        beginLoaderInfo(this.#contentLoaderInfo, source.logicalURL, source.contentType, source.bytesTotal);
+        try {
+            dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.OPEN);
+        } catch (error) {
+            this.#abortForListener(transaction, error);
+            throw error;
+        }
+        if (!this.#isCurrent(transaction)) return;
+
+        let completion: Promise<BitmapData>;
+        try {
+            completion = this.#imageHost.decode(bytes, contentType);
+        } catch {
+            this.#failIO(transaction, "Native image decode could not start");
+            return;
+        }
+        if (!completion || typeof completion.then !== "function") {
+            this.#failSecurity(transaction, "Native image decoder returned a malformed transaction");
+            return;
+        }
+        completion.then(
+            bitmapData => this.#acceptBitmapData(transaction, bitmapData),
+            () => this.#failIO(transaction, "Native image decode failed")
+        ).catch(error => {
+            if (transaction.firstError === undefined) transaction.firstError = error;
+        });
+    }
+
     #publishSourceFailure(logicalURL: string, text: string): void {
         const generation = ++this.#generation;
         this.#active = null;
@@ -702,6 +866,91 @@ export class Loader extends DisplayObjectContainer {
         CONTENT_OWNERS.set(candidate, this);
         this.#content = candidate;
         publishLoaderInfo(this.#contentLoaderInfo, candidate);
+        let attachError: unknown;
+        try {
+            this.#withInternalMutation(candidate,
+                [{ node: this, operation: "addChildAt" }],
+                [
+                    { node: candidate, operation: "setParentDerived" },
+                    { node: candidate, operation: "setParent" },
+                ],
+                () => addCanonicalLoaderChild.call(this, candidate, 0));
+        } catch (error) {
+            attachError = error;
+        }
+        if (attachError !== undefined || !this.#isCurrent(transaction)
+            || !hasNativeParent(candidate, this) || this.numChildren !== 1 || this.#content !== candidate) {
+            if (this.#content === candidate || CONTENT_OWNERS.get(candidate) === this)
+                this.#abortPublished(transaction, candidate, attachError);
+            return;
+        }
+
+        try {
+            dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.INIT);
+        } catch (error) {
+            this.#abortPublished(transaction, candidate, error);
+            throw error;
+        }
+        if (!this.#isCurrent(transaction) || !hasNativeParent(candidate, this) || this.#content !== candidate) {
+            if (this.#content === candidate || CONTENT_OWNERS.get(candidate) === this)
+                this.#abortPublished(transaction, candidate);
+            return;
+        }
+
+        transaction.terminal = true;
+        this.#active = null;
+        try {
+            dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.COMPLETE);
+        } catch (error) {
+            transaction.firstError = error;
+            throw error;
+        }
+    }
+
+    #acceptBitmapData(transaction: LoadTransaction, value: unknown): void {
+        if (!this.#isCurrent(transaction)) {
+            if (isFlashBitmapData(value)) value.dispose();
+            return;
+        }
+        if (!isFlashBitmapData(value)) {
+            this.#failSecurity(transaction, "Native image decoder returned non-canonical BitmapData");
+            return;
+        }
+        if (transaction.bytesLoaded < transaction.source.bytesTotal) {
+            try {
+                this.#reportProgress(transaction, 1);
+            } catch (error) {
+                value.dispose();
+                throw error;
+            }
+            if (!this.#isCurrent(transaction)) {
+                value.dispose();
+                return;
+            }
+        }
+
+        let candidate: Bitmap;
+        try {
+            candidate = new Bitmap(value);
+        } catch {
+            this.#failIO(transaction, "Native image publication failed");
+            return;
+        }
+        let candidateNodeTransaction: NodeMutationTransaction;
+        try {
+            candidateNodeTransaction = beginNodeMutationTransaction([candidate],
+                operation => this.#rejectOwnedContentMutation(candidate, operation),
+                CONTENT_NODE_GUARDED_OPERATIONS);
+        } catch {
+            if (this.#isCurrent(transaction))
+                this.#failSecurity(transaction, "Native image has conflicting mutation authority");
+            return;
+        }
+        CONTENT_NODE_TRANSACTIONS.set(candidate, candidateNodeTransaction);
+
+        CONTENT_OWNERS.set(candidate, this);
+        this.#content = candidate;
+        publishLoaderInfo(this.#contentLoaderInfo, candidate, value.width, value.height);
         let attachError: unknown;
         try {
             this.#withInternalMutation(candidate,

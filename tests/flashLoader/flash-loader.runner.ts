@@ -22,10 +22,12 @@ import {
     Loader, LoaderInfo, isFlashLoader, isFlashLoaderInfo,
     NativeLoaderContentHost,
     NativeLoaderContentSource,
+    NativeLoaderImageHost,
 } from "../../src/layaAir/flash/display/Loader";
 import * as LoaderModule from "../../src/layaAir/flash/display/Loader";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
 import { Bitmap } from "../../src/layaAir/flash/display/Bitmap";
+import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { SimpleButton } from "../../src/layaAir/flash/display/SimpleButton";
 import { StaticText } from "../../src/layaAir/flash/text/StaticText";
@@ -86,6 +88,24 @@ class Host extends NativeLoaderContentHost {
         this.resolveCalls++;
         this.reenter?.();
         return this.sources.get(logicalURL) ?? null;
+    }
+}
+
+interface ImageCall {
+    readonly bytes: Uint8Array;
+    readonly contentType: string;
+    readonly completion: ManualCompletion;
+}
+
+class ImageHost extends NativeLoaderImageHost {
+    readonly calls: ImageCall[] = [];
+
+    constructor() { super(); }
+
+    override decode(bytes: Uint8Array, contentType: string): Promise<BitmapData> {
+        const completion = new ManualCompletion();
+        this.calls.push({ bytes, contentType, completion });
+        return completion as unknown as Promise<BitmapData>;
     }
 }
 
@@ -301,6 +321,93 @@ test("request and hierarchy authority reject unsupported transport before native
     assert.throws(() => host.source("bad.logical", "payload.swf"), /only \.lh/);
     assert.throws(() => host.source("bad.logical", "data:text/plain,x.lh"), /forbidden scheme/);
     assert.throws(() => loader.loadBytes(new Uint8Array([0x46, 0x57, 0x53])), /forbidden/);
+});
+
+test("loadBytes admits image signatures and publishes canonical BitmapData without executable decoding", () => {
+    const imageHost = new ImageHost();
+    const loader = new Loader(null, imageHost);
+    const sequence = events(loader);
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x01, 0x02]);
+    loader.loadBytes(bytes);
+
+    assert.deepEqual(sequence, [Event.OPEN]);
+    assert.equal(imageHost.calls.length, 1);
+    assert.equal(imageHost.calls[0].contentType, "image/jpeg");
+    assert.deepEqual(imageHost.calls[0].bytes, bytes);
+    bytes.fill(0);
+    assert.equal(imageHost.calls[0].bytes[0], 0xff, "Loader snapshots caller-owned bytes");
+
+    const bitmapData = new BitmapData(2, 1, true, 0);
+    bitmapData.setPixel32(0, 0, 0xff123456);
+    bitmapData.setPixel32(1, 0, 0x80102030);
+    imageHost.calls[0].completion.resolve(bitmapData);
+
+    assert.deepEqual(sequence, [Event.OPEN, "progress:6", Event.INIT, Event.COMPLETE]);
+    assert(loader.content instanceof Bitmap);
+    assert.equal(loader.content.bitmapData, bitmapData);
+    assert.deepEqual([loader.contentLoaderInfo.bytesLoaded, loader.contentLoaderInfo.bytesTotal], [6, 6]);
+    assert.equal(loader.contentLoaderInfo.contentType, "image/jpeg");
+    assert.deepEqual([loader.contentLoaderInfo.width, loader.contentLoaderInfo.height], [2, 1]);
+});
+
+test("default loadBytes host rasterizes admitted browser image bytes into CPU-backed pixels", async () => {
+    const createImageBitmapDescriptor = Object.getOwnPropertyDescriptor(globalThis, "createImageBitmap");
+    const offscreenCanvasDescriptor = Object.getOwnPropertyDescriptor(globalThis, "OffscreenCanvas");
+    let closed = false;
+    class TestCanvas {
+        constructor(readonly width: number, readonly height: number) {}
+        getContext(): NativeTestCanvasContext {
+            return {
+                drawImage: () => undefined,
+                getImageData: () => ({
+                    data: new Uint8ClampedArray([0x12, 0x34, 0x56, 0x80]),
+                }),
+            };
+        }
+    }
+    interface NativeTestCanvasContext {
+        drawImage(): void;
+        getImageData(): { data: Uint8ClampedArray };
+    }
+    try {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+            configurable: true,
+            value: async () => ({ width: 1, height: 1, close: () => { closed = true; } }),
+        });
+        Object.defineProperty(globalThis, "OffscreenCanvas", {
+            configurable: true,
+            value: TestCanvas,
+        });
+        const loader = new Loader();
+        const sequence = events(loader);
+        loader.loadBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+        assert.deepEqual(sequence, [Event.OPEN, "progress:8", Event.INIT, Event.COMPLETE]);
+        assert(loader.content instanceof Bitmap);
+        assert.equal(loader.contentLoaderInfo.contentType, "image/png");
+        assert.equal(loader.content.bitmapData!.getPixel32(0, 0), 0x80123456);
+        assert.equal(closed, true);
+    } finally {
+        if (createImageBitmapDescriptor) Object.defineProperty(globalThis, "createImageBitmap", createImageBitmapDescriptor);
+        else delete (globalThis as any).createImageBitmap;
+        if (offscreenCanvasDescriptor) Object.defineProperty(globalThis, "OffscreenCanvas", offscreenCanvasDescriptor);
+        else delete (globalThis as any).OffscreenCanvas;
+    }
+});
+
+test("image progress cancellation disposes transferred unpublished BitmapData", () => {
+    const imageHost = new ImageHost();
+    const loader = new Loader(null, imageHost);
+    const sequence = events(loader);
+    loader.contentLoaderInfo.addEventListener(ProgressEvent.PROGRESS, () => loader.close(), false, 100);
+    loader.loadBytes(new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]));
+    const bitmapData = new BitmapData(1, 1, true, 0xffabcdef);
+    imageHost.calls[0].completion.resolve(bitmapData);
+
+    assert.deepEqual(sequence, [Event.OPEN, "progress:6"]);
+    assert.equal(loader.content, null);
+    assert.throws(() => bitmapData.width, /disposed/);
 });
 
 test("close, unload, replacement and stale completions are generation fenced", () => {
