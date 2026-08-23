@@ -10,6 +10,7 @@ import { UnsupportedFlashFeatureError } from "../events/UnsupportedFlashFeatureE
 import { Event, EventPhase } from "../events/Event";
 import { EventDispatcher } from "../events/EventDispatcher";
 import { FlashEventListener } from "../events/FlashEventRouter";
+import { WeakListenerList } from "../../laya/events/WeakListenerList";
 import { IOErrorEvent } from "../events/IOErrorEvent";
 import { ProgressEvent } from "../events/ProgressEvent";
 import { SecurityErrorEvent } from "../events/SecurityErrorEvent";
@@ -74,15 +75,9 @@ interface LoaderInfoState {
     width: number;
 }
 
-interface LoaderInfoListenerEntry {
-    readonly listener: FlashEventListener;
-    readonly priority: number;
-    readonly ordinal: number;
-}
-
 interface LoaderInfoListenerLists {
-    readonly capture: LoaderInfoListenerEntry[];
-    readonly bubble: LoaderInfoListenerEntry[];
+    readonly capture: WeakListenerList<FlashEventListener>;
+    readonly bubble: WeakListenerList<FlashEventListener>;
 }
 
 interface LoaderInfoRouterState {
@@ -325,24 +320,23 @@ function readLoaderInfoRouter(value: LoaderInfo): LoaderInfoRouterState {
 
 function addLoaderInfoListener(value: LoaderInfo, type: string, listener: FlashEventListener,
     useCapture: boolean, priority: number, useWeakReference: boolean): void {
-    if (useWeakReference)
-        throw new UnsupportedFlashFeatureError(
-            "flash.events.IEventDispatcher.useWeakReference",
-            "weak listener retention is nondeterministic"
-        );
     if (typeof listener !== "function") throw new TypeError(`Listener for '${type}' must be a function`);
     if (!Number.isFinite(priority)) throw new TypeError("Listener priority must be finite");
     new Event(type);
     const router = readLoaderInfoRouter(value);
     let lists = router.types.get(type);
     if (!lists) {
-        lists = { capture: [], bubble: [] };
+        let created: LoaderInfoListenerLists;
+        const collected = () => deleteLoaderInfoTypeIfEmpty(router, type, created);
+        lists = {
+            capture: new WeakListenerList(collected),
+            bubble: new WeakListenerList(collected),
+        };
+        created = lists;
         router.types.set(type, lists);
     }
     const entries = useCapture ? lists.capture : lists.bubble;
-    if (entries.some(entry => entry.listener === listener)) return;
-    entries.push({ listener, priority, ordinal: router.ordinal++ });
-    entries.sort((left, right) => right.priority - left.priority || left.ordinal - right.ordinal);
+    if (entries.add(listener, priority, router.ordinal, useWeakReference)) router.ordinal++;
 }
 
 function removeLoaderInfoListener(value: LoaderInfo, type: string, listener: FlashEventListener,
@@ -351,14 +345,18 @@ function removeLoaderInfoListener(value: LoaderInfo, type: string, listener: Fla
     const lists = router.types.get(type);
     if (!lists) return;
     const entries = useCapture ? lists.capture : lists.bubble;
-    const index = entries.findIndex(entry => entry.listener === listener);
-    if (index >= 0) entries.splice(index, 1);
-    if (lists.capture.length === 0 && lists.bubble.length === 0) router.types.delete(type);
+    entries.remove(listener);
+    deleteLoaderInfoTypeIfEmpty(router, type, lists);
 }
 
 function hasLoaderInfoListener(value: LoaderInfo, type: string): boolean {
-    const lists = readLoaderInfoRouter(value).types.get(type);
-    return !!lists && (lists.capture.length > 0 || lists.bubble.length > 0);
+    const router = readLoaderInfoRouter(value);
+    const lists = router.types.get(type);
+    if (!lists) return false;
+    const hasCapture = lists.capture.hasListeners();
+    const hasBubble = lists.bubble.hasListeners();
+    if (!hasCapture && !hasBubble) deleteLoaderInfoTypeIfEmpty(router, type, lists);
+    return hasCapture || hasBubble;
 }
 
 function dispatchLoaderInfo(value: LoaderInfo, event: Event): boolean {
@@ -368,14 +366,22 @@ function dispatchLoaderInfo(value: LoaderInfo, event: Event): boolean {
     const lists = readLoaderInfoRouter(value).types.get(event.type);
     if (lists) {
         for (const entries of [lists.capture, lists.bubble]) {
-            for (const entry of entries.slice()) {
-                entry.listener(event);
+            for (const listener of entries.snapshot()) {
+                listener(event);
                 if (event._isImmediatePropagationStopped) break;
             }
             if (event._isImmediatePropagationStopped) break;
         }
     }
     return !event.isDefaultPrevented();
+}
+
+function deleteLoaderInfoTypeIfEmpty(router: LoaderInfoRouterState, type: string,
+    lists: LoaderInfoListenerLists): void {
+    if (router.types.get(type) !== lists) return;
+    const hasCapture = lists.capture.hasListeners();
+    const hasBubble = lists.bubble.hasListeners();
+    if (!hasCapture && !hasBubble) router.types.delete(type);
 }
 
 function beginLoaderInfo(value: LoaderInfo, logicalURL: string, contentType: string, bytesTotal: number): void {

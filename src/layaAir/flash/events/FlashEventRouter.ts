@@ -16,7 +16,7 @@ import { SecurityErrorEvent } from "./SecurityErrorEvent";
 import { TextEvent } from "./TextEvent";
 import { TimerEvent } from "./TimerEvent";
 import { UncaughtErrorEvent } from "./UncaughtErrorEvent";
-import { UnsupportedFlashFeatureError } from "./UnsupportedFlashFeatureError";
+import { WeakListenerList } from "../../laya/events/WeakListenerList";
 
 export type FlashEventListener = { bivarianceHack(event: Event): void }["bivarianceHack"];
 
@@ -26,11 +26,10 @@ export interface NativeEventHost {
     event(type: string, data?: unknown): boolean;
 }
 
-interface ListenerEntry { listener: FlashEventListener; priority: number; ordinal: number; }
 interface TypeEntry {
     nativeType: string;
-    capture: ListenerEntry[];
-    bubble: ListenerEntry[];
+    capture: WeakListenerList<FlashEventListener>;
+    bubble: WeakListenerList<FlashEventListener>;
     forward: (value?: unknown) => void;
     detach: () => void;
 }
@@ -91,8 +90,6 @@ export class FlashEventRouter {
     }
 
     addEventListener(type: string, listener: FlashEventListener, useCapture = false, priority = 0, useWeakReference = false): void {
-        if (useWeakReference)
-            throw new UnsupportedFlashFeatureError("flash.events.IEventDispatcher.useWeakReference", "weak listener retention is nondeterministic");
         if (typeof listener !== "function") throw new TypeError(`Listener for '${type}' must be a function`);
         if (!Number.isFinite(priority)) throw new TypeError("Listener priority must be finite");
         // Event validates source-visible type without mutating the caller's event state.
@@ -100,34 +97,38 @@ export class FlashEventRouter {
         let entry = this._types.get(type);
         if (!entry) {
             const nativeType = FlashEventRouter.nativeTypeFor(type);
+            let created: TypeEntry;
+            const collected = () => this._deleteTypeIfEmpty(type, created, true);
             entry = {
-                nativeType, capture: [], bubble: [],
+                nativeType,
+                capture: new WeakListenerList(collected),
+                bubble: new WeakListenerList(collected),
                 forward: value => this._forward(type, value), detach: () => undefined
             };
+            created = entry;
             entry.detach = this._subscribe(type, entry);
             this._types.set(type, entry);
         }
         const list = useCapture ? entry.capture : entry.bubble;
-        if (list.some(item => item.listener === listener)) return;
-        list.push({ listener, priority, ordinal: this._ordinal++ });
-        list.sort((a, b) => b.priority - a.priority || a.ordinal - b.ordinal);
+        if (list.add(listener, priority, this._ordinal, useWeakReference)) this._ordinal++;
     }
 
     removeEventListener(type: string, listener: FlashEventListener, useCapture = false): void {
         const entry = this._types.get(type);
         if (!entry) return;
         const list = useCapture ? entry.capture : entry.bubble;
-        const index = list.findIndex(item => item.listener === listener);
-        if (index >= 0) list.splice(index, 1);
-        if (entry.capture.length === 0 && entry.bubble.length === 0) {
-            entry.detach();
-            this._types.delete(type);
-        }
+        list.remove(listener);
+        this._deleteTypeIfEmpty(type, entry);
     }
 
     hasEventListener(type: string): boolean {
         const entry = this._types.get(type);
-        return !!entry && (entry.capture.length > 0 || entry.bubble.length > 0);
+        if (!entry) return false;
+        const hasCapture = entry.capture.hasListeners();
+        const hasBubble = entry.bubble.hasListeners();
+        const hasListeners = hasCapture || hasBubble;
+        if (!hasListeners) this._deleteTypeIfEmpty(type, entry);
+        return hasListeners;
     }
 
     dispatchEvent(event: Event, eventTarget: unknown = this.host): boolean {
@@ -153,7 +154,11 @@ export class FlashEventRouter {
 
     /** Releases native subscriptions, including global frame loops owned by this router. */
     dispose(): void {
-        for (const entry of this._types.values()) entry.detach();
+        for (const entry of this._types.values()) {
+            entry.detach();
+            entry.capture.clear();
+            entry.bubble.clear();
+        }
         this._types.clear();
         HOST_ROUTERS.delete(this.host as object);
     }
@@ -298,10 +303,22 @@ export class FlashEventRouter {
         if (!entry) return;
         event._setCurrentTarget(this._projectEventTarget(this.host), phase);
         const list = capture ? entry.capture : entry.bubble;
-        for (const item of list.slice()) {
-            item.listener(event);
+        for (const listener of list.snapshot()) {
+            listener(event);
             if (event._isImmediatePropagationStopped) break;
         }
+    }
+
+    private _deleteTypeIfEmpty(type: string, entry: TypeEntry, suppressDetachFailure = false): void {
+        if (this._types.get(type) !== entry
+            || entry.capture.hasListeners() || entry.bubble.hasListeners()) return;
+        try {
+            entry.detach();
+        } catch (error) {
+            if (!suppressDetachFailure) throw error;
+            return;
+        }
+        this._types.delete(type);
     }
 
     private _projectEventTarget(target: unknown): unknown {

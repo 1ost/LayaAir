@@ -51,6 +51,8 @@
     "test:flash-timer": "node scripts/testFlashTimer.mjs",
     "test:flash-timer:types": "tsc -p tests/flashTimer/tsconfig.json --pretty false",
     "test:flash-timer:declarations": "node --test tests/flashTimer/flash-timer.declarations.test.mjs",
+    "test:flash-events": "node scripts/testFlashEvents.mjs",
+    "test:flash-events:types": "tsc -p tests/flashEvents/tsconfig.json --pretty false",
     "test:flash-byte-array": "node scripts/testFlashByteArray.mjs",
     "test:flash-byte-array:types": "tsc -p tests/flashByteArray/tsconfig.json --pretty false",
     "test:flash-trace": "node --experimental-strip-types --test tests/flashTrace/flash-trace.test.ts",

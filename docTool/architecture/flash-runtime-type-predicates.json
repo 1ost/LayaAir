@@ -115,7 +115,7 @@
       "predicateExport": "isFlashLoader",
       "constructorSignature": "typeof Loader",
       "constructSignatures": [
-        "new (nativeContentHost?: NativeLoaderContentHost | null): Loader"
+        "new (nativeContentHost?: NativeLoaderContentHost | null, nativeImageHost?: NativeLoaderImageHost): Loader"
       ],
       "predicateSignature": "(value: unknown) => value is Loader",
       "heritageClosure": [
@@ -123,7 +123,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
+      "moduleSha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
     },
     {
       "sourceQName": "flash.display.LoaderInfo",
@@ -139,7 +139,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "2f2d33aab3943def38e72511484ac353e41efe049b928a9defe0d94a53c0477c"
+      "moduleSha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
     },
     {
       "sourceQName": "flash.display.MovieClip",
