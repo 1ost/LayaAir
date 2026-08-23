@@ -73,6 +73,40 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
         DISPLAY_OBJECT_VALUES.add(this);
     }
 
+    /** Flash reports transformed content bounds when no explicit size was assigned. */
+    override get width(): number {
+        return this._isWidthSet ? super.width : this._flashBoundsSize().width;
+    }
+    override set width(value: number) { super.width = value; }
+
+    /** Flash height follows the same child-bound contract as width. */
+    override get height(): number {
+        return this._isHeightSet ? super.height : this._flashBoundsSize().height;
+    }
+    override set height(value: number) { super.height = value; }
+
+    private _flashBoundsSize(): { width: number; height: number } {
+        const bounds = super.getSelfBounds();
+        const left = bounds.x;
+        const top = bounds.y;
+        const right = left + bounds.width;
+        const bottom = top + bounds.height;
+        const point = new LayaPoint();
+        let minimumX = Number.POSITIVE_INFINITY;
+        let minimumY = Number.POSITIVE_INFINITY;
+        let maximumX = Number.NEGATIVE_INFINITY;
+        let maximumY = Number.NEGATIVE_INFINITY;
+        for (let index = 0; index < 4; index++) {
+            point.setTo(index === 0 || index === 3 ? left : right, index < 2 ? top : bottom);
+            this.toParentPoint(point);
+            minimumX = Math.min(minimumX, point.x);
+            minimumY = Math.min(minimumY, point.y);
+            maximumX = Math.max(maximumX, point.x);
+            maximumY = Math.max(maximumY, point.y);
+        }
+        return { width: maximumX - minimumX, height: maximumY - minimumY };
+    }
+
     override get alpha(): number { return super.alpha; }
     override set alpha(value: number) {
         const clamped = Math.max(0, Math.min(1, Number(value)));
