@@ -591,6 +591,11 @@ export class ByteArray {
         this._mutationGeneration++;
     }
 
+    writeFloat(value: number): void {
+        this._bytes.writeFloat32(value);
+        this._mutationGeneration++;
+    }
+
     writeDouble(value: number): void {
         this._bytes.writeFloat64(value);
         this._mutationGeneration++;

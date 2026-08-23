@@ -58,7 +58,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
+      "moduleSha256": "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",

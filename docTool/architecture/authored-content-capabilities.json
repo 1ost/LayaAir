@@ -281,7 +281,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
+          "sha256": "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1"
         }
       ],
       "evidence": [
@@ -292,9 +292,9 @@
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
+            "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
           ]
         }
       ]
@@ -316,7 +316,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
+          "sha256": "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1"
         }
       ],
       "evidence": [
@@ -326,8 +326,8 @@
           "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
           "capability": "rendering.color-transform",
           "covers": [
+            "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
           ]
         }
@@ -5387,7 +5387,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
+          "sha256": "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1",
           "heritage": [
             {
               "kind": "extends",
@@ -19578,7 +19578,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd"
+          "sha256": "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -23272,6 +23272,7 @@
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "32b6c87378aecd3dbe8367c9feefeeac93fe69482c49fbd1be9615b3f943a5a7",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
+            "37adec0d830d1b04aa154509eb4173a31292cf1749e79bc3f2063bb433e1dca1",
             "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
@@ -23281,7 +23282,6 @@
             "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
-            "8d99f4699e47f9fced952405a5ecd59df11c71c7fe0e8c4df4a9a19249d510bd",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
             "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00",
@@ -38584,6 +38584,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "writeFloat",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(value: number) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "writeInt",
               "scope": "instance",
               "optional": false,
@@ -38645,7 +38654,7 @@
               "signature": "number"
             }
           ],
-          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
+          "sha256": "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
           "heritage": []
         },
         {
@@ -38653,14 +38662,14 @@
           "export": "ByteArrayInput",
           "kind": "type",
           "signature": "any",
-          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d"
+          "sha256": "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d"
         },
         {
           "module": "src/layaAir/flash/utils/ByteArray.ts",
           "export": "ZlibDecompressionHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d"
+          "sha256": "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d"
         },
         {
           "module": "src/layaAir/flash/utils/Dictionary.ts",
@@ -39265,12 +39274,12 @@
           "sha256": "88565f166639352900ae75f2dc4a03f93f1bd1743aa1bc26df33875c8cc7622e",
           "capability": "api.flash.utils",
           "covers": [
+            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39285,12 +39294,12 @@
           "sha256": "391d62218c39b73278a781816fb1c072e64bfc527dc6bd49ac3de247862d6411",
           "capability": "api.flash.utils",
           "covers": [
+            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39302,15 +39311,15 @@
         {
           "path": "tests/flashByteArray/flash-byte-array.runner.ts",
           "test": "Flash ByteArray binary and synchronous zlib behavior",
-          "sha256": "42716098b266fd624cc82c8d4e67c6d0424e93a846b7f5a57dfbaa8f3dacba00",
+          "sha256": "0d27ed6543f4f170dcdd67299caeed1866a6fb3097137ae04fdea126167df6be",
           "capability": "api.flash.utils",
           "covers": [
+            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
@@ -39325,12 +39334,12 @@
           "sha256": "9c7268b7e02308f1e41b9b7877684f600f8b347381e90ac3303b94090419032b",
           "capability": "api.flash.utils",
           "covers": [
+            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
             "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
             "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
             "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
             "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
             "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "a7e2c90a3d50168e0f15164ceaba9ed18843fe75499e5e1d0dce4b4f631ead3d",
             "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
             "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
             "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",

@@ -229,23 +229,39 @@ test("double values preserve IEEE-754 bytes, endian, cursor, and special numbers
     assert.equal(truncated.position, 0, "a failed double read must not advance the cursor");
 });
 
-test("float values preserve IEEE-754 endian, cursor, and special numbers", () => {
-    const big = new ByteArray(new Uint8Array([0x40, 0x49, 0x0f, 0xdb]));
+test("float values preserve IEEE-754 bytes, endian, cursor, rounding, and special numbers", () => {
+    const big = new ByteArray();
+    big.writeFloat(Math.PI);
+    assert.deepEqual(bytesOf(big), [0x40, 0x49, 0x0f, 0xdb]);
+    assert.deepEqual([big.position, big.length], [4, 4]);
+    big.position = 0;
     assert.equal(big.readFloat(), Math.fround(Math.PI));
     assert.deepEqual([big.position, big.bytesAvailable], [4, 0]);
 
-    const little = new ByteArray(new Uint8Array([0xdb, 0x0f, 0x49, 0x40]));
+    const little = new ByteArray();
     little.endian = Endian.LITTLE_ENDIAN;
+    little.writeFloat(Math.PI);
+    assert.deepEqual(bytesOf(little), [0xdb, 0x0f, 0x49, 0x40]);
+    little.position = 0;
     assert.equal(little.readFloat(), Math.fround(Math.PI));
 
-    const special = new ByteArray(new Uint8Array([
-        0x80, 0x00, 0x00, 0x00,
-        0x7f, 0x80, 0x00, 0x00,
-        0x7f, 0xc0, 0x00, 0x00,
-    ]));
+    const special = new ByteArray();
+    special.writeFloat(-0);
+    special.writeFloat(Infinity);
+    special.writeFloat(NaN);
+    assert.equal(special.position, 12);
+    special.position = 0;
     assert.equal(Object.is(special.readFloat(), -0), true);
     assert.equal(special.readFloat(), Infinity);
     assert.equal(Number.isNaN(special.readFloat()), true);
+
+    const overwrite = new ByteArray(new Uint8Array([9, 9, 9, 9, 9, 9]));
+    overwrite.position = 1;
+    overwrite.writeFloat(1 + 2 ** -24);
+    assert.deepEqual(bytesOf(overwrite), [9, 0x3f, 0x80, 0x00, 0x00, 9]);
+    assert.deepEqual([overwrite.position, overwrite.length], [5, 6]);
+    overwrite.position = 1;
+    assert.equal(overwrite.readFloat(), Math.fround(1 + 2 ** -24));
 
     const truncated = new ByteArray(new Uint8Array(3));
     assert.throws(() => truncated.readFloat(), OutOfRangeError);
