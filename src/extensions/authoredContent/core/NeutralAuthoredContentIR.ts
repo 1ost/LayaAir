@@ -38,6 +38,8 @@ export interface NeutralAuthoredNode {
     readonly alpha?: number;
     readonly visible?: boolean;
     readonly matrix?: NeutralAuthoredMatrix;
+    /** Closed authored display filter set applied by the native MovieClip primitive. */
+    readonly filters?: ReadonlyArray<NeutralGlowFilter>;
     readonly text?: string;
     readonly fontSize?: number;
     readonly color?: string;
@@ -207,7 +209,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
-        "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
+        "filters", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -230,6 +232,8 @@ function normalizeNode(
         alpha: optionalNumber(source.alpha, `${path}.alpha`),
         visible: optionalBoolean(source.visible, `${path}.visible`),
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
+        filters: source.filters === undefined ? undefined : array(source.filters, `${path}.filters`).map((filter, index) =>
+            normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
         text: optionalString(source.text, `${path}.text`),
         fontSize: optionalNumber(source.fontSize, `${path}.fontSize`, scale),
         color: optionalString(source.color, `${path}.color`),
@@ -257,6 +261,8 @@ function normalizeNode(
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_MISSING", `${path}.textField is required for a dynamic-text node.`);
     if (node.kind !== "dynamic-text" && node.textField !== undefined)
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_UNEXPECTED", `${path}.textField is only valid on a dynamic-text node.`);
+    if (node.filters !== undefined && node.kind !== "container")
+        fail("AUTHORED_CONTENT_DISPLAY_FILTER_TARGET_UNSUPPORTED", `${path}.filters requires a container node.`);
     if (node.kind === "dynamic-text") {
         if (node.x === undefined || node.y === undefined || node.width === undefined || node.height === undefined)
             fail("AUTHORED_CONTENT_DYNAMIC_TEXT_BOUNDS_MISSING", `${path} requires exact x, y, width, and height.`);

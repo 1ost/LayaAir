@@ -59,6 +59,14 @@ export interface FlashLibraryResourceAuthority {
     readonly sha256: string;
 }
 
+export interface FlashLibraryRasterizedFrameAuthority extends FlashLibraryResourceAuthority {
+    /** Pixel-space placement of the authenticated raster relative to the authored sprite origin. */
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+}
+
 export interface FlashLibrarySymbolRequest {
     readonly library: unknown;
     readonly timelines: ReadonlyMap<number, unknown>;
@@ -67,6 +75,10 @@ export interface FlashLibrarySymbolRequest {
     readonly resources: ReadonlyMap<string, FlashLibraryResourceAuthority>;
     /** Import an exported linkage in symbol-local space rather than the SWF document stage. */
     readonly projection?: "document" | "library-symbol";
+    /** Explicit JPEXS raster authorities for shapes which cannot be projected from vector fill records. */
+    readonly rasterizedShapes?: ReadonlyMap<number, FlashLibraryResourceAuthority>;
+    /** Explicit full-frame JPEXS raster authorities for symbols whose leaf rendering is intentionally flattened. */
+    readonly rasterizedSprites?: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>;
 }
 
 export class FlashLibrarySymbolAdapter {
@@ -111,6 +123,8 @@ export class FlashLibrarySymbolAdapter {
             assets,
             request.timelines,
             request.resources,
+            request.rasterizedShapes ?? new Map(),
+            request.rasterizedSprites ?? new Map(),
             resources,
             true,
         );
@@ -145,6 +159,8 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
         root = false,
     ): NeutralAuthoredNode {
@@ -154,22 +170,25 @@ export class FlashLibrarySymbolAdapter {
         const sourceTimeline = timeline(timelines, characterId);
         if (sourceTimeline.symbolId !== characterId)
             fail("FLASH_LIBRARY_TIMELINE_ID_MISMATCH", `Timeline ${characterId} identifies another symbol.`);
-        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const bounds = spriteBounds(asset, sourceTimeline, characterId);
         const firstFrame = frame(sourceTimeline, 0);
         const initialOperations = array(firstFrame.operations, `timeline ${characterId} frame 1 operations`);
-        const animated = sourceTimeline.frameCount === 1 ? undefined : this.createAnimatedDisplayList(
-            sourceTimeline,
-            assets,
-            timelines,
-            resourceAuthorities,
-            resources,
-        );
+        const rasterFrames = rasterizedSprites.get(characterId);
+        const animated = rasterFrames === undefined
+            ? sourceTimeline.frameCount === 1 ? undefined : this.createAnimatedDisplayList(
+                sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+            )
+            : this.createRasterizedSprite(
+                sourceTimeline, flashLibraryAssetName(asset, characterId), rasterFrames, resources,
+            );
         const children = animated === undefined
             ? initialOperations.map((value, index) => this.createPlacedNode(
                 object(value, `timeline ${characterId} frame 1 operation ${index}`),
                 assets,
                 timelines,
                 resourceAuthorities,
+                rasterizedShapes,
+                rasterizedSprites,
                 resources,
             ))
             : animated.children;
@@ -183,6 +202,7 @@ export class FlashLibrarySymbolAdapter {
             x: placement.x,
             y: placement.y,
             matrix: placement.matrix,
+            ...(operation?.filters === undefined ? {} : { filters: authoredGlowFilters(operation.filters, characterId) }),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation?.name === "string",
@@ -201,12 +221,14 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         exactPlace(operation);
         const characterId = positiveInteger(operation.characterId, "place.characterId");
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
-        if (asset.kind !== "input-text" && operation.filters !== undefined)
+        if (asset.kind !== "input-text" && asset.kind !== "sprite" && operation.filters !== undefined)
             fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
         if (asset.kind === "sprite") {
             return this.createSprite(
@@ -216,11 +238,13 @@ export class FlashLibrarySymbolAdapter {
                 assets,
                 timelines,
                 resourceAuthorities,
+                rasterizedShapes,
+                rasterizedSprites,
                 resources,
             );
         }
         if (asset.kind === "shape")
-            return this.createImage(asset, operation, assets, resourceAuthorities, resources);
+            return this.createImage(asset, operation, assets, resourceAuthorities, rasterizedShapes, resources);
         if (asset.kind === "input-text")
             return this.createDynamicText(asset, operation, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
@@ -231,6 +255,8 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
     ): { readonly children: ReadonlyArray<NeutralAuthoredNode>; readonly timeline: NeutralTimeline } {
         const active = new Map<number, FlashDisplayState>();
@@ -298,7 +324,9 @@ export class FlashLibrarySymbolAdapter {
                 ...(instance.operation.filters === undefined ? {} : { filters: instance.operation.filters }),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
-            const child = this.createPlacedNode(operation, assets, timelines, resourceAuthorities, resources);
+            const child = this.createPlacedNode(
+                operation, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+            );
             if (seenLinkages.has(child.linkage))
                 fail("FLASH_LIBRARY_ANIMATED_LINKAGE_COLLISION", `Timeline ${sourceTimeline.symbolId} places '${child.linkage}' more than once.`);
             seenLinkages.add(child.linkage);
@@ -340,30 +368,76 @@ export class FlashLibrarySymbolAdapter {
         };
     }
 
+    private createRasterizedSprite(
+        sourceTimeline: Record<string, any>,
+        linkage: string,
+        authorities: ReadonlyArray<FlashLibraryRasterizedFrameAuthority>,
+        resources: Map<string, NeutralResourceInput>,
+    ): { readonly children: ReadonlyArray<NeutralAuthoredNode>; readonly timeline: NeutralTimeline } {
+        const symbolId = positiveInteger(sourceTimeline.symbolId, "rasterized sprite symbolId");
+        const frameRate = positiveInteger(sourceTimeline.frameRate, `timeline ${symbolId}.frameRate`);
+        const frameCount = positiveInteger(sourceTimeline.frameCount, `timeline ${symbolId}.frameCount`);
+        const frames = array(sourceTimeline.frames, `timeline ${symbolId}.frames`);
+        if (frames.length !== frameCount || authorities.length !== frameCount)
+            fail("FLASH_LIBRARY_RASTERIZED_SPRITE_FRAME_CLOSURE", `Rasterized sprite ${symbolId} must authenticate exactly ${frameCount} frames.`);
+        frames.forEach((value, index) => {
+            const current = object(value, `timeline ${symbolId} frame ${index + 1}`);
+            if (current.index !== index + 1 || (current.durationTicks !== undefined && current.durationTicks !== 1))
+                fail("FLASH_LIBRARY_FRAME_INDEX_INVALID", `Timeline ${symbolId} frame indexing/duration is unsupported.`);
+            rejectFrameSideEffects(current, symbolId);
+        });
+        const children = authorities.map((authority, index): NeutralAuthoredNode => {
+            const resourceId = `flash-sprite-${symbolId}-frame-${index + 1}`;
+            registerResource(resources, resourceId, authority);
+            return {
+                linkage: `${linkage}_raster_frame_${index + 1}`,
+                name: `${linkage}_raster_frame_${index + 1}`,
+                kind: "image",
+                depth: index + 1,
+                x: finite(authority.x, `rasterized sprite ${symbolId} frame ${index + 1}.x`),
+                y: finite(authority.y, `rasterized sprite ${symbolId} frame ${index + 1}.y`),
+                width: positive(authority.width, `rasterized sprite ${symbolId} frame ${index + 1}.width`),
+                height: positive(authority.height, `rasterized sprite ${symbolId} frame ${index + 1}.height`),
+                resourceId,
+                visible: index === 0,
+                children: [],
+            };
+        });
+        return {
+            children,
+            timeline: {
+                frameRate,
+                duration: frameCount / frameRate,
+                loop: frameCount > 1,
+                tracks: children.map((child, childIndex) => ({
+                    targetPath: [linkage, child.linkage],
+                    property: "visible" as const,
+                    keyframes: authorities.map((_, frameIndex) => ({
+                        time: frameIndex / frameRate,
+                        value: frameIndex === childIndex,
+                    })),
+                })),
+            },
+        };
+    }
+
     private createImage(
         asset: Record<string, any>,
         operation: Record<string, any>,
         assets: Record<string, any>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "shape.characterId");
-        const sourcePath = resolveFlashLibraryShapeResourcePath(asset, assets, resourceAuthorities);
-        const authority = resourceAuthorities.get(sourcePath);
+        const rasterAuthority = rasterizedShapes.get(characterId);
+        const sourcePath = rasterAuthority?.sourcePath
+            ?? resolveFlashLibraryShapeResourcePath(asset, assets, resourceAuthorities);
+        const authority = rasterAuthority ?? resourceAuthorities.get(sourcePath);
         if (!authority || authority.sourcePath !== sourcePath)
             fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
         const resourceId = `flash-character-${characterId}`;
-        const existing = resources.get(resourceId);
-        const resource: NeutralResourceInput = {
-            id: resourceId,
-            sourcePath,
-            mediaType: authority.mediaType,
-            byteLength: authority.byteLength,
-            sha256: authority.sha256,
-        };
-        if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(resource))
-            fail("FLASH_LIBRARY_RESOURCE_IDENTITY_DRIFT", `Resource '${resourceId}' has conflicting authority.`);
-        resources.set(resourceId, resource);
+        registerResource(resources, resourceId, authority);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const placement = placementTransform(operation);
         const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
@@ -453,6 +527,37 @@ export class FlashLibrarySymbolAdapter {
             children: [],
         };
     }
+}
+
+function spriteBounds(asset: Record<string, any>, sourceTimeline: Record<string, any>, characterId: number): Record<string, any> {
+    if (asset.bounds !== undefined)
+        return object(asset.bounds, `library.assets.${characterId}.bounds`);
+    const frames = array(sourceTimeline.frames, `timeline ${characterId}.frames`);
+    for (const value of frames) {
+        const current = object(value, `timeline ${characterId} empty sprite frame`);
+        rejectFrameSideEffects(current, characterId);
+        if (array(current.operations, `timeline ${characterId} empty sprite operations`).length !== 0)
+            fail("FLASH_LIBRARY_SPRITE_BOUNDS_REQUIRED", `Non-empty sprite ${characterId} requires authored bounds.`);
+    }
+    return { x: 0, y: 0, width: 0, height: 0 };
+}
+
+function registerResource(
+    resources: Map<string, NeutralResourceInput>,
+    resourceId: string,
+    authority: FlashLibraryResourceAuthority,
+): void {
+    const resource: NeutralResourceInput = {
+        id: resourceId,
+        sourcePath: string(authority.sourcePath, `${resourceId}.sourcePath`),
+        mediaType: oneOf(authority.mediaType, ["image/jpeg", "image/png"], `${resourceId}.mediaType`),
+        byteLength: nonnegativeInteger(authority.byteLength, `${resourceId}.byteLength`),
+        sha256: string(authority.sha256, `${resourceId}.sha256`),
+    };
+    const existing = resources.get(resourceId);
+    if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(resource))
+        fail("FLASH_LIBRARY_RESOURCE_IDENTITY_DRIFT", `Resource '${resourceId}' has conflicting authority.`);
+    resources.set(resourceId, resource);
 }
 
 /**
@@ -802,6 +907,20 @@ function finite(value: unknown, label: string): number {
     if (typeof value !== "number" || !Number.isFinite(value))
         fail("FLASH_LIBRARY_NUMBER_REQUIRED", `${label} must be finite.`);
     return value;
+}
+
+function positive(value: unknown, label: string): number {
+    const result = finite(value, label);
+    if (result <= 0)
+        fail("FLASH_LIBRARY_POSITIVE_NUMBER_REQUIRED", `${label} must be positive.`);
+    return result;
+}
+
+function nonnegativeInteger(value: unknown, label: string): number {
+    const result = finite(value, label);
+    if (!Number.isSafeInteger(result) || result < 0)
+        fail("FLASH_LIBRARY_NONNEGATIVE_INTEGER_REQUIRED", `${label} must be a non-negative safe integer.`);
+    return result;
 }
 
 function positiveInteger(value: unknown, label: string): number {

@@ -495,7 +495,7 @@ async function main(): Promise<void> {
         assertThrows(() => normalizeNeutralAuthoredContent(unused), "AUTHORED_CONTENT_RESOURCE_UNREFERENCED");
 
         const undeclared = bitmapHierarchyDocument(payload) as any;
-        undeclared.root.children[0].filters = [];
+        undeclared.root.children[0].cacheAs = "bitmap";
         assertThrows(() => normalizeNeutralAuthoredContent(undeclared), "AUTHORED_CONTENT_FIELD_UNSUPPORTED");
     });
 

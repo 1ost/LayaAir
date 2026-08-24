@@ -103,12 +103,17 @@ export function configureAuthoredTextField(
         value.format.indent,
         value.format.leading,
     );
-    field.filters = (value.filters ?? []).map(filter => new GlowFilter(
+    field.filters = createAuthoredGlowFilters(value.filters ?? []);
+    field.text = value.initialText;
+    return field;
+}
+
+export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
+    if (!Array.isArray(value)) throw new TypeError("Authored glow filters must be an array");
+    return value.map((candidate, index) => validateGlowFilter(candidate, `filters[${index}]`)).map(filter => new GlowFilter(
         filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
         filter.quality, filter.inner, filter.knockout,
     ));
-    field.text = value.initialText;
-    return field;
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {

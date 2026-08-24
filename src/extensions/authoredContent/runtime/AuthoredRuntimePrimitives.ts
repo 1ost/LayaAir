@@ -4,11 +4,27 @@ import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 import {
     AuthoredTextFieldConfiguration,
     configureAuthoredTextField,
+    createAuthoredGlowFilters,
 } from "./AuthoredTextField";
 
 export { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 
-export class AuthoredMovieClip extends MovieClip { }
+export class AuthoredMovieClip extends MovieClip {
+    private _authoredFilters: ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration> = [];
+
+    get authoredFilters(): ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration> {
+        return this._authoredFilters;
+    }
+
+    set authoredFilters(value: ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration>) {
+        this._authoredFilters = value;
+    }
+
+    override onAfterDeserialize(): void {
+        super.onAfterDeserialize();
+        this.filters = createAuthoredGlowFilters(this._authoredFilters);
+    }
+}
 
 export class AuthoredDynamicTextField extends TextField {
     private _authoredConfiguration: AuthoredTextFieldConfiguration = {

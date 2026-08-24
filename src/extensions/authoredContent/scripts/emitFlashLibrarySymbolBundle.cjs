@@ -61,6 +61,7 @@ async function main() {
             sha256: hash(bytes),
         });
     }
+    const rasterAuthorities = readRasterAuthorities(sourceRoot);
     const { FlashLibrarySymbolAdapter } = require("../offlineAdapters/FlashLibrarySymbolAdapter.ts");
     const content = new FlashLibrarySymbolAdapter().parse({
         library,
@@ -69,6 +70,8 @@ async function main() {
         runtimeLinkage,
         resources: authorities,
         projection,
+        rasterizedShapes: rasterAuthorities.shapes,
+        rasterizedSprites: rasterAuthorities.sprites,
     });
 
     const HierarchyWriter = loadIdeHierarchyWriter();
@@ -144,6 +147,109 @@ async function main() {
         rootClip.destroy();
         nestedClips.forEach(clip => clip.destroy());
     }
+}
+
+function readRasterAuthorities(sourceRoot) {
+    const manifestPath = path.join(sourceRoot, "raster-authority.json");
+    if (!fs.existsSync(manifestPath)) return { shapes: new Map(), sprites: new Map() };
+    const manifest = exactObject(readJson(manifestPath), ["schema", "shapes", "sprites"], "raster authority");
+    if (manifest.schema !== "flash-library-raster-authority@1")
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_SCHEMA_UNSUPPORTED: ${String(manifest.schema)}`);
+    const shapeRecords = exactObject(manifest.shapes, Object.keys(objectRecord(manifest.shapes, "raster authority shapes")), "raster authority shapes");
+    const spriteRecords = exactObject(manifest.sprites, Object.keys(objectRecord(manifest.sprites, "raster authority sprites")), "raster authority sprites");
+    const shapes = new Map();
+    for (const [idText, value] of Object.entries(shapeRecords)) {
+        const id = characterId(idText, "rasterized shape");
+        const record = exactObject(value, ["path"], `rasterized shape ${id}`);
+        shapes.set(id, resourceAuthority(sourceRoot, record.path));
+    }
+    const sprites = new Map();
+    for (const [idText, value] of Object.entries(spriteRecords)) {
+        const id = characterId(idText, "rasterized sprite");
+        if (!Array.isArray(value) || value.length === 0)
+            throw new Error(`FLASH_LIBRARY_RASTERIZED_SPRITE_FRAMES_INVALID: ${id}`);
+        sprites.set(id, value.map((frameValue, index) => {
+            const frame = exactObject(frameValue, ["height", "path", "width", "x", "y"], `rasterized sprite ${id} frame ${index + 1}`);
+            const authority = resourceAuthority(sourceRoot, frame.path);
+            const bytes = fs.readFileSync(resolveInside(sourceRoot, frame.path));
+            const dimensions = pngDimensions(bytes, frame.path);
+            const width = positiveNumber(frame.width, `${id} frame ${index + 1} width`);
+            const height = positiveNumber(frame.height, `${id} frame ${index + 1} height`);
+            if (dimensions.width !== width || dimensions.height !== height)
+                throw new Error(`FLASH_LIBRARY_RASTERIZED_SPRITE_DIMENSION_MISMATCH: ${id} frame ${index + 1}`);
+            return {
+                ...authority,
+                x: finiteNumber(frame.x, `${id} frame ${index + 1} x`),
+                y: finiteNumber(frame.y, `${id} frame ${index + 1} y`),
+                width,
+                height,
+            };
+        }));
+    }
+    return { shapes, sprites };
+}
+
+function resourceAuthority(sourceRoot, relative) {
+    const sourcePath = relativePath(relative, "raster authority path");
+    const resolved = resolveInside(sourceRoot, sourcePath);
+    const info = fs.lstatSync(resolved);
+    if (!info.isFile() || info.isSymbolicLink())
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_FILE_INVALID: ${sourcePath}`);
+    const bytes = fs.readFileSync(resolved);
+    const lower = sourcePath.toLowerCase();
+    const mediaType = lower.endsWith(".png") ? "image/png"
+        : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "image/jpeg" : null;
+    if (!mediaType)
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_MEDIA_UNSUPPORTED: ${sourcePath}`);
+    return { sourcePath, mediaType, byteLength: bytes.byteLength, sha256: hash(bytes) };
+}
+
+function pngDimensions(bytes, label) {
+    if (bytes.length < 24 || bytes.toString("hex", 0, 8) !== "89504e470d0a1a0a" || bytes.toString("ascii", 12, 16) !== "IHDR")
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_PNG_INVALID: ${label}`);
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+function objectRecord(value, label) {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_OBJECT_REQUIRED: ${label}`);
+    return value;
+}
+
+function exactObject(value, keys, label) {
+    const record = objectRecord(value, label);
+    const actual = Object.keys(record).sort();
+    const expected = [...keys].sort();
+    if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index]))
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_FIELDS_UNSUPPORTED: ${label}`);
+    return record;
+}
+
+function characterId(value, label) {
+    const result = Number(value);
+    if (!Number.isSafeInteger(result) || result < 1 || String(result) !== value)
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_ID_INVALID: ${label} ${value}`);
+    return result;
+}
+
+function finiteNumber(value, label) {
+    if (typeof value !== "number" || !Number.isFinite(value))
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_NUMBER_INVALID: ${label}`);
+    return value;
+}
+
+function positiveNumber(value, label) {
+    const result = finiteNumber(value, label);
+    if (result <= 0)
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_NUMBER_INVALID: ${label}`);
+    return result;
+}
+
+function relativePath(value, label) {
+    if (typeof value !== "string" || value.length === 0 || value.includes("\\") || path.isAbsolute(value)
+        || value.split("/").some(part => !part || part === "." || part === ".."))
+        throw new Error(`FLASH_LIBRARY_RASTER_AUTHORITY_PATH_INVALID: ${label}`);
+    return value;
 }
 
 function loadIdeHierarchyWriter() {

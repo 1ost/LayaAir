@@ -22,6 +22,7 @@ import { isFlashSprite } from "../../../src/layaAir/flash/display/Sprite";
 import { isFlashShape } from "../../../src/layaAir/flash/display/Shape";
 import { isFlashBitmap } from "../../../src/layaAir/flash/display/Bitmap";
 import { isFlashBitmapData, observeBitmapData } from "../../../src/layaAir/flash/display/BitmapData";
+import { isGlowFilter } from "../../../src/layaAir/flash/filters/GlowFilter";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
@@ -2308,6 +2309,10 @@ test("canonical hierarchy binds an independently clocked 16-frame authored Movie
         "_$type": "Sprite",
         "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.movieClip,
         name: "HappyBear",
+        authoredFilters: [{
+            kind: "glow", color: 0x381a0a, alpha: 1, blurX: 1, blurY: 1,
+            strength: 3, quality: 3, inner: false, knockout: false,
+        }],
         "_$comp": [{
             "_$type": "AnimatorClip2D",
             clip: { "_$uuid": "happy-bear-timeline", "_$type": "AnimationClip2D" },
@@ -2319,6 +2324,8 @@ test("canonical hierarchy binds an independently clocked 16-frame authored Movie
     assert.equal(bear instanceof AuthoredMovieClip, true);
     assert.equal(isFlashMovieClip(bear), true);
     assert.equal(bear.name, "HappyBear");
+    assert.equal(bear.filters.length, 1);
+    assert.equal(isGlowFilter(bear.filters[0]), true);
     assert.equal(bear.totalFrames, 16);
     bear.gotoAndStop(5);
     assert.equal(bear.currentFrame, 5);
