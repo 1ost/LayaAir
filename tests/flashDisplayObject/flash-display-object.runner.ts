@@ -65,6 +65,19 @@ test("BitmapData.setVector preserves transparency and validates Flash-shaped inp
     assert.throws(() => transparent.setVector(new Rectangle(), []), /disposed/);
 });
 
+test("Bitmap preserves BitmapData bounds before a render texture is available", () => {
+    const bitmap = new Bitmap(new BitmapData(67, 32, true, 0));
+    assert.equal(bitmap.texture == null, true);
+    assert.deepEqual([bitmap.width, bitmap.height], [67, 32]);
+
+    const root = new Sprite();
+    root.addChild(bitmap);
+    assert.deepEqual([root.width, root.height], [67, 32]);
+
+    bitmap.bitmapData?.dispose();
+    assert.deepEqual([bitmap.width, bitmap.height], [0, 0]);
+});
+
 test("Flash display parent normalizes unattached nodes to null without changing native hierarchy semantics", () => {
     const native = new LayaSprite();
     assert.equal(native.parent, undefined, "the Flash facade does not rewrite native Laya parent semantics");

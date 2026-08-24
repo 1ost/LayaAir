@@ -938,6 +938,12 @@ export function observeBitmapData(value: BitmapData, listener: InvalidationListe
     return () => state.listeners.delete(listener);
 }
 
+/** @internal Resolve intrinsic dimensions without exposing mutable pixel storage. */
+export function bitmapDataDimensions(value: BitmapData): { width: number; height: number } | null {
+    const state = bitmapDataValue(value, "bitmapData", false);
+    return state.pixels === null ? null : { width: state.width, height: state.height };
+}
+
 /** @internal Resolve a shared native sampling variant for a Bitmap view. */
 export function acquireBitmapDataTexture(value: BitmapData, smoothing: boolean): Texture | null {
     const state = bitmapDataValue(value, "bitmapData", false);

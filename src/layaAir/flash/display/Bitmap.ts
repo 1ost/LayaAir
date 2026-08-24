@@ -1,7 +1,10 @@
 import { DisplayObject } from "./DisplayObject";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { RepaintFlag } from "../../laya/display/SpriteConst";
-import { acquireBitmapDataTexture, BitmapData, isFlashBitmapData, observeBitmapData } from "./BitmapData";
+import { Rectangle } from "../../laya/maths/Rectangle";
+import {
+    acquireBitmapDataTexture, bitmapDataDimensions, BitmapData, isFlashBitmapData, observeBitmapData
+} from "./BitmapData";
 import { PixelSnapping } from "./PixelSnapping";
 
 const BITMAP_VALUES = new WeakSet<object>();
@@ -51,6 +54,15 @@ export class Bitmap extends DisplayObject {
     set smoothing(value: boolean) {
         this.smoothingValue = Boolean(value);
         this.refreshTexture();
+    }
+
+    override getGraphicBounds(realSize?: boolean, out?: Rectangle): Rectangle {
+        const bounds = super.getGraphicBounds(realSize, out);
+        if (this.texture != null || this.bitmapDataValue === null) return bounds;
+        const dimensions = bitmapDataDimensions(this.bitmapDataValue);
+        if (dimensions !== null)
+            bounds.union(new Rectangle(0, 0, dimensions.width, dimensions.height), bounds);
+        return bounds;
     }
 
     override destroy(destroyChild = true): void {
