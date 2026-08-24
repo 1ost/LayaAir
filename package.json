@@ -31,6 +31,7 @@
     "test:flash-media": "node scripts/testFlashMedia.mjs",
     "test:flash-media:types": "tsc -p tests/flashMedia/tsconfig.json --pretty false",
     "test:authored-image-publish": "node --experimental-strip-types --test tests/authoredImagePublish/authored-image-publish.test.mjs",
+    "test:authored-projected-bitmap-fill": "node --max-old-space-size=512 tests/authoredProjectedBitmapFill/run.cjs",
     "authored-pixel-golden": "node scripts/authoredPixelGolden.mjs",
     "test:authored-pixel-golden": "node --test tests/authoredPixelGolden/authored-pixel-golden.test.mjs",
     "build:authored-content": "npm --prefix src/extensions/authoredContent run build",

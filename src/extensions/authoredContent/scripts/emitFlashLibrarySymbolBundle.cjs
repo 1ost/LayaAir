@@ -32,9 +32,11 @@ async function main() {
     const outputRoot = path.resolve(process.argv[3] || "");
     const entrySymbolId = Number(process.argv[4]);
     const runtimeLinkage = process.argv[5];
+    const assetBaseName = process.argv[6] || "bootstrap-loading";
     if (!path.isAbsolute(sourceRoot) || !path.isAbsolute(outputRoot)
-        || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage) {
-        process.stderr.write("usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root> <symbol-id> <runtime-linkage>\n");
+        || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(assetBaseName)) {
+        process.stderr.write("usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root> <symbol-id> <runtime-linkage> [asset-base-name]\n");
         process.exitCode = 2;
         return;
     }
@@ -48,7 +50,7 @@ async function main() {
     ]));
     const authorities = new Map();
     for (const asset of Object.values(library.assets)) {
-        if (asset.kind !== "shape") continue;
+        if ((asset.kind !== "shape" && asset.kind !== "image") || typeof asset.path !== "string") continue;
         const bytes = fs.readFileSync(resolveInside(sourceRoot, asset.path));
         authorities.set(asset.path, {
             sourcePath: asset.path,
@@ -89,7 +91,7 @@ async function main() {
     const rootClip = NativeLayaEmitter.createTimeline(content);
     const root = NativeLayaEmitter.createPrefabRoot(
         content,
-        "bootstrap-loading.mc",
+        `${assetBaseName}.mc`,
         rootClip,
         resourceAssetIds,
         nestedBindings,
@@ -99,9 +101,9 @@ async function main() {
         const bundle = await prepareNativeLayaAuthoredContentBundle({
             content,
             hierarchy,
-            prefabPath: "bootstrap-loading.lh",
-            timelinePath: "bootstrap-loading.mc",
-            timelineAssetId: "bootstrap-loading.mc",
+            prefabPath: `${assetBaseName}.lh`,
+            timelinePath: `${assetBaseName}.mc`,
+            timelineAssetId: `${assetBaseName}.mc`,
             timelineBytes: new Uint8Array(NativeAnimationClip2DWriter.write(rootClip)),
             nestedTimelines: nestedAssets.map(value => ({
                 semanticPath: value.semanticPath,

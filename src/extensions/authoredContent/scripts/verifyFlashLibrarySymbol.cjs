@@ -34,7 +34,7 @@ const timelines = new Map(Object.entries(library.timelines).map(([id, relative])
 ]));
 const resources = new Map();
 for (const asset of Object.values(library.assets)) {
-    if (asset.kind !== "shape") continue;
+    if ((asset.kind !== "shape" && asset.kind !== "image") || typeof asset.path !== "string") continue;
     const absolute = resolveInside(sourceRoot, asset.path);
     const bytes = fs.readFileSync(absolute);
     resources.set(asset.path, {

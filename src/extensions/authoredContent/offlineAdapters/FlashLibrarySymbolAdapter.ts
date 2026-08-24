@@ -63,8 +63,6 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_STAGE_BACKGROUND_ALPHA_UNSUPPORTED", "Only an opaque authored stage background is supported.");
         if (!Number.isInteger(stageBackgroundColor) || stageBackgroundColor < 0 || stageBackgroundColor > 0xffffff)
             fail("FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_INVALID", "Stage background color must be an RGB integer.");
-        if (stageBackgroundColor !== 0)
-            fail("FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_UNSUPPORTED", "This projection supports the authored opaque black stage background only.");
         const entryTimeline = timeline(request.timelines, request.entrySymbolId);
         const entryFrameRate = positiveInteger(entryTimeline.frameRate, `timeline ${request.entrySymbolId}.frameRate`);
         const entryFrameCount = positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
@@ -93,14 +91,12 @@ export class FlashLibrarySymbolAdapter {
             root: {
                 ...root,
                 runtimeLinkage: request.runtimeLinkage,
-                width: stageWidth,
-                height: stageHeight,
                 timeline: undefined,
             },
             timeline: nativeTimeline(entryTimeline, root),
             stage: {
-                width: stageWidth,
-                height: stageHeight,
+                width: root.width,
+                height: root.height,
                 frameRate: stageFrameRate,
                 frameCount: stageFrameCount,
                 backgroundColor: {
@@ -246,7 +242,7 @@ export class FlashLibrarySymbolAdapter {
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "shape.characterId");
-        const sourcePath = string(asset.path, `library.assets.${characterId}.path`);
+        const sourcePath = resolveFlashLibraryShapeResourcePath(asset, resourceAuthorities);
         const authority = resourceAuthorities.get(sourcePath);
         if (!authority || authority.sourcePath !== sourcePath)
             fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
@@ -265,8 +261,8 @@ export class FlashLibrarySymbolAdapter {
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const placement = translation(operation);
         return {
-            linkage: string(asset.symbolName, `library.assets.${characterId}.symbolName`),
-            name: operation.name ?? string(asset.symbolName, `library.assets.${characterId}.symbolName`),
+            linkage: flashLibraryAssetName(asset, characterId),
+            name: operation.name ?? flashLibraryAssetName(asset, characterId),
             kind: "image",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x + finite(bounds.x, `library.assets.${characterId}.bounds.x`),
@@ -346,6 +342,95 @@ export class FlashLibrarySymbolAdapter {
             children: [],
         };
     }
+}
+
+/**
+ * Resolves the authenticated bitmap authority for a Flash shape which is an
+ * exact axis-aligned bitmap projection. The FFDec XML exporter may retain its
+ * sentinel bitmap fill (character 65535) alongside the real fill; the sentinel
+ * carries no pixels and is ignored only after the remaining geometry proves a
+ * complete rectangular projection.
+ */
+export function resolveFlashLibraryShapeResourcePath(
+    assetValue: unknown,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+): string {
+    const asset = object(assetValue, "shape asset");
+    const characterId = positiveInteger(asset.characterId, "shape.characterId");
+    if (asset.path !== undefined)
+        return string(asset.path, `library.assets.${characterId}.path`);
+
+    const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+    const shape = object(asset.shape, `library.assets.${characterId}.shape`);
+    const fillStyles = array(shape.fillStyles, `library.assets.${characterId}.shape.fillStyles`)
+        .map((value, index) => ({ value: object(value, `shape ${characterId} fill ${index}`), styleIndex: index + 1 }))
+        .filter(value => value.value.bitmapId !== 65535);
+    if (fillStyles.length !== 1)
+        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} must contain exactly one non-sentinel bitmap fill.`);
+    const { value: fill, styleIndex } = fillStyles[0];
+    if (fill.kind !== "bitmap" || fill.repeat !== false || fill.smooth !== false)
+        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} bitmap fill mode is unsupported.`);
+    const matrix = object(fill.startMatrix, `shape ${characterId} bitmap matrix`);
+    exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
+    if (matrix.a !== 20 || matrix.b !== 0 || matrix.c !== 0 || matrix.d !== 20
+        || matrix.tx !== bounds.x || matrix.ty !== bounds.y)
+        fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix is not a one-pixel-per-pixel bounds projection.`);
+    if (array(shape.lineStyles, `shape ${characterId}.lineStyles`).length !== 0
+        || shape.usesFillWindingRule !== false
+        || !isBoundsRectangle(array(shape.segments, `shape ${characterId}.segments`), bounds, styleIndex))
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not the exact bounds rectangle.`);
+
+    const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
+    const expectedSuffix = `/${bitmapId}.png`;
+    const candidates = [...resourceAuthorities.keys()].filter(value =>
+        value === `assets/${bitmapId}.png` || value.replace(/\\/g, "/").endsWith(expectedSuffix));
+    if (candidates.length !== 1)
+        fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated PNG authority.`);
+    return candidates[0];
+}
+
+function flashLibraryAssetName(asset: Record<string, any>, characterId: number): string {
+    return asset.symbolName === undefined
+        ? `character_${characterId}`
+        : string(asset.symbolName, `library.assets.${characterId}.symbolName`);
+}
+
+function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record<string, any>, styleIndex: number): boolean {
+    if (segmentsValue.length !== 4) return false;
+    const x = finite(bounds.x, "shape.bounds.x");
+    const y = finite(bounds.y, "shape.bounds.y");
+    const width = finite(bounds.width, "shape.bounds.width");
+    const height = finite(bounds.height, "shape.bounds.height");
+    if (width <= 0 || height <= 0) return false;
+    const corners = new Set([`${x},${y}`, `${x + width},${y}`, `${x + width},${y + height}`, `${x},${y + height}`]);
+    const expectedEdges = new Set([
+        canonicalEdge(`${x},${y}`, `${x + width},${y}`),
+        canonicalEdge(`${x + width},${y}`, `${x + width},${y + height}`),
+        canonicalEdge(`${x + width},${y + height}`, `${x},${y + height}`),
+        canonicalEdge(`${x},${y + height}`, `${x},${y}`),
+    ]);
+    const observedEdges = new Set<string>();
+    for (const value of segmentsValue) {
+        const segment = object(value, "shape segment");
+        if (segment.kind !== "line" || segment.fillStyle1 !== styleIndex || segment.fillStyle0 !== 0 || segment.lineStyle !== 0)
+            return false;
+        const edge = object(segment.end, "shape segment.end");
+        const from = array(edge.from, "shape segment.end.from");
+        const to = array(edge.to, "shape segment.end.to");
+        if (from.length !== 2 || to.length !== 2 || !from.every(Number.isFinite) || !to.every(Number.isFinite))
+            return false;
+        const fromKey = `${from[0]},${from[1]}`;
+        const toKey = `${to[0]},${to[1]}`;
+        if (!corners.has(fromKey) || !corners.has(toKey)
+            || (from[0] !== to[0] && from[1] !== to[1])) return false;
+        observedEdges.add(canonicalEdge(fromKey, toKey));
+    }
+    return observedEdges.size === expectedEdges.size
+        && [...observedEdges].every(value => expectedEdges.has(value));
+}
+
+function canonicalEdge(from: string, to: string): string {
+    return from < to ? `${from}|${to}` : `${to}|${from}`;
 }
 
 function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode): NeutralTimeline {
