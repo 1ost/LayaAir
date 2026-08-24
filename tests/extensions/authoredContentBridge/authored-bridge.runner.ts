@@ -71,7 +71,7 @@ import {
 } from "../../../src/layaAir/flash";
 import {
     createAuthoredStaticText, createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
-    normalizeAuthoredCodeBindingContract, registerAuthoredContentRuntime,
+    createAuthoredPrefabDefinition, normalizeAuthoredCodeBindingContract, registerAuthoredContentRuntime,
     type AuthoredStaticTextConfiguration, type AuthoredTextFieldConfiguration,
 } from "../../../src/extensions/authoredContent/runtime";
 import {
@@ -3036,6 +3036,33 @@ test("explicit bootstrap loads canonical Laya hierarchy with application linkage
     const mismatchErrors: unknown[] = [];
     assert.ok(!new PrefabImpl(HierarchyParser, mismatched).create(undefined, mismatchErrors));
     assert.match(String(mismatchErrors[0]), /requires serialized type 'Sprite'/);
+});
+
+test("loaded canonical prefab exposes a fail-closed synchronous definition token", () => {
+    registerAuthoredContentRuntime([{
+        id: "fixtures.FlashPanel", ctor: FlashPanel, sourceType: "MovieClip", serializedType: "Sprite"
+    }]);
+    const data = JSON.parse(readFileSync(join(process.cwd(), "tests/extensions/authoredContentBridge/fixtures/flash-panel.lh"), "utf8"));
+    const prefab = new PrefabImpl(HierarchyParser, data);
+    const Definition = createAuthoredPrefabDefinition("fixtures.FlashPanel", prefab, FlashPanel);
+    const panel = new Definition();
+    assert.ok(panel instanceof FlashPanel);
+    assert.ok(panel.submitButton instanceof SubmitButtonLinkage);
+    panel.destroy(true);
+
+    assert.throws(() => createAuthoredPrefabDefinition("flash.display.MovieClip", prefab, FlashPanel), /application-owned/);
+    assert.throws(() => createAuthoredPrefabDefinition("fixtures.Missing", {} as any, FlashPanel), /loaded canonical/);
+    const wrongRoot = { create: () => new SubmitButtonLinkage() };
+    assert.throws(() => new (createAuthoredPrefabDefinition("fixtures.WrongRoot", wrongRoot, FlashPanel))(), /expected FlashPanel/);
+    const failed = new FlashPanel();
+    let destroyed = false;
+    failed.destroy = (() => { destroyed = true; }) as typeof failed.destroy;
+    const errored = { create: (_options?: Record<string, unknown>, errors?: unknown[]) => {
+        errors?.push("fixture failure");
+        return failed;
+    } };
+    assert.throws(() => new (createAuthoredPrefabDefinition("fixtures.Errored", errored, FlashPanel))(), /fixture failure/);
+    assert.equal(destroyed, true);
 });
 
 test("transpiled-style class keeps Flash add/remove APIs and bound method identity", () => {
