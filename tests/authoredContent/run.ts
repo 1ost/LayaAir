@@ -8,9 +8,11 @@ import { ILaya } from "../../src/layaAir/ILaya";
 import { Keyframe2D } from "../../src/layaAir/laya/components/KeyFrame2D";
 import { KeyframeNode2D } from "../../src/layaAir/laya/components/KeyframeNode2D";
 import { KeyframeNodeList2D } from "../../src/layaAir/laya/components/KeyframeNodeList2D";
+import { Matrix } from "../../src/layaAir/laya/maths/Matrix";
 import { XML } from "../../src/layaAir/laya/html/XML";
 import { SwfXmlSourceAdapter } from "../../src/extensions/authoredContent/offlineAdapters/SwfXmlSourceAdapter";
 import { XflBundleSourceAdapter } from "../../src/extensions/authoredContent/offlineAdapters/XflBundleSourceAdapter";
+import { FlashLibrarySymbolAdapter } from "../../src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter";
 import { normalizeNeutralAuthoredContent } from "../../src/extensions/authoredContent/core/NeutralAuthoredContentIR";
 import { NativeAnimationClip2DWriter } from "../../src/extensions/authoredContent/emit/NativeAnimationClip2DWriter";
 import { NativeLayaEmitter } from "../../src/extensions/authoredContent/emit/NativeLayaEmitter";
@@ -89,6 +91,7 @@ class TestAnimatorClip2D {
     Keyframe2D,
     KeyframeNode2D,
     KeyframeNodeList2D,
+    Matrix,
     Sprite: TestSprite,
     Text: TestText,
     XML
@@ -232,6 +235,7 @@ function dynamicTextDocument(): Record<string, unknown> {
                     displayAsPassword: false,
                     autoSize: "none",
                     html: false,
+                    filters: [],
                     gutter: 2,
                     overflow: "hidden",
                     initialText: "",
@@ -542,6 +546,70 @@ async function main(): Promise<void> {
         assert(field.authoredConfiguration.sourceId === 17, "dynamic TextField source identity was lost");
         assert(field.authoredConfiguration.format.font === "Arial", "dynamic TextField font was lost");
         assert(field.authoredConfiguration.format.bold === true, "dynamic TextField font style was lost");
+    });
+
+    await test("Flash library static affine placements and GlowFilter emit through authenticated native seams", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const glow = {
+            kind: "glow", sourceType: "GLOWFILTER", color: { alpha: 1, color: 0 },
+            blurX: 3, blurY: 3, strength: 5, passes: 1, innerGlow: false,
+            knockout: false, compositeSource: true,
+        };
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 80, frameRate: 30, frameCount: 1, backgroundColor: { alpha: 1, color: 0x666666 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Role_Affine", bounds: { x: 0, y: 0, width: 100, height: 80 } },
+                "2": { characterId: 2, kind: "shape", symbolName: "symbol2", path: "assets/2.png", bounds: { x: 2, y: 3, width: 8, height: 9 } },
+                "3": { characterId: 3, kind: "input-text", initialText: "Name", bounds: { x: 0, y: 0, width: 60, height: 16 }, textField: {
+                    align: "center", autoSize: false, border: false, color: { alpha: 1, color: 0xcc0000 },
+                    fieldType: "dynamic", fontId: 4, fontSize: 12, html: false, indent: 0, initialText: "Name",
+                    leading: 2, leftMargin: 0, multiline: false, password: false, rightMargin: 0,
+                    selectable: false, useOutlines: false, variableName: "", wordWrap: false,
+                } },
+                "4": { characterId: 4, kind: "font", font: { family: "Arial", bold: false, italic: false } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Role_Affine", frameRate: 30, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 2, b: 0.25, c: -0.5, d: 3, tx: 5, ty: 7 },
+            }, {
+                op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [glow],
+                matrix: { a: 0.5, b: 0, c: 0, d: 2, tx: 11, ty: 12 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const request = {
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.Role_Affine",
+            resources: new Map([["assets/2.png", { sourcePath: "assets/2.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload) }]]),
+        };
+        const content = new FlashLibrarySymbolAdapter().parse(request);
+        const image = content.root.children[0];
+        const field = content.root.children[1];
+        assert(image.matrix?.a === 2 && image.matrix.b === 0.25 && image.matrix.c === -0.5 && image.matrix.d === 3,
+            "static affine matrix drifted");
+        assert(image.x === 7.5 && image.y === 16.5, "affine image-bounds closure drifted");
+        assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "glow"
+            && field.textField.filters[0].strength === 5 && field.textField.filters[0].quality === 1,
+            "authored GlowFilter placement drifted");
+        const clip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(content, "role-affine.mc", clip,
+            new Map([["flash-character-2", "shape-2.png"]]));
+        try {
+            const matrix = (root.getChildAt(0) as any).transform as Matrix;
+            assert(matrix.a === 2 && matrix.b === 0.25 && matrix.c === -0.5 && matrix.d === 3,
+                "native Laya affine transform drifted");
+        }
+        finally {
+            root.destroy();
+            clip.destroy();
+        }
+        const malformed = structuredClone(glow) as any;
+        malformed.compositeSource = false;
+        timelines.get(1).frames[0].operations[1].filters = [malformed];
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
     });
 
     await test("nested MovieClip emits an independent 16-frame four-pose native timeline", () => {

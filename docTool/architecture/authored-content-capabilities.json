@@ -18,14 +18,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+          "sha256": "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -35,8 +35,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
           ]
         }
       ]
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -67,8 +67,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.imported-assets",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
           ]
         }
       ]
@@ -82,14 +82,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+          "sha256": "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -99,8 +99,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
           ]
         }
       ]
@@ -119,14 +119,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+          "sha256": "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -136,8 +136,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "a87bc7a1f63579029ff18e8d2bf3955e58f40be926da64a890e3b3805a8bc2f9"
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "cee604d318e8e6e7ac17ad23d2b8cbd729a242a32ca63e6872a24b3385705926"
           ]
         }
       ]
@@ -178,7 +178,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -188,8 +188,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "media.bitmap",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429",
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
           ]
         }
       ]
@@ -460,28 +460,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
         }
       ],
       "evidence": [
@@ -491,7 +491,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "32e4122eefeeb71daa6d52e18f6640194eb7d35999572b2452df9a1f250c3429"
+            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
           ]
         }
       ]
@@ -19087,7 +19087,7 @@
             "new (bitmapData?: BitmapData | null, pixelSnapping?: string, smoothing?: boolean): Bitmap"
           ],
           "indexSignatures": [],
-          "sha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
+          "sha256": "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
           "heritage": [
             {
               "kind": "extends",
@@ -19248,6 +19248,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "setVector",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(rect: Rectangle, inputVector: ArrayLike<number>) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "threshold",
               "scope": "instance",
               "optional": false,
@@ -19286,7 +19295,7 @@
             "new (width: number, height: number, transparent?: boolean, fillColor?: number): BitmapData"
           ],
           "indexSignatures": [],
-          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00",
+          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
           "heritage": []
         },
         {
@@ -19550,28 +19559,28 @@
           "export": "isFlashBitmap",
           "kind": "function",
           "signature": "(value: unknown) => value is Bitmap",
-          "sha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7"
+          "sha256": "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "acquireBitmapDataTexture",
           "kind": "function",
           "signature": "(value: BitmapData, smoothing: boolean) => Texture | null",
-          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
+          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "isFlashBitmapData",
           "kind": "function",
           "signature": "(value: unknown) => value is BitmapData",
-          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
+          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "observeBitmapData",
           "kind": "function",
           "signature": "(value: BitmapData, listener: InvalidationListener) => () => void",
-          "sha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
+          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObject.ts",
@@ -20883,7 +20892,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(source: NativeSourceSnapshot) => void"
+              "signature": "(source: NativeSourceSnapshot, applicationDomain: ApplicationDomain) => void"
             },
             {
               "abstract": false,
@@ -20892,7 +20901,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(bytes: Uint8Array, contentType: string) => void"
+              "signature": "(bytes: Uint8Array, contentType: string, applicationDomain: ApplicationDomain) => void"
             },
             {
               "abstract": false,
@@ -21027,7 +21036,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "(logicalURL: string, text: string) => void"
+              "signature": "(logicalURL: string, text: string, applicationDomain: ApplicationDomain) => void"
             },
             {
               "abstract": false,
@@ -22672,7 +22681,7 @@
             "new (nativeContentHost?: NativeLoaderContentHost | null, nativeImageHost?: NativeLoaderImageHost): Loader"
           ],
           "indexSignatures": [],
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7",
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
           "heritage": [
             {
               "kind": "extends",
@@ -22685,7 +22694,7 @@
           "export": "isFlashLoader",
           "kind": "function",
           "signature": "(value: unknown) => value is Loader",
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22701,6 +22710,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(type: string, listener: FlashEventListener, useCapture?: boolean, priority?: number, useWeakReference?: boolean) => void"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "applicationDomain",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "ApplicationDomain"
             },
             {
               "abstract": false,
@@ -22887,7 +22905,7 @@
             "new (token: typeof LOADER_INFO_TOKEN, loader: Loader): LoaderInfo"
           ],
           "indexSignatures": [],
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7",
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
           "heritage": [
             {
               "kind": "extends",
@@ -22900,7 +22918,7 @@
           "export": "isFlashLoaderInfo",
           "kind": "function",
           "signature": "(value: unknown) => value is LoaderInfo",
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22920,7 +22938,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7",
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
           "heritage": []
         },
         {
@@ -22941,7 +22959,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7",
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
           "heritage": []
         },
         {
@@ -22949,14 +22967,14 @@
           "export": "installNativeLoaderContentHost",
           "kind": "function",
           "signature": "(host: NativeLoaderContentHost) => void",
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
           "export": "isNativeLoaderContentHost",
           "kind": "function",
           "signature": "(value: unknown) => value is NativeLoaderContentHost",
-          "sha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
         },
         {
           "module": "src/layaAir/flash/display/Stage.ts",
@@ -23272,21 +23290,21 @@
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "32b6c87378aecd3dbe8367c9feefeeac93fe69482c49fbd1be9615b3f943a5a7",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
-            "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
-            "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7",
+            "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
             "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
+            "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
-            "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
+            "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
         }
@@ -39047,7 +39065,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2159",
+              "name": "__@iterator@2163",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -41930,21 +41948,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "d96a6bd7b891b7e831451c95d62023b115c2a6ebff68a5126bf7f733c2e57824"
+          "sha256": "f92c0899886462dd1d91330088ca3c25fb8a40e4a1e75b7e5851f41ec796f584"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "d96a6bd7b891b7e831451c95d62023b115c2a6ebff68a5126bf7f733c2e57824"
+          "sha256": "f92c0899886462dd1d91330088ca3c25fb8a40e4a1e75b7e5851f41ec796f584"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "d96a6bd7b891b7e831451c95d62023b115c2a6ebff68a5126bf7f733c2e57824"
+          "sha256": "f92c0899886462dd1d91330088ca3c25fb8a40e4a1e75b7e5851f41ec796f584"
         }
       ],
       "evidence": [
@@ -41954,7 +41972,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "d96a6bd7b891b7e831451c95d62023b115c2a6ebff68a5126bf7f733c2e57824"
+            "f92c0899886462dd1d91330088ca3c25fb8a40e4a1e75b7e5851f41ec796f584"
           ]
         }
       ]

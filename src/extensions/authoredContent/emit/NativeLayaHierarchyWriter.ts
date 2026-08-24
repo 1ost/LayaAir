@@ -329,6 +329,7 @@ function decorateAuthoredRuntime(
             displayAsPassword: source.textField!.displayAsPassword,
             autoSize: source.textField!.autoSize,
             html: source.textField!.html,
+            filters: source.textField!.filters,
             gutter: source.textField!.gutter,
             overflow: source.textField!.overflow,
             initialText: source.textField!.initialText,

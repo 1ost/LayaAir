@@ -1,4 +1,16 @@
-import { TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign } from "../../../layaAir/flash";
+import { GlowFilter, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign } from "../../../layaAir/flash";
+
+export interface AuthoredGlowFilterConfiguration {
+    readonly kind: "glow";
+    readonly color: number;
+    readonly alpha: number;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly quality: number;
+    readonly inner: boolean;
+    readonly knockout: boolean;
+}
 
 export interface AuthoredTextFormatConfiguration {
     readonly fontMode: "device";
@@ -32,6 +44,8 @@ export interface AuthoredTextFieldConfiguration {
     readonly overflow: "hidden";
     readonly initialText: string;
     readonly format: AuthoredTextFormatConfiguration;
+    /** Omitted by native bundles emitted before authored filter admission. */
+    readonly filters?: ReadonlyArray<AuthoredGlowFilterConfiguration>;
 }
 
 const FIELD_KEYS = Object.freeze([
@@ -41,6 +55,9 @@ const FIELD_KEYS = Object.freeze([
 const FORMAT_KEYS = Object.freeze([
     "align", "bold", "color", "font", "fontMode", "indent", "italic", "leading", "leftMargin",
     "rightMargin", "size", "underline",
+]);
+const GLOW_FILTER_KEYS = Object.freeze([
+    "alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength",
 ]);
 
 /**
@@ -86,12 +103,22 @@ export function configureAuthoredTextField(
         value.format.indent,
         value.format.leading,
     );
+    field.filters = (value.filters ?? []).map(filter => new GlowFilter(
+        filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
+        filter.quality, filter.inner, filter.knockout,
+    ));
     field.text = value.initialText;
     return field;
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
-    const record = exactDataObject(value, FIELD_KEYS, "Authored TextField configuration");
+    const hasFilters = value !== null && typeof value === "object"
+        && Object.prototype.hasOwnProperty.call(value, "filters");
+    const record = exactDataObject(
+        value,
+        hasFilters ? [...FIELD_KEYS, "filters"] : FIELD_KEYS,
+        "Authored TextField configuration",
+    );
     const format = exactDataObject(record.format, FORMAT_KEYS, "Authored TextField format");
     positiveInteger(record.sourceId, "sourceId");
     finite(record.x, "x");
@@ -108,6 +135,9 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     equal(record.gutter, 2, "gutter");
     equal(record.overflow, "hidden", "overflow");
     string(record.initialText, "initialText");
+    if (record.filters !== undefined && !Array.isArray(record.filters)) throw new TypeError("filters must be an array");
+    const filters = (record.filters === undefined ? [] : record.filters as unknown[])
+        .map((filter, index) => validateGlowFilter(filter, `filters[${index}]`));
 
     equal(format.fontMode, "device", "format.fontMode");
     nonemptyString(format.font, "format.font");
@@ -155,6 +185,24 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         overflow: exactValue(record.overflow, "hidden", "overflow"),
         initialText: record.initialText,
         format: normalizedFormat,
+        filters: Object.freeze(filters),
+    });
+}
+
+function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterConfiguration {
+    const record = exactDataObject(value, GLOW_FILTER_KEYS, label);
+    equal(record.kind, "glow", `${label}.kind`);
+    integerRange(record.color, 0, 0xffffff, `${label}.color`);
+    range(record.alpha, 0, 1, `${label}.alpha`);
+    range(record.blurX, 0, 255, `${label}.blurX`);
+    range(record.blurY, 0, 255, `${label}.blurY`);
+    range(record.strength, 0, 255, `${label}.strength`);
+    integerRange(record.quality, 1, 15, `${label}.quality`);
+    boolean(record.inner, `${label}.inner`);
+    boolean(record.knockout, `${label}.knockout`);
+    return Object.freeze({
+        kind: "glow", color: record.color, alpha: record.alpha, blurX: record.blurX, blurY: record.blurY,
+        strength: record.strength, quality: record.quality, inner: record.inner, knockout: record.knockout,
     });
 }
 
@@ -183,6 +231,12 @@ function finite(value: unknown, label: string): asserts value is number {
 function positive(value: unknown, label: string): asserts value is number {
     finite(value, label);
     if (value <= 0) throw new RangeError(`${label} must be positive`);
+}
+
+function range(value: unknown, minimum: number, maximum: number, label: string): asserts value is number {
+    finite(value, label);
+    if (value < minimum || value > maximum)
+        throw new RangeError(`${label} must be from ${minimum} through ${maximum}`);
 }
 
 function positiveInteger(value: unknown, label: string): asserts value is number {

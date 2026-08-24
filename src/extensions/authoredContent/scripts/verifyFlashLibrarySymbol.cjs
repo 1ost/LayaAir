@@ -70,8 +70,8 @@ else {
 function verifyFailClosedMutations(adapter, baseline) {
     const cases = [
         ["stage frame rate mismatch", request => request.library.stage.frameRate = 24, /FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH/],
-        ["stage frame count mismatch", request => request.library.stage.frameCount = 2, /FLASH_LIBRARY_STAGE_FRAME_COUNT_MISMATCH/],
-        ["stage nonblack background", request => request.library.stage.backgroundColor.color = 0xff0000, /FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_UNSUPPORTED/],
+        ["stage frame count invalid", request => request.library.stage.frameCount = 0, /FLASH_LIBRARY_POSITIVE_INTEGER_REQUIRED/],
+        ["stage background invalid", request => request.library.stage.backgroundColor.color = 0x1000000, /FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_INVALID/],
         ["stage translucent background", request => request.library.stage.backgroundColor.alpha = 0.5, /FLASH_LIBRARY_STAGE_BACKGROUND_ALPHA_UNSUPPORTED/],
         ["stage unknown field", request => request.library.stage.quality = "high", /FLASH_LIBRARY_STAGE_FIELD_UNSUPPORTED/],
         ["stage background unknown field", request => request.library.stage.backgroundColor.profile = "srgb", /FLASH_LIBRARY_STAGE_BACKGROUND_FIELD_UNSUPPORTED/],
@@ -83,12 +83,11 @@ function verifyFailClosedMutations(adapter, baseline) {
         ["text color alpha", request => firstTextField(request).color.alpha = 0.5, /FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED/],
         ["text variable binding", request => firstTextField(request).variableName = "loading", /FLASH_LIBRARY_TEXT_VARIABLE_UNSUPPORTED/],
         ["text authority mismatch", request => firstTextAsset(request).initialText = "drift", /FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH/],
-        ["placement filters", request => firstStaticPlacement(request).filters = [], /FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED/],
+        ["placement filter target", request => firstStaticPlacement(request).filters = [], /FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED/],
         ["placement blend mode", request => firstStaticPlacement(request).blendMode = "multiply", /FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED/],
         ["placement matrix field", request => firstStaticPlacement(request).matrix.perspective = 1, /FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED/],
-        ["static depth move", request => firstStaticPlacement(request).move = true, /FLASH_LIBRARY_STATIC_MOVE_UNSUPPORTED/],
-        ["replacement matrix override", request => firstReplacement(request).matrix = unitMatrix(1, 0), /FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED/],
-        ["replacement instance name", request => firstReplacement(request).name = "changed", /FLASH_LIBRARY_REPLACEMENT_NAME_UNSUPPORTED/],
+        ["move before place", request => firstStaticPlacement(request).move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
+        ["animated skew override", request => firstReplacement(request).matrix = { ...unitMatrix(1, 0), b: 0.1 }, /FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED/],
         ["frame executable field", request => firstReachableFrame(request).actions = [], /FLASH_LIBRARY_FRAME_FIELD_UNSUPPORTED/],
     ];
     const rejected = [];
@@ -122,9 +121,31 @@ function clone(value) {
 }
 
 function firstTextAsset(request) {
-    const asset = Object.values(request.library.assets).find(value => value.kind === "input-text");
+    const asset = [...reachableCharacterIds(request)]
+        .map(id => request.library.assets[String(id)])
+        .find(value => value?.kind === "input-text");
     if (!asset) throw new Error("FLASH_LIBRARY_ADVERSARIAL_TEXT_MISSING");
     return asset;
+}
+
+function reachableCharacterIds(request) {
+    const result = new Set();
+    const pending = [request.entrySymbolId];
+    while (pending.length !== 0) {
+        const id = pending.pop();
+        if (result.has(id)) continue;
+        result.add(id);
+        const asset = request.library.assets[String(id)];
+        const timeline = request.timelines.get(id);
+        if (asset?.kind !== "sprite" || !timeline) continue;
+        for (const frame of timeline.frames) {
+            for (const operation of frame.operations) {
+                if (operation.op === "place" && Number.isSafeInteger(operation.characterId))
+                    pending.push(operation.characterId);
+            }
+        }
+    }
+    return result;
 }
 
 function firstTextField(request) {
@@ -136,7 +157,9 @@ function firstStaticPlacement(request) {
 }
 
 function firstReplacement(request) {
-    for (const timeline of request.timelines.values()) {
+    for (const id of reachableCharacterIds(request)) {
+        const timeline = request.timelines.get(id);
+        if (!timeline) continue;
         for (const frame of timeline.frames) {
             const operation = frame.operations.find(value => value.move === true);
             if (operation) return operation;

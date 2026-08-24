@@ -30,7 +30,7 @@
       "heritageClosure": [
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "3974d8a01dd9687e0e825ceeb4b366f5d17562815586f652d65b83b893b29ae7"
+      "moduleSha256": "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a"
     },
     {
       "sourceQName": "flash.display.BitmapData",
@@ -44,7 +44,7 @@
       "predicateExport": "isFlashBitmapData",
       "predicateSignature": "(value: unknown) => value is BitmapData",
       "heritageClosure": [],
-      "moduleSha256": "9fdbfce9c7eb4351be9804bb20666cb76716d541d05f98d1367ea26f4720ba00"
+      "moduleSha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
     },
     {
       "sourceQName": "flash.display.DisplayObject",
@@ -123,7 +123,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+      "moduleSha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
     },
     {
       "sourceQName": "flash.display.LoaderInfo",
@@ -139,7 +139,7 @@
       "heritageClosure": [
         "flash.events.EventDispatcher"
       ],
-      "moduleSha256": "5e3a88961897afa21667b4eff0a664a0d9512636dddc9e27ece6e6a5f66586b7"
+      "moduleSha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
     },
     {
       "sourceQName": "flash.display.MovieClip",

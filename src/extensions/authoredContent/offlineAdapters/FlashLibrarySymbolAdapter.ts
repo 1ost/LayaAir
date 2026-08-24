@@ -31,8 +31,12 @@ type FlashDisplayState = {
     alpha: number;
 };
 
-const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "matrix", "move", "name", "op", "ratio"]);
+const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
+const FILTER_FIELDS = new Set([
+    "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
+]);
+const FILTER_COLOR_FIELDS = new Set(["alpha", "color"]);
 const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
 const COLOR_TRANSFORM_FIELDS = new Set([
     "alphaMultiplier", "alphaOffset", "blueMultiplier", "blueOffset", "greenMultiplier",
@@ -164,7 +168,7 @@ export class FlashLibrarySymbolAdapter {
                 resources,
             ))
             : animated.children;
-        const placement = operation === undefined ? { x: 0, y: 0 } : translation(operation);
+        const placement = operation === undefined ? unitPlacement() : placementTransform(operation);
         const linkage = flashLibraryAssetName(asset, characterId);
         const node: NeutralAuthoredNode = {
             linkage,
@@ -173,6 +177,7 @@ export class FlashLibrarySymbolAdapter {
             depth: root ? undefined : positiveInteger(operation?.depth, `sprite ${characterId} depth`),
             x: placement.x,
             y: placement.y,
+            matrix: placement.matrix,
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation?.name === "string",
@@ -196,6 +201,8 @@ export class FlashLibrarySymbolAdapter {
         exactPlace(operation);
         const characterId = positiveInteger(operation.characterId, "place.characterId");
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
+        if (asset.kind !== "input-text" && operation.filters !== undefined)
+            fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
         if (asset.kind === "sprite") {
             return this.createSprite(
                 characterId,
@@ -283,6 +290,7 @@ export class FlashLibrarySymbolAdapter {
             const operation = {
                 op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
                 ...(instance.operation.name === undefined ? {} : { name: instance.operation.name }),
+                ...(instance.operation.filters === undefined ? {} : { filters: instance.operation.filters }),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
             const child = this.createPlacedNode(operation, assets, timelines, resourceAuthorities, resources);
@@ -352,14 +360,17 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_RESOURCE_IDENTITY_DRIFT", `Resource '${resourceId}' has conflicting authority.`);
         resources.set(resourceId, resource);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
-        const placement = translation(operation);
+        const placement = placementTransform(operation);
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
         return {
             linkage: flashLibraryAssetName(asset, characterId),
             name: operation.name ?? flashLibraryAssetName(asset, characterId),
             kind: "image",
             depth: positiveInteger(operation.depth, "place.depth"),
-            x: placement.x + finite(bounds.x, `library.assets.${characterId}.bounds.x`),
-            y: placement.y + finite(bounds.y, `library.assets.${characterId}.bounds.y`),
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
+            matrix: placement.matrix,
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             resourceId,
@@ -394,14 +405,15 @@ export class FlashLibrarySymbolAdapter {
         exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.textField.color`, "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
         exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
-        const placement = translation(operation);
+        const placement = placementTransform(operation);
         return {
-            linkage: string(asset.symbolName, `library.assets.${characterId}.symbolName`),
-            name: operation.name ?? string(asset.symbolName, `library.assets.${characterId}.symbolName`),
+            linkage: flashLibraryAssetName(asset, characterId),
+            name: operation.name ?? flashLibraryAssetName(asset, characterId),
             kind: "dynamic-text",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x,
             y: placement.y,
+            matrix: placement.matrix,
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation.name === "string",
@@ -414,6 +426,7 @@ export class FlashLibrarySymbolAdapter {
                 displayAsPassword: boolean(textField.password, "text.password"),
                 autoSize: "none",
                 html: false,
+                filters: authoredGlowFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,
@@ -664,20 +677,73 @@ function exactPlace(operation: Record<string, any>, mode: "static" | "replacemen
     if (operation.ratio !== undefined && operation.ratio !== 0)
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Non-zero morph ratios are unsupported.");
     if (operation.matrix !== undefined) {
-        const placement = translation(operation);
+        const placement = placementTransform(operation);
         if (mode === "replacement" && (placement.x !== 0 || placement.y !== 0))
             fail("FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED", "Replacement timelines require a zero-translation retained depth transform.");
     }
 }
 
-function translation(operation: Record<string, any>): { x: number; y: number } {
+interface PlacementTransform {
+    readonly a: number;
+    readonly b: number;
+    readonly c: number;
+    readonly d: number;
+    readonly x: number;
+    readonly y: number;
+    readonly matrix?: { readonly a: number; readonly b: number; readonly c: number; readonly d: number };
+}
+
+function unitPlacement(): PlacementTransform {
+    return { a: 1, b: 0, c: 0, d: 1, x: 0, y: 0 };
+}
+
+function placementTransform(operation: Record<string, any>): PlacementTransform {
     if (operation.matrix === undefined)
-        return { x: 0, y: 0 };
+        return unitPlacement();
     const matrix = object(operation.matrix, "place.matrix");
     exactKeys(matrix, MATRIX_FIELDS, "place.matrix", "FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED");
-    if (matrix.a !== 1 || matrix.b !== 0 || matrix.c !== 0 || matrix.d !== 1)
-        fail("FLASH_LIBRARY_MATRIX_UNSUPPORTED", "Only untranslated unit-scale retained placements are admitted by this projection.");
-    return { x: finite(matrix.tx, "place.matrix.tx"), y: finite(matrix.ty, "place.matrix.ty") };
+    const a = finite(matrix.a, "place.matrix.a");
+    const b = finite(matrix.b, "place.matrix.b");
+    const c = finite(matrix.c, "place.matrix.c");
+    const d = finite(matrix.d, "place.matrix.d");
+    const x = finite(matrix.tx, "place.matrix.tx");
+    const y = finite(matrix.ty, "place.matrix.ty");
+    return { a, b, c, d, x, y, ...(a === 1 && b === 0 && c === 0 && d === 1 ? {} : { matrix: { a, b, c, d } }) };
+}
+
+function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<Record<string, unknown>> {
+    if (value === undefined) return [];
+    return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
+        const label = `place ${characterId}.filters[${index}]`;
+        const filter = object(filterValue, label);
+        exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+        exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
+        exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+        exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
+        const color = object(filter.color, `${label}.color`);
+        exactKeys(color, FILTER_COLOR_FIELDS, `${label}.color`, "FLASH_LIBRARY_FILTER_COLOR_FIELD_UNSUPPORTED");
+        const rgb = finite(color.color, `${label}.color.color`);
+        if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff)
+            fail("FLASH_LIBRARY_FILTER_COLOR_INVALID", `${label}.color.color must be an RGB integer.`);
+        const alpha = finite(color.alpha, `${label}.color.alpha`);
+        if (alpha < 0 || alpha > 1)
+            fail("FLASH_LIBRARY_FILTER_ALPHA_INVALID", `${label}.color.alpha must be between zero and one.`);
+        const blurX = finite(filter.blurX, `${label}.blurX`);
+        const blurY = finite(filter.blurY, `${label}.blurY`);
+        if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+            fail("FLASH_LIBRARY_FILTER_BLUR_INVALID", `${label} blur dimensions must be between zero and 255.`);
+        const strength = finite(filter.strength, `${label}.strength`);
+        if (strength < 0 || strength > 255)
+            fail("FLASH_LIBRARY_FILTER_STRENGTH_INVALID", `${label}.strength must be between zero and 255.`);
+        const quality = positiveInteger(filter.passes, `${label}.passes`);
+        if (quality > 15)
+            fail("FLASH_LIBRARY_FILTER_QUALITY_INVALID", `${label}.passes exceeds the Flash quality range.`);
+        return {
+            kind: "glow", color: rgb, alpha, blurX, blurY, strength, quality,
+            inner: boolean(filter.innerGlow, `${label}.innerGlow`),
+            knockout: boolean(filter.knockout, `${label}.knockout`),
+        };
+    });
 }
 
 function exactSchema(value: Record<string, any>, expected: string, label: string): void {

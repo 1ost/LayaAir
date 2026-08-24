@@ -5,6 +5,25 @@ export type NeutralImageMediaType = "image/jpeg" | "image/png";
 export type NeutralTimelineProperty = "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible";
 export type NeutralKeyframeValue = number | boolean;
 
+export interface NeutralAuthoredMatrix {
+    readonly a: number;
+    readonly b: number;
+    readonly c: number;
+    readonly d: number;
+}
+
+export interface NeutralGlowFilter {
+    readonly kind: "glow";
+    readonly color: number;
+    readonly alpha: number;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly quality: number;
+    readonly inner: boolean;
+    readonly knockout: boolean;
+}
+
 export interface NeutralAuthoredNode {
     readonly linkage: string;
     readonly kind: NeutralNodeKind;
@@ -18,6 +37,7 @@ export interface NeutralAuthoredNode {
     readonly height?: number;
     readonly alpha?: number;
     readonly visible?: boolean;
+    readonly matrix?: NeutralAuthoredMatrix;
     readonly text?: string;
     readonly fontSize?: number;
     readonly color?: string;
@@ -41,6 +61,7 @@ export interface NeutralDynamicTextField {
     readonly displayAsPassword: boolean;
     readonly autoSize: "none";
     readonly html: false;
+    readonly filters: ReadonlyArray<NeutralGlowFilter>;
     readonly gutter: 2;
     readonly overflow: "hidden";
     readonly initialText: string;
@@ -185,7 +206,7 @@ function normalizeNode(
 ): NeutralAuthoredNode {
     const source = record(value, path);
     allowedKeys(source, [
-        "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible",
+        "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
         "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
@@ -208,6 +229,7 @@ function normalizeNode(
         height: optionalNumber(source.height, `${path}.height`, scale),
         alpha: optionalNumber(source.alpha, `${path}.alpha`),
         visible: optionalBoolean(source.visible, `${path}.visible`),
+        matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
         text: optionalString(source.text, `${path}.text`),
         fontSize: optionalNumber(source.fontSize, `${path}.fontSize`, scale),
         color: optionalString(source.color, `${path}.color`),
@@ -251,7 +273,7 @@ function normalizeNode(
 function normalizeDynamicTextField(value: unknown, path: string, scale: number): NeutralDynamicTextField {
     const source = record(value, path);
     allowedKeys(source, [
-        "autoSize", "displayAsPassword", "format", "gutter", "html", "initialText", "multiline",
+        "autoSize", "displayAsPassword", "filters", "format", "gutter", "html", "initialText", "multiline",
         "overflow", "selectable", "sourceId", "type", "wordWrap"
     ], path);
     const format = record(source.format, `${path}.format`);
@@ -283,6 +305,8 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
         displayAsPassword: requiredBoolean(source.displayAsPassword, `${path}.displayAsPassword`),
         autoSize: exactLiteral(source.autoSize, "none", `${path}.autoSize`),
         html: exactLiteral(source.html, false, `${path}.html`),
+        filters: array(source.filters, `${path}.filters`).map((filter, index) =>
+            normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
         gutter: exactLiteral(source.gutter, 2, `${path}.gutter`),
         overflow: exactLiteral(source.overflow, "hidden", `${path}.overflow`),
         initialText: requiredText(source.initialText, `${path}.initialText`),
@@ -300,6 +324,44 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
             indent: requiredFiniteNumber(format.indent, `${path}.format.indent`) * scale,
             leading: requiredFiniteNumber(format.leading, `${path}.format.leading`) * scale,
         }
+    };
+}
+
+function normalizeMatrix(value: unknown, path: string): NeutralAuthoredMatrix {
+    const source = record(value, path);
+    allowedKeys(source, ["a", "b", "c", "d"], path);
+    return {
+        a: requiredFiniteNumber(source.a, `${path}.a`),
+        b: requiredFiniteNumber(source.b, `${path}.b`),
+        c: requiredFiniteNumber(source.c, `${path}.c`),
+        d: requiredFiniteNumber(source.d, `${path}.d`),
+    };
+}
+
+function normalizeGlowFilter(value: unknown, path: string, scale: number): NeutralGlowFilter {
+    const source = record(value, path);
+    allowedKeys(source, ["alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength"], path);
+    const color = requiredFiniteNumber(source.color, `${path}.color`);
+    if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+        fail("AUTHORED_CONTENT_GLOW_FILTER_COLOR_INVALID", `${path}.color must be an RGB integer.`);
+    const alpha = requiredFiniteNumber(source.alpha, `${path}.alpha`);
+    if (alpha < 0 || alpha > 1)
+        fail("AUTHORED_CONTENT_GLOW_FILTER_ALPHA_INVALID", `${path}.alpha must be between zero and one.`);
+    const blurX = requiredFiniteNumber(source.blurX, `${path}.blurX`);
+    const blurY = requiredFiniteNumber(source.blurY, `${path}.blurY`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("AUTHORED_CONTENT_GLOW_FILTER_BLUR_INVALID", `${path} blur dimensions must be between zero and 255.`);
+    const strength = requiredFiniteNumber(source.strength, `${path}.strength`);
+    if (strength < 0 || strength > 255)
+        fail("AUTHORED_CONTENT_GLOW_FILTER_STRENGTH_INVALID", `${path}.strength must be between zero and 255.`);
+    const quality = requiredFiniteNumber(source.quality, `${path}.quality`);
+    if (!Number.isInteger(quality) || quality < 1 || quality > 15)
+        fail("AUTHORED_CONTENT_GLOW_FILTER_QUALITY_INVALID", `${path}.quality must be an integer from one through 15.`);
+    return {
+        kind: exactLiteral(source.kind, "glow", `${path}.kind`),
+        color, alpha, blurX: blurX * scale, blurY: blurY * scale, strength, quality,
+        inner: requiredBoolean(source.inner, `${path}.inner`),
+        knockout: requiredBoolean(source.knockout, `${path}.knockout`),
     };
 }
 

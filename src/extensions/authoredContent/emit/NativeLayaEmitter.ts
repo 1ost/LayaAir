@@ -136,6 +136,12 @@ export class NativeLayaEmitter {
         if (source.depth !== undefined) node.zOrder = source.depth;
         if (source.x !== undefined) node.x = source.x;
         if (source.y !== undefined) node.y = source.y;
+        if (source.matrix !== undefined) {
+            node.transform = new Laya.Matrix(
+                source.matrix.a, source.matrix.b, source.matrix.c, source.matrix.d,
+                source.x ?? 0, source.y ?? 0,
+            );
+        }
         if (source.width !== undefined) node.width = source.width;
         if (source.height !== undefined) node.height = source.height;
         if (source.alpha !== undefined) node.alpha = source.alpha;
@@ -284,6 +290,7 @@ export class NativeLayaEmitter {
                 kind: node.kind,
                 depth: node.depth,
                 variable: node.variable,
+                matrix: node.matrix,
             });
             nativeOwnerPaths.set(semanticPath.join("/"), animatorOwnerPath);
             node.children.forEach(child => visit(child, semanticPath, nativePath, false));
@@ -302,6 +309,7 @@ export interface NativeAuthoredContentNodeMetadata {
     readonly kind: "container" | "dynamic-text" | "image" | "text";
     readonly depth?: number;
     readonly variable?: boolean;
+    readonly matrix?: NeutralAuthoredNode["matrix"];
 }
 
 export interface NativeAuthoredContentResourceMetadata {
