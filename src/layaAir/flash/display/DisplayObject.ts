@@ -43,6 +43,17 @@ export function isFlashDisplayObject(value: unknown): value is DisplayObject {
     return typeof value === "object" && value !== null && DISPLAY_OBJECT_VALUES.has(value);
 }
 
+/**
+ * Returns the native Laya display host for an authenticated Flash display
+ * object. Keep this bridge narrow: callers must not use structural casts to
+ * cross the Flash facade/native engine boundary.
+ */
+export function flashDisplayObjectNativeHost(value: unknown): LayaSprite {
+    if (!isFlashDisplayObject(value))
+        throw new TypeError("Native display host requires a canonical flash.display.DisplayObject");
+    return value as unknown as LayaSprite;
+}
+
 /** @internal Associates one authenticated Loader content root with its LoaderInfo. */
 export function bindDisplayObjectLoaderInfo(value: DisplayObject, info: LoaderInfo): void {
     if (!isFlashDisplayObject(value)) throw new TypeError("LoaderInfo content must be a canonical DisplayObject");

@@ -7,7 +7,10 @@ import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderD
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
-import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
+import {
+    DisplayObject,
+    flashDisplayObjectNativeHost,
+} from "../../src/layaAir/flash/display/DisplayObject";
 import { Bitmap } from "../../src/layaAir/flash/display/Bitmap";
 import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { Shape } from "../../src/layaAir/flash/display/Shape";
@@ -106,6 +109,28 @@ test("Flash display parent normalizes unattached nodes to null without changing 
     display.removeSelf();
     assert.equal(display.parent, null);
     assert.equal(root.numChildren, 0);
+});
+
+test("authenticated Flash display objects expose their exact native Laya host identity", () => {
+    const canonical = new Sprite();
+    const nativeHost = flashDisplayObjectNativeHost(canonical);
+
+    assert.equal(nativeHost, canonical, "the bridge must not wrap or clone the canonical display object");
+    assert.ok(nativeHost instanceof LayaSprite);
+    assert.throws(
+        () => flashDisplayObjectNativeHost(Object.create(Sprite.prototype)),
+        /requires a canonical flash\.display\.DisplayObject/,
+        "a structurally similar object is not an authenticated Flash display object",
+    );
+    assert.throws(
+        () => flashDisplayObjectNativeHost(new LayaSprite()),
+        /requires a canonical flash\.display\.DisplayObject/,
+        "an unrelated native Laya sprite cannot enter through the Flash bridge",
+    );
+    assert.throws(
+        () => flashDisplayObjectNativeHost(null),
+        /requires a canonical flash\.display\.DisplayObject/,
+    );
 });
 
 test("DisplayObject exposes retained Flash cache, geometry and collision behavior", () => {
