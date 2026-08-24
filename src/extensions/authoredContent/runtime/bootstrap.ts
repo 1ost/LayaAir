@@ -99,10 +99,18 @@ export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntim
             readonly _$authoredSerializedType?: AuthoredSerializedType;
             readonly _$authoredSourceType?: AuthoredSourceType;
         };
-        if (registeredCtor._$authoredSerializedType !== undefined
+        const ownsSerializedType = Object.prototype.hasOwnProperty.call(
+            registeredCtor,
+            "_$authoredSerializedType",
+        );
+        const ownsSourceType = Object.prototype.hasOwnProperty.call(
+            registeredCtor,
+            "_$authoredSourceType",
+        );
+        if (ownsSerializedType
             && registeredCtor._$authoredSerializedType !== linkage.serializedType)
             throw new Error(`Authored runtime linkage constructor serialized type collision: ${linkage.id}`);
-        if (registeredCtor._$authoredSourceType !== undefined
+        if (ownsSourceType
             && registeredCtor._$authoredSourceType !== linkage.sourceType)
             throw new Error(`Authored runtime linkage constructor source type collision: ${linkage.id}`);
         const claim = `${linkage.sourceType}:${linkage.serializedType}`;
@@ -122,7 +130,7 @@ export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntim
             readonly _$authoredSerializedType?: AuthoredSerializedType;
             readonly _$authoredSourceType?: AuthoredSourceType;
         };
-        if (registeredCtor._$authoredSerializedType === undefined) {
+        if (!Object.prototype.hasOwnProperty.call(registeredCtor, "_$authoredSerializedType")) {
             Object.defineProperties(ctor, {
                 _$authoredSerializedType: { value: linkage.serializedType, configurable: false },
                 _$authoredSourceType: { value: linkage.sourceType, configurable: false }

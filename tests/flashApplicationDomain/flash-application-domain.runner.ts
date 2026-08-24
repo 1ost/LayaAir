@@ -4,6 +4,7 @@ import test from "node:test";
 import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain";
 import { registerDefinitionByName } from "../../src/layaAir/flash/utils/DefinitionRegistry";
 import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
+import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
 import { Loader } from "../../src/layaAir/laya/net/Loader";
 import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
@@ -341,6 +342,45 @@ test("logical SWF resources resolve to native catalog sidecars in the same names
         ["Resources/fr_FR/Swf/Lobby/GirlGame.runtime-catalog.json?release=7", Loader.JSON],
         ["Resources/fr_FR/Swf/Lobby/GirlGame.native/entry.lh", Loader.HIERARCHY],
     ]);
+});
+
+test("generic catalogs can publish inherited Sprite and MovieClip source constructors", async () => {
+    const domain = new ApplicationDomain();
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.inherited-source-types",
+        bundles: [
+            {
+                id: "sprite",
+                runtimeId: "fixtures.catalog.InheritedSprite",
+                linkage: "MC_InheritedSprite",
+                sourceType: "Sprite",
+                prefab: "sprite.lh",
+                assets: [],
+            },
+            {
+                id: "movie-clip",
+                runtimeId: "fixtures.catalog.InheritedMovieClip",
+                linkage: "MC_InheritedMovieClip",
+                sourceType: "MovieClip",
+                prefab: "movie-clip.lh",
+                assets: [],
+            },
+        ],
+    } as const;
+    const activation = await activateAuthoredContentCatalog(manifest, {
+        applicationDomain: domain,
+        baseUrl: "/fixtures/",
+        loader: {
+            async load(): Promise<unknown> {
+                return { create: () => createCatalogClip() };
+            },
+        },
+    });
+    assert.ok(activation.create("sprite") instanceof Sprite);
+    assert.ok(activation.create("movie-clip") instanceof MovieClip);
+    assert.equal(domain.hasDefinition("MC_InheritedSprite"), true);
+    assert.equal(domain.hasDefinition("MC_InheritedMovieClip"), true);
 });
 
 test("authored catalogs use the declared Flash base type when no behavior binding exists", async () => {
