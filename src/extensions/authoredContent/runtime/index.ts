@@ -1,5 +1,7 @@
 export * from "./AuthoredCodeBindings";
 export * from "./AuthoredFontRegistry";
+export * from "./AuthoredFontCatalog";
+export * from "./AuthoredContentCatalog";
 export * from "./AuthoredStaticText";
 export * from "./AuthoredTextField";
 export * from "./AuthoredRuntimePrimitives";

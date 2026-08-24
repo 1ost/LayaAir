@@ -8,6 +8,12 @@ import {
     type AuthoredFontManifest,
     type AuthoredFontManifestEntry,
 } from "../../src/extensions/authoredContent/runtime/AuthoredFontRegistry";
+import {
+    activateAuthoredFontCatalog,
+    loadAndActivateAuthoredFontCatalog,
+    type AuthenticatedJsonReference,
+} from "../../src/extensions/authoredContent/runtime/AuthoredFontCatalog";
+import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain";
 import { Font } from "../../src/layaAir/flash/text/Font";
 import { FontType } from "../../src/layaAir/flash/text/FontType";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
@@ -78,6 +84,14 @@ function entry(
 
 function manifest(fonts: readonly AuthoredFontManifestEntry[]): AuthoredFontManifest {
     return { schema: "laya-authored-font-manifest@1", fonts };
+}
+
+function jsonBytes(value: unknown): ArrayBuffer {
+    return Uint8Array.from(Buffer.from(JSON.stringify(value), "utf8")).buffer;
+}
+
+function reference(url: string, value: ArrayBuffer): AuthenticatedJsonReference {
+    return { url, size: value.byteLength, sha256: sha(value) };
 }
 
 test("TextField.textColor recolors existing text and remains the insertion default", () => {
@@ -474,4 +488,77 @@ test("dispose failure invalidates the entire document and permits a fresh retry"
     await registry.preload("dispose-retry");
     assert.equal(registry.isDocumentLoaded("dispose-retry"), true);
     await registry.dispose();
+});
+
+test("font startup catalogs own integrity, preload order and ApplicationDomain definitions", async () => {
+    const authored = entry("catalog-font", 3, "regular", "catalog-font");
+    new FontHarness();
+    const manifestBytes = jsonBytes(manifest([authored]));
+    const manifestReference = reference("/authored/fonts/manifest.json", manifestBytes);
+    const startupBytes = jsonBytes({
+        schema: "laya-authored-font-startup@1",
+        manifest: manifestReference,
+        preloadOrder: [authored.documentId],
+        definitions: [{
+            className: "FontCatalogBody",
+            fontName: authored.fontName,
+            authoredFont: keyOf(authored),
+        }],
+    });
+    const startupReference = reference("/authored/fonts/startup.json", startupBytes);
+    const responses = new Map([
+        [startupReference.url, startupBytes],
+        [manifestReference.url, manifestBytes],
+    ]);
+    let fetchCount = 0;
+    const fetcher = async (url: string) => {
+        fetchCount += 1;
+        const body = responses.get(url);
+        return { ok: body !== undefined, status: body === undefined ? 404 : 200, async arrayBuffer() { return body!; } };
+    };
+    const domain = new ApplicationDomain();
+    const activation = await activateAuthoredFontCatalog(startupReference, {
+        applicationDomain: domain,
+        fetch: fetcher,
+        digest: webcrypto.subtle,
+    });
+    assert.equal(fetchCount, 2);
+    assert.equal(domain.hasDefinition("FontCatalogBody"), true);
+    const definition = domain.getDefinition("FontCatalogBody") as unknown as Parameters<typeof Font.registerFont>[0];
+    assert.equal(Object.prototype.hasOwnProperty.call(definition, "authoredFont"), true);
+    assert.deepEqual(definition.authoredFont, keyOf(authored));
+    Font.registerFont(definition);
+    assert.deepEqual(Font.enumerateFonts(true).map(font => font.fontName), ["Body"]);
+
+    const repeated = await activateAuthoredFontCatalog(startupReference, {
+        applicationDomain: domain,
+        fetch: fetcher,
+        digest: webcrypto.subtle,
+    });
+    assert.equal(repeated, activation);
+    assert.equal(fetchCount, 2);
+    await activation.dispose();
+    assert.deepEqual(Font.enumerateFonts(true), []);
+
+    const loadedDomain = new ApplicationDomain();
+    const loaded = await loadAndActivateAuthoredFontCatalog(startupReference.url, {
+        applicationDomain: loadedDomain,
+        fetch: fetcher,
+        digest: webcrypto.subtle,
+    });
+    assert.equal(fetchCount, 4, "URL loading fetches the startup once and its authenticated manifest once");
+    assert.equal(loadedDomain.hasDefinition("FontCatalogBody"), true);
+    assert.deepEqual(loaded.startup, activation.startup);
+    await loaded.dispose();
+});
+
+test("font startup catalogs fail closed on descriptor integrity drift", async () => {
+    new FontHarness();
+    const bytes = jsonBytes({ invalid: true });
+    const pinned = { ...reference("/authored/fonts/invalid.json", bytes), sha256: "0".repeat(64) };
+    await assert.rejects(activateAuthoredFontCatalog(pinned, {
+        applicationDomain: new ApplicationDomain(),
+        fetch: async () => ({ ok: true, status: 200, async arrayBuffer() { return bytes; } }),
+        digest: webcrypto.subtle,
+    }), /SHA-256 mismatch/);
 });

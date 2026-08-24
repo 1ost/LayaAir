@@ -5,6 +5,13 @@ import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDom
 import { registerDefinitionByName } from "../../src/layaAir/flash/utils/DefinitionRegistry";
 import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
 import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
+import { Loader } from "../../src/layaAir/laya/net/Loader";
+import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
+import {
+    activateAuthoredContentCatalog,
+    loadAndActivateAuthoredContentCatalog,
+    type AuthoredContentCatalogManifest,
+} from "../../src/extensions/authoredContent/runtime/AuthoredContentCatalog";
 import {
     createAuthoredPrefabDefinition,
     registerAuthoredContentRuntime,
@@ -23,6 +30,17 @@ class PetHouseClip extends MovieClip {
 }
 
 class OtherPetHouseClip extends MovieClip {
+}
+
+class CatalogClip extends MovieClip {
+    validated = false;
+}
+
+function createCatalogClip(): CatalogClip {
+    const clip = Object.create(CatalogClip.prototype) as CatalogClip;
+    clip.validated = false;
+    Object.defineProperty(clip, "destroy", { value() {}, configurable: true });
+    return clip;
 }
 
 test("currentDomain projects the native registry with Flash name aliases", () => {
@@ -131,4 +149,150 @@ test("dotted authored linkage remains admitted while invalid and reserved IDs fa
             serializedType: "Sprite",
         }]), /application-owned/);
     }
+});
+
+test("authored catalogs own asset loading and ApplicationDomain publication", async () => {
+    const domain = new ApplicationDomain();
+    const calls: Array<[string, string | undefined]> = [];
+    const prefab = { create: () => createCatalogClip() };
+    const loader = {
+        async load(url: string, type?: string): Promise<unknown> {
+            calls.push([url, type]);
+            if (type === Loader.IMAGE) return { url };
+            if (type === Loader.HIERARCHY) return prefab;
+            return { url };
+        },
+    };
+    const manifest: AuthoredContentCatalogManifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.catalog",
+        bundles: [{
+            id: "pet-house",
+            runtimeId: "fixtures.catalog.PetHouse",
+            linkage: "MC_CatalogPetHouse",
+            sourceType: "MovieClip",
+            prefab: "native/pet-house.lh",
+            assets: [
+                { id: "catalog/images/root", path: "native/images/root.png", kind: "image" },
+                { id: "catalog/timelines/root", path: "native/root.mc", kind: "timeline" },
+            ],
+        }],
+    };
+    let validationCount = 0;
+    const catalogBinding = {
+        runtimeId: "fixtures.catalog.PetHouse",
+        ctor: CatalogClip,
+        validate(root: CatalogClip) {
+            validationCount += 1;
+            root.validated = true;
+        },
+    } as const;
+    const first = await activateAuthoredContentCatalog(manifest, {
+        baseUrl: "/fixtures/catalog/",
+        loader,
+        applicationDomain: domain,
+        runtimeBindings: [catalogBinding],
+    });
+
+    assert.deepEqual(calls, [
+        ["/fixtures/catalog/native/images/root.png", Loader.IMAGE],
+        ["/fixtures/catalog/native/root.mc", undefined],
+        ["/fixtures/catalog/native/pet-house.lh", Loader.HIERARCHY],
+    ]);
+    assert.equal(AssetDb.inst.uuidMap["catalog/images/root"], "/fixtures/catalog/native/images/root.png");
+    assert.equal(AssetDb.inst.uuidMap["catalog/timelines/root"], "/fixtures/catalog/native/root.mc");
+    assert.equal(validationCount, 1);
+    assert.equal(domain.hasDefinition("MC_CatalogPetHouse"), true);
+    const reflected = new (domain.getDefinition("MC_CatalogPetHouse") as new () => CatalogClip)();
+    assert.ok(reflected instanceof CatalogClip);
+    reflected.destroy(true);
+    const created = first.create("pet-house");
+    assert.ok(created instanceof CatalogClip);
+    created.destroy(true);
+    assert.equal(first.prefabFor("pet-house"), prefab);
+
+    const second = await activateAuthoredContentCatalog(manifest, {
+        baseUrl: "/fixtures/catalog/",
+        loader,
+        applicationDomain: domain,
+        runtimeBindings: [catalogBinding],
+    });
+    assert.equal(second, first);
+    assert.equal(calls.length, 3);
+});
+
+test("authored catalogs reject data drift, path escape and asset collisions", async () => {
+    const domain = new ApplicationDomain();
+    const loader = { load: async () => ({ create: () => createCatalogClip() }) };
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.fail-closed",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.FailClosed",
+            linkage: "MC_CatalogFailClosed",
+            sourceType: "MovieClip",
+            prefab: "native/entry.lh",
+            assets: [],
+        }],
+    } as const;
+    await activateAuthoredContentCatalog(manifest, {
+        baseUrl: "/fixtures/fail-closed/",
+        loader,
+        applicationDomain: domain,
+        runtimeBindings: [{ runtimeId: "fixtures.catalog.FailClosed", ctor: CatalogClip }],
+    });
+    assert.throws(() => activateAuthoredContentCatalog({
+        ...manifest,
+        bundles: [{ ...manifest.bundles[0], prefab: "native/replacement.lh" }],
+    }, {
+        baseUrl: "/fixtures/fail-closed/",
+        loader,
+        applicationDomain: domain,
+    }), /changed after activation/);
+    assert.throws(() => activateAuthoredContentCatalog({
+        ...manifest,
+        id: "fixtures.path-escape",
+        bundles: [{ ...manifest.bundles[0], runtimeId: "fixtures.catalog.PathEscape", linkage: "MC_PathEscape", prefab: "../escape.lh" }],
+    }, {
+        baseUrl: "/fixtures/path-escape/",
+        loader,
+        applicationDomain: new ApplicationDomain(),
+    }), /normalized relative asset path/);
+});
+
+test("authored catalog URL loading derives one manifest-relative asset root", async () => {
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.loaded-catalog",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.Loaded",
+            linkage: "MC_LoadedCatalog",
+            sourceType: "MovieClip",
+            prefab: "native/entry.lh",
+            assets: [],
+        }],
+    } as const;
+    const prefab = { create: () => createCatalogClip() };
+    const calls: Array<[string, string | undefined]> = [];
+    const loader = {
+        async load(url: string, type?: string): Promise<unknown> {
+            calls.push([url, type]);
+            return type === Loader.JSON ? manifest : prefab;
+        },
+    };
+    const activation = await loadAndActivateAuthoredContentCatalog(
+        "/fixtures/loaded/runtime-catalog.json",
+        {
+            loader,
+            applicationDomain: new ApplicationDomain(),
+            runtimeBindings: [{ runtimeId: "fixtures.catalog.Loaded", ctor: CatalogClip }],
+        },
+    );
+    assert.ok(activation.create("entry") instanceof CatalogClip);
+    assert.deepEqual(calls, [
+        ["/fixtures/loaded/runtime-catalog.json", Loader.JSON],
+        ["/fixtures/loaded/native/entry.lh", Loader.HIERARCHY],
+    ]);
 });
