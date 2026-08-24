@@ -5,6 +5,7 @@ import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDom
 import { registerDefinitionByName } from "../../src/layaAir/flash/utils/DefinitionRegistry";
 import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
+import { TextField } from "../../src/layaAir/flash/text/TextField";
 import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
 import { Loader } from "../../src/layaAir/laya/net/Loader";
 import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
@@ -345,6 +346,140 @@ test("logical SWF resources resolve to native catalog sidecars in the same names
         ["Resources/fr_FR/Swf/Lobby/GirlGame.runtime-catalog.json?release=7", Loader.JSON],
         ["Resources/fr_FR/Swf/Lobby/GirlGame.native/entry.lh", Loader.HIERARCHY],
     ]);
+});
+
+test("locale overlays share native structure while replacing editable text and baked-text images", async () => {
+    const domain = new ApplicationDomain();
+    const title = Object.create(TextField.prototype) as TextField;
+    Object.defineProperty(title, "text", { value: "English", writable: true, configurable: true });
+    const prefab = {
+        create: () => {
+            const root = createCatalogClip();
+            Object.defineProperty(root, "getChildByName", {
+                value: (name: string) => name === "TF_Title" ? title : null,
+                configurable: true,
+            });
+            return root;
+        },
+    };
+    const base = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.localized-base",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.Localized",
+            linkage: "MC_LocalizedCatalog",
+            sourceType: "MovieClip",
+            prefab: "Foo.native/entry.lh",
+            assets: [
+                { id: "localized/images/title", path: "Foo.native/title-en.png", kind: "image" },
+                { id: "localized/timelines/root", path: "Foo.native/root.mc", kind: "timeline" },
+            ],
+        }],
+    } as const;
+    const overlay = {
+        schema: "laya-authored-content-locale@1",
+        id: "fixtures.localized-de",
+        locale: "de_DE",
+        baseCatalog: "/Resources/Swf/Lobby/Foo.runtime-catalog.json",
+        assetOverrides: [{ id: "localized/images/title", path: "Foo.locale/title-de.png" }],
+        translations: [{ bundle: "entry", target: "TF_Title", text: "Deutsch" }],
+    } as const;
+    const calls: Array<[string, string | undefined]> = [];
+    const loader = {
+        async load(url: string, type?: string): Promise<unknown> {
+            calls.push([url, type]);
+            if (url.includes("/de_DE/") && type === Loader.JSON) return overlay;
+            if (url === "/Resources/Swf/Lobby/Foo.runtime-catalog.json" && type === Loader.JSON) return base;
+            if (type === Loader.HIERARCHY) return prefab;
+            return { url };
+        },
+    };
+    const activation = await loadAndActivateAuthoredContentResource(
+        "/Resources/de_DE/Swf/Lobby/Foo.swf",
+        {
+            loader,
+            applicationDomain: domain,
+            runtimeBindings: [{ runtimeId: "fixtures.catalog.Localized", ctor: CatalogClip }],
+        },
+    );
+
+    assert.deepEqual(calls, [
+        ["/Resources/de_DE/Swf/Lobby/Foo.runtime-catalog.json", Loader.JSON],
+        ["/Resources/Swf/Lobby/Foo.runtime-catalog.json", Loader.JSON],
+        ["/Resources/de_DE/Swf/Lobby/Foo.locale/title-de.png", Loader.IMAGE],
+        ["/Resources/Swf/Lobby/Foo.native/root.mc", undefined],
+        ["/Resources/Swf/Lobby/Foo.native/entry.lh", Loader.HIERARCHY],
+    ]);
+    assert.equal(
+        AssetDb.inst.uuidMap["localized/images/title"],
+        "/Resources/de_DE/Swf/Lobby/Foo.locale/title-de.png",
+    );
+    assert.equal(
+        AssetDb.inst.uuidMap["localized/timelines/root"],
+        "/Resources/Swf/Lobby/Foo.native/root.mc",
+    );
+    const reflected = new (domain.getDefinition("MC_LocalizedCatalog") as new () => CatalogClip)();
+    assert.equal(title.text, "Deutsch");
+    assert.ok(reflected instanceof CatalogClip);
+    reflected.destroy(true);
+    const created = activation.create("entry");
+    assert.equal(title.text, "Deutsch");
+    created.destroy(true);
+});
+
+test("locale overlays fail closed on timeline replacement and unknown text targets", async () => {
+    const base = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.localized-reject",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.LocalizedReject",
+            linkage: "MC_LocalizedReject",
+            sourceType: "MovieClip",
+            prefab: "entry.lh",
+            assets: [{ id: "localized/reject/root", path: "root.mc", kind: "timeline" }],
+        }],
+    } as const;
+    const load = async (overlay: object, domain: ApplicationDomain): Promise<void> => {
+        const loader = {
+            async load(url: string, type?: string): Promise<unknown> {
+                if (url.includes("de_DE") && type === Loader.JSON) return overlay;
+                if (type === Loader.JSON) return base;
+                return { create: () => {
+                    const root = createCatalogClip();
+                    Object.defineProperty(root, "getChildByName", {
+                        value: (): null => null,
+                        configurable: true,
+                    });
+                    return root;
+                } };
+            },
+        };
+        await loadAndActivateAuthoredContentResource("/Resources/de_DE/Swf/Reject.swf", {
+            loader,
+            applicationDomain: domain,
+            runtimeBindings: [{ runtimeId: "fixtures.catalog.LocalizedReject", ctor: CatalogClip }],
+        });
+    };
+    await assert.rejects(load({
+        schema: "laya-authored-content-locale@1",
+        id: "fixtures.timeline-reject",
+        locale: "de_DE",
+        baseCatalog: "/Resources/Swf/Reject.runtime-catalog.json",
+        assetOverrides: [{ id: "localized/reject/root", path: "root-de.mc" }],
+        translations: [],
+    }, new ApplicationDomain()), /structural timelines require a full catalog/);
+    const unknownTargetDomain = new ApplicationDomain();
+    await assert.rejects(load({
+        schema: "laya-authored-content-locale@1",
+        id: "fixtures-target-reject",
+        locale: "de_DE",
+        baseCatalog: "/Resources/Swf/Reject.runtime-catalog.json",
+        assetOverrides: [],
+        translations: [{ bundle: "entry", target: "TF_Missing", text: "Fehlt" }],
+    }, unknownTargetDomain), /text target 'TF_Missing' is missing/);
+    assert.equal(unknownTargetDomain.hasDefinition("MC_LocalizedReject"), false);
 });
 
 test("generic catalogs can publish inherited Sprite and MovieClip source constructors", async () => {

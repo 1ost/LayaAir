@@ -15,6 +15,7 @@ import {
 } from "./bootstrap";
 
 export const AUTHORED_CONTENT_CATALOG_SCHEMA = "laya-authored-content-catalog@1" as const;
+export const AUTHORED_CONTENT_LOCALE_SCHEMA = "laya-authored-content-locale@1" as const;
 export const AUTHORED_CONTENT_CATALOG_SUFFIX = ".runtime-catalog.json" as const;
 
 export type AuthoredCatalogAssetKind = "image" | "timeline";
@@ -38,6 +39,33 @@ export interface AuthoredContentCatalogManifest {
     readonly schema: typeof AUTHORED_CONTENT_CATALOG_SCHEMA;
     readonly id: string;
     readonly bundles: readonly AuthoredCatalogBundle[];
+}
+
+export interface AuthoredCatalogAssetOverride {
+    readonly id: string;
+    readonly path: string;
+}
+
+export interface AuthoredCatalogTranslation {
+    readonly bundle: string;
+    /** Slash-separated authored instance names; `$` selects a TextField root. */
+    readonly target: string;
+    readonly text: string;
+}
+
+/**
+ * Small locale sidecar layered over one locale-neutral native catalog.
+ * Editable strings and baked-text images vary without duplicating hierarchy or
+ * timeline bytes. A structurally different locale remains a normal full
+ * catalog instead of being forced through this overlay.
+ */
+export interface AuthoredContentLocaleManifest {
+    readonly schema: typeof AUTHORED_CONTENT_LOCALE_SCHEMA;
+    readonly id: string;
+    readonly locale: string;
+    readonly baseCatalog: string;
+    readonly assetOverrides: readonly AuthoredCatalogAssetOverride[];
+    readonly translations: readonly AuthoredCatalogTranslation[];
 }
 
 export interface AuthoredCatalogLoader {
@@ -70,6 +98,11 @@ export interface AuthoredContentCatalogActivation {
 
 type NormalizedCatalog = {
     readonly manifest: AuthoredContentCatalogManifest;
+    readonly fingerprint: string;
+};
+
+type NormalizedLocaleOverlay = {
+    readonly manifest: AuthoredContentLocaleManifest;
     readonly fingerprint: string;
 };
 
@@ -134,6 +167,31 @@ export async function loadAndActivateAuthoredContentCatalog(
             throw new TypeError("Authored content catalog loader returned a non-JSON TextResource");
         value = loaded.data;
     }
+    if (isLocaleOverlay(value)) {
+        const overlay = normalizeLocaleOverlay(value);
+        const overlayBaseUrl = URL.getPath(catalogUrl);
+        const baseCatalogUrl = resolveCatalogReference(overlayBaseUrl, overlay.manifest.baseCatalog);
+        const baseLoaded = await loader.load(baseCatalogUrl, Loader.JSON);
+        if (!baseLoaded) throw new Error(`Authored content base catalog failed to load: ${baseCatalogUrl}`);
+        let baseValue: unknown = baseLoaded;
+        if (baseLoaded instanceof TextResource) {
+            if (baseLoaded.format !== TextResourceFormat.JSON)
+                throw new TypeError("Authored content base catalog loader returned a non-JSON TextResource");
+            baseValue = baseLoaded.data;
+        }
+        const catalog = normalizeCatalog(baseValue);
+        const localized = resolveLocaleOverlay(overlay, catalog.manifest, overlayBaseUrl);
+        return activateNormalizedCatalog(catalog, {
+            ...options,
+            loader,
+            baseUrl: URL.getPath(baseCatalogUrl),
+        }, {
+            assetUrls: localized.assetUrls,
+            cacheKey: `${catalog.manifest.id}\n${catalogUrl}`,
+            fingerprint: `${catalog.fingerprint}\n${overlay.fingerprint}`,
+            translations: localized.translations,
+        });
+    }
     return activateAuthoredContentCatalog(value, {
         ...options,
         loader,
@@ -152,25 +210,46 @@ export function activateAuthoredContentCatalog(
     options: AuthoredContentCatalogOptions,
 ): Promise<AuthoredContentCatalogActivation> {
     const catalog = normalizeCatalog(value);
+    return activateNormalizedCatalog(catalog, options);
+}
+
+function activateNormalizedCatalog(
+    catalog: NormalizedCatalog,
+    options: AuthoredContentCatalogOptions,
+    localized?: {
+        readonly assetUrls: ReadonlyMap<string, string>;
+        readonly cacheKey: string;
+        readonly fingerprint: string;
+        readonly translations: ReadonlyMap<string, readonly AuthoredCatalogTranslation[]>;
+    },
+): Promise<AuthoredContentCatalogActivation> {
     const baseUrl = requireBaseUrl(options?.baseUrl);
     const loader = requireLoader(options?.loader);
     const domain = options.applicationDomain ?? ApplicationDomain.currentDomain;
     if (!(domain instanceof ApplicationDomain))
         throw new TypeError("Authored content catalog requires an ApplicationDomain");
     const bindings = normalizeBindings(options.runtimeBindings ?? [], catalog.manifest);
-    const key = `${catalog.manifest.id}\n${baseUrl}`;
+    const key = localized?.cacheKey ?? `${catalog.manifest.id}\n${baseUrl}`;
     let byKey = installedCatalogs.get(domain);
     if (!byKey) installedCatalogs.set(domain, byKey = new Map());
     const existing = byKey.get(key);
     if (existing) {
-        if (existing.fingerprint !== catalog.fingerprint)
+        if (existing.fingerprint !== (localized?.fingerprint ?? catalog.fingerprint))
             throw new Error(`Authored content catalog '${catalog.manifest.id}' changed after activation`);
         if (!sameBindings(existing.bindings, bindings))
             throw new Error(`Authored content catalog '${catalog.manifest.id}' runtime bindings changed after activation`);
         return existing.promise;
     }
-    const promise = activate(catalog.manifest, baseUrl, loader, domain, bindings);
-    byKey.set(key, { fingerprint: catalog.fingerprint, bindings, promise });
+    const promise = activate(
+        catalog.manifest,
+        baseUrl,
+        loader,
+        domain,
+        bindings,
+        localized?.assetUrls ?? new Map(),
+        localized?.translations ?? new Map(),
+    );
+    byKey.set(key, { fingerprint: localized?.fingerprint ?? catalog.fingerprint, bindings, promise });
     promise.catch(() => {
         if (byKey!.get(key)?.promise === promise) byKey!.delete(key);
     });
@@ -183,6 +262,8 @@ async function activate(
     loader: AuthoredCatalogLoader,
     domain: ApplicationDomain,
     bindings: ReadonlyMap<string, AuthoredCatalogRuntimeBinding<any>>,
+    localizedAssetUrls: ReadonlyMap<string, string>,
+    translations: ReadonlyMap<string, readonly AuthoredCatalogTranslation[]>,
 ): Promise<AuthoredContentCatalogActivation> {
     const runtimeLinkages: AuthoredRuntimeLinkage[] = [];
     const assetClaims: Array<{ id: string; url: string; previous: string | undefined }> = [];
@@ -196,7 +277,7 @@ async function activate(
                 sourceType: bundle.sourceType,
                 serializedType: SERIALIZED_TYPES[bundle.sourceType],
             });
-            registerAssetUrls(baseUrl, bundle, assetClaims);
+            registerAssetUrls(baseUrl, bundle, localizedAssetUrls, assetClaims);
         }
         registerAuthoredContentRuntime(runtimeLinkages);
 
@@ -205,8 +286,9 @@ async function activate(
         for (const bundle of manifest.bundles) {
             for (const asset of bundle.assets) {
                 assetLabels.push(`${bundle.id}:${asset.path}`);
+                const assetUrl = localizedAssetUrls.get(asset.id) ?? URL.join(baseUrl, asset.path);
                 assetLoads.push(loader.load(
-                    URL.join(baseUrl, asset.path),
+                    assetUrl,
                     asset.kind === "image" ? Loader.IMAGE : undefined,
                 ));
             }
@@ -229,7 +311,8 @@ async function activate(
         for (const [bundle, prefab] of loaded) {
             const binding = bindings.get(bundle.runtimeId);
             const ctor = binding?.ctor ?? SOURCE_TYPES[bundle.sourceType];
-            const definition = createAuthoredPrefabDefinition(bundle.runtimeId, prefab, ctor);
+            const baseDefinition = createAuthoredPrefabDefinition(bundle.runtimeId, prefab, ctor);
+            const definition = localizeDefinition(baseDefinition, translations.get(bundle.id) ?? []);
             const root = new definition();
             try {
                 binding?.validate?.(root);
@@ -278,10 +361,11 @@ async function activate(
 function registerAssetUrls(
     baseUrl: string,
     bundle: AuthoredCatalogBundle,
+    localizedAssetUrls: ReadonlyMap<string, string>,
     claims: Array<{ id: string; url: string; previous: string | undefined }>,
 ): void {
     for (const asset of bundle.assets) {
-        const assetUrl = URL.join(baseUrl, asset.path);
+        const assetUrl = localizedAssetUrls.get(asset.id) ?? URL.join(baseUrl, asset.path);
         const existing = AssetDb.inst.uuidMap[asset.id];
         if (existing !== undefined && existing !== assetUrl)
             throw new Error(`Authored content asset identity collision: ${asset.id}`);
@@ -331,6 +415,129 @@ function normalizeCatalog(value: unknown): NormalizedCatalog {
     return { manifest, fingerprint: JSON.stringify(manifest) };
 }
 
+function isLocaleOverlay(value: unknown): boolean {
+    return !!value && typeof value === "object"
+        && (value as Record<string, unknown>).schema === AUTHORED_CONTENT_LOCALE_SCHEMA;
+}
+
+function normalizeLocaleOverlay(value: unknown): NormalizedLocaleOverlay {
+    const source = requirePlainRecord(value, "locale overlay");
+    requireExactKeys(
+        source,
+        ["schema", "id", "locale", "baseCatalog", "assetOverrides", "translations"],
+        "locale overlay",
+    );
+    if (source.schema !== AUTHORED_CONTENT_LOCALE_SCHEMA)
+        throw new TypeError(`locale overlay.schema must equal ${AUTHORED_CONTENT_LOCALE_SCHEMA}`);
+    const id = requireNonemptyString(source.id, "locale overlay.id");
+    const locale = requireLocale(source.locale, "locale overlay.locale");
+    const baseCatalog = requireCatalogReference(source.baseCatalog, "locale overlay.baseCatalog");
+    if (!Array.isArray(source.assetOverrides))
+        throw new TypeError("locale overlay.assetOverrides must be an array");
+    if (!Array.isArray(source.translations))
+        throw new TypeError("locale overlay.translations must be an array");
+    const assetIds = new Set<string>();
+    const assetOverrides = source.assetOverrides.map((value, index): AuthoredCatalogAssetOverride => {
+        const path = `locale overlay.assetOverrides[${index}]`;
+        const record = requirePlainRecord(value, path);
+        requireExactKeys(record, ["id", "path"], path);
+        return Object.freeze({
+            id: requireUnique(record.id, `${path}.id`, assetIds),
+            path: requireRelativePath(record.path, `${path}.path`),
+        });
+    });
+    const targets = new Set<string>();
+    const translations = source.translations.map((value, index): AuthoredCatalogTranslation => {
+        const path = `locale overlay.translations[${index}]`;
+        const record = requirePlainRecord(value, path);
+        requireExactKeys(record, ["bundle", "target", "text"], path);
+        const bundle = requireNonemptyString(record.bundle, `${path}.bundle`);
+        const target = requireLocalizationTarget(record.target, `${path}.target`);
+        const identity = `${bundle}\n${target}`;
+        if (targets.has(identity)) throw new Error(`${path} duplicates '${bundle}/${target}'`);
+        targets.add(identity);
+        if (typeof record.text !== "string") throw new TypeError(`${path}.text must be a string`);
+        return Object.freeze({ bundle, target, text: record.text });
+    });
+    const manifest = Object.freeze({
+        schema: AUTHORED_CONTENT_LOCALE_SCHEMA,
+        id,
+        locale,
+        baseCatalog,
+        assetOverrides: Object.freeze(assetOverrides),
+        translations: Object.freeze(translations),
+    });
+    return { manifest, fingerprint: JSON.stringify(manifest) };
+}
+
+function resolveLocaleOverlay(
+    overlay: NormalizedLocaleOverlay,
+    catalog: AuthoredContentCatalogManifest,
+    overlayBaseUrl: string,
+): {
+    readonly assetUrls: ReadonlyMap<string, string>;
+    readonly translations: ReadonlyMap<string, readonly AuthoredCatalogTranslation[]>;
+} {
+    const assets = new Map<string, AuthoredCatalogAsset>();
+    const bundles = new Set(catalog.bundles.map(bundle => bundle.id));
+    for (const bundle of catalog.bundles) for (const asset of bundle.assets) assets.set(asset.id, asset);
+    const assetUrls = new Map<string, string>();
+    for (const override of overlay.manifest.assetOverrides) {
+        const asset = assets.get(override.id);
+        if (!asset) throw new Error(`Locale overlay asset '${override.id}' is not declared by the base catalog`);
+        if (asset.kind !== "image")
+            throw new Error(`Locale overlay asset '${override.id}' must be an image; structural timelines require a full catalog`);
+        assetUrls.set(override.id, URL.join(overlayBaseUrl, override.path));
+    }
+    const translationLists = new Map<string, AuthoredCatalogTranslation[]>();
+    for (const translation of overlay.manifest.translations) {
+        if (!bundles.has(translation.bundle))
+            throw new Error(`Locale overlay translation bundle '${translation.bundle}' is not declared by the base catalog`);
+        const list = translationLists.get(translation.bundle) ?? [];
+        list.push(translation);
+        translationLists.set(translation.bundle, list);
+    }
+    return {
+        assetUrls,
+        translations: new Map([...translationLists].map(([id, values]) => [id, Object.freeze(values)])),
+    };
+}
+
+function localizeDefinition(
+    definition: AuthoredPrefabDefinition<Node>,
+    translations: readonly AuthoredCatalogTranslation[],
+): AuthoredPrefabDefinition<Node> {
+    if (translations.length === 0) return definition;
+    const localized = function(this: unknown): Node {
+        const root = new definition();
+        try {
+            for (const translation of translations) {
+                const target = resolveTranslationTarget(root, translation.target);
+                target.text = translation.text;
+            }
+            return root;
+        } catch (error) {
+            root.destroy(true);
+            throw error;
+        }
+    } as unknown as AuthoredPrefabDefinition<Node>;
+    localized.prototype = definition.prototype;
+    return localized;
+}
+
+function resolveTranslationTarget(root: Node, target: string): TextField {
+    let current: Node | null = root;
+    if (target !== "$") {
+        for (const segment of target.split("/")) {
+            current = current?.getChildByName(segment) ?? null;
+            if (current === null) throw new Error(`Authored locale text target '${target}' is missing`);
+        }
+    }
+    if (!(current instanceof TextField))
+        throw new TypeError(`Authored locale text target '${target}' must be a TextField`);
+    return current;
+}
+
 function normalizeBindings(
     values: readonly AuthoredCatalogRuntimeBinding<any>[],
     manifest: AuthoredContentCatalogManifest,
@@ -365,6 +572,34 @@ function requireBaseUrl(value: unknown): string {
     const url = requireNonemptyString(value, "baseUrl");
     if (!url.endsWith("/")) throw new TypeError("baseUrl must end with '/'");
     return url;
+}
+
+function requireLocale(value: unknown, path: string): string {
+    const locale = requireNonemptyString(value, path);
+    if (!/^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$/.test(locale))
+        throw new TypeError(`${path} must be one normalized locale segment`);
+    return locale;
+}
+
+function requireCatalogReference(value: unknown, path: string): string {
+    const text = requireNonemptyString(value, path);
+    if (text.includes("\\") || text.includes("?") || text.includes("#")
+        || text.split("/").some((part, index) => index > 0 && (part.length === 0 || part === "." || part === ".."))
+        || !text.toLowerCase().endsWith(AUTHORED_CONTENT_CATALOG_SUFFIX))
+        throw new TypeError(`${path} must be a normalized catalog URL without query or fragment`);
+    return text;
+}
+
+function resolveCatalogReference(baseUrl: string, reference: string): string {
+    return reference.startsWith("/") ? reference : URL.join(baseUrl, reference);
+}
+
+function requireLocalizationTarget(value: unknown, path: string): string {
+    const target = requireNonemptyString(value, path);
+    if (target === "$") return target;
+    if (target.includes("\\") || target.split("/").some(part => part.length === 0 || part === "." || part === ".."))
+        throw new TypeError(`${path} must be a normalized authored instance path`);
+    return target;
 }
 
 function requirePlainRecord(value: unknown, path: string): Record<string, unknown> {
