@@ -147,6 +147,7 @@ test("Loader publishes authenticated native content through stable LoaderInfo", 
     const { loader, native, request } = fixture();
     const info = loader.contentLoaderInfo;
     const sequence = events(loader);
+    assert.equal(info.applicationDomain, ApplicationDomain.currentDomain);
     let candidate: Sprite;
     info.addEventListener(Event.INIT, () => {
         candidate = loader.content as Sprite;
@@ -175,6 +176,8 @@ test("Loader publishes authenticated native content through stable LoaderInfo", 
     assert.equal(loader.content, candidate!);
     assert.equal(candidate!.loaderInfo, info,
         "published Loader content exposes the exact owning LoaderInfo");
+    assert.equal(candidate!.loaderInfo!.applicationDomain, ApplicationDomain.currentDomain,
+        "published content preserves the LoaderInfo application-domain identity");
     assert.equal(info.url, "ui/loading.swf");
     assert.equal(info.contentType, "application/x-laya-hierarchy");
     assert.equal(prefab.createCalls, 1);
@@ -182,10 +185,36 @@ test("Loader publishes authenticated native content through stable LoaderInfo", 
 
 test("LoaderContext admits native domains while rejecting executable and security domains", () => {
     const admitted = fixture("context.logical");
-    const context = new LoaderContext(false, ApplicationDomain.currentDomain);
+    const applicationDomain = new ApplicationDomain(ApplicationDomain.currentDomain);
+    const context = new LoaderContext(false, applicationDomain);
+    const sequence = events(admitted.loader);
+    let openDomain: ApplicationDomain | null = null;
+    admitted.loader.contentLoaderInfo.addEventListener(Event.OPEN, () => {
+        openDomain = admitted.loader.contentLoaderInfo.applicationDomain;
+    });
     admitted.loader.load(admitted.request, context);
+    assert.equal(openDomain, applicationDomain);
+    assert.equal(admitted.loader.contentLoaderInfo.applicationDomain, applicationDomain);
     assert.equal(admitted.host.resolveCalls, 1);
     assert.equal(admitted.native.calls.length, 1);
+    let content: Sprite;
+    admitted.native.calls[0].completion.resolve(new TestPrefab(() => content = new Sprite()));
+    assert.equal(content!.loaderInfo!.applicationDomain, applicationDomain);
+    assert.deepEqual(sequence, [Event.OPEN, "progress:100", Event.INIT, Event.COMPLETE]);
+    admitted.loader.unload();
+    assert.equal(admitted.loader.contentLoaderInfo.applicationDomain, applicationDomain,
+        "unload retains the stable domain identity of the LoaderInfo generation");
+    assert.equal(sequence.at(-1), Event.UNLOAD);
+
+    admitted.loader.load(admitted.request);
+    assert.equal(admitted.loader.contentLoaderInfo.applicationDomain, ApplicationDomain.currentDomain,
+        "a context-free replacement snapshots the native current domain");
+    assert.throws(
+        () => Object.defineProperty(admitted.loader.contentLoaderInfo, "applicationDomain", {
+            value: applicationDomain,
+        }),
+        TypeError,
+    );
 
     const forged = fixture("forged-context.logical");
     assert.throws(

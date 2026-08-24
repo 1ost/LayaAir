@@ -16,6 +16,7 @@ import { ProgressEvent } from "../events/ProgressEvent";
 import { SecurityErrorEvent } from "../events/SecurityErrorEvent";
 import { URLRequest, snapshotNativeLoaderRequest } from "../net/URLRequest";
 import { LoaderContext, snapshotNativeLoaderContext } from "../system/LoaderContext";
+import { ApplicationDomain } from "../system/ApplicationDomain";
 import {
     bindDisplayObjectLoaderInfo, DisplayObject, isFlashDisplayObject, unbindDisplayObjectLoaderInfo
 } from "./DisplayObject";
@@ -66,6 +67,7 @@ const GIF89_SIGNATURE = Object.freeze([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
 
 interface LoaderInfoState {
     readonly loader: Loader;
+    applicationDomain: ApplicationDomain;
     bytesLoaded: number;
     bytesTotal: number;
     content: DisplayObject | null;
@@ -116,6 +118,7 @@ export class LoaderInfo extends EventDispatcher {
         LOADER_INFO_ROUTERS.set(this, { types: new Map(), ordinal: 0 });
         LOADER_INFO_STATE.set(this, {
             loader,
+            applicationDomain: ApplicationDomain.currentDomain,
             bytesLoaded: 0,
             bytesTotal: 0,
             content: null,
@@ -126,6 +129,7 @@ export class LoaderInfo extends EventDispatcher {
         });
         const state = () => readLoaderInfo(this);
         Object.defineProperties(this, {
+            applicationDomain: { configurable: false, enumerable: false, get: () => state().applicationDomain },
             bytesLoaded: { configurable: false, enumerable: false, get: () => state().bytesLoaded },
             bytesTotal: { configurable: false, enumerable: false, get: () => state().bytesTotal },
             content: { configurable: false, enumerable: false, get: () => state().content },
@@ -138,6 +142,7 @@ export class LoaderInfo extends EventDispatcher {
         });
     }
 
+    get applicationDomain(): ApplicationDomain { return readLoaderInfo(this).applicationDomain; }
     get bytesLoaded(): number { return readLoaderInfo(this).bytesLoaded; }
     get bytesTotal(): number { return readLoaderInfo(this).bytesTotal; }
     get content(): DisplayObject | null { return readLoaderInfo(this).content; }
@@ -384,8 +389,10 @@ function deleteLoaderInfoTypeIfEmpty(router: LoaderInfoRouterState, type: string
     if (!hasCapture && !hasBubble) router.types.delete(type);
 }
 
-function beginLoaderInfo(value: LoaderInfo, logicalURL: string, contentType: string, bytesTotal: number): void {
+function beginLoaderInfo(value: LoaderInfo, logicalURL: string, contentType: string, bytesTotal: number,
+    applicationDomain: ApplicationDomain): void {
     const state = readLoaderInfo(value);
+    state.applicationDomain = applicationDomain;
     state.bytesLoaded = 0;
     state.bytesTotal = bytesTotal;
     state.content = null;
@@ -530,7 +537,8 @@ export class Loader extends DisplayObjectContainer {
     get contentLoaderInfo(): LoaderInfo { return this.#contentLoaderInfo; }
 
     load(request: URLRequest, context: LoaderContext | null = null): void {
-        if (context !== null) snapshotNativeLoaderContext(context);
+        const contextSnapshot = context === null ? null : snapshotNativeLoaderContext(context);
+        const applicationDomain = contextSnapshot?.applicationDomain ?? ApplicationDomain.currentDomain;
 
         // Snapshot and resolve the complete authority before invalidating any
         // existing generation or display ownership.
@@ -538,7 +546,8 @@ export class Loader extends DisplayObjectContainer {
         const entryGeneration = this.#generation;
         const host = this.#explicitHost ?? defaultHost;
         if (host === null) {
-            this.#publishSourceFailure(logicalURL, "No authenticated native-content host is installed");
+            this.#publishSourceFailure(logicalURL, "No authenticated native-content host is installed",
+                applicationDomain);
             return;
         }
 
@@ -547,21 +556,24 @@ export class Loader extends DisplayObjectContainer {
             const proof = host.resolve(logicalURL);
             if (this.#generation !== entryGeneration) return;
             if (proof === null) {
-                this.#publishSourceFailure(logicalURL, "Native-content host rejected the logical URL");
+                this.#publishSourceFailure(logicalURL, "Native-content host rejected the logical URL",
+                    applicationDomain);
                 return;
             }
             source = readNativeLoaderContentSource(host, proof, logicalURL);
         } catch {
             if (this.#generation === entryGeneration)
-                this.#publishSourceFailure(logicalURL, "Native-content source authentication failed");
+                this.#publishSourceFailure(logicalURL, "Native-content source authentication failed",
+                    applicationDomain);
             return;
         }
         if (this.#generation !== entryGeneration) return;
-        this.#begin(source);
+        this.#begin(source, applicationDomain);
     }
 
     loadBytes(bytes: ArrayBuffer | Uint8Array, context: LoaderContext | null = null): void {
-        if (context !== null) snapshotNativeLoaderContext(context);
+        const contextSnapshot = context === null ? null : snapshotNativeLoaderContext(context);
+        const applicationDomain = contextSnapshot?.applicationDomain ?? ApplicationDomain.currentDomain;
         let input: Uint8Array;
         if (bytes instanceof Uint8Array) input = bytes.slice();
         else if (bytes instanceof ArrayBuffer) input = new Uint8Array(bytes.slice(0));
@@ -573,7 +585,7 @@ export class Loader extends DisplayObjectContainer {
                 "runtime executable and arbitrary byte decoding is forbidden; only JPEG, PNG and GIF images are admitted"
             );
         }
-        this.#beginImage(input, contentType);
+        this.#beginImage(input, contentType, applicationDomain);
     }
 
     close(): void {
@@ -664,7 +676,7 @@ export class Loader extends DisplayObjectContainer {
         return super._removeChild(_node);
     }
 
-    #begin(source: NativeSourceSnapshot): void {
+    #begin(source: NativeSourceSnapshot, applicationDomain: ApplicationDomain): void {
         const generation = ++this.#generation;
         this.#active = null;
         const unloadError = this.#detachPublished(false, true);
@@ -678,7 +690,8 @@ export class Loader extends DisplayObjectContainer {
             terminal: false,
         };
         this.#active = transaction;
-        beginLoaderInfo(this.#contentLoaderInfo, source.logicalURL, source.contentType, source.bytesTotal);
+        beginLoaderInfo(this.#contentLoaderInfo, source.logicalURL, source.contentType, source.bytesTotal,
+            applicationDomain);
         try {
             dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.OPEN);
         } catch (error) {
@@ -721,7 +734,7 @@ export class Loader extends DisplayObjectContainer {
         });
     }
 
-    #beginImage(bytes: Uint8Array, contentType: string): void {
+    #beginImage(bytes: Uint8Array, contentType: string, applicationDomain: ApplicationDomain): void {
         const generation = ++this.#generation;
         this.#active = null;
         const unloadError = this.#detachPublished(false, true);
@@ -741,7 +754,8 @@ export class Loader extends DisplayObjectContainer {
             terminal: false,
         };
         this.#active = transaction;
-        beginLoaderInfo(this.#contentLoaderInfo, source.logicalURL, source.contentType, source.bytesTotal);
+        beginLoaderInfo(this.#contentLoaderInfo, source.logicalURL, source.contentType, source.bytesTotal,
+            applicationDomain);
         try {
             dispatchLoaderInfoEvent(this.#contentLoaderInfo, Event.OPEN);
         } catch (error) {
@@ -769,13 +783,13 @@ export class Loader extends DisplayObjectContainer {
         });
     }
 
-    #publishSourceFailure(logicalURL: string, text: string): void {
+    #publishSourceFailure(logicalURL: string, text: string, applicationDomain: ApplicationDomain): void {
         const generation = ++this.#generation;
         this.#active = null;
         const unloadError = this.#detachPublished(false, true);
         if (unloadError !== undefined) throw unloadError;
         if (this.#generation !== generation) return;
-        beginLoaderInfo(this.#contentLoaderInfo, logicalURL, "", 0);
+        beginLoaderInfo(this.#contentLoaderInfo, logicalURL, "", 0, applicationDomain);
         dispatchLoaderInfoSecurityError(this.#contentLoaderInfo, text);
     }
 
