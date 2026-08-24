@@ -534,8 +534,10 @@ function canonicalLinkage(value: string): string {
 
 function canonicalRuntimeLinkage(value: string): string {
     const normalized = value.trim().normalize("NFC");
-    if (!/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/.test(normalized)
-        || normalized.startsWith("flash.") || normalized.startsWith("laya.") || normalized.startsWith("Laya."))
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/.test(normalized)
+        || normalized === "flash" || normalized.startsWith("flash.")
+        || normalized === "laya" || normalized.startsWith("laya.")
+        || normalized === "Laya" || normalized.startsWith("Laya."))
         fail("AUTHORED_CONTENT_RUNTIME_LINKAGE_INVALID", `Runtime linkage '${value}' is not application-owned.`);
     return normalized;
 }

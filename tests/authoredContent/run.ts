@@ -612,6 +612,30 @@ async function main(): Promise<void> {
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
     });
 
+    await test("neutral IR admits exact flat and dotted application linkages and rejects reserved or invalid IDs", () => {
+        const flat = dynamicTextDocument() as any;
+        flat.root.runtimeLinkage = "MC_PetHouse";
+        assert(normalizeNeutralAuthoredContent(flat).root.runtimeLinkage === "MC_PetHouse",
+            "flat authored SymbolClass linkage was not preserved exactly");
+
+        const dotted = dynamicTextDocument() as any;
+        dotted.root.runtimeLinkage = "fixtures.PetHouse";
+        assert(normalizeNeutralAuthoredContent(dotted).root.runtimeLinkage === "fixtures.PetHouse",
+            "dotted application linkage regressed");
+
+        for (const [runtimeLinkage, expectedCode] of [
+            ["", "AUTHORED_CONTENT_STRING_REQUIRED"],
+            ...[
+                "9PetHouse", ".PetHouse", "PetHouse.", "Pet..House", "Pet-House",
+                "flash", "flash.display.MovieClip", "laya", "laya.display.Sprite", "Laya", "Laya.Sprite",
+            ].map(value => [value, "AUTHORED_CONTENT_RUNTIME_LINKAGE_INVALID"]),
+        ]) {
+            const invalid = dynamicTextDocument() as any;
+            invalid.root.runtimeLinkage = runtimeLinkage;
+            assertThrows(() => normalizeNeutralAuthoredContent(invalid), expectedCode);
+        }
+    });
+
     await test("nested MovieClip emits an independent 16-frame four-pose native timeline", () => {
         const content = normalizeNeutralAuthoredContent(nestedHappyBearDocument());
         const timelines = NativeLayaEmitter.createNestedTimelines(content);
