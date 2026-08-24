@@ -72,17 +72,27 @@ async function main() {
     const { NativeLayaEmitter } = require("../emit/NativeLayaEmitter.ts");
     const { NativeAnimationClip2DWriter } = require("../emit/NativeAnimationClip2DWriter.ts");
     const { prepareNativeLayaAuthoredContentBundle } = require("../emit/NativeLayaHierarchyWriter.ts");
-    const resourceAssetIds = new Map(content.resources.map(resource => [resource.id, resource.outputPath]));
     const resourcePayloads = new Map(content.resources.map(resource => [
         resource.id,
         new Uint8Array(fs.readFileSync(resolveInside(sourceRoot, resource.sourcePath))),
     ]));
     const nestedClips = NativeLayaEmitter.createNestedTimelines(content);
-    const nestedAssets = [...nestedClips].map(([semanticPath, clip], index) => ({
+    const nestedDefinitions = [...nestedClips].map(([semanticPath, clip], index) => ({
         semanticPath,
         clip,
         timelinePath: `timelines/nested-${index + 1}.mc`,
-        timelineAssetId: `timelines/nested-${index + 1}.mc`,
+    }));
+    const { createNativeBundleAssetBindings } = require("../emit/NativeBundleAssetIdentity.ts");
+    const assetBindings = createNativeBundleAssetBindings(
+        assetBaseName,
+        `${assetBaseName}.mc`,
+        content.resources.map(resource => ({ id: resource.id, outputPath: resource.outputPath })),
+        nestedDefinitions.map(value => ({ semanticPath: value.semanticPath, outputPath: value.timelinePath })),
+    );
+    const resourceAssetIds = assetBindings.resourceAssetIds;
+    const nestedAssets = nestedDefinitions.map(value => ({
+        ...value,
+        timelineAssetId: assetBindings.nestedTimelineAssetIds.get(value.semanticPath),
     }));
     const nestedBindings = new Map(nestedAssets.map(value => [value.semanticPath, {
         assetId: value.timelineAssetId,
@@ -91,7 +101,7 @@ async function main() {
     const rootClip = NativeLayaEmitter.createTimeline(content);
     const root = NativeLayaEmitter.createPrefabRoot(
         content,
-        `${assetBaseName}.mc`,
+        assetBindings.timelineAssetId,
         rootClip,
         resourceAssetIds,
         nestedBindings,
@@ -103,7 +113,7 @@ async function main() {
             hierarchy,
             prefabPath: `${assetBaseName}.lh`,
             timelinePath: `${assetBaseName}.mc`,
-            timelineAssetId: `${assetBaseName}.mc`,
+            timelineAssetId: assetBindings.timelineAssetId,
             timelineBytes: new Uint8Array(NativeAnimationClip2DWriter.write(rootClip)),
             nestedTimelines: nestedAssets.map(value => ({
                 semanticPath: value.semanticPath,

@@ -33,6 +33,7 @@
     "test:authored-image-publish": "node --experimental-strip-types --test tests/authoredImagePublish/authored-image-publish.test.mjs",
     "test:authored-projected-bitmap-fill": "node --max-old-space-size=512 tests/authoredProjectedBitmapFill/run.cjs",
     "test:authored-flash-display-list-timeline": "node --max-old-space-size=512 tests/authoredFlashDisplayListTimeline/run.cjs",
+    "test:authored-bundle-asset-identity": "node --max-old-space-size=512 tests/authoredBundleAssetIdentity/run.cjs",
     "authored-pixel-golden": "node scripts/authoredPixelGolden.mjs",
     "test:authored-pixel-golden": "node --test tests/authoredPixelGolden/authored-pixel-golden.test.mjs",
     "build:authored-content": "npm --prefix src/extensions/authoredContent run build",
