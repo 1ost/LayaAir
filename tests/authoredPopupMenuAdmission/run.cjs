@@ -47,7 +47,13 @@ function fixture() {
         },
         "4": { characterId: 4, kind: "sprite" },
         "10": { characterId: 10, kind: "sprite", symbolName: "PopupRoot", bounds: { x: 0, y: 0, width: 100, height: 50 } },
-        "20": { characterId: 20, kind: "sprite", symbolName: "TextureRoot", bounds: { x: 0, y: 0, width: 40, height: 36 } },
+        "20": {
+            characterId: 20, kind: "sprite", symbolName: "TextureRoot", bounds: { x: 0, y: 0, width: 40, height: 36 },
+            scalingGrid: {
+                characterId: 20, sourceTag: "DefineScalingGridTag", units: "pixels", valid: true,
+                rect: { x: 12, y: 12, width: 18, height: 12 }, sizeGrid: [12, 10, 12, 12, 0],
+            },
+        },
         "30": { characterId: 30, kind: "sprite", symbolName: "MissingBoundsRoot", bounds: { x: 0, y: 0, width: 40, height: 36 } },
     };
     const timelines = new Map([
@@ -111,6 +117,9 @@ const textureContent = adapter.parse({
 });
 assert.equal(textureContent.root.children[0].resourceId, "flash-character-3");
 assert.equal(textureContent.resources[0].sourcePath, "shapes/3.png");
+assert.deepEqual(textureContent.root.scale9Grid, {
+    x: 12, y: 12, width: 18, height: 12, sizeGrid: [12, 10, 12, 12, 0], target: "character_3",
+});
 
 const missingBounds = fixture();
 missingBounds.library.stage.width = 40;
@@ -141,4 +150,15 @@ assert.throws(() => adapter.parse({
     ]]]),
 }), /FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED/);
 
-process.stdout.write("authored popup-menu admission: 5/5 passed\n");
+const invalidScalingGrid = fixture();
+invalidScalingGrid.library.stage.width = 40;
+invalidScalingGrid.library.stage.height = 36;
+invalidScalingGrid.library.assets[20].scalingGrid.sizeGrid[1] = 11;
+assert.throws(() => adapter.parse({
+    ...invalidScalingGrid,
+    entrySymbolId: 20,
+    runtimeLinkage: "fixtures.InvalidScalingGrid",
+    rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
+}), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
+
+process.stdout.write("authored popup-menu admission: 7/7 passed\n");

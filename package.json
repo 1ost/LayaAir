@@ -35,6 +35,7 @@
     "test:authored-library-symbol-projection": "node --max-old-space-size=512 tests/authoredLibrarySymbolProjection/run.cjs",
     "test:authored-flash-display-list-timeline": "node --max-old-space-size=512 tests/authoredFlashDisplayListTimeline/run.cjs",
     "test:authored-bundle-asset-identity": "node --max-old-space-size=512 tests/authoredBundleAssetIdentity/run.cjs",
+    "test:authored-scale9-grid": "node scripts/testAuthoredScale9Grid.mjs",
     "authored-pixel-golden": "node scripts/authoredPixelGolden.mjs",
     "test:authored-pixel-golden": "node --test tests/authoredPixelGolden/authored-pixel-golden.test.mjs",
     "build:authored-content": "npm --prefix src/extensions/authoredContent run build",

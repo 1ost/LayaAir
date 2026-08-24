@@ -24,6 +24,17 @@ export interface NeutralGlowFilter {
     readonly knockout: boolean;
 }
 
+export interface NeutralScale9Grid {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+    /** Laya's top, right, bottom, left, repeat representation. */
+    readonly sizeGrid: readonly [number, number, number, number, 0 | 1];
+    /** Direct image child which is the authenticated raster projection. */
+    readonly target: string;
+}
+
 export interface NeutralAuthoredNode {
     readonly linkage: string;
     readonly kind: NeutralNodeKind;
@@ -40,6 +51,8 @@ export interface NeutralAuthoredNode {
     readonly matrix?: NeutralAuthoredMatrix;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
     readonly filters?: ReadonlyArray<NeutralGlowFilter>;
+    /** Closed nine-slice projection for a single raster-backed authored sprite. */
+    readonly scale9Grid?: NeutralScale9Grid;
     readonly text?: string;
     readonly fontSize?: number;
     readonly color?: string;
@@ -209,7 +222,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
-        "filters", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
+        "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -234,6 +247,9 @@ function normalizeNode(
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
         filters: source.filters === undefined ? undefined : array(source.filters, `${path}.filters`).map((filter, index) =>
             normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
+        scale9Grid: source.scale9Grid === undefined
+            ? undefined
+            : normalizeScale9Grid(source.scale9Grid, `${path}.scale9Grid`, scale),
         text: optionalString(source.text, `${path}.text`),
         fontSize: optionalNumber(source.fontSize, `${path}.fontSize`, scale),
         color: optionalString(source.color, `${path}.color`),
@@ -263,6 +279,13 @@ function normalizeNode(
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_UNEXPECTED", `${path}.textField is only valid on a dynamic-text node.`);
     if (node.filters !== undefined && node.kind !== "container")
         fail("AUTHORED_CONTENT_DISPLAY_FILTER_TARGET_UNSUPPORTED", `${path}.filters requires a container node.`);
+    if (node.scale9Grid !== undefined && node.kind !== "container")
+        fail("AUTHORED_CONTENT_SCALE9_GRID_TARGET_UNSUPPORTED", `${path}.scale9Grid requires a container node.`);
+    if (node.scale9Grid !== undefined) {
+        const targets = node.children.filter(child => (child.name ?? child.linkage) === node.scale9Grid!.target);
+        if (targets.length !== 1 || targets[0].kind !== "image")
+            fail("AUTHORED_CONTENT_SCALE9_GRID_RASTER_TARGET_INVALID", `${path}.scale9Grid must identify one direct image child.`);
+    }
     if (node.kind === "dynamic-text") {
         if (node.x === undefined || node.y === undefined || node.width === undefined || node.height === undefined)
             fail("AUTHORED_CONTENT_DYNAMIC_TEXT_BOUNDS_MISSING", `${path} requires exact x, y, width, and height.`);
@@ -274,6 +297,30 @@ function normalizeNode(
     return source.timeline === undefined
         ? node
         : { ...node, timeline: normalizeTimeline(source.timeline, scale, collectNodePaths(node)) };
+}
+
+function normalizeScale9Grid(value: unknown, path: string, scale: number): NeutralScale9Grid {
+    const source = record(value, path);
+    allowedKeys(source, ["height", "sizeGrid", "target", "width", "x", "y"], path);
+    const rawSizeGrid = array(source.sizeGrid, `${path}.sizeGrid`);
+    if (rawSizeGrid.length !== 5)
+        fail("AUTHORED_CONTENT_SCALE9_GRID_SIZE_INVALID", `${path}.sizeGrid must contain five values.`);
+    const sizeGrid = rawSizeGrid.map((item, index) => {
+        const number = requiredFiniteNumber(item, `${path}.sizeGrid[${index}]`);
+        if (index < 4 && number < 0)
+            fail("AUTHORED_CONTENT_SCALE9_GRID_INSET_INVALID", `${path}.sizeGrid[${index}] must be nonnegative.`);
+        if (index === 4 && number !== 0 && number !== 1)
+            fail("AUTHORED_CONTENT_SCALE9_GRID_REPEAT_INVALID", `${path}.sizeGrid[4] must be zero or one.`);
+        return index < 4 ? number * scale : number;
+    }) as [number, number, number, number, 0 | 1];
+    return {
+        x: requiredFiniteNumber(source.x, `${path}.x`) * scale,
+        y: requiredFiniteNumber(source.y, `${path}.y`) * scale,
+        width: positiveNumber(source.width, `${path}.width`) * scale,
+        height: positiveNumber(source.height, `${path}.height`) * scale,
+        sizeGrid,
+        target: canonicalLinkage(requiredString(source.target, `${path}.target`)),
+    };
 }
 
 function normalizeDynamicTextField(value: unknown, path: string, scale: number): NeutralDynamicTextField {

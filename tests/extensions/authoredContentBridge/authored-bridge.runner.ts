@@ -46,6 +46,7 @@ import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Render2DProcessor } from "../../../src/layaAir/laya/display/Render2DProcessor";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
 import { Panel } from "../../../src/layaAir/laya/ui/Panel";
+import { Image } from "../../../src/layaAir/laya/ui/Image";
 import { Event as LayaEvent } from "../../../src/layaAir/laya/events/Event";
 import { InputManager } from "../../../src/layaAir/laya/events/InputManager";
 import { PAL } from "../../../src/layaAir/laya/platform/PlatformAdapters";
@@ -2313,6 +2314,19 @@ test("canonical hierarchy binds an independently clocked 16-frame authored Movie
             kind: "glow", color: 0x381a0a, alpha: 1, blurX: 1, blurY: 1,
             strength: 3, quality: 3, inner: false, knockout: false,
         }],
+        authoredScale9Grid: {
+            x: 12, y: 12, width: 18, height: 12,
+            sizeGrid: [12, 10, 12, 12, 0], target: "texture",
+        },
+        width: 40,
+        height: 36,
+        "_$child": [{
+            "_$id": "texture",
+            "_$type": "Image",
+            name: "texture",
+            width: 40,
+            height: 36,
+        }],
         "_$comp": [{
             "_$type": "AnimatorClip2D",
             clip: { "_$uuid": "happy-bear-timeline", "_$type": "AnimationClip2D" },
@@ -2326,6 +2340,13 @@ test("canonical hierarchy binds an independently clocked 16-frame authored Movie
     assert.equal(bear.name, "HappyBear");
     assert.equal(bear.filters.length, 1);
     assert.equal(isGlowFilter(bear.filters[0]), true);
+    assert.deepEqual(bear.scale9Grid, new Rectangle(12, 12, 18, 12));
+    const nineSlice = bear.getChildByName("texture") as Image;
+    assert.equal(nineSlice instanceof Image, true);
+    assert.equal(nineSlice.sizeGrid, "12,10,12,12,0");
+    bear.width = 80;
+    bear.height = 72;
+    assert.deepEqual([nineSlice.width, nineSlice.height], [80, 72]);
     assert.equal(bear.totalFrames, 16);
     bear.gotoAndStop(5);
     assert.equal(bear.currentFrame, 5);

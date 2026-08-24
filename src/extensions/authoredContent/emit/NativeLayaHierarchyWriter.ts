@@ -341,6 +341,8 @@ function decorateAuthoredRuntime(
         value._$var = true;
     if (source.filters !== undefined)
         value.authoredFilters = source.filters;
+    if (source.scale9Grid !== undefined)
+        value.authoredScale9Grid = source.scale9Grid;
     if (source.kind === "dynamic-text") {
         value._$type = "Sprite";
         value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.textField;

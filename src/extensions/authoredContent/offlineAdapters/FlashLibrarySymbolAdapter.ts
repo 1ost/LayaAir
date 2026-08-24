@@ -51,6 +51,8 @@ const TEXT_FIELD_FIELDS = new Set([
     "initialText", "leading", "leftMargin", "multiline", "password", "rightMargin", "selectable",
     "useOutlines", "variableName", "wordWrap",
 ]);
+const SCALING_GRID_FIELDS = new Set(["characterId", "rect", "sizeGrid", "sourceTag", "units", "valid"]);
+const SCALING_GRID_RECT_FIELDS = new Set(["height", "width", "x", "y"]);
 
 export interface FlashLibraryResourceAuthority {
     readonly sourcePath: string;
@@ -211,6 +213,9 @@ export class FlashLibrarySymbolAdapter {
                 linkage,
                 kind: "container",
                 children,
+            }),
+            ...(asset.scalingGrid === undefined ? {} : {
+                scale9Grid: authoredScale9Grid(asset.scalingGrid, characterId, bounds, sourceTimeline, children),
             }),
         };
         return node;
@@ -527,6 +532,53 @@ export class FlashLibrarySymbolAdapter {
             children: [],
         };
     }
+}
+
+function authoredScale9Grid(
+    value: unknown,
+    characterId: number,
+    bounds: Record<string, any>,
+    sourceTimeline: Record<string, any>,
+    children: ReadonlyArray<NeutralAuthoredNode>,
+): NonNullable<NeutralAuthoredNode["scale9Grid"]> {
+    const source = object(value, `library.assets.${characterId}.scalingGrid`);
+    exactKeys(source, SCALING_GRID_FIELDS, `library.assets.${characterId}.scalingGrid`, "FLASH_LIBRARY_SCALING_GRID_FIELD_UNSUPPORTED");
+    exactValue(source.characterId, characterId, "FLASH_LIBRARY_SCALING_GRID_CHARACTER_MISMATCH", `Scaling grid ${characterId} identifies another character.`);
+    exactValue(source.sourceTag, "DefineScalingGridTag", "FLASH_LIBRARY_SCALING_GRID_SOURCE_UNSUPPORTED", `Scaling grid ${characterId} has an unsupported source tag.`);
+    exactValue(source.units, "pixels", "FLASH_LIBRARY_SCALING_GRID_UNITS_UNSUPPORTED", `Scaling grid ${characterId} is not in pixels.`);
+    exactValue(source.valid, true, "FLASH_LIBRARY_SCALING_GRID_INVALID", `Scaling grid ${characterId} was not validated by the source adapter.`);
+    if (positiveInteger(sourceTimeline.frameCount, `timeline ${characterId}.frameCount`) !== 1)
+        fail("FLASH_LIBRARY_ANIMATED_SCALING_GRID_UNSUPPORTED", `Scaling grid ${characterId} requires a one-frame raster projection.`);
+    if (children.length !== 1 || children[0].kind !== "image")
+        fail("FLASH_LIBRARY_SCALING_GRID_RASTER_TARGET_REQUIRED", `Scaling grid ${characterId} requires exactly one direct image child.`);
+    const child = children[0];
+    const boundsWidth = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
+    const boundsHeight = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
+    if ((child.x ?? 0) !== 0 || (child.y ?? 0) !== 0 || child.width !== boundsWidth || child.height !== boundsHeight)
+        fail("FLASH_LIBRARY_SCALING_GRID_RASTER_BOUNDS_MISMATCH", `Scaling grid ${characterId} image child does not cover the authored bounds.`);
+    const rect = object(source.rect, `library.assets.${characterId}.scalingGrid.rect`);
+    exactKeys(rect, SCALING_GRID_RECT_FIELDS, `library.assets.${characterId}.scalingGrid.rect`, "FLASH_LIBRARY_SCALING_GRID_RECT_FIELD_UNSUPPORTED");
+    const x = finite(rect.x, `library.assets.${characterId}.scalingGrid.rect.x`);
+    const y = finite(rect.y, `library.assets.${characterId}.scalingGrid.rect.y`);
+    const width = finite(rect.width, `library.assets.${characterId}.scalingGrid.rect.width`);
+    const height = finite(rect.height, `library.assets.${characterId}.scalingGrid.rect.height`);
+    if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > boundsWidth || y + height > boundsHeight)
+        fail("FLASH_LIBRARY_SCALING_GRID_RECT_INVALID", `Scaling grid ${characterId} lies outside the authored bounds.`);
+    const values = array(source.sizeGrid, `library.assets.${characterId}.scalingGrid.sizeGrid`);
+    if (values.length !== 5)
+        fail("FLASH_LIBRARY_SCALING_GRID_SIZE_INVALID", `Scaling grid ${characterId} sizeGrid must contain five values.`);
+    const sizeGrid = values.map((item, index) => finite(item, `library.assets.${characterId}.scalingGrid.sizeGrid[${index}]`));
+    const expected = [y, boundsWidth - x - width, boundsHeight - y - height, x, 0];
+    if (sizeGrid.some((item, index) => item !== expected[index]))
+        fail("FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH", `Scaling grid ${characterId} insets disagree with its rectangle.`);
+    return {
+        x,
+        y,
+        width,
+        height,
+        sizeGrid: sizeGrid as [number, number, number, number, 0],
+        target: child.name ?? child.linkage,
+    };
 }
 
 function spriteBounds(asset: Record<string, any>, sourceTimeline: Record<string, any>, characterId: number): Record<string, any> {
