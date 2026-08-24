@@ -604,6 +604,52 @@ async function main(): Promise<void> {
         assert(parsed._$authoredContent.resources[0].sha256 === sha256(payload), "canonical .lh resource authentication metadata drifted");
         assert(parsed._$preloads.join(",") === "hero-asset,timeline-asset", "native preload closure drifted");
 
+        const randomHierarchyA = JSON.parse(JSON.stringify(hierarchy));
+        randomHierarchyA._$id = "random-root-a";
+        randomHierarchyA._$child[0]._$id = "random-container-a";
+        randomHierarchyA._$child[0]._$child[0]._$id = "random-image-a";
+        randomHierarchyA.selectedImage = { "_$ref": "random-image-a" };
+        const randomHierarchyB = JSON.parse(JSON.stringify(hierarchy));
+        randomHierarchyB._$id = "random-root-b";
+        randomHierarchyB._$child[0]._$id = "random-container-b";
+        randomHierarchyB._$child[0]._$child[0]._$id = "random-image-b";
+        randomHierarchyB.selectedImage = { "_$ref": "random-image-b" };
+        const randomBundleA = await prepareNativeLayaAuthoredContentBundle({
+            ...preparation,
+            hierarchy: randomHierarchyA,
+        });
+        const randomBundleB = await prepareNativeLayaAuthoredContentBundle({
+            ...preparation,
+            hierarchy: randomHierarchyB,
+        });
+        const randomPrefabA = randomBundleA.files.find(file => file.kind === "prefab")!;
+        const randomPrefabB = randomBundleB.files.find(file => file.kind === "prefab")!;
+        assert(randomPrefabA.bytes.every((value, index) => value === randomPrefabB.bytes[index]),
+            "opaque HierarchyWriter IDs changed canonical .lh bytes");
+        const canonicalIds = JSON.parse(new TextDecoder().decode(randomPrefabA.bytes));
+        const publishedIds = [
+            canonicalIds._$id,
+            canonicalIds._$child[0]._$id,
+            canonicalIds._$child[0]._$child[0]._$id,
+        ];
+        assert(new Set(publishedIds).size === publishedIds.length,
+            "canonical hierarchy IDs are not unique");
+        assert(canonicalIds.selectedImage._$ref === canonicalIds._$child[0]._$child[0]._$id,
+            "canonical hierarchy reference did not follow its target ID");
+
+        const duplicatedId = JSON.parse(JSON.stringify(randomHierarchyA));
+        duplicatedId._$child[0]._$id = duplicatedId._$id;
+        await assertRejects(
+            () => prepareNativeLayaAuthoredContentBundle({ ...preparation, hierarchy: duplicatedId }),
+            "AUTHORED_CONTENT_NATIVE_HIERARCHY_ID_DUPLICATE",
+        );
+        const danglingReference = JSON.parse(JSON.stringify(randomHierarchyA));
+        danglingReference.selectedImage._$ref = "missing-image";
+        await assertRejects(
+            () => prepareNativeLayaAuthoredContentBundle({ ...preparation, hierarchy: danglingReference }),
+            "AUTHORED_CONTENT_NATIVE_HIERARCHY_REFERENCE_DANGLING",
+        );
+
         const wrongPayload = { ...preparation, resourcePayloads: new Map([["hero", new Uint8Array([9, 9, 9, 9])]]) };
         await assertRejects(
             () => prepareNativeLayaAuthoredContentBundle(wrongPayload),

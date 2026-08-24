@@ -184,6 +184,7 @@ export function prepareNativeLayaHierarchy(
     const hierarchy = canonicalClone(hierarchyValue, "hierarchy") as Record<string, unknown>;
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
+    canonicalizeHierarchyIds(hierarchy);
     decorateAuthoredRuntime(content.root, hierarchy);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
@@ -203,6 +204,58 @@ export function prepareNativeLayaHierarchy(
         ...[...nestedTimelineAssetIds].map(() => "AnimationClip2D")
     ];
     return hierarchy;
+}
+
+/**
+ * LayaAir IDE hierarchy serialization assigns opaque node IDs randomly. They
+ * are not authored identity, but `_$ref` values can point at them. Normalize
+ * the complete ID graph before publication so identical authored input emits
+ * byte-identical `.lh` files without breaking internal references.
+ */
+function canonicalizeHierarchyIds(hierarchy: Record<string, unknown>): void {
+    const owners: Array<{ readonly value: Record<string, unknown>; readonly original: string }> = [];
+    const originals = new Set<string>();
+    visitJsonObjects(hierarchy, value => {
+        if (!("_$id" in value))
+            return;
+        const original = value._$id;
+        if (typeof original !== "string" || original.length === 0)
+            fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_ID_INVALID", "Hierarchy IDs must be non-empty strings.");
+        if (originals.has(original))
+            fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_ID_DUPLICATE", `Hierarchy ID '${original}' is duplicated.`);
+        originals.add(original);
+        owners.push({ value, original });
+    });
+
+    const replacements = new Map(owners.map(({ original }, index) => [
+        original,
+        `authored-${(index + 1).toString(36).padStart(8, "0")}`,
+    ]));
+    owners.forEach(({ value, original }) => value._$id = replacements.get(original)!);
+
+    visitJsonObjects(hierarchy, value => {
+        if (!("_$ref" in value))
+            return;
+        const reference = value._$ref;
+        if (typeof reference !== "string" || reference.length === 0)
+            fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_REFERENCE_INVALID", "Hierarchy references must be non-empty strings.");
+        const replacement = replacements.get(reference);
+        if (replacement === undefined)
+            fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_REFERENCE_DANGLING", `Hierarchy reference '${reference}' has no local ID.`);
+        value._$ref = replacement;
+    });
+}
+
+function visitJsonObjects(value: unknown, visitor: (value: Record<string, unknown>) => void): void {
+    if (Array.isArray(value)) {
+        value.forEach(child => visitJsonObjects(child, visitor));
+        return;
+    }
+    if (value === null || typeof value !== "object")
+        return;
+    const object = value as Record<string, unknown>;
+    visitor(object);
+    Object.keys(object).sort(compareText).forEach(key => visitJsonObjects(object[key], visitor));
 }
 
 export function canonicalLayaHierarchyBytes(hierarchy: Record<string, unknown>): Uint8Array {
