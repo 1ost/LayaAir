@@ -18,8 +18,8 @@ type NeutralResourceInput = {
 
 type DisplayMatrix = {
     readonly a: number;
-    readonly b: 0;
-    readonly c: 0;
+    readonly b: number;
+    readonly c: number;
     readonly d: number;
     readonly tx: number;
     readonly ty: number;
@@ -553,16 +553,27 @@ export class FlashLibrarySymbolAdapter {
                     y: baseY + state.matrix.ty,
                     scaleX: state.matrix.a,
                     scaleY: state.matrix.d,
+                    matrixA: state.matrix.a,
+                    matrixB: state.matrix.b,
+                    matrixC: state.matrix.c,
+                    matrixD: state.matrix.d,
                     alpha: state.alpha,
                     visible: true,
                 };
             });
-            return (["x", "y", "scaleX", "scaleY", "alpha", "visible"] as const).map(property => ({
+            const usesAffineMatrix = values.some(state => state !== undefined
+                && (state.matrixB !== 0 || state.matrixC !== 0));
+            const properties = usesAffineMatrix
+                ? (["x", "y", "matrixA", "matrixB", "matrixC", "matrixD", "alpha", "visible"] as const)
+                : (["x", "y", "scaleX", "scaleY", "alpha", "visible"] as const);
+            return properties.map(property => ({
                 targetPath: [ownerInstanceId, child.instanceId ?? child.linkage],
                 property,
                 keyframes: values.map((state, frameIndex) => ({
                     time: frameIndex / frameRate,
-                    value: state?.[property] ?? (property === "visible" ? false : property === "alpha" ? 1 : property.startsWith("scale") ? 1 : 0),
+                    value: state?.[property] ?? (property === "visible" ? false
+                        : property === "alpha" || property === "scaleX" || property === "scaleY"
+                            || property === "matrixA" || property === "matrixD" ? 1 : 0),
                 })),
             }));
         });
@@ -1273,9 +1284,9 @@ function displayMatrix(value: unknown): DisplayMatrix {
     const b = finite(matrix.b, "place.matrix.b");
     const c = finite(matrix.c, "place.matrix.c");
     const d = finite(matrix.d, "place.matrix.d");
-    if (b !== 0 || c !== 0)
-        fail("FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED", "Animated display-list projection does not admit skew or rotation.");
-    return { a, b: 0, c: 0, d, tx: finite(matrix.tx, "place.matrix.tx"), ty: finite(matrix.ty, "place.matrix.ty") };
+    if (a * d - b * c === 0)
+        fail("FLASH_LIBRARY_ANIMATED_MATRIX_SINGULAR", "Animated display-list projection requires an invertible 2D affine matrix.");
+    return { a, b, c, d, tx: finite(matrix.tx, "place.matrix.tx"), ty: finite(matrix.ty, "place.matrix.ty") };
 }
 
 function displayAlpha(value: unknown): number {

@@ -259,8 +259,9 @@ export class NativeLayaEmitter {
         const ownerPath = ["", ...nativeOwnerPath];
         node._setOwnerPathCount(ownerPath.length);
         ownerPath.forEach((value, index) => node._setOwnerPathByIndex(index, value));
-        node._setPropertyCount(1);
-        node._setPropertyByIndex(0, track.property);
+        const propertyPath = this.nativeTimelinePropertyPath(track.property);
+        node._setPropertyCount(propertyPath.length);
+        propertyPath.forEach((value, index) => node._setPropertyByIndex(index, value));
         node.nodePath = node._joinOwnerPath("/");
         node.fullPath = `${node.nodePath}.${node._joinProperty(".")}`;
         node._setKeyframeCount(track.keyframes.length);
@@ -275,6 +276,16 @@ export class NativeLayaEmitter {
             node._keyFrames[index] = keyframe;
         });
         return node;
+    }
+
+    private static nativeTimelinePropertyPath(property: NeutralTimelineTrack["property"]): ReadonlyArray<string> {
+        switch (property) {
+            case "matrixA": return ["transform", "a"];
+            case "matrixB": return ["transform", "b"];
+            case "matrixC": return ["transform", "c"];
+            case "matrixD": return ["transform", "d"];
+            default: return [property];
+        }
     }
 
     private static collectNodeBindings(content: NeutralAuthoredContentIR): {

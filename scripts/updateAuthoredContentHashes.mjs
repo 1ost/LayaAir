@@ -396,13 +396,29 @@ Object.assign(renderingTransformCapability, {
         ["src/layaAir/flash/display/DisplayObject.ts", "DisplayObject"],
     ].map(([path, exported]) => renderingTransformCapability.artifacts?.find(
         item => item.path === path && item.export === exported) || { path, export: exported, sha256: "" }),
-    evidence: [{
-        path: "tests/architecture/flashGeometryBridgeEvidence.test.ts",
-        test: "Flash native transform synchronization surface",
-        sha256: "",
-        capability: "rendering.transform",
-        covers: [],
-    }],
+    evidence: [
+        {
+            path: "tests/architecture/flashGeometryBridgeEvidence.test.ts",
+            test: "Flash native transform synchronization surface",
+            sha256: "",
+            capability: "rendering.transform",
+            covers: [],
+        },
+        {
+            path: "tests/authoredFlashDisplayListTimeline/run.cjs",
+            test: "Authored Flash animated affine projection and replacement continuity",
+            sha256: "",
+            capability: "rendering.transform",
+            covers: [],
+        },
+        {
+            path: "tests/authoredContent/run.ts",
+            test: "Neutral affine components round-trip through native timeline transform bindings",
+            sha256: "",
+            capability: "rendering.transform",
+            covers: [],
+        },
+    ],
 });
 delete renderingTransformCapability.blockingReason;
 

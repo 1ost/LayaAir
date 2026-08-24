@@ -90,7 +90,7 @@ function verifyFailClosedMutations(adapter, baseline) {
         ["placement blend mode", request => firstStaticPlacement(request).blendMode = "multiply", /FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED/],
         ["placement matrix field", request => firstStaticPlacement(request).matrix.perspective = 1, /FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED/],
         ["move before place", request => firstStaticPlacement(request).move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
-        ["animated skew override", request => firstReplacement(request).matrix = { ...unitMatrix(1, 0), b: 0.1 }, /FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED/],
+        ["animated singular matrix", request => firstReplacement(request).matrix = { ...unitMatrix(1, 0), a: 1, b: 2, c: 2, d: 4 }, /FLASH_LIBRARY_ANIMATED_MATRIX_SINGULAR/],
         ["frame executable field", request => firstReachableFrame(request).actions = [], /FLASH_LIBRARY_FRAME_FIELD_UNSUPPORTED/],
     ];
     const rejected = [];

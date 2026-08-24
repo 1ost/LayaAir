@@ -20,6 +20,14 @@ require.extensions[".ts"] = (module, filename) => {
 const { FlashLibrarySymbolAdapter } = require("../../src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts");
 
 const matrix = (a = 1, d = 1, tx = 0, ty = 0) => ({ a, b: 0, c: 0, d, tx, ty });
+const petHouseAffine = () => ({
+    a: 0.000091552734,
+    b: 1.0165405,
+    c: -1,
+    d: 0.000091552734,
+    tx: 13.15,
+    ty: 5.05,
+});
 const color = alphaMultiplier => ({
     alphaMultiplier, alphaOffset: 0,
     redMultiplier: 1, redOffset: 0,
@@ -61,7 +69,7 @@ function fixture() {
             [10, {
                 schema: "flash-timeline@1", symbolId: 10, symbolName: "MiniFlag", frameRate: 30, frameCount: 3,
                 frames: [
-                    { index: 1, operations: [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 1, matrix: matrix(), colorTransform: color(0.5) }] },
+                    { index: 1, operations: [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 1, matrix: petHouseAffine(), colorTransform: color(0.5) }] },
                     { index: 2, operations: [
                         { op: "place", depth: 1, move: true, ratio: 0, colorTransform: color(1) },
                         { op: "place", characterId: 4, depth: 3, move: false, ratio: 2, matrix: matrix(0.2, 0.2, 8, 9), colorTransform: color(0) },
@@ -113,6 +121,12 @@ assert.deepEqual(track(content, "character_3", "alpha").keyframes.map(value => v
 assert.deepEqual(track(content, "character_4", "visible").keyframes.map(value => value.value), [false, true, true]);
 assert.deepEqual(track(content, "character_4", "scaleX").keyframes.map(value => value.value), [1, 0.2, 1]);
 assert.deepEqual(track(content, "character_4", "x").keyframes.map(value => value.value), [0, 8, 2]);
+assert.deepEqual(track(content, "character_3", "matrixA").keyframes.map(value => value.value), [petHouseAffine().a, petHouseAffine().a, 1]);
+assert.deepEqual(track(content, "character_3", "matrixB").keyframes.map(value => value.value), [petHouseAffine().b, petHouseAffine().b, 0]);
+assert.deepEqual(track(content, "character_3", "matrixC").keyframes.map(value => value.value), [petHouseAffine().c, petHouseAffine().c, 0]);
+assert.deepEqual(track(content, "character_3", "matrixD").keyframes.map(value => value.value), [petHouseAffine().d, petHouseAffine().d, 1]);
+assert.deepEqual(track(content, "character_3", "x").keyframes.map(value => value.value), [13.15, 13.15, 0]);
+assert.deepEqual(track(content, "character_3", "y").keyframes.map(value => value.value), [5.05, 5.05, 0]);
 
 const replacement = fixture();
 replacement.library.assets[5] = { characterId: 5, kind: "sprite", bounds: { x: 0, y: 0, width: 20, height: 20 } };
@@ -126,8 +140,13 @@ assert.deepEqual(
 );
 assert.deepEqual(
     track(replacementContent, "character_5", "x").keyframes.map(value => value.value),
-    [0, 0, 0],
+    [0, 13.15, 0],
     "retained replacement matrix drifted",
+);
+assert.deepEqual(
+    track(replacementContent, "character_5", "matrixB").keyframes.map(value => value.value),
+    [0, petHouseAffine().b, 0],
+    "retained replacement rotation/skew drifted",
 );
 
 const repeatedAnimated = fixture();
@@ -156,13 +175,15 @@ assert.deepEqual(withoutRatioEvidence(content), withoutRatioEvidence(zeroRatioCo
 for (const [label, mutate, expected] of [
     ["move before place", value => value.timelines.get(10).frames[0].operations[0].move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
     ["RGB color transform", value => value.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
-    ["skew matrix", value => value.timelines.get(10).frames[1].operations[1].matrix.b = 0.1, /FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED/],
     ["declared frame-count drift", value => value.timelines.get(10).frameCount = 4, /FLASH_LIBRARY_FRAME_CLOSURE/],
     ["nonconsecutive frame index", value => value.timelines.get(10).frames[1].index = 3, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
     ["non-unit frame duration", value => value.timelines.get(10).frames[1].durationTicks = 2, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
     ["fractional ratio", value => value.timelines.get(10).frames[0].operations[0].ratio = 1.5, /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
     ["out-of-range ratio", value => value.timelines.get(10).frames[0].operations[0].ratio = 0x10000, /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
     ["real morph target", value => value.library.assets[3].kind = "morph", /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
+    ["singular matrix", value => value.timelines.get(10).frames[1].operations[1].matrix = { a: 1, b: 2, c: 2, d: 4, tx: 0, ty: 0 }, /FLASH_LIBRARY_ANIMATED_MATRIX_SINGULAR/],
+    ["non-finite matrix", value => value.timelines.get(10).frames[1].operations[1].matrix.b = Number.POSITIVE_INFINITY, /FLASH_LIBRARY_NUMBER_REQUIRED/],
+    ["unsupported matrix field", value => value.timelines.get(10).frames[1].operations[1].matrix.perspective = 1, /FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED/],
 ]) {
     const value = fixture();
     mutate(value);
@@ -229,4 +250,4 @@ for (const [label, mutate, expected] of [
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored Flash display-list timeline: 15/15 passed\n");
+process.stdout.write("authored Flash display-list timeline: 17/17 passed\n");

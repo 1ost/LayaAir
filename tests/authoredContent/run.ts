@@ -1680,6 +1680,54 @@ async function main(): Promise<void> {
         assert(node._keyFrames[1].data.val === 50, "keyframe value did not round-trip");
     });
 
+    await test("animated affine matrix components round-trip to native transform bindings", () => {
+        const affine = {
+            matrixA: 0.000091552734,
+            matrixB: 1.0165405,
+            matrixC: -1,
+            matrixD: 0.000091552734,
+        } as const;
+        const source = sourceDocument() as any;
+        source.timeline.tracks = Object.entries(affine).map(([property, value]) => ({
+            targetPath: ["Root", "Title"],
+            property,
+            keyframes: [{ time: 0, value }, { time: 1, value }],
+        }));
+        const content = normalizeNeutralAuthoredContent(source);
+        assert(content.timeline.tracks.map(track => track.property).join(",")
+            === "matrixA,matrixB,matrixC,matrixD", "neutral affine component order drifted");
+
+        const parsed = AnimationClip2D._parse(
+            NativeAnimationClip2DWriter.write(NativeLayaEmitter.createTimeline(content)),
+        ) as any;
+        const rendered = new Matrix();
+        try {
+            const observed = new Map<string, number>();
+            for (let index = 0; index < parsed._nodes.count; index++) {
+                const node = parsed._nodes.getNodeByIndex(index);
+                assert(node.propertyCount === 2 && node.getPropertyByIndex(0) === "transform",
+                    "affine timeline did not bind through the native Sprite transform");
+                const component = node.getPropertyByIndex(1) as "a" | "b" | "c" | "d";
+                const value = node._keyFrames[0].data.val as number;
+                observed.set(component, value);
+                rendered[component] = value;
+            }
+            for (const [component, expected] of Object.entries({
+                a: affine.matrixA, b: affine.matrixB, c: affine.matrixC, d: affine.matrixD,
+            })) {
+                assert(Math.abs((rendered as any)[component] - expected) < 1e-6,
+                    `native affine render component ${component} drifted`);
+            }
+            assert(Math.abs(rendered.a * rendered.d - rendered.b * rendered.c) > 0,
+                "native affine render state became singular");
+            assert(observed.size === 4, "native affine component closure drifted");
+        }
+        finally {
+            rendered.destroy();
+            parsed.destroy();
+        }
+    });
+
     await test("normalized content emits deterministic native animation bytes", () => {
         const firstContent = normalizeNeutralAuthoredContent(sourceDocument());
         const secondContent = normalizeNeutralAuthoredContent(sourceDocument());

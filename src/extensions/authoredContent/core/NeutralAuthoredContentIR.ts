@@ -4,7 +4,10 @@ export type NeutralNodeKind = "button" | "button-state" | "container" | "dynamic
 export type NeutralImageMediaType = "image/jpeg" | "image/png";
 export type NeutralFontMediaType = "font/ttf";
 export type NeutralAuthoredMediaType = NeutralImageMediaType | NeutralFontMediaType;
-export type NeutralTimelineProperty = "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible";
+export type NeutralTimelineProperty =
+    | "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible"
+    /** Exact components of an authored 2D affine matrix, emitted through Sprite.transform. */
+    | "matrixA" | "matrixB" | "matrixC" | "matrixD";
 export type NeutralKeyframeValue = number | boolean;
 
 export interface NeutralAuthoredMatrix {
@@ -252,7 +255,10 @@ const NODE_KINDS: ReadonlySet<string> = new Set(["button", "button-state", "cont
 const BUTTON_STATE_ORDER = ["upState", "overState", "downState", "hitTestState"] as const;
 const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATE_ORDER);
 const RESOURCE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "font/ttf"]);
-const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible"]);
+const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set([
+    "x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible",
+    "matrixA", "matrixB", "matrixC", "matrixD",
+]);
 const SCALED_NODE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "width", "height", "fontSize"]);
 const SCALED_TRACK_PROPERTIES: ReadonlySet<string> = new Set(["x", "y"]);
 
