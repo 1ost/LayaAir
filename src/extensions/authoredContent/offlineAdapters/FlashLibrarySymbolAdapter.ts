@@ -142,9 +142,10 @@ export class FlashLibrarySymbolAdapter {
                 resources,
             );
         const placement = operation === undefined ? { x: 0, y: 0 } : translation(operation);
+        const linkage = flashLibraryAssetName(asset, characterId);
         const node: NeutralAuthoredNode = {
-            linkage: string(asset.symbolName, `library.assets.${characterId}.symbolName`),
-            name: forcedName ?? operation?.name ?? string(asset.symbolName, `library.assets.${characterId}.symbolName`),
+            linkage,
+            name: forcedName ?? operation?.name ?? linkage,
             kind: "container",
             depth: root ? undefined : positiveInteger(operation?.depth, `sprite ${characterId} depth`),
             x: placement.x,
@@ -154,7 +155,7 @@ export class FlashLibrarySymbolAdapter {
             variable: typeof operation?.name === "string",
             children,
             timeline: root ? undefined : nativeTimeline(sourceTimeline, {
-                linkage: string(asset.symbolName, `library.assets.${characterId}.symbolName`),
+                linkage,
                 kind: "container",
                 children,
             }),
@@ -349,7 +350,8 @@ export class FlashLibrarySymbolAdapter {
  * exact axis-aligned bitmap projection. The FFDec XML exporter may retain its
  * sentinel bitmap fill (character 65535) alongside the real fill; the sentinel
  * carries no pixels and is ignored only after the remaining geometry proves a
- * complete rectangular projection.
+ * complete rectangular projection. Bitmap fills may reference either lossless
+ * PNG authorities or authored JPEG authorities retained by the extractor.
  */
 export function resolveFlashLibraryShapeResourcePath(
     assetValue: unknown,
@@ -381,11 +383,18 @@ export function resolveFlashLibraryShapeResourcePath(
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not the exact bounds rectangle.`);
 
     const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
-    const expectedSuffix = `/${bitmapId}.png`;
-    const candidates = [...resourceAuthorities.keys()].filter(value =>
-        value === `assets/${bitmapId}.png` || value.replace(/\\/g, "/").endsWith(expectedSuffix));
+    const expectedName = new RegExp(`(?:^|/)${bitmapId}\\.(?:png|jpe?g)$`, "i");
+    const candidates = [...resourceAuthorities.entries()]
+        .filter(([sourcePath, authority]) => {
+            const normalized = sourcePath.replace(/\\/g, "/");
+            if (!expectedName.test(normalized)) return false;
+            const lower = normalized.toLowerCase();
+            return (lower.endsWith(".png") && authority.mediaType === "image/png")
+                || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg");
+        })
+        .map(([sourcePath]) => sourcePath);
     if (candidates.length !== 1)
-        fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated PNG authority.`);
+        fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
     return candidates[0];
 }
 
