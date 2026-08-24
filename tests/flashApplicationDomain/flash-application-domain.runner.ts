@@ -3,6 +3,12 @@ import test from "node:test";
 
 import { ApplicationDomain } from "../../src/layaAir/flash/system/ApplicationDomain";
 import { registerDefinitionByName } from "../../src/layaAir/flash/utils/DefinitionRegistry";
+import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
+import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
+import {
+    createAuthoredPrefabDefinition,
+    registerAuthoredContentRuntime,
+} from "../../src/extensions/authoredContent/runtime/bootstrap";
 
 class RootAsset {
 }
@@ -11,6 +17,12 @@ class ParentAsset {
 }
 
 class ChildAsset {
+}
+
+class PetHouseClip extends MovieClip {
+}
+
+class OtherPetHouseClip extends MovieClip {
 }
 
 test("currentDomain projects the native registry with Flash name aliases", () => {
@@ -60,4 +72,63 @@ test("local registration is idempotent but rejects identity replacement", () => 
         () => domain.registerDefinition("tests.application.Invalid", {} as never),
         TypeError,
     );
+});
+
+test("flat authored SymbolClass linkage registers and resolves through ApplicationDomain", () => {
+    registerAuthoredContentRuntime([{
+        id: "MC_PetHouse",
+        ctor: PetHouseClip,
+        sourceType: "MovieClip",
+        serializedType: "Sprite",
+    }]);
+    assert.equal(ClassUtils.getClass("MC_PetHouse"), PetHouseClip);
+
+    const prefab = { create: () => new PetHouseClip() };
+    const Definition = createAuthoredPrefabDefinition("MC_PetHouse", prefab, PetHouseClip);
+    ApplicationDomain.currentDomain.registerDefinition("MC_PetHouse", Definition);
+    assert.equal(ApplicationDomain.currentDomain.hasDefinition("MC_PetHouse"), true);
+    assert.equal(ApplicationDomain.currentDomain.getDefinition("MC_PetHouse"), Definition);
+    assert.equal(Definition.prototype, PetHouseClip.prototype);
+
+    assert.throws(() => registerAuthoredContentRuntime([{
+        id: "MC_PetHouse",
+        ctor: OtherPetHouseClip,
+        sourceType: "MovieClip",
+        serializedType: "Sprite",
+    }]), /collision/);
+    assert.throws(
+        () => ApplicationDomain.currentDomain.registerDefinition("MC_PetHouse", OtherPetHouseClip),
+        /different identity/,
+    );
+});
+
+test("dotted authored linkage remains admitted while invalid and reserved IDs fail closed", () => {
+    registerAuthoredContentRuntime([{
+        id: "fixtures.PetHouse",
+        ctor: PetHouseClip,
+        sourceType: "MovieClip",
+        serializedType: "Sprite",
+    }]);
+    assert.equal(ClassUtils.getClass("fixtures.PetHouse"), PetHouseClip);
+    const prefab = { create: () => new PetHouseClip() };
+    const DottedDefinition = createAuthoredPrefabDefinition("fixtures.PetHouse", prefab, PetHouseClip);
+    const child = new ApplicationDomain();
+    child.registerDefinition("fixtures.PetHouse", DottedDefinition);
+    assert.equal(child.getDefinition("fixtures::PetHouse"), DottedDefinition);
+
+    for (const id of [
+        "", "9PetHouse", ".PetHouse", "PetHouse.", "Pet..House", "Pet-House",
+        "flash", "flash.display.MovieClip", "laya", "laya.display.Sprite",
+    ]) {
+        assert.throws(
+            () => createAuthoredPrefabDefinition(id, prefab, PetHouseClip),
+            /application-owned/,
+        );
+        assert.throws(() => registerAuthoredContentRuntime([{
+            id,
+            ctor: OtherPetHouseClip,
+            sourceType: "MovieClip",
+            serializedType: "Sprite",
+        }]), /application-owned/);
+    }
 });

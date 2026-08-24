@@ -18,8 +18,16 @@ try {
         platform: "node",
         format: "esm",
         target: "node18",
+        banner: {
+            js: "globalThis.window = globalThis.window ?? globalThis; globalThis.document = globalThis.document ?? {};",
+        },
         sourcemap: "inline",
         logLevel: "warning",
+        loader: {
+            ".glsl": "text",
+            ".vs": "text",
+            ".fs": "text",
+        },
     });
     const result = spawnSync(process.execPath, ["--max-old-space-size=512", "--test", output], {
         cwd: root,

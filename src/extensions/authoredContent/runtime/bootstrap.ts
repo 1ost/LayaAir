@@ -19,12 +19,21 @@ export interface AuthoredPrefabFactory<T extends Node = Node> {
 
 export type AuthoredPrefabDefinition<T extends Node> = new () => T;
 
-const LINKAGE_ID = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/;
+const LINKAGE_ID = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
 const installed = new Map<string, Function>();
 const SOURCE_TYPES = { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } as const;
 const SERIALIZED_TYPES: Readonly<Record<AuthoredSourceType, AuthoredSerializedType>> = {
     DisplayObject: "Sprite", MovieClip: "Sprite", SimpleButton: "Sprite", Sprite: "Sprite", TextField: "Sprite"
 };
+
+function isApplicationLinkageId(value: unknown): value is string {
+    return typeof value === "string"
+        && LINKAGE_ID.test(value)
+        && value !== "flash"
+        && !value.startsWith("flash.")
+        && value !== "laya"
+        && !value.startsWith("laya.");
+}
 
 /**
  * Adapts one already-loaded canonical Laya hierarchy to a synchronous native
@@ -37,8 +46,7 @@ export function createAuthoredPrefabDefinition<T extends Node>(
     prefab: AuthoredPrefabFactory,
     expectedRoot: new (...args: any[]) => T,
 ): AuthoredPrefabDefinition<T> {
-    if (typeof linkageId !== "string" || !LINKAGE_ID.test(linkageId)
-        || linkageId.startsWith("flash.") || linkageId.startsWith("laya."))
+    if (!isApplicationLinkageId(linkageId))
         throw new TypeError("Authored prefab definition requires an application-owned linkage ID");
     if (!prefab || typeof prefab !== "object" || typeof prefab.create !== "function")
         throw new TypeError(`Authored prefab definition '${linkageId}' requires a loaded canonical Laya prefab`);
@@ -78,8 +86,7 @@ export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntim
         if (keys.length !== 4 || !keys.includes("id") || !keys.includes("ctor")
             || !keys.includes("sourceType") || !keys.includes("serializedType"))
             throw new TypeError(`linkages[${index}] must contain exactly id, ctor, sourceType and serializedType`);
-        if (typeof linkage.id !== "string" || !LINKAGE_ID.test(linkage.id)
-            || linkage.id.startsWith("flash.") || linkage.id.startsWith("laya."))
+        if (!isApplicationLinkageId(linkage.id))
             throw new TypeError(`linkages[${index}].id must be an application-owned linkage ID`);
         if (typeof linkage.ctor !== "function" || !(linkage.ctor.prototype instanceof Node))
             throw new TypeError(`linkages[${index}].ctor must extend Laya Node`);
