@@ -13,7 +13,14 @@ type NeutralResourceInput = {
     readonly sha256: string;
 };
 
-type DisplayMatrix = { readonly a: number; readonly d: number; readonly tx: number; readonly ty: number };
+type DisplayMatrix = {
+    readonly a: number;
+    readonly b: 0;
+    readonly c: 0;
+    readonly d: number;
+    readonly tx: number;
+    readonly ty: number;
+};
 type FlashDisplayState = {
     readonly instanceId: number;
     readonly characterId: number;
@@ -547,7 +554,7 @@ function createDisplayState(
         firstFrame,
         operation,
         matrix: operation.matrix === undefined
-            ? { a: 1, d: 1, tx: 0, ty: 0 }
+            ? { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }
             : displayMatrix(operation.matrix),
         alpha: operation.colorTransform === undefined
             ? inheritedAlpha
@@ -564,7 +571,7 @@ function displayMatrix(value: unknown): DisplayMatrix {
     const d = finite(matrix.d, "place.matrix.d");
     if (b !== 0 || c !== 0)
         fail("FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED", "Animated display-list projection does not admit skew or rotation.");
-    return { a, d, tx: finite(matrix.tx, "place.matrix.tx"), ty: finite(matrix.ty, "place.matrix.ty") };
+    return { a, b: 0, c: 0, d, tx: finite(matrix.tx, "place.matrix.tx"), ty: finite(matrix.ty, "place.matrix.ty") };
 }
 
 function displayAlpha(value: unknown): number {

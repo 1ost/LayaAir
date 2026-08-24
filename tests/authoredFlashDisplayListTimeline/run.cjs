@@ -102,6 +102,22 @@ assert.deepEqual(track(content, "character_4", "visible").keyframes.map(value =>
 assert.deepEqual(track(content, "character_4", "scaleX").keyframes.map(value => value.value), [1, 0.2, 1]);
 assert.deepEqual(track(content, "character_4", "x").keyframes.map(value => value.value), [0, 8, 2]);
 
+const replacement = fixture();
+replacement.library.assets[5] = { characterId: 5, kind: "sprite", bounds: { x: 0, y: 0, width: 20, height: 20 } };
+replacement.timelines.set(5, staticTimeline(5));
+replacement.timelines.get(10).frames[1].operations[0].characterId = 5;
+const replacementContent = adapter.parse(replacement);
+assert.deepEqual(
+    track(replacementContent, "character_5", "visible").keyframes.map(value => value.value),
+    [false, true, false],
+    "character replacement without a matrix did not retain the prior transform",
+);
+assert.deepEqual(
+    track(replacementContent, "character_5", "x").keyframes.map(value => value.value),
+    [0, 0, 0],
+    "retained replacement matrix drifted",
+);
+
 for (const [label, mutate, expected] of [
     ["move before place", value => value.timelines.get(10).frames[0].operations[0].move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
     ["RGB color transform", value => value.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
@@ -113,4 +129,4 @@ for (const [label, mutate, expected] of [
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored Flash display-list timeline: 5/5 passed\n");
+process.stdout.write("authored Flash display-list timeline: 6/6 passed\n");
