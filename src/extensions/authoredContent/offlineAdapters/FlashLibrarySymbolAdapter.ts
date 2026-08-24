@@ -185,7 +185,7 @@ export class FlashLibrarySymbolAdapter {
             );
         }
         if (asset.kind === "shape")
-            return this.createImage(asset, operation, resourceAuthorities, resources);
+            return this.createImage(asset, operation, assets, resourceAuthorities, resources);
         if (asset.kind === "input-text")
             return this.createDynamicText(asset, operation, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
@@ -230,7 +230,7 @@ export class FlashLibrarySymbolAdapter {
                     characterId: pose.characterId,
                     depth: index + 1,
                     matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
-                }, resourceAuthorities, resources),
+                }, assets, resourceAuthorities, resources),
                 visible: index === 0,
             };
         });
@@ -239,11 +239,12 @@ export class FlashLibrarySymbolAdapter {
     private createImage(
         asset: Record<string, any>,
         operation: Record<string, any>,
+        assets: Record<string, any>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "shape.characterId");
-        const sourcePath = resolveFlashLibraryShapeResourcePath(asset, resourceAuthorities);
+        const sourcePath = resolveFlashLibraryShapeResourcePath(asset, assets, resourceAuthorities);
         const authority = resourceAuthorities.get(sourcePath);
         if (!authority || authority.sourcePath !== sourcePath)
             fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
@@ -355,9 +356,11 @@ export class FlashLibrarySymbolAdapter {
  */
 export function resolveFlashLibraryShapeResourcePath(
     assetValue: unknown,
+    assetsValue: unknown,
     resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
 ): string {
     const asset = object(assetValue, "shape asset");
+    const assets = object(assetsValue, "library.assets");
     const characterId = positiveInteger(asset.characterId, "shape.characterId");
     if (asset.path !== undefined)
         return string(asset.path, `library.assets.${characterId}.path`);
@@ -383,19 +386,18 @@ export function resolveFlashLibraryShapeResourcePath(
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not the exact bounds rectangle.`);
 
     const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
-    const expectedName = new RegExp(`(?:^|/)${bitmapId}\\.(?:png|jpe?g)$`, "i");
-    const candidates = [...resourceAuthorities.entries()]
-        .filter(([sourcePath, authority]) => {
-            const normalized = sourcePath.replace(/\\/g, "/");
-            if (!expectedName.test(normalized)) return false;
-            const lower = normalized.toLowerCase();
-            return (lower.endsWith(".png") && authority.mediaType === "image/png")
-                || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg");
-        })
-        .map(([sourcePath]) => sourcePath);
-    if (candidates.length !== 1)
+    const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
+    if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId)
+        fail("FLASH_LIBRARY_BITMAP_FILL_IMAGE_REQUIRED", `Shape ${characterId} bitmap ${bitmapId} does not identify an image asset.`);
+    const sourcePath = string(bitmapAsset.path, `library.assets.${bitmapId}.path`);
+    const authority = resourceAuthorities.get(sourcePath);
+    const lower = sourcePath.replace(/\\/g, "/").toLowerCase();
+    const mediaMatches = authority !== undefined && authority.sourcePath === sourcePath
+        && ((lower.endsWith(".png") && authority.mediaType === "image/png")
+            || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
+    if (!mediaMatches)
         fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
-    return candidates[0];
+    return sourcePath;
 }
 
 function flashLibraryAssetName(asset: Record<string, any>, characterId: number): string {

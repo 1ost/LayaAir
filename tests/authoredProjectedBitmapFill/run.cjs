@@ -34,6 +34,7 @@ function fixture(resourcePath = "assets/1.png", mediaType = "image/png") {
         library: {
             schema: "flash-library@1",
             assets: {
+                "1": { characterId: 1, kind: "image", path: resourcePath },
                 "2": {
                     characterId: 2, kind: "shape", placeholder: true, bounds,
                     shape: {
@@ -84,16 +85,19 @@ assert.equal(content.timeline.tracks.length, 0);
 
 const jpegContent = adapter.parse(fixture("assets/1.jpg", "image/jpeg"));
 assert.equal(jpegContent.resources[0].sourcePath, "assets/1.jpg");
+assert.equal(jpegContent.resources[0].mediaType, "image/jpeg");
+assert.equal(jpegContent.resources[0].outputPath, "resources/flash-character-2.jpg");
 
 const jpegExtensionContent = adapter.parse(fixture("assets/1.jpeg", "image/jpeg"));
 assert.equal(jpegExtensionContent.resources[0].sourcePath, "assets/1.jpeg");
+assert.equal(jpegExtensionContent.resources[0].outputPath, "resources/flash-character-2.jpg");
 
 for (const [label, mutate, expected] of [
     ["scaled bitmap", value => value.library.assets["2"].shape.fillStyles[1].startMatrix.a = 19, /FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED/],
     ["non-rectangular edge", value => value.library.assets["2"].shape.segments[0].end.to = [0, 0], /FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED/],
     ["missing bitmap authority", value => value.resources.clear(), /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
     ["bitmap media mismatch", value => value.resources.get("assets/1.png").mediaType = "image/jpeg", /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
-    ["ambiguous image authority", value => value.resources.set("assets/1.jpg", { ...value.resources.get("assets/1.png"), sourcePath: "assets/1.jpg", mediaType: "image/jpeg" }), /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
+    ["same-stem authority cannot replace exact image asset", value => { value.library.assets["1"].path = "nested/1.png"; }, /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
     ["second real fill", value => value.library.assets["2"].shape.fillStyles.push({ ...value.library.assets["2"].shape.fillStyles[1], bitmapId: 4 }), /FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED/],
 ]) {
     const value = fixture();
