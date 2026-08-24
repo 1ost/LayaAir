@@ -13,8 +13,24 @@ type NeutralResourceInput = {
     readonly sha256: string;
 };
 
-const PLACEMENT_FIELDS = new Set(["characterId", "depth", "matrix", "move", "name", "op", "ratio"]);
+type DisplayMatrix = { readonly a: number; readonly d: number; readonly tx: number; readonly ty: number };
+type FlashDisplayState = {
+    readonly instanceId: number;
+    readonly characterId: number;
+    readonly authoredDepth: number;
+    readonly firstFrame: number;
+    readonly operation: Record<string, any>;
+    matrix: DisplayMatrix;
+    alpha: number;
+};
+
+const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "matrix", "move", "name", "op", "ratio"]);
+const REMOVE_FIELDS = new Set(["depth", "op"]);
 const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
+const COLOR_TRANSFORM_FIELDS = new Set([
+    "alphaMultiplier", "alphaOffset", "blueMultiplier", "blueOffset", "greenMultiplier",
+    "greenOffset", "redMultiplier", "redOffset",
+]);
 const TIMELINE_FIELDS = new Set(["frameCount", "frameRate", "frames", "schema", "symbolId", "symbolName"]);
 const FRAME_FIELDS = new Set(["durationTicks", "index", "labels", "operations", "sounds"]);
 const STAGE_FIELDS = new Set(["backgroundColor", "frameCount", "frameRate", "height", "width"]);
@@ -50,7 +66,7 @@ export class FlashLibrarySymbolAdapter {
         const stageWidth = finite(stage.width, "library.stage.width");
         const stageHeight = finite(stage.height, "library.stage.height");
         const stageFrameRate = positiveInteger(stage.frameRate, "library.stage.frameRate");
-        const stageFrameCount = positiveInteger(stage.frameCount, "library.stage.frameCount");
+        positiveInteger(stage.frameCount, "library.stage.frameCount");
         const stageBackground = object(stage.backgroundColor, "library.stage.backgroundColor");
         exactKeys(stageBackground, STAGE_BACKGROUND_FIELDS, "library.stage.backgroundColor", "FLASH_LIBRARY_STAGE_BACKGROUND_FIELD_UNSUPPORTED");
         const stageBackgroundAlpha = finite(stageBackground.alpha, "library.stage.backgroundColor.alpha");
@@ -68,8 +84,6 @@ export class FlashLibrarySymbolAdapter {
         const entryFrameCount = positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
         if (entryFrameRate !== stageFrameRate)
             fail("FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH", "Stage frame rate must match the entry-symbol timeline.");
-        if (entryFrameCount !== stageFrameCount)
-            fail("FLASH_LIBRARY_STAGE_FRAME_COUNT_MISMATCH", "Stage frame count must match the entry-symbol timeline.");
         const frameLabels = array(library.frameLabels, "library.frameLabels");
         if (frameLabels.length !== 0)
             fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", "This native projection requires an empty frame-label set.");
@@ -93,12 +107,12 @@ export class FlashLibrarySymbolAdapter {
                 runtimeLinkage: request.runtimeLinkage,
                 timeline: undefined,
             },
-            timeline: nativeTimeline(entryTimeline, root),
+            timeline: root.timeline,
             stage: {
                 width: root.width,
                 height: root.height,
                 frameRate: stageFrameRate,
-                frameCount: stageFrameCount,
+                frameCount: entryFrameCount,
                 backgroundColor: {
                     alpha: stageBackgroundAlpha,
                     color: stageBackgroundColor,
@@ -127,7 +141,14 @@ export class FlashLibrarySymbolAdapter {
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const firstFrame = frame(sourceTimeline, 0);
         const initialOperations = array(firstFrame.operations, `timeline ${characterId} frame 1 operations`);
-        const children = sourceTimeline.frameCount === 1
+        const animated = sourceTimeline.frameCount === 1 ? undefined : this.createAnimatedDisplayList(
+            sourceTimeline,
+            assets,
+            timelines,
+            resourceAuthorities,
+            resources,
+        );
+        const children = animated === undefined
             ? initialOperations.map((value, index) => this.createPlacedNode(
                 object(value, `timeline ${characterId} frame 1 operation ${index}`),
                 assets,
@@ -135,12 +156,7 @@ export class FlashLibrarySymbolAdapter {
                 resourceAuthorities,
                 resources,
             ))
-            : this.createReplacementChildren(
-                sourceTimeline,
-                assets,
-                resourceAuthorities,
-                resources,
-            );
+            : animated.children;
         const placement = operation === undefined ? { x: 0, y: 0 } : translation(operation);
         const linkage = flashLibraryAssetName(asset, characterId);
         const node: NeutralAuthoredNode = {
@@ -154,7 +170,7 @@ export class FlashLibrarySymbolAdapter {
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation?.name === "string",
             children,
-            timeline: root ? undefined : nativeTimeline(sourceTimeline, {
+            timeline: animated?.timeline ?? nativeTimeline(sourceTimeline, {
                 linkage,
                 kind: "container",
                 children,
@@ -191,14 +207,16 @@ export class FlashLibrarySymbolAdapter {
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
     }
 
-    private createReplacementChildren(
+    private createAnimatedDisplayList(
         sourceTimeline: Record<string, any>,
         assets: Record<string, any>,
+        timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         resources: Map<string, NeutralResourceInput>,
-    ): ReadonlyArray<NeutralAuthoredNode> {
-        const seenDepths = new Set<number>();
-        const poses: Array<{ characterId: number; depth: number; firstFrame: number }> = [];
+    ): { readonly children: ReadonlyArray<NeutralAuthoredNode>; readonly timeline: NeutralTimeline } {
+        const active = new Map<number, FlashDisplayState>();
+        const instances: FlashDisplayState[] = [];
+        const snapshots: Array<Map<number, FlashDisplayState>> = [];
         const frames = array(sourceTimeline.frames, `timeline ${sourceTimeline.symbolId}.frames`);
         frames.forEach((value, frameIndex) => {
             const current = object(value, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1}`);
@@ -206,34 +224,100 @@ export class FlashLibrarySymbolAdapter {
             array(current.operations, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1} operations`)
                 .forEach((operationValue, operationIndex) => {
                     const operation = object(operationValue, `timeline operation ${operationIndex}`);
-                    exactPlace(operation, "replacement");
-                    const depth = positiveInteger(operation.depth, "place.depth");
-                    const characterId = positiveInteger(operation.characterId, "place.characterId");
-                    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
-                    if (asset.kind !== "shape")
-                        fail("FLASH_LIBRARY_REPLACEMENT_KIND_UNSUPPORTED", "Multi-frame replacement timelines currently require rasterized shapes.");
-                    if (!operation.move && seenDepths.has(depth))
-                        fail("FLASH_LIBRARY_DEPTH_REPLACEMENT_INVALID", `Depth ${depth} is placed twice without move=true.`);
-                    if (operation.move && !seenDepths.has(depth))
-                        fail("FLASH_LIBRARY_DEPTH_REPLACEMENT_INVALID", `Depth ${depth} moves before it is placed.`);
-                    seenDepths.add(depth);
-                    poses.push({ characterId, depth, firstFrame: frameIndex + 1 });
+                    const depth = positiveInteger(operation.depth, `${operation.op}.depth`);
+                    if (operation.op === "remove") {
+                        exactKeys(operation, REMOVE_FIELDS, "remove", "FLASH_LIBRARY_REMOVE_FIELD_UNSUPPORTED");
+                        if (!active.delete(depth))
+                            fail("FLASH_LIBRARY_DISPLAY_DEPTH_INVALID", `Depth ${depth} is removed before it is placed.`);
+                        return;
+                    }
+                    exactKeys(operation, PLACEMENT_FIELDS, "place", "FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED");
+                    if (operation.op !== "place")
+                        fail("FLASH_LIBRARY_DISPLAY_OPERATION_UNSUPPORTED", `Display operation '${String(operation.op)}' is unsupported.`);
+                    const move = operation.move === undefined ? false : boolean(operation.move, "place.move");
+                    const prior = active.get(depth);
+                    if (!move) {
+                        if (prior !== undefined)
+                            fail("FLASH_LIBRARY_DISPLAY_DEPTH_INVALID", `Depth ${depth} is placed twice without removal or move=true.`);
+                        const state = createDisplayState(operation, frameIndex + 1, instances.length + 1, assets);
+                        instances.push(state);
+                        active.set(depth, state);
+                        return;
+                    }
+                    if (prior === undefined)
+                        fail("FLASH_LIBRARY_DISPLAY_DEPTH_INVALID", `Depth ${depth} moves before it is placed.`);
+                    const replacementId = operation.characterId === undefined
+                        ? prior.characterId
+                        : positiveInteger(operation.characterId, "place.characterId");
+                    if (replacementId !== prior.characterId) {
+                        const state = createDisplayState({
+                            ...operation,
+                            characterId: replacementId,
+                            matrix: operation.matrix ?? prior.matrix,
+                        }, frameIndex + 1, instances.length + 1, assets, prior.alpha);
+                        instances.push(state);
+                        active.set(depth, state);
+                        return;
+                    }
+                    if (operation.matrix !== undefined)
+                        prior.matrix = displayMatrix(operation.matrix);
+                    if (operation.colorTransform !== undefined)
+                        prior.alpha = displayAlpha(operation.colorTransform);
+                    validateTimelineRatio(operation, assets, replacementId);
                 });
+            snapshots.push(new Map([...active].map(([depth, state]) => [depth, { ...state, matrix: { ...state.matrix } }])));
         });
-        if (seenDepths.size !== 1 || poses.length < 2)
-            fail("FLASH_LIBRARY_REPLACEMENT_TIMELINE_UNSUPPORTED", "Multi-frame timelines require one-depth discrete replacements.");
-        return poses.map((pose, index) => {
-            const asset = object(assets[String(pose.characterId)], `library.assets.${pose.characterId}`);
-            return {
-                ...this.createImage(asset, {
-                    op: "place",
-                    characterId: pose.characterId,
-                    depth: index + 1,
-                    matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
-                }, assets, resourceAuthorities, resources),
-                visible: index === 0,
+        if (instances.length === 0)
+            fail("FLASH_LIBRARY_ANIMATED_DISPLAY_LIST_EMPTY", `Timeline ${sourceTimeline.symbolId} contains no display objects.`);
+        const ordered = [...instances].sort((left, right) =>
+            left.authoredDepth - right.authoredDepth || left.firstFrame - right.firstFrame || left.instanceId - right.instanceId);
+        const seenLinkages = new Set<string>();
+        const children = ordered.map((instance, index) => {
+            const operation = {
+                op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
+                ...(instance.operation.name === undefined ? {} : { name: instance.operation.name }),
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
+            const child = this.createPlacedNode(operation, assets, timelines, resourceAuthorities, resources);
+            if (seenLinkages.has(child.linkage))
+                fail("FLASH_LIBRARY_ANIMATED_LINKAGE_COLLISION", `Timeline ${sourceTimeline.symbolId} places '${child.linkage}' more than once.`);
+            seenLinkages.add(child.linkage);
+            return { ...child, visible: false };
         });
+        const frameRate = positiveInteger(sourceTimeline.frameRate, `timeline ${sourceTimeline.symbolId}.frameRate`);
+        const tracks = ordered.flatMap((instance, index) => {
+            const child = children[index];
+            const baseX = child.x ?? 0;
+            const baseY = child.y ?? 0;
+            const values = snapshots.map(snapshot => {
+                const state = [...snapshot.values()].find(candidate => candidate.instanceId === instance.instanceId);
+                return state === undefined ? undefined : {
+                    x: baseX + state.matrix.tx,
+                    y: baseY + state.matrix.ty,
+                    scaleX: state.matrix.a,
+                    scaleY: state.matrix.d,
+                    alpha: state.alpha,
+                    visible: true,
+                };
+            });
+            return (["x", "y", "scaleX", "scaleY", "alpha", "visible"] as const).map(property => ({
+                targetPath: [string(sourceTimeline.symbolName ?? `character_${sourceTimeline.symbolId}`, "timeline.symbolName"), child.linkage],
+                property,
+                keyframes: values.map((state, frameIndex) => ({
+                    time: frameIndex / frameRate,
+                    value: state?.[property] ?? (property === "visible" ? false : property === "alpha" ? 1 : property.startsWith("scale") ? 1 : 0),
+                })),
+            }));
+        });
+        return {
+            children,
+            timeline: {
+                frameRate,
+                duration: frames.length / frameRate,
+                loop: true,
+                tracks,
+            },
+        };
     }
 
     private createImage(
@@ -442,6 +526,71 @@ function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record
 
 function canonicalEdge(from: string, to: string): string {
     return from < to ? `${from}|${to}` : `${to}|${from}`;
+}
+
+function createDisplayState(
+    operation: Record<string, any>,
+    firstFrame: number,
+    instanceId: number,
+    assets: Record<string, any>,
+    inheritedAlpha = 1,
+): FlashDisplayState {
+    const characterId = positiveInteger(operation.characterId, "place.characterId");
+    const authoredDepth = positiveInteger(operation.depth, "place.depth");
+    object(assets[String(characterId)], `library.assets.${characterId}`);
+    if (operation.name !== undefined) string(operation.name, "place.name");
+    validateTimelineRatio(operation, assets, characterId);
+    return {
+        instanceId,
+        characterId,
+        authoredDepth,
+        firstFrame,
+        operation,
+        matrix: operation.matrix === undefined
+            ? { a: 1, d: 1, tx: 0, ty: 0 }
+            : displayMatrix(operation.matrix),
+        alpha: operation.colorTransform === undefined
+            ? inheritedAlpha
+            : displayAlpha(operation.colorTransform),
+    };
+}
+
+function displayMatrix(value: unknown): DisplayMatrix {
+    const matrix = object(value, "place.matrix");
+    exactKeys(matrix, MATRIX_FIELDS, "place.matrix", "FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED");
+    const a = finite(matrix.a, "place.matrix.a");
+    const b = finite(matrix.b, "place.matrix.b");
+    const c = finite(matrix.c, "place.matrix.c");
+    const d = finite(matrix.d, "place.matrix.d");
+    if (b !== 0 || c !== 0)
+        fail("FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED", "Animated display-list projection does not admit skew or rotation.");
+    return { a, d, tx: finite(matrix.tx, "place.matrix.tx"), ty: finite(matrix.ty, "place.matrix.ty") };
+}
+
+function displayAlpha(value: unknown): number {
+    const transform = object(value, "place.colorTransform");
+    exactKeys(transform, COLOR_TRANSFORM_FIELDS, "place.colorTransform", "FLASH_LIBRARY_COLOR_TRANSFORM_FIELD_UNSUPPORTED");
+    for (const channel of ["red", "green", "blue"] as const) {
+        if (finite(transform[`${channel}Multiplier`], `colorTransform.${channel}Multiplier`) !== 1
+            || finite(transform[`${channel}Offset`], `colorTransform.${channel}Offset`) !== 0)
+            fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list projection only admits alpha transforms.");
+    }
+    if (finite(transform.alphaOffset, "colorTransform.alphaOffset") !== 0)
+        fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list projection does not admit alpha offsets.");
+    const alpha = finite(transform.alphaMultiplier, "colorTransform.alphaMultiplier");
+    if (alpha < 0 || alpha > 1)
+        fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list alpha multiplier must be between zero and one.");
+    return alpha;
+}
+
+function validateTimelineRatio(operation: Record<string, any>, assets: Record<string, any>, characterId: number): void {
+    if (operation.ratio === undefined || operation.ratio === 0) return;
+    const ratio = finite(operation.ratio, "place.ratio");
+    if (!Number.isInteger(ratio) || ratio < 0 || ratio > 0xffff)
+        fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Placement ratio must fit the unsigned Flash field.");
+    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
+    if (asset.kind !== "sprite")
+        fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Non-zero morph ratios are admitted only when Flash ignores them for sprite characters.");
 }
 
 function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode): NeutralTimeline {
