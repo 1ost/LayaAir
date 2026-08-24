@@ -65,6 +65,8 @@ export interface FlashLibrarySymbolRequest {
     readonly entrySymbolId: number;
     readonly runtimeLinkage: string;
     readonly resources: ReadonlyMap<string, FlashLibraryResourceAuthority>;
+    /** Import an exported linkage in symbol-local space rather than the SWF document stage. */
+    readonly projection?: "document" | "library-symbol";
 }
 
 export class FlashLibrarySymbolAdapter {
@@ -95,6 +97,9 @@ export class FlashLibrarySymbolAdapter {
         const entryFrameCount = positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
         if (entryFrameRate !== stageFrameRate)
             fail("FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH", "Stage frame rate must match the entry-symbol timeline.");
+        const projection = request.projection ?? "document";
+        if (projection !== "document" && projection !== "library-symbol")
+            fail("FLASH_LIBRARY_PROJECTION_UNSUPPORTED", `Projection '${String(projection)}' is unsupported.`);
         const frameLabels = array(library.frameLabels, "library.frameLabels");
         if (frameLabels.length !== 0)
             fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", "This native projection requires an empty frame-label set.");
@@ -125,8 +130,8 @@ export class FlashLibrarySymbolAdapter {
                 frameRate: stageFrameRate,
                 frameCount: entryFrameCount,
                 backgroundColor: {
-                    alpha: stageBackgroundAlpha,
-                    color: stageBackgroundColor,
+                    alpha: projection === "library-symbol" ? 0 : stageBackgroundAlpha,
+                    color: projection === "library-symbol" ? 0 : stageBackgroundColor,
                 },
             },
         };

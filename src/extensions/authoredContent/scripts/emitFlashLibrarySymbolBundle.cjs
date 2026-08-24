@@ -33,10 +33,12 @@ async function main() {
     const entrySymbolId = Number(process.argv[4]);
     const runtimeLinkage = process.argv[5];
     const assetBaseName = process.argv[6] || "bootstrap-loading";
+    const projection = process.argv[7] || "document";
     if (!path.isAbsolute(sourceRoot) || !path.isAbsolute(outputRoot)
         || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage
-        || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(assetBaseName)) {
-        process.stderr.write("usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root> <symbol-id> <runtime-linkage> [asset-base-name]\n");
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(assetBaseName)
+        || !["document", "library-symbol"].includes(projection)) {
+        process.stderr.write("usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root> <symbol-id> <runtime-linkage> [asset-base-name] [document|library-symbol]\n");
         process.exitCode = 2;
         return;
     }
@@ -66,6 +68,7 @@ async function main() {
         entrySymbolId,
         runtimeLinkage,
         resources: authorities,
+        projection,
     });
 
     const HierarchyWriter = loadIdeHierarchyWriter();
