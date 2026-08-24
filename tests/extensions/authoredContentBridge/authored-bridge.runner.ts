@@ -66,7 +66,7 @@ import {
     Shape, SimpleButton, Sprite, TextEvent, Timer, TimerEvent, UncaughtErrorEvent,
     AntiAliasType, CSMSettings, GridFitType,
     StaticText, TextColorType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign, TextRenderer,
-    Point, Rectangle, Matrix, Bitmap, BitmapData, BitmapDataChannel, GradientType, PixelSnapping, type IBitmapDrawable,
+    Point, Rectangle, Matrix, Bitmap, BitmapData, BitmapDataChannel, GlowFilter, GradientType, PixelSnapping, type IBitmapDrawable,
     UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
@@ -2227,6 +2227,14 @@ test("authored TextField validation fails before publication and preserves prior
     Object.defineProperty(accessor, "width", { enumerable: true, get(): number { getterReads++; return 1; } });
     assert.throws(() => createAuthoredTextField(accessor), /width must be an own data property/);
     assert.equal(getterReads, 0, "validation does not execute authored accessors");
+    class ForgedFilter {
+        kind = "glow"; color = 0; alpha = 1; blurX = 3; blurY = 3; strength = 3;
+        quality = 1; inner = false; knockout = false;
+    }
+    assert.throws(
+        () => createAuthoredTextField({ ...valid, filters: [new ForgedFilter()] } as AuthoredTextFieldConfiguration),
+        /filters\[0\] must be a plain data object/,
+    );
     published.destroy(true);
 });
 
@@ -2242,6 +2250,13 @@ test("canonical hierarchy deserializes a Laya-owned authored dynamic TextField p
             italic: false, underline: false, align: "center", leftMargin: 0,
             rightMargin: 0, indent: 0, leading: 2,
         },
+        filters: [{
+            _$type: "any",
+            value: {
+                kind: "glow", color: 0, alpha: 1, blurX: 3, blurY: 3,
+                strength: 3, quality: 1, inner: false, knockout: false,
+            },
+        }] as unknown as AuthoredTextFieldConfiguration["filters"],
     };
     const errors: unknown[] = [];
     const prefab = new PrefabImpl(HierarchyParser, {
@@ -2263,6 +2278,10 @@ test("canonical hierarchy deserializes a Laya-owned authored dynamic TextField p
     assert.equal(field.name, "TF_ProgressText");
     assert.equal(field.defaultTextFormat.font, "Arial");
     assert.equal(field.defaultTextFormat.bold, true);
+    assert.deepEqual(field.filters.map(filter => [
+        (filter as GlowFilter).color, (filter as GlowFilter).blurX,
+        (filter as GlowFilter).blurY, (filter as GlowFilter).strength,
+    ]), [[0, 3, 3, 3]], "hierarchy-decoded authored GlowFilter remains exact");
     field.text = "Loading 10%";
     assert.equal(field.text, "Loading 10%");
     field.destroy(true);

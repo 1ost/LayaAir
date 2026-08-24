@@ -594,6 +594,33 @@ async function main(): Promise<void> {
         assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "glow"
             && field.textField.filters[0].strength === 5 && field.textField.filters[0].quality === 1,
             "authored GlowFilter placement drifted");
+        const hierarchyNode = (node: any): Record<string, unknown> => ({
+            "_$type": node.kind === "image" ? "Image" : node.kind === "static-text" ? "Text" : "Sprite",
+            name: node.name ?? node.linkage,
+            x: node.x ?? 0,
+            y: node.y ?? 0,
+            width: node.width ?? 0,
+            height: node.height ?? 0,
+            ...(node.kind === "image" ? { skin: "res://shape-2.png" } : {}),
+            "_$child": node.children.map(hierarchyNode),
+        });
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1,
+            ...hierarchyNode(content.root),
+        }, "role-affine.mc", new Map([["flash-character-2", "shape-2.png"]]));
+        const serializedField = (hierarchy._$child as any[])[1];
+        const serializedFilters = serializedField.authoredConfiguration.filters;
+        assert(Array.isArray(serializedFilters) && serializedFilters.length === 1,
+            "hierarchy writer lost the authored GlowFilter closure");
+        const serializedGlow = serializedFilters[0];
+        assert(serializedGlow._$type === "any" && Object.keys(serializedGlow).length === 2,
+            "hierarchy writer did not seal the GlowFilter as inert decoder data");
+        assert(serializedGlow.value.kind === "glow" && serializedGlow.value.color === 0
+            && serializedGlow.value.alpha === 1 && serializedGlow.value.blurX === 3
+            && serializedGlow.value.blurY === 3 && serializedGlow.value.strength === 5
+            && serializedGlow.value.quality === 1 && serializedGlow.value.inner === false
+            && serializedGlow.value.knockout === false,
+            "hierarchy writer drifted the exact authored GlowFilter configuration");
         const clip = NativeLayaEmitter.createTimeline(content);
         const root = NativeLayaEmitter.createPrefabRoot(content, "role-affine.mc", clip,
             new Map([["flash-character-2", "shape-2.png"]]));

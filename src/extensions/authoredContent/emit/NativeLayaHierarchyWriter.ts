@@ -355,7 +355,10 @@ function decorateAuthoredRuntime(
             displayAsPassword: source.textField!.displayAsPassword,
             autoSize: source.textField!.autoSize,
             html: source.textField!.html,
-            filters: source.textField!.filters,
+            // ObjDecoder treats untyped objects inside arrays as class payloads.
+            // The sealed `any` envelope preserves exact inert filter data until
+            // AuthoredTextField validates and constructs the native GlowFilter.
+            filters: source.textField!.filters.map(filter => ({ _$type: "any", value: filter })),
             gutter: source.textField!.gutter,
             overflow: source.textField!.overflow,
             initialText: source.textField!.initialText,
