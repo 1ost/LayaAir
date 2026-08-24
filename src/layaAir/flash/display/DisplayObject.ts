@@ -70,6 +70,9 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
 
     constructor() {
         super();
+        // Native Laya leaves the redirected-parent slot absent until first attachment;
+        // Flash requires an unattached DisplayObject to expose an explicit null parent.
+        this._$parent = null;
         DISPLAY_OBJECT_VALUES.add(this);
     }
 

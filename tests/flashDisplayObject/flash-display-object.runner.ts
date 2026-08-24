@@ -8,6 +8,7 @@ import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRen
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
+import { Bitmap } from "../../src/layaAir/flash/display/Bitmap";
 import { Shape } from "../../src/layaAir/flash/display/Shape";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
@@ -21,6 +22,36 @@ ILaya.stage = {
     _tranMatrixUpdateList: new Set(),
     _componentDriver: { _toDestroys: new Set() },
 } as any;
+
+test("Flash display parent normalizes unattached nodes to null without changing native hierarchy semantics", () => {
+    const native = new LayaSprite();
+    assert.equal(native.parent, undefined, "the Flash facade does not rewrite native Laya parent semantics");
+
+    const root = new Sprite();
+    const display = new DisplayObject();
+    const bitmap = new Bitmap();
+    const shape = new Shape();
+
+    assert.deepEqual(
+        [display.parent, bitmap.parent, shape.parent, root.parent],
+        [null, null, null, null],
+        "the canonical base and inherited Flash display surfaces normalize fresh nodes",
+    );
+
+    assert.equal(root.addChild(display), display);
+    assert.equal(root.addChild(bitmap), bitmap);
+    assert.equal(root.addChildAt(shape, 1), shape);
+    assert.deepEqual([display.parent, shape.parent, bitmap.parent], [root, root, root]);
+    assert.deepEqual([root.getChildAt(0), root.getChildAt(1), root.getChildAt(2)], [display, shape, bitmap]);
+
+    assert.equal(root.removeChild(shape), shape);
+    assert.equal(shape.parent, null);
+    assert.equal(root.removeChildAt(1), bitmap);
+    assert.equal(bitmap.parent, null);
+    display.removeSelf();
+    assert.equal(display.parent, null);
+    assert.equal(root.numChildren, 0);
+});
 
 test("DisplayObject exposes retained Flash cache, geometry and collision behavior", () => {
     const root = new DisplayObject();
