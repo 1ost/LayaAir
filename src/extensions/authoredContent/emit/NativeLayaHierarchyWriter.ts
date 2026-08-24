@@ -187,6 +187,7 @@ export function prepareNativeLayaHierarchy(
     canonicalizeHierarchyIds(hierarchy);
     decorateAuthoredRuntime(content.root, hierarchy);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
+    sealTimelineAssetReferences(hierarchy, timelineAssetId, nestedTimelineAssetIds);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
         content,
         timelineAssetId,
@@ -194,9 +195,9 @@ export function prepareNativeLayaHierarchy(
         nestedTimelineAssetIds
     );
     hierarchy._$preloads = [
-        ...content.resources.map(resource => resourceAssetIds.get(resource.id)!),
-        timelineAssetId,
-        ...nestedTimelineAssetIds.values()
+        ...content.resources.map(resource => `res://${resourceAssetIds.get(resource.id)!}`),
+        `res://${timelineAssetId}`,
+        ...[...nestedTimelineAssetIds.values()].map(assetId => `res://${assetId}`)
     ];
     hierarchy._$preloadTypes = [
         ...content.resources.map(() => "Texture2D"),
@@ -204,6 +205,31 @@ export function prepareNativeLayaHierarchy(
         ...[...nestedTimelineAssetIds].map(() => "AnimationClip2D")
     ];
     return hierarchy;
+}
+
+/**
+ * Laya's hierarchy parser only routes `res://` references (or canonical UUID
+ * syntax) through AssetDb. Authored bundles deliberately use readable,
+ * namespaced logical IDs, so leaving an AnimationClip2D `_$uuid` bare makes
+ * the parser reinterpret it relative to the prefab URL and silently decode a
+ * null clip. Seal every admitted timeline reference to its catalog identity.
+ */
+function sealTimelineAssetReferences(
+    hierarchy: Record<string, unknown>,
+    rootTimelineAssetId: string,
+    nestedTimelineAssetIds: ReadonlyMap<string, string>,
+): void {
+    const expected = new Set([rootTimelineAssetId, ...nestedTimelineAssetIds.values()]);
+    visitJsonObjects(hierarchy, value => {
+        if (value._$type !== "AnimationClip2D" || value._$uuid === undefined)
+            return;
+        if (typeof value._$uuid !== "string" || value._$uuid.length === 0)
+            fail("AUTHORED_CONTENT_NATIVE_TIMELINE_REFERENCE_INVALID", "AnimationClip2D requires a stable asset reference.");
+        const assetId = value._$uuid.startsWith("res://") ? value._$uuid.slice(6) : value._$uuid;
+        if (!expected.has(assetId))
+            fail("AUTHORED_CONTENT_NATIVE_TIMELINE_REFERENCE_UNKNOWN", `Unknown timeline asset reference '${assetId}'.`);
+        value._$uuid = `res://${assetId}`;
+    });
 }
 
 /**

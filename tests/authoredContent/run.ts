@@ -694,7 +694,20 @@ async function main(): Promise<void> {
         assert(parsed._$child[0].name === "nestedSymbol", "canonical .lh child ordering drifted");
         assert(parsed._$child[0]._$child[0].skin === "res://hero-asset", "canonical .lh image binding drifted");
         assert(parsed._$authoredContent.resources[0].sha256 === sha256(payload), "canonical .lh resource authentication metadata drifted");
-        assert(parsed._$preloads.join(",") === "hero-asset,timeline-asset", "native preload closure drifted");
+        assert(parsed._$preloads.join(",") === "res://hero-asset,res://timeline-asset", "native preload closure drifted");
+        const timelineHierarchy = JSON.parse(JSON.stringify(hierarchy));
+        timelineHierarchy._$comp = [{
+            "_$type": "AnimatorClip2D",
+            clip: { "_$type": "AnimationClip2D", "_$uuid": "timeline-asset" },
+        }];
+        const sealedTimelineHierarchy = prepareNativeLayaHierarchy(
+            content,
+            timelineHierarchy,
+            "timeline-asset",
+            new Map([["hero", "hero-asset"]]),
+        ) as any;
+        assert(sealedTimelineHierarchy._$comp[0].clip._$uuid === "res://timeline-asset",
+            "namespaced timeline identity was not routed through AssetDb");
 
         const randomHierarchyA = JSON.parse(JSON.stringify(hierarchy));
         randomHierarchyA._$id = "random-root-a";
@@ -740,6 +753,12 @@ async function main(): Promise<void> {
         await assertRejects(
             () => prepareNativeLayaAuthoredContentBundle({ ...preparation, hierarchy: danglingReference }),
             "AUTHORED_CONTENT_NATIVE_HIERARCHY_REFERENCE_DANGLING",
+        );
+        const unknownTimeline = JSON.parse(JSON.stringify(timelineHierarchy));
+        unknownTimeline._$comp[0].clip._$uuid = "unclaimed-timeline";
+        await assertRejects(
+            () => prepareNativeLayaAuthoredContentBundle({ ...preparation, hierarchy: unknownTimeline }),
+            "AUTHORED_CONTENT_NATIVE_TIMELINE_REFERENCE_UNKNOWN",
         );
 
         const wrongPayload = { ...preparation, resourcePayloads: new Map([["hero", new Uint8Array([9, 9, 9, 9])]]) };

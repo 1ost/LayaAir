@@ -187,7 +187,7 @@ exports.runIdeHierarchyRoundTrip = function runIdeHierarchyRoundTrip(
             );
             assert(bitmapHierarchy._$child[0]._$child[0]._$type === "Image", "AUTHORED_CONTENT_LH_IMAGE_CHILD_MISSING");
             assert(bitmapHierarchy._$child[0]._$child[0].skin === "res://hero-asset", "AUTHORED_CONTENT_LH_IMAGE_SKIN_MISSING");
-            assert(bitmapHierarchy._$preloads.join(",") === "hero-asset,bitmap-timeline", "AUTHORED_CONTENT_LH_RESOURCE_CLOSURE_MISSING");
+            assert(bitmapHierarchy._$preloads.join(",") === "res://hero-asset,res://bitmap-timeline", "AUTHORED_CONTENT_LH_RESOURCE_CLOSURE_MISSING");
             const bitmapClipType = globalThis.Laya.Loader.getURLInfo("bitmap-timeline.mc");
             globalThis.Laya.Loader._cacheRes("bitmap-timeline", bitmapClip, bitmapClipType.typeId, bitmapClipType.main);
             const bitmapErrors = [];

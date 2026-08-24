@@ -25,7 +25,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -35,7 +35,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57",
             "c5e32458b677bfcde488629410192ddd7bb77902e792b487e153dfd17674365d"
           ]
         }
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -67,8 +67,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.imported-assets",
           "covers": [
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57",
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
           ]
         }
       ]
@@ -89,7 +89,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -99,7 +99,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57",
             "c5e32458b677bfcde488629410192ddd7bb77902e792b487e153dfd17674365d"
           ]
         }
@@ -126,7 +126,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -136,7 +136,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca",
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57",
             "c5e32458b677bfcde488629410192ddd7bb77902e792b487e153dfd17674365d"
           ]
         }
@@ -178,7 +178,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -188,8 +188,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "media.bitmap",
           "covers": [
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57",
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
           ]
         }
       ]
@@ -460,28 +460,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+          "sha256": "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
         }
       ],
       "evidence": [
@@ -491,7 +491,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "943a8c35fbc6bc84c27e7d25712c9564b2b27139fdfaccc278a2528ea9bfbfca"
+            "1ca0b4fb1cff77222fa4d8743c27716bc896ec3366e48661d098930a8f8fec57"
           ]
         }
       ]
