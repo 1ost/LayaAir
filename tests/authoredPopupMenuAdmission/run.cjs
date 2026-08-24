@@ -46,6 +46,31 @@ function fixture() {
             shape: { fillStyles: [{ kind: "bitmap", bitmapId: 65535, repeat: true, smooth: true }], lineStyles: [], segments: [] },
         },
         "4": { characterId: 4, kind: "sprite" },
+        "5": {
+            characterId: 5, kind: "text", sourceTag: "DefineTextTag", initialText: "World",
+            bounds: { x: 5, y: 0, width: 42, height: 12 },
+            staticText: {
+                exactGlyphs: true, issues: [], matrix: matrix(),
+                runs: [{
+                    color: { alpha: 1, color: 0xffd59a }, fontId: 7, fontSize: 12,
+                    glyphs: [..."World"].map((character, index) => ({ character, glyphIndex: index, x: 5 + index * 8, advance: 8 })),
+                    text: "World", width: 40, x: 5, y: 11,
+                }],
+            },
+        },
+        "6": {
+            characterId: 6, kind: "input-text", sourceTag: "DefineEditTextTag",
+            initialText: '<p align="center"><font face="Arial" size="12" color="#ffd59a" letterSpacing="2.000000" kerning="1">Guild</font></p>',
+            bounds: { x: -5, y: -2, width: 62, height: 20 },
+            textField: {
+                align: "center", autoSize: false, border: false, color: { alpha: 1, color: 0xffd59a },
+                fieldType: "dynamic", fontId: 7, fontSize: 12, html: true, indent: 0,
+                initialText: '<p align="center"><font face="Arial" size="12" color="#ffd59a" letterSpacing="2.000000" kerning="1">Guild</font></p>',
+                leading: 2, leftMargin: 0, multiline: true, password: false, rightMargin: 0,
+                selectable: false, useOutlines: false, variableName: "", wordWrap: false,
+            },
+        },
+        "7": { characterId: 7, kind: "font", font: { family: "Arial", bold: false, italic: false } },
         "10": { characterId: 10, kind: "sprite", symbolName: "PopupRoot", bounds: { x: 0, y: 0, width: 100, height: 50 } },
         "20": {
             characterId: 20, kind: "sprite", symbolName: "TextureRoot", bounds: { x: 0, y: 0, width: 40, height: 36 },
@@ -55,6 +80,7 @@ function fixture() {
             },
         },
         "30": { characterId: 30, kind: "sprite", symbolName: "MissingBoundsRoot", bounds: { x: 0, y: 0, width: 40, height: 36 } },
+        "40": { characterId: 40, kind: "sprite", symbolName: "NativeTextRoot", bounds: { x: 0, y: 0, width: 100, height: 50 } },
     };
     const timelines = new Map([
         [1, timeline(1, 1, [frame(1)])],
@@ -66,6 +92,10 @@ function fixture() {
         ])])],
         [20, timeline(20, 1, [frame(1, [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: matrix() }])])],
         [30, timeline(30, 1, [frame(1, [{ op: "place", characterId: 4, depth: 1, move: false, ratio: 0, matrix: matrix() }])])],
+        [40, timeline(40, 1, [frame(1, [
+            { op: "place", characterId: 2, depth: 1, move: false, ratio: 0, name: "staticButton", matrix: matrix() },
+            { op: "place", characterId: 6, depth: 2, move: false, ratio: 0, name: "htmlLabel", matrix: matrix() },
+        ])])],
     ]);
     return {
         library: {
@@ -105,6 +135,30 @@ assert.deepEqual(
     [[true, false], [false, true]],
 );
 assert.deepEqual(popupContent.resources.map(resource => resource.sourcePath), ["sprites/menu-1.png", "sprites/menu-2.png"]);
+
+const nativeText = fixture();
+nativeText.timelines.set(2, timeline(2, 2, [
+    frame(1, [{ op: "place", characterId: 5, depth: 2, move: false, ratio: 0, filters: [glow()], matrix: matrix() }]),
+    frame(2, [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: matrix() }]),
+]));
+const nativeTextContent = adapter.parse({
+    ...nativeText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.NativeTextRoot",
+    rasterizedShapes: new Map([[3, authority("shapes/button-background.png", 2)]]),
+    rasterizedSprites: new Map([[2, [
+        rasterFrame("sprites/legacy-label-1.png", 0, 0, 20, 10),
+        rasterFrame("sprites/legacy-label-2.png", 0, 0, 20, 10),
+    ]]]),
+});
+const staticButton = nativeTextContent.root.children[0];
+assert.deepEqual(staticButton.children.map(child => child.kind), ["image", "dynamic-text"]);
+assert.equal(staticButton.children[1].textField.initialText, "World");
+assert.equal(staticButton.children[1].textField.filters[0].kind, "glow");
+assert.equal(nativeTextContent.root.children[1].textField.initialText, "Guild");
+assert.equal(nativeTextContent.root.children[1].textField.format.letterSpacing, 2);
+assert.equal(nativeTextContent.root.children[1].textField.format.kerning, true);
+assert.deepEqual(nativeTextContent.resources.map(resource => resource.sourcePath), ["shapes/button-background.png"]);
 
 const texture = fixture();
 texture.library.stage.width = 40;
@@ -161,4 +215,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 7/7 passed\n");
+process.stdout.write("authored popup-menu admission: 8/8 passed\n");

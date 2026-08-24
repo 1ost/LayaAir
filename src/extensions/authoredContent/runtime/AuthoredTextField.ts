@@ -25,6 +25,10 @@ export interface AuthoredTextFormatConfiguration {
     readonly rightMargin: number;
     readonly indent: number;
     readonly leading: number;
+    /** Omitted by native bundles emitted before translatable Flash text admission. */
+    readonly letterSpacing?: number;
+    /** Omitted by native bundles emitted before translatable Flash text admission. */
+    readonly kerning?: boolean;
 }
 
 export interface AuthoredTextFieldConfiguration {
@@ -56,6 +60,7 @@ const FORMAT_KEYS = Object.freeze([
     "align", "bold", "color", "font", "fontMode", "indent", "italic", "leading", "leftMargin",
     "rightMargin", "size", "underline",
 ]);
+const EXTENDED_FORMAT_KEYS = Object.freeze([...FORMAT_KEYS, "kerning", "letterSpacing"]);
 const GLOW_FILTER_KEYS = Object.freeze([
     "alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength",
 ]);
@@ -88,7 +93,7 @@ export function configureAuthoredTextField(
     field.displayAsPassword = value.displayAsPassword;
     field.flashAutoSize = value.autoSize;
     field.embedFonts = false;
-    field.defaultTextFormat = new TextFormat(
+    const textFormat = new TextFormat(
         value.format.font,
         value.format.size,
         value.format.color,
@@ -103,6 +108,9 @@ export function configureAuthoredTextField(
         value.format.indent,
         value.format.leading,
     );
+    textFormat.letterSpacing = value.format.letterSpacing ?? 0;
+    textFormat.kerning = value.format.kerning ?? false;
+    field.defaultTextFormat = textFormat;
     field.filters = createAuthoredGlowFilters(value.filters ?? []);
     field.text = value.initialText;
     return field;
@@ -124,7 +132,12 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         hasFilters ? [...FIELD_KEYS, "filters"] : FIELD_KEYS,
         "Authored TextField configuration",
     );
-    const format = exactDataObject(record.format, FORMAT_KEYS, "Authored TextField format");
+    const rawFormat = record.format;
+    const hasLetterSpacing = hasOwnDataProperty(rawFormat, "letterSpacing");
+    const hasKerning = hasOwnDataProperty(rawFormat, "kerning");
+    if (hasLetterSpacing !== hasKerning)
+        throw new TypeError("Authored TextField format must provide letterSpacing and kerning together");
+    const format = exactDataObject(rawFormat, hasLetterSpacing ? EXTENDED_FORMAT_KEYS : FORMAT_KEYS, "Authored TextField format");
     positiveInteger(record.sourceId, "sourceId");
     finite(record.x, "x");
     finite(record.y, "y");
@@ -157,6 +170,8 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     finite(format.rightMargin, "format.rightMargin");
     finite(format.indent, "format.indent");
     finite(format.leading, "format.leading");
+    if (hasLetterSpacing) finite(format.letterSpacing, "format.letterSpacing");
+    if (hasKerning) boolean(format.kerning, "format.kerning");
     const normalizedFormat: AuthoredTextFormatConfiguration = Object.freeze({
         fontMode: exactValue(format.fontMode, "device", "format.fontMode"),
         font: format.font,
@@ -172,6 +187,8 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         rightMargin: format.rightMargin,
         indent: format.indent,
         leading: format.leading,
+        ...(hasLetterSpacing ? { letterSpacing: format.letterSpacing as number } : {}),
+        ...(hasKerning ? { kerning: format.kerning as boolean } : {}),
     });
     return Object.freeze({
         sourceId: record.sourceId,
@@ -192,6 +209,12 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         format: normalizedFormat,
         filters: Object.freeze(filters),
     });
+}
+
+function hasOwnDataProperty(value: unknown, key: string): boolean {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor !== undefined && "value" in descriptor;
 }
 
 function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterConfiguration {

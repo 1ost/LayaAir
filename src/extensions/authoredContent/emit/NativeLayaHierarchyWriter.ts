@@ -340,7 +340,7 @@ function decorateAuthoredRuntime(
     if (source.variable === true)
         value._$var = true;
     if (source.filters !== undefined)
-        value.authoredFilters = source.filters;
+        value.authoredFilters = source.filters.map(filter => ({ _$type: "any", value: filter }));
     if (source.scale9Grid !== undefined)
         value.authoredScale9Grid = source.scale9Grid;
     if (source.kind === "dynamic-text") {

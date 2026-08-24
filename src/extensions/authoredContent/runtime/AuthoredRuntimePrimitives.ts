@@ -128,6 +128,8 @@ export class AuthoredDynamicTextField extends TextField {
             rightMargin: 0,
             indent: 0,
             leading: 0,
+            letterSpacing: 0,
+            kerning: false,
         },
     };
 

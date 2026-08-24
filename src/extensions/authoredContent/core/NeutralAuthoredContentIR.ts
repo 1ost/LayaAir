@@ -96,6 +96,8 @@ export interface NeutralDynamicTextFormat {
     readonly rightMargin: number;
     readonly indent: number;
     readonly leading: number;
+    readonly letterSpacing: number;
+    readonly kerning: boolean;
 }
 
 export interface NeutralAuthoredResource {
@@ -332,7 +334,7 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
     const format = record(source.format, `${path}.format`);
     allowedKeys(format, [
         "align", "bold", "color", "font", "fontMode", "indent", "italic", "leading", "leftMargin",
-        "rightMargin", "size", "underline"
+        "rightMargin", "size", "underline", "letterSpacing", "kerning"
     ], `${path}.format`);
     const sourceId = requiredFiniteNumber(source.sourceId, `${path}.sourceId`);
     if (!Number.isSafeInteger(sourceId) || sourceId <= 0)
@@ -376,6 +378,12 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
             rightMargin: requiredFiniteNumber(format.rightMargin, `${path}.format.rightMargin`) * scale,
             indent: requiredFiniteNumber(format.indent, `${path}.format.indent`) * scale,
             leading: requiredFiniteNumber(format.leading, `${path}.format.leading`) * scale,
+            letterSpacing: (format.letterSpacing === undefined
+                ? 0
+                : requiredFiniteNumber(format.letterSpacing, `${path}.format.letterSpacing`)) * scale,
+            kerning: format.kerning === undefined
+                ? false
+                : requiredBoolean(format.kerning, `${path}.format.kerning`),
         }
     };
 }

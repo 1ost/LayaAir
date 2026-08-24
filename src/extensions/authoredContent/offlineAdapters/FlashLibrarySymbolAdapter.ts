@@ -175,7 +175,12 @@ export class FlashLibrarySymbolAdapter {
         const bounds = spriteBounds(asset, sourceTimeline, characterId);
         const firstFrame = frame(sourceTimeline, 0);
         const initialOperations = array(firstFrame.operations, `timeline ${characterId} frame 1 operations`);
-        const rasterFrames = rasterizedSprites.get(characterId);
+        // Text remains semantic authored content. A diagnostic full-frame
+        // raster may authenticate visual evidence, but it must never replace
+        // a reachable DefineText/DefineEditText node in production output.
+        const rasterFrames = spriteContainsTranslatableText(characterId, assets, timelines)
+            ? undefined
+            : rasterizedSprites.get(characterId);
         const animated = rasterFrames === undefined
             ? sourceTimeline.frameCount === 1 ? undefined : this.createAnimatedDisplayList(
                 sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
@@ -233,7 +238,7 @@ export class FlashLibrarySymbolAdapter {
         exactPlace(operation);
         const characterId = positiveInteger(operation.characterId, "place.characterId");
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
-        if (asset.kind !== "input-text" && asset.kind !== "sprite" && operation.filters !== undefined)
+        if (asset.kind !== "input-text" && asset.kind !== "text" && asset.kind !== "sprite" && operation.filters !== undefined)
             fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
         if (asset.kind === "sprite") {
             return this.createSprite(
@@ -252,6 +257,8 @@ export class FlashLibrarySymbolAdapter {
             return this.createImage(asset, operation, assets, resourceAuthorities, rasterizedShapes, resources);
         if (asset.kind === "input-text")
             return this.createDynamicText(asset, operation, assets);
+        if (asset.kind === "text")
+            return this.createStaticTextField(asset, operation, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
     }
 
@@ -471,14 +478,16 @@ export class FlashLibrarySymbolAdapter {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
         const textField = object(asset.textField, `library.assets.${characterId}.textField`);
         exactKeys(textField, TEXT_FIELD_FIELDS, `library.assets.${characterId}.textField`, "FLASH_LIBRARY_TEXT_FIELD_UNSUPPORTED");
-        if (textField.useOutlines !== false)
-            fail("FLASH_LIBRARY_TEXT_OUTLINES_UNSUPPORTED", `Text ${characterId} is not a device-font field.`);
+        // Both embedded-outline and device-font Flash fields become native,
+        // editable TextFields. The authenticated source font family/weight is
+        // retained below; rasterizing embedded text would make localization
+        // impossible and duplicate the surrounding artwork.
+        boolean(textField.useOutlines, `library.assets.${characterId}.textField.useOutlines`);
         exactValue(textField.autoSize, false, "FLASH_LIBRARY_TEXT_AUTO_SIZE_UNSUPPORTED", `Text ${characterId} auto-size is unsupported.`);
-        exactValue(textField.html, false, "FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId} HTML mode is unsupported.`);
         exactValue(textField.border, false, "FLASH_LIBRARY_TEXT_BORDER_UNSUPPORTED", `Text ${characterId} border rendering is unsupported.`);
         exactValue(textField.variableName, "", "FLASH_LIBRARY_TEXT_VARIABLE_UNSUPPORTED", `Text ${characterId} has an unsupported internal variable binding.`);
-        const initialText = text(textField.initialText, `library.assets.${characterId}.textField.initialText`);
-        if (text(asset.initialText, `library.assets.${characterId}.initialText`) !== initialText)
+        const sourceInitialText = text(textField.initialText, `library.assets.${characterId}.textField.initialText`);
+        if (text(asset.initialText, `library.assets.${characterId}.initialText`) !== sourceInitialText)
             fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
         const fontId = positiveInteger(textField.fontId, `library.assets.${characterId}.textField.fontId`);
         const fontAsset = object(assets[String(fontId)], `library.assets.${fontId}`);
@@ -490,6 +499,11 @@ export class FlashLibrarySymbolAdapter {
         exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const placement = placementTransform(operation);
+        const html = boolean(textField.html, `library.assets.${characterId}.textField.html`);
+        const authoredHtml = html
+            ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color)
+            : undefined;
+        const initialText = authoredHtml?.text ?? sourceInitialText;
         return {
             linkage: flashLibraryAssetName(asset, characterId),
             name: operation.name ?? flashLibraryAssetName(asset, characterId),
@@ -527,11 +541,149 @@ export class FlashLibrarySymbolAdapter {
                     rightMargin: finite(textField.rightMargin, "text.rightMargin"),
                     indent: finite(textField.indent, "text.indent"),
                     leading: finite(textField.leading, "text.leading"),
+                    letterSpacing: authoredHtml?.letterSpacing ?? 0,
+                    kerning: authoredHtml?.kerning ?? false,
                 },
             },
             children: [],
         };
     }
+
+    private createStaticTextField(
+        asset: Record<string, any>,
+        operation: Record<string, any>,
+        assets: Record<string, any>,
+    ): NeutralAuthoredNode {
+        const characterId = positiveInteger(asset.characterId, "text.characterId");
+        const staticText = object(asset.staticText, `library.assets.${characterId}.staticText`);
+        exactKeys(staticText, new Set(["exactGlyphs", "issues", "matrix", "runs"]),
+            `library.assets.${characterId}.staticText`, "FLASH_LIBRARY_STATIC_TEXT_UNSUPPORTED");
+        exactValue(staticText.exactGlyphs, true, "FLASH_LIBRARY_STATIC_TEXT_GLYPHS_REQUIRED",
+            `Text ${characterId} lacks exact glyph evidence.`);
+        if (array(staticText.issues, `library.assets.${characterId}.staticText.issues`).length !== 0)
+            fail("FLASH_LIBRARY_STATIC_TEXT_ISSUES", `Text ${characterId} contains unresolved extraction issues.`);
+        const staticMatrix = object(staticText.matrix, `library.assets.${characterId}.staticText.matrix`);
+        exactKeys(staticMatrix, MATRIX_FIELDS, `library.assets.${characterId}.staticText.matrix`, "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED");
+        for (const field of ["a", "d"] as const) exactValue(staticMatrix[field], 1,
+            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
+        for (const field of ["b", "c", "tx", "ty"] as const) exactValue(staticMatrix[field], 0,
+            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
+        const runs = array(staticText.runs, `library.assets.${characterId}.staticText.runs`);
+        if (runs.length !== 1)
+            fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain exactly one translatable run.`);
+        const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);
+        exactKeys(run, new Set(["color", "fontId", "fontSize", "glyphs", "text", "width", "x", "y"]),
+            `library.assets.${characterId}.staticText.runs[0]`, "FLASH_LIBRARY_STATIC_TEXT_RUN_UNSUPPORTED");
+        const initialText = text(asset.initialText, `library.assets.${characterId}.initialText`);
+        if (text(run.text, `library.assets.${characterId}.staticText.runs[0].text`) !== initialText)
+            fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
+        const glyphs = array(run.glyphs, `library.assets.${characterId}.staticText.runs[0].glyphs`);
+        if (glyphs.map((glyph, index) => text(object(glyph, `static glyph ${index}`).character,
+            `static glyph ${index}.character`)).join("") !== initialText)
+            fail("FLASH_LIBRARY_STATIC_TEXT_GLYPH_TEXT_MISMATCH", `Text ${characterId} glyph characters disagree with its string.`);
+        const fontId = positiveInteger(run.fontId, `library.assets.${characterId}.staticText.runs[0].fontId`);
+        const fontAsset = object(assets[String(fontId)], `library.assets.${fontId}`);
+        if (fontAsset.kind !== "font")
+            fail("FLASH_LIBRARY_TEXT_FONT_REQUIRED", `Text ${characterId} does not reference a font asset.`);
+        const font = object(fontAsset.font, `library.assets.${fontId}.font`);
+        const color = object(run.color, `library.assets.${characterId}.staticText.runs[0].color`);
+        exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.staticText.runs[0].color`,
+            "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
+        exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+        const fontSize = positive(run.fontSize, `library.assets.${characterId}.staticText.runs[0].fontSize`);
+        const placement = placementTransform(operation);
+        return {
+            linkage: flashLibraryAssetName(asset, characterId),
+            name: operation.name ?? flashLibraryAssetName(asset, characterId),
+            kind: "dynamic-text",
+            depth: positiveInteger(operation.depth, "place.depth"),
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
+            matrix: placement.matrix,
+            width: positive(bounds.width, `Text ${characterId} width`),
+            height: Math.max(positive(bounds.height, `Text ${characterId} height`), fontSize + 4),
+            variable: typeof operation.name === "string",
+            textField: {
+                sourceId: characterId,
+                type: "dynamic",
+                multiline: false,
+                wordWrap: false,
+                selectable: false,
+                displayAsPassword: false,
+                autoSize: "none",
+                html: false,
+                filters: authoredGlowFilters(operation.filters, characterId),
+                gutter: 2,
+                overflow: "hidden",
+                initialText,
+                format: {
+                    fontMode: "device",
+                    font: string(font.family, `library.assets.${fontId}.font.family`),
+                    size: fontSize,
+                    color: finite(color.color, "text.color.color"),
+                    bold: boolean(font.bold, "font.bold"),
+                    italic: boolean(font.italic, "font.italic"),
+                    underline: false,
+                    align: "left",
+                    leftMargin: 0,
+                    rightMargin: 0,
+                    indent: 0,
+                    leading: 0,
+                    letterSpacing: 0,
+                    kerning: true,
+                },
+            },
+            children: [],
+        };
+    }
+}
+
+function spriteContainsTranslatableText(
+    characterId: number,
+    assets: Record<string, any>,
+    timelines: ReadonlyMap<number, unknown>,
+    visited = new Set<number>(),
+): boolean {
+    if (visited.has(characterId)) return false;
+    visited.add(characterId);
+    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
+    if (asset.kind === "text" || asset.kind === "input-text") return true;
+    if (asset.kind !== "sprite") return false;
+    const sourceTimeline = timeline(timelines, characterId);
+    return array(sourceTimeline.frames, `timeline ${characterId}.frames`).some((frameValue, frameIndex) =>
+        array(object(frameValue, `timeline ${characterId} frame ${frameIndex + 1}`).operations,
+            `timeline ${characterId} frame ${frameIndex + 1}.operations`).some((operationValue, operationIndex) => {
+            const operation = object(operationValue, `timeline ${characterId} operation ${operationIndex}`);
+            return operation.op === "place" && operation.characterId !== undefined
+                && spriteContainsTranslatableText(positiveInteger(operation.characterId, "place.characterId"), assets, timelines, visited);
+        }));
+}
+
+function parseAuthoredFlashHtml(
+    value: string,
+    characterId: number,
+    font: Record<string, any>,
+    textField: Record<string, any>,
+    color: Record<string, any>,
+): { readonly text: string; readonly letterSpacing: number; readonly kerning: boolean } {
+    const match = /^<p align="(left|center|right|justify)"><font face="([^"<>]+)" size="([0-9]+(?:\.[0-9]+)?)" color="#([0-9a-fA-F]{6})"(?: letterSpacing="(-?[0-9]+(?:\.[0-9]+)?)")?(?: kerning="([01])")?>((?:[^<&]|&nbsp;)*)<\/font><\/p>$/.exec(value);
+    if (!match)
+        fail("FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId} HTML is outside the translatable one-paragraph subset.`);
+    const [, align, face, sizeText, colorText, spacingText, kerningText, plainText] = match;
+    if (face !== string(font.family, `Text ${characterId} font family`)
+        || Number(sizeText) !== finite(textField.fontSize, `Text ${characterId} font size`)
+        || Number.parseInt(colorText, 16) !== finite(color.color, `Text ${characterId} color`)
+        || align !== string(textField.align, `Text ${characterId} align`)) {
+        fail("FLASH_LIBRARY_TEXT_HTML_AUTHORITY_MISMATCH", `Text ${characterId} HTML formatting disagrees with its field metadata.`);
+    }
+    return {
+        text: plainText.replaceAll("&nbsp;", "\u00a0"),
+        letterSpacing: spacingText === undefined ? 0 : finite(Number(spacingText), `Text ${characterId} letter spacing`),
+        kerning: kerningText === "1",
+    };
 }
 
 function authoredScale9Grid(
