@@ -91,7 +91,7 @@ export function registerAuthoredContentRuntime(linkages: readonly AuthoredRuntim
         if (typeof linkage.ctor !== "function" || !(linkage.ctor.prototype instanceof Node))
             throw new TypeError(`linkages[${index}].ctor must extend Laya Node`);
         const sourceCtor = SOURCE_TYPES[linkage.sourceType];
-        if (!sourceCtor || !(linkage.ctor.prototype instanceof sourceCtor))
+        if (!sourceCtor || (linkage.ctor !== sourceCtor && !(linkage.ctor.prototype instanceof sourceCtor)))
             throw new TypeError(`linkages[${index}].ctor must extend declared sourceType ${linkage.sourceType}`);
         if (SERIALIZED_TYPES[linkage.sourceType] !== linkage.serializedType)
             throw new TypeError(`linkages[${index}].serializedType does not match ${linkage.sourceType}`);

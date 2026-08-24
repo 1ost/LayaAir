@@ -307,7 +307,8 @@ function normalizeBindings(
         if (!bundle) throw new Error(`Runtime binding '${runtimeId}' is not declared by the catalog`);
         if (result.has(runtimeId)) throw new Error(`Duplicate runtime binding '${runtimeId}'`);
         const expected = SOURCE_TYPES[bundle.sourceType];
-        if (typeof binding.ctor !== "function" || !(binding.ctor.prototype instanceof expected))
+        if (typeof binding.ctor !== "function"
+            || (binding.ctor !== expected && !(binding.ctor.prototype instanceof expected)))
             throw new TypeError(`Runtime binding '${runtimeId}' must extend ${bundle.sourceType}`);
         if (binding.validate !== undefined && typeof binding.validate !== "function")
             throw new TypeError(`Runtime binding '${runtimeId}' validate must be a function`);

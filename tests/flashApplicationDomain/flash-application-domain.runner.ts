@@ -296,3 +296,37 @@ test("authored catalog URL loading derives one manifest-relative asset root", as
         ["/fixtures/loaded/native/entry.lh", Loader.HIERARCHY],
     ]);
 });
+
+test("authored catalogs use the declared Flash base type when no behavior binding exists", async () => {
+    const domain = new ApplicationDomain();
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.base-type-catalog",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.BaseMovieClip",
+            linkage: "MC_BaseMovieClip",
+            sourceType: "MovieClip",
+            prefab: "native/entry.lh",
+            assets: [],
+        }],
+    } as const;
+    const prefab = {
+        create: () => {
+            const clip = Object.create(MovieClip.prototype) as MovieClip;
+            Object.defineProperty(clip, "destroy", { value() {}, configurable: true });
+            return clip;
+        },
+    };
+    const activation = await activateAuthoredContentCatalog(manifest, {
+        baseUrl: "/fixtures/base-type/",
+        loader: { load: async () => prefab },
+        applicationDomain: domain,
+    });
+    const reflected = new (domain.getDefinition("MC_BaseMovieClip") as new () => MovieClip)();
+    assert.ok(reflected instanceof MovieClip);
+    reflected.destroy(true);
+    const created = activation.create("entry");
+    assert.ok(created instanceof MovieClip);
+    created.destroy(true);
+});
