@@ -8,6 +8,7 @@ import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
 import { Loader } from "../../src/layaAir/laya/net/Loader";
 import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
+import { TextResource, TextResourceFormat } from "../../src/layaAir/laya/resource/TextResource";
 import {
     activateAuthoredContentCatalog,
     authoredContentCatalogUrlForResource,
@@ -282,7 +283,9 @@ test("authored catalog URL loading derives one manifest-relative asset root", as
     const loader = {
         async load(url: string, type?: string): Promise<unknown> {
             calls.push([url, type]);
-            return type === Loader.JSON ? manifest : prefab;
+            return type === Loader.JSON
+                ? new TextResource(manifest, TextResourceFormat.JSON)
+                : prefab;
         },
     };
     const activation = await loadAndActivateAuthoredContentCatalog(

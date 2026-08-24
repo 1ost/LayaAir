@@ -2,6 +2,7 @@ import { Node } from "../../../layaAir/laya/display/Node";
 import { Loader } from "../../../layaAir/laya/net/Loader";
 import { URL } from "../../../layaAir/laya/net/URL";
 import { AssetDb } from "../../../layaAir/laya/resource/AssetDb";
+import { TextResource, TextResourceFormat } from "../../../layaAir/laya/resource/TextResource";
 import type { Prefab } from "../../../layaAir/laya/resource/HierarchyResource";
 import { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } from "../../../layaAir/flash";
 import { ApplicationDomain } from "../../../layaAir/flash/system/ApplicationDomain";
@@ -125,8 +126,14 @@ export async function loadAndActivateAuthoredContentCatalog(
 ): Promise<AuthoredContentCatalogActivation> {
     const catalogUrl = requireNonemptyString(catalogUrlValue, "catalogUrl");
     const loader = requireLoader(options?.loader);
-    const value = await loader.load(catalogUrl, Loader.JSON);
-    if (!value) throw new Error(`Authored content catalog failed to load: ${catalogUrl}`);
+    const loaded = await loader.load(catalogUrl, Loader.JSON);
+    if (!loaded) throw new Error(`Authored content catalog failed to load: ${catalogUrl}`);
+    let value: unknown = loaded;
+    if (loaded instanceof TextResource) {
+        if (loaded.format !== TextResourceFormat.JSON)
+            throw new TypeError("Authored content catalog loader returned a non-JSON TextResource");
+        value = loaded.data;
+    }
     return activateAuthoredContentCatalog(value, {
         ...options,
         loader,
