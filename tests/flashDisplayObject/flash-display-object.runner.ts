@@ -9,6 +9,7 @@ import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
 import { Bitmap } from "../../src/layaAir/flash/display/Bitmap";
+import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { Shape } from "../../src/layaAir/flash/display/Shape";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
@@ -22,6 +23,47 @@ ILaya.stage = {
     _tranMatrixUpdateList: new Set(),
     _componentDriver: { _toDestroys: new Set() },
 } as any;
+
+test("BitmapData.setVector installs clipped ARGB pixels atomically", () => {
+    const bitmapData = new BitmapData(3, 2, true, 0);
+    bitmapData.setVector(new Rectangle(-1, 0, 3, 2), new Uint32Array([
+        0xff112233, 0xff445566,
+        0xff778899, 0xffaabbcc,
+    ]));
+
+    assert.deepEqual([
+        bitmapData.getPixel32(0, 0), bitmapData.getPixel32(1, 0), bitmapData.getPixel32(2, 0),
+        bitmapData.getPixel32(0, 1), bitmapData.getPixel32(1, 1), bitmapData.getPixel32(2, 1),
+    ], [
+        0xff112233, 0xff445566, 0,
+        0xff778899, 0xffaabbcc, 0,
+    ]);
+
+    assert.throws(
+        () => bitmapData.setVector(new Rectangle(0, 0, 2, 2), [0xff000001, 0xff000002, 0xff000003]),
+        RangeError,
+    );
+    assert.deepEqual(
+        [bitmapData.getPixel32(0, 0), bitmapData.getPixel32(1, 0)],
+        [0xff112233, 0xff445566],
+        "a short vector must not partially mutate the bitmap",
+    );
+});
+
+test("BitmapData.setVector preserves transparency and validates Flash-shaped inputs", () => {
+    const transparent = new BitmapData(1, 1, true, 0);
+    transparent.setVector(transparent.rect, [0x80112233]);
+    assert.equal(transparent.getPixel32(0, 0), 0x80122234);
+
+    const opaque = new BitmapData(1, 1, false, 0);
+    opaque.setVector(opaque.rect, [0x00112233]);
+    assert.equal(opaque.getPixel32(0, 0), 0xff112233);
+
+    assert.throws(() => transparent.setVector({} as Rectangle, [0]), /rect must be a Rectangle/);
+    assert.throws(() => transparent.setVector(transparent.rect, null as unknown as number[]), /inputVector/);
+    transparent.dispose();
+    assert.throws(() => transparent.setVector(new Rectangle(), []), /disposed/);
+});
 
 test("Flash display parent normalizes unattached nodes to null without changing native hierarchy semantics", () => {
     const native = new LayaSprite();

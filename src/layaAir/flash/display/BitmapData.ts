@@ -165,6 +165,12 @@ function clippedRange(rect: Rectangle, width: number, height: number): [number, 
     return [x0, y0, Math.max(x0, x1), Math.max(y0, y1)];
 }
 
+function setVectorCoordinate(value: number, minimum: number, maximum: number): number {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return 0;
+    return Math.trunc(Math.min(maximum, Math.max(minimum, numeric)));
+}
+
 function channelShift(channel: number): number | null {
     switch (uintValue(channel)) {
         case BitmapDataChannel.RED: return 16;
@@ -585,6 +591,44 @@ export class BitmapData {
         const pixelY = intValue(y);
         if (pixelX < 0 || pixelY < 0 || pixelX >= state.width || pixelY >= state.height) return;
         state.pixels![pixelY * state.width + pixelX] = premultiplyPixel(color, state.transparent);
+        markDirty(state);
+    }
+
+    /**
+     * Replaces a rectangular run of pixels with unpremultiplied 32-bit ARGB
+     * values, matching Flash's `BitmapData.setVector` contract. The target
+     * rectangle is clipped before the required vector length is calculated;
+     * an undersized vector fails atomically.
+     */
+    setVector(rect: Rectangle, inputVector: ArrayLike<number>): void {
+        const state = bitmapDataValue(this, "BitmapData");
+        const target = rectangleValue(rect, "rect");
+        if (typeof inputVector !== "object" || inputVector === null) {
+            throw new TypeError("inputVector must be an Array-like vector of uint values");
+        }
+
+        const length = Number(inputVector.length);
+        if (!Number.isSafeInteger(length) || length < 0) {
+            throw new TypeError("inputVector must have a valid length");
+        }
+
+        const x0 = setVectorCoordinate(target.x, 0, state.width);
+        const y0 = setVectorCoordinate(target.y, 0, state.height);
+        const x1 = setVectorCoordinate(target.x + target.width, x0, state.width);
+        const y1 = setVectorCoordinate(target.y + target.height, y0, state.height);
+        const requiredLength = (x1 - x0) * (y1 - y0);
+        if (length < requiredLength) {
+            throw new RangeError("inputVector does not contain enough pixel values");
+        }
+        if (requiredLength === 0) return;
+
+        let vectorIndex = 0;
+        for (let y = y0; y < y1; y++) {
+            const rowOffset = y * state.width;
+            for (let x = x0; x < x1; x++) {
+                state.pixels![rowOffset + x] = premultiplyPixel(inputVector[vectorIndex++], state.transparent);
+            }
+        }
         markDirty(state);
     }
 
