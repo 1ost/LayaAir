@@ -1,4 +1,5 @@
 import { ApplicationDomain } from "../../../layaAir/flash/system/ApplicationDomain";
+import { URL } from "../../../layaAir/laya/net/URL";
 import {
     AuthoredFontRegistry,
     type AuthoredFontBinding,
@@ -8,6 +9,7 @@ import {
 } from "./AuthoredFontRegistry";
 
 export const AUTHORED_FONT_STARTUP_SCHEMA = "laya-authored-font-startup@1" as const;
+export const AUTHORED_FONT_CATALOG_NAME = "runtime-font-catalog.json" as const;
 
 export interface AuthenticatedJsonReference {
     readonly url: string;
@@ -75,6 +77,24 @@ type InstalledFontCatalog = {
 const installedCatalogs = new WeakMap<ApplicationDomain, Map<string, InstalledFontCatalog>>();
 const SHA256 = /^[a-f0-9]{64}$/;
 const APPLICATION_ID = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*$/;
+
+/** Resolves the font catalog stored beside a game's logical font resources. */
+export function authoredFontCatalogUrlForDirectory(directoryUrlValue: string): string {
+    const directoryUrl = requireNonemptyString(directoryUrlValue, "directoryUrl");
+    if (!directoryUrl.endsWith("/")) throw new TypeError("directoryUrl must end with '/'");
+    return URL.join(directoryUrl, AUTHORED_FONT_CATALOG_NAME);
+}
+
+/** Loads all authored fonts published by one logical resource directory. */
+export function loadAndActivateAuthoredFontDirectory(
+    directoryUrl: string,
+    options: AuthoredFontCatalogLoadOptions = {},
+): Promise<AuthoredFontCatalogActivation> {
+    return loadAndActivateAuthoredFontCatalog(
+        authoredFontCatalogUrlForDirectory(directoryUrl),
+        options,
+    );
+}
 
 /** Loads a packaged startup catalog by URL, then authenticates its referenced font manifest. */
 export async function loadAndActivateAuthoredFontCatalog(

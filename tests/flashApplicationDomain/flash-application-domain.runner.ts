@@ -9,7 +9,9 @@ import { Loader } from "../../src/layaAir/laya/net/Loader";
 import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
 import {
     activateAuthoredContentCatalog,
+    authoredContentCatalogUrlForResource,
     loadAndActivateAuthoredContentCatalog,
+    loadAndActivateAuthoredContentResource,
     type AuthoredContentCatalogManifest,
 } from "../../src/extensions/authoredContent/runtime/AuthoredContentCatalog";
 import {
@@ -294,6 +296,50 @@ test("authored catalog URL loading derives one manifest-relative asset root", as
     assert.deepEqual(calls, [
         ["/fixtures/loaded/runtime-catalog.json", Loader.JSON],
         ["/fixtures/loaded/native/entry.lh", Loader.HIERARCHY],
+    ]);
+});
+
+test("logical SWF resources resolve to native catalog sidecars in the same namespace", async () => {
+    assert.equal(
+        authoredContentCatalogUrlForResource("Resources/en_Eu/Swf/Lobby/GirlGame.swf"),
+        "Resources/en_Eu/Swf/Lobby/GirlGame.runtime-catalog.json",
+    );
+    assert.equal(
+        authoredContentCatalogUrlForResource("https://cdn.invalid/Resources/de_DE/Swf/Common/Common.SWF?v=4#entry"),
+        "https://cdn.invalid/Resources/de_DE/Swf/Common/Common.runtime-catalog.json?v=4#entry",
+    );
+    assert.throws(() => authoredContentCatalogUrlForResource("Resources/en_Eu/Textures/Lobby/1.png"), /\.swf/);
+
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.resource-sidecar",
+        bundles: [{
+            id: "entry",
+            runtimeId: "fixtures.catalog.ResourceSidecar",
+            linkage: "MC_ResourceSidecar",
+            sourceType: "MovieClip",
+            prefab: "GirlGame.native/entry.lh",
+            assets: [],
+        }],
+    } as const;
+    const calls: Array<[string, string | undefined]> = [];
+    const activation = await loadAndActivateAuthoredContentResource(
+        "Resources/fr_FR/Swf/Lobby/GirlGame.swf?release=7",
+        {
+            loader: {
+                async load(url: string, type?: string): Promise<unknown> {
+                    calls.push([url, type]);
+                    return type === Loader.JSON ? manifest : { create: () => createCatalogClip() };
+                },
+            },
+            applicationDomain: new ApplicationDomain(),
+            runtimeBindings: [{ runtimeId: "fixtures.catalog.ResourceSidecar", ctor: CatalogClip }],
+        },
+    );
+    assert.ok(activation.create("entry") instanceof CatalogClip);
+    assert.deepEqual(calls, [
+        ["Resources/fr_FR/Swf/Lobby/GirlGame.runtime-catalog.json?release=7", Loader.JSON],
+        ["Resources/fr_FR/Swf/Lobby/GirlGame.native/entry.lh", Loader.HIERARCHY],
     ]);
 });
 

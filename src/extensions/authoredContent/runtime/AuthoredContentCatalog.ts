@@ -14,6 +14,7 @@ import {
 } from "./bootstrap";
 
 export const AUTHORED_CONTENT_CATALOG_SCHEMA = "laya-authored-content-catalog@1" as const;
+export const AUTHORED_CONTENT_CATALOG_SUFFIX = ".runtime-catalog.json" as const;
 
 export type AuthoredCatalogAssetKind = "image" | "timeline";
 
@@ -86,6 +87,36 @@ const SERIALIZED_TYPES: Readonly<Record<AuthoredSourceType, "Sprite" | "Input">>
     TextField: "Sprite",
 };
 const installedCatalogs = new WeakMap<ApplicationDomain, Map<string, InstalledCatalog>>();
+
+/**
+ * Maps the logical Flash resource requested by the game to its native Laya
+ * catalog sidecar without changing the resource namespace, locale, CDN root,
+ * cache query or fragment.
+ */
+export function authoredContentCatalogUrlForResource(resourceUrlValue: string): string {
+    const resourceUrl = requireNonemptyString(resourceUrlValue, "resourceUrl");
+    const queryIndex = resourceUrl.indexOf("?");
+    const fragmentIndex = resourceUrl.indexOf("#");
+    const suffixIndex = queryIndex === -1
+        ? fragmentIndex
+        : fragmentIndex === -1 ? queryIndex : Math.min(queryIndex, fragmentIndex);
+    const address = suffixIndex === -1 ? resourceUrl : resourceUrl.slice(0, suffixIndex);
+    const transportSuffix = suffixIndex === -1 ? "" : resourceUrl.slice(suffixIndex);
+    if (!address.toLowerCase().endsWith(".swf"))
+        throw new TypeError("resourceUrl must identify a .swf resource");
+    return `${address.slice(0, -4)}${AUTHORED_CONTENT_CATALOG_SUFFIX}${transportSuffix}`;
+}
+
+/** Loads the native catalog that replaces one logical SWF resource. */
+export function loadAndActivateAuthoredContentResource(
+    resourceUrl: string,
+    options: AuthoredContentCatalogLoadOptions,
+): Promise<AuthoredContentCatalogActivation> {
+    return loadAndActivateAuthoredContentCatalog(
+        authoredContentCatalogUrlForResource(resourceUrl),
+        options,
+    );
+}
 
 /** Loads a generated catalog JSON and derives all asset URLs from its directory. */
 export async function loadAndActivateAuthoredContentCatalog(

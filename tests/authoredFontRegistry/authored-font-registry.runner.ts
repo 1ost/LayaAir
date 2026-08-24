@@ -10,6 +10,7 @@ import {
 } from "../../src/extensions/authoredContent/runtime/AuthoredFontRegistry";
 import {
     activateAuthoredFontCatalog,
+    authoredFontCatalogUrlForDirectory,
     loadAndActivateAuthoredFontCatalog,
     type AuthenticatedJsonReference,
 } from "../../src/extensions/authoredContent/runtime/AuthoredFontCatalog";
@@ -491,6 +492,11 @@ test("dispose failure invalidates the entire document and permits a fresh retry"
 });
 
 test("font startup catalogs own integrity, preload order and ApplicationDomain definitions", async () => {
+    assert.equal(
+        authoredFontCatalogUrlForDirectory("/Resources/en_Eu/Swf/Font/"),
+        "/Resources/en_Eu/Swf/Font/runtime-font-catalog.json",
+    );
+    assert.throws(() => authoredFontCatalogUrlForDirectory("/Resources/en_Eu/Swf/Font"), /end with/);
     const authored = entry("catalog-font", 3, "regular", "catalog-font");
     new FontHarness();
     const manifestBytes = jsonBytes(manifest([authored]));
