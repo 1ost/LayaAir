@@ -1,4 +1,8 @@
-import { GlowFilter, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign } from "../../../layaAir/flash";
+import {
+    AntiAliasType, GlowFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+} from "../../../layaAir/flash";
+import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
+import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
 
 export interface AuthoredGlowFilterConfiguration {
     readonly kind: "glow";
@@ -13,7 +17,7 @@ export interface AuthoredGlowFilterConfiguration {
 }
 
 export interface AuthoredTextFormatConfiguration {
-    readonly fontMode: "device";
+    readonly fontMode: "device" | "embedded";
     readonly font: string;
     readonly size: number;
     readonly color: number;
@@ -29,6 +33,50 @@ export interface AuthoredTextFormatConfiguration {
     readonly letterSpacing?: number;
     /** Omitted by native bundles emitted before translatable Flash text admission. */
     readonly kerning?: boolean;
+    readonly embeddedFont?: AuthoredEmbeddedFontConfiguration;
+}
+
+export interface AuthoredEmbeddedFontConfiguration {
+    readonly documentId: string;
+    readonly resourceId: string;
+    readonly sourceSha256: string;
+    readonly fontId: number;
+    readonly fontType: "embedded";
+    readonly fontStyle: "regular" | "bold" | "italic" | "boldItalic";
+    readonly unitsPerEm: number;
+    readonly ascent: number;
+    readonly descent: number;
+    readonly leading: number;
+    readonly glyphs: ReadonlyArray<{
+        readonly index: number;
+        readonly codePoint: number;
+        readonly advance: number;
+        readonly bounds: { readonly xmin: number; readonly xmax: number; readonly ymin: number; readonly ymax: number };
+    }>;
+    readonly kerning: ReadonlyArray<{ readonly leftCodePoint: number; readonly rightCodePoint: number; readonly adjustment: number }>;
+    readonly alignZones: AuthoredFontAlignZonesConfiguration;
+}
+
+export interface AuthoredFontAlignZonesConfiguration {
+    readonly tableHint: 1;
+    readonly tableHintName: "medium";
+    readonly zones: ReadonlyArray<{
+        readonly data: ReadonlyArray<{
+            readonly alignmentCoordinate: number;
+            readonly alignmentCoordinateBits: number;
+            readonly range: number;
+            readonly rangeBits: number;
+        }>;
+        readonly maskX: boolean;
+        readonly maskY: boolean;
+    }>;
+}
+
+export interface AuthoredAdvancedTextRasterizationConfiguration {
+    readonly antiAliasType: "advanced";
+    readonly gridFitType: "subpixel";
+    readonly sharpness: number;
+    readonly thickness: number;
 }
 
 export interface AuthoredTextFieldConfiguration {
@@ -43,13 +91,16 @@ export interface AuthoredTextFieldConfiguration {
     readonly selectable: boolean;
     readonly displayAsPassword: boolean;
     readonly autoSize: "none";
-    readonly html: false;
+    readonly html: boolean;
+    /** Omitted by bundles emitted before source useOutlines retention. */
+    readonly useOutlines?: boolean;
     readonly gutter: 2;
     readonly overflow: "hidden";
     readonly initialText: string;
     readonly format: AuthoredTextFormatConfiguration;
     /** Omitted by native bundles emitted before authored filter admission. */
     readonly filters?: ReadonlyArray<AuthoredGlowFilterConfiguration>;
+    readonly rasterization?: AuthoredAdvancedTextRasterizationConfiguration;
 }
 
 const FIELD_KEYS = Object.freeze([
@@ -61,9 +112,18 @@ const FORMAT_KEYS = Object.freeze([
     "rightMargin", "size", "underline",
 ]);
 const EXTENDED_FORMAT_KEYS = Object.freeze([...FORMAT_KEYS, "kerning", "letterSpacing"]);
+const EMBEDDED_FONT_KEYS = Object.freeze([
+    "alignZones", "ascent", "descent", "documentId", "fontId", "fontStyle", "fontType", "glyphs", "kerning", "leading",
+    "resourceId", "sourceSha256", "unitsPerEm",
+]);
+const EMBEDDED_GLYPH_KEYS = Object.freeze(["advance", "bounds", "codePoint", "index"]);
+const EMBEDDED_GLYPH_BOUNDS_KEYS = Object.freeze(["xmax", "xmin", "ymax", "ymin"]);
+const EMBEDDED_KERNING_KEYS = Object.freeze(["adjustment", "leftCodePoint", "rightCodePoint"]);
+const RASTERIZATION_KEYS = Object.freeze(["antiAliasType", "gridFitType", "sharpness", "thickness"]);
 const GLOW_FILTER_KEYS = Object.freeze([
     "alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength",
 ]);
+const authoredFontBindings = new WeakMap<TextField, AuthoredFontBinding>();
 
 /**
  * Validates neutral authored metadata completely before constructing the public
@@ -82,6 +142,21 @@ export function configureAuthoredTextField(
     if (!(field instanceof TextField) || field.destroyed)
         throw new TypeError("Authored TextField target must be a live TextField");
     const value = validateConfiguration(configuration);
+    const previousBinding = authoredFontBindings.get(field);
+    let fontBinding: AuthoredFontBinding | undefined;
+    if (value.format.fontMode === "embedded") {
+        const font = value.format.embeddedFont!;
+        fontBinding = AuthoredFontRegistry.bindPublishedText(field, {
+            documentId: font.documentId,
+            fontId: font.fontId,
+            fontName: value.format.font,
+            fontStyle: font.fontStyle,
+            sourceSha256: font.sourceSha256,
+        });
+    }
+    previousBinding?.cancel();
+    if (fontBinding) authoredFontBindings.set(field, fontBinding);
+    else authoredFontBindings.delete(field);
     const instanceName = field.name;
     field.name = instanceName || `symbol${value.sourceId}`;
     field.pos(value.x, value.y);
@@ -92,7 +167,13 @@ export function configureAuthoredTextField(
     field.selectable = value.selectable;
     field.displayAsPassword = value.displayAsPassword;
     field.flashAutoSize = value.autoSize;
-    field.embedFonts = false;
+    field.embedFonts = value.useOutlines ?? value.format.fontMode === "embedded";
+    if (value.rasterization !== undefined) {
+        field.antiAliasType = value.rasterization.antiAliasType;
+        field.gridFitType = value.rasterization.gridFitType;
+        field.sharpness = value.rasterization.sharpness;
+        field.thickness = value.rasterization.thickness;
+    }
     const textFormat = new TextFormat(
         value.format.font,
         value.format.size,
@@ -112,8 +193,14 @@ export function configureAuthoredTextField(
     textFormat.kerning = value.format.kerning ?? false;
     field.defaultTextFormat = textFormat;
     field.filters = createAuthoredGlowFilters(value.filters ?? []);
-    field.text = value.initialText;
+    if (value.html) field.htmlText = value.initialText;
+    else field.text = value.initialText;
     return field;
+}
+
+export function releaseAuthoredTextFieldFontBinding(field: TextField): void {
+    authoredFontBindings.get(field)?.cancel();
+    authoredFontBindings.delete(field);
 }
 
 export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
@@ -125,11 +212,12 @@ export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
-    const hasFilters = value !== null && typeof value === "object"
-        && Object.prototype.hasOwnProperty.call(value, "filters");
+    const hasFilters = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "filters");
+    const hasRasterization = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "rasterization");
+    const hasUseOutlines = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "useOutlines");
     const record = exactDataObject(
         value,
-        hasFilters ? [...FIELD_KEYS, "filters"] : FIELD_KEYS,
+        [...FIELD_KEYS, ...(hasFilters ? ["filters"] : []), ...(hasRasterization ? ["rasterization"] : []), ...(hasUseOutlines ? ["useOutlines"] : [])],
         "Authored TextField configuration",
     );
     const rawFormat = record.format;
@@ -137,7 +225,9 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     const hasKerning = hasOwnDataProperty(rawFormat, "kerning");
     if (hasLetterSpacing !== hasKerning)
         throw new TypeError("Authored TextField format must provide letterSpacing and kerning together");
-    const format = exactDataObject(rawFormat, hasLetterSpacing ? EXTENDED_FORMAT_KEYS : FORMAT_KEYS, "Authored TextField format");
+    const hasEmbeddedFont = hasOwnDataProperty(rawFormat, "embeddedFont");
+    const formatKeys = hasLetterSpacing ? EXTENDED_FORMAT_KEYS : FORMAT_KEYS;
+    const format = exactDataObject(rawFormat, hasEmbeddedFont ? [...formatKeys, "embeddedFont"] : formatKeys, "Authored TextField format");
     positiveInteger(record.sourceId, "sourceId");
     finite(record.x, "x");
     finite(record.y, "y");
@@ -149,7 +239,8 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     boolean(record.selectable, "selectable");
     boolean(record.displayAsPassword, "displayAsPassword");
     equal(record.autoSize, TextFieldAutoSize.NONE, "autoSize");
-    equal(record.html, false, "html");
+    boolean(record.html, "html");
+    if (hasUseOutlines) boolean(record.useOutlines, "useOutlines");
     equal(record.gutter, 2, "gutter");
     equal(record.overflow, "hidden", "overflow");
     string(record.initialText, "initialText");
@@ -157,7 +248,7 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     const filters = (record.filters === undefined ? [] : record.filters as unknown[])
         .map((filter, index) => validateGlowFilter(filter, `filters[${index}]`));
 
-    equal(format.fontMode, "device", "format.fontMode");
+    oneOf(format.fontMode, ["device", "embedded"], "format.fontMode");
     nonemptyString(format.font, "format.font");
     positive(format.size, "format.size");
     integerRange(format.color, 0, 0xffffff, "format.color");
@@ -172,8 +263,32 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     finite(format.leading, "format.leading");
     if (hasLetterSpacing) finite(format.letterSpacing, "format.letterSpacing");
     if (hasKerning) boolean(format.kerning, "format.kerning");
+    const embeddedFont = format.embeddedFont === undefined ? undefined : validateEmbeddedFont(format.embeddedFont);
+    const rasterization = record.rasterization === undefined ? undefined : validateRasterization(record.rasterization);
+    const useOutlines = hasUseOutlines ? record.useOutlines as boolean : format.fontMode === "embedded";
+    if (format.fontMode === "device" && (embeddedFont !== undefined || rasterization !== undefined || useOutlines))
+        throw new TypeError("device text cannot declare embedded font or rasterization state");
+    if (format.fontMode === "embedded" && embeddedFont === undefined)
+        throw new TypeError("embedded text requires exact font state");
+    if (format.fontMode === "embedded" && useOutlines && rasterization === undefined)
+        throw new TypeError("outlined embedded text requires exact rasterization state");
+    if (format.fontMode === "embedded" && record.type !== TextFieldType.DYNAMIC)
+        throw new TypeError("embedded input text is outside the admitted subset");
+    const expectedStyle = format.bold && format.italic ? "boldItalic" : format.bold ? "bold" : format.italic ? "italic" : "regular";
+    if (embeddedFont !== undefined && embeddedFont.fontStyle !== expectedStyle)
+        throw new TypeError("embedded font style does not match authored bold/italic state");
+    if (record.html) {
+        if (record.type !== TextFieldType.DYNAMIC)
+            throw new TypeError("authored HTML is admitted only for dynamic fields");
+        const layout = parseRestrictedFlashHtmlText(record.initialText);
+        if (layout.font !== format.font || layout.size !== format.size || layout.color !== format.color
+            || layout.align !== format.align || layout.bold !== format.bold
+            || layout.letterSpacing !== (hasLetterSpacing ? format.letterSpacing : 0)
+            || layout.kerning !== (hasKerning ? format.kerning : false))
+            throw new TypeError("authored HTML markup must match its exact format");
+    }
     const normalizedFormat: AuthoredTextFormatConfiguration = Object.freeze({
-        fontMode: exactValue(format.fontMode, "device", "format.fontMode"),
+        fontMode: oneOfValue(format.fontMode, ["device", "embedded"] as const, "format.fontMode"),
         font: format.font,
         size: format.size,
         color: format.color,
@@ -189,6 +304,7 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         leading: format.leading,
         ...(hasLetterSpacing ? { letterSpacing: format.letterSpacing as number } : {}),
         ...(hasKerning ? { kerning: format.kerning as boolean } : {}),
+        ...(embeddedFont === undefined ? {} : { embeddedFont }),
     });
     return Object.freeze({
         sourceId: record.sourceId,
@@ -202,12 +318,117 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         selectable: record.selectable,
         displayAsPassword: record.displayAsPassword,
         autoSize: exactValue(record.autoSize, TextFieldAutoSize.NONE, "autoSize"),
-        html: exactValue(record.html, false, "html"),
+        html: record.html,
+        useOutlines,
         gutter: exactValue(record.gutter, 2, "gutter"),
         overflow: exactValue(record.overflow, "hidden", "overflow"),
         initialText: record.initialText,
         format: normalizedFormat,
         filters: Object.freeze(filters),
+        ...(rasterization === undefined ? {} : { rasterization }),
+    });
+}
+
+function validateEmbeddedFont(value: unknown): AuthoredEmbeddedFontConfiguration {
+    const record = exactDataObject(value, EMBEDDED_FONT_KEYS, "Authored embedded font");
+    nonemptyString(record.documentId, "embeddedFont.documentId");
+    nonemptyString(record.resourceId, "embeddedFont.resourceId");
+    sha256(record.sourceSha256, "embeddedFont.sourceSha256");
+    positiveInteger(record.fontId, "embeddedFont.fontId");
+    equal(record.fontType, "embedded", "embeddedFont.fontType");
+    oneOf(record.fontStyle, ["regular", "bold", "italic", "boldItalic"], "embeddedFont.fontStyle");
+    positive(record.unitsPerEm, "embeddedFont.unitsPerEm");
+    nonnegative(record.ascent, "embeddedFont.ascent");
+    nonnegative(record.descent, "embeddedFont.descent");
+    finite(record.leading, "embeddedFont.leading");
+    if (!Array.isArray(record.glyphs) || record.glyphs.length === 0)
+        throw new TypeError("embeddedFont.glyphs must be a non-empty array");
+    let previous = -1;
+    const glyphs = record.glyphs.map((value, index) => {
+        const glyph = exactDataObject(value, EMBEDDED_GLYPH_KEYS, `embeddedFont.glyphs[${index}]`);
+        if (glyph.index !== index) throw new TypeError("embeddedFont.glyphs indices must be contiguous");
+        unicodeScalar(glyph.codePoint, `embeddedFont.glyphs[${index}].codePoint`);
+        if (glyph.codePoint <= previous) throw new TypeError("embeddedFont.glyphs must be strictly ordered by code point");
+        previous = glyph.codePoint;
+        nonnegative(glyph.advance, `embeddedFont.glyphs[${index}].advance`);
+        const bounds = exactDataObject(glyph.bounds, EMBEDDED_GLYPH_BOUNDS_KEYS, `embeddedFont.glyphs[${index}].bounds`);
+        for (const key of EMBEDDED_GLYPH_BOUNDS_KEYS) finite(bounds[key], `embeddedFont.glyphs[${index}].bounds.${key}`);
+        return Object.freeze({
+            index,
+            codePoint: glyph.codePoint,
+            advance: glyph.advance,
+            bounds: Object.freeze({ xmin: bounds.xmin as number, xmax: bounds.xmax as number, ymin: bounds.ymin as number, ymax: bounds.ymax as number }),
+        });
+    });
+    let previousPair = -1;
+    if (!Array.isArray(record.kerning)) throw new TypeError("embeddedFont.kerning must be an array");
+    const kerning = record.kerning.map((value, index) => {
+        const pair = exactDataObject(value, EMBEDDED_KERNING_KEYS, `embeddedFont.kerning[${index}]`);
+        unicodeScalar(pair.leftCodePoint, `embeddedFont.kerning[${index}].leftCodePoint`);
+        unicodeScalar(pair.rightCodePoint, `embeddedFont.kerning[${index}].rightCodePoint`);
+        finite(pair.adjustment, `embeddedFont.kerning[${index}].adjustment`);
+        const key = pair.leftCodePoint * 0x110000 + pair.rightCodePoint;
+        if (key <= previousPair) throw new TypeError("embeddedFont.kerning must be unique and source-sorted");
+        previousPair = key;
+        return Object.freeze({ leftCodePoint: pair.leftCodePoint, rightCodePoint: pair.rightCodePoint, adjustment: pair.adjustment });
+    });
+    const alignZones = validateFontAlignZones(record.alignZones, glyphs.length);
+    return Object.freeze({
+        documentId: record.documentId,
+        resourceId: record.resourceId,
+        sourceSha256: record.sourceSha256,
+        fontId: record.fontId,
+        fontType: "embedded",
+        fontStyle: oneOfValue(record.fontStyle, ["regular", "bold", "italic", "boldItalic"] as const, "embeddedFont.fontStyle"),
+        unitsPerEm: record.unitsPerEm,
+        ascent: record.ascent,
+        descent: record.descent,
+        leading: record.leading,
+        glyphs: Object.freeze(glyphs),
+        kerning: Object.freeze(kerning),
+        alignZones,
+    });
+}
+
+function validateFontAlignZones(value: unknown, glyphCount: number): AuthoredFontAlignZonesConfiguration {
+    const record = exactDataObject(value, ["tableHint", "tableHintName", "zones"], "embeddedFont.alignZones");
+    equal(record.tableHint, 1, "embeddedFont.alignZones.tableHint");
+    equal(record.tableHintName, "medium", "embeddedFont.alignZones.tableHintName");
+    if (!Array.isArray(record.zones) || record.zones.length !== glyphCount)
+        throw new TypeError("embeddedFont.alignZones.zones must match the glyph count");
+    const zones = record.zones.map((value2, index) => {
+        const zone = exactDataObject(value2, ["data", "maskX", "maskY"], `embeddedFont.alignZones.zones[${index}]`);
+        if (!Array.isArray(zone.data) || zone.data.length !== 2)
+            throw new TypeError(`embeddedFont.alignZones.zones[${index}].data must contain two records`);
+        const data = zone.data.map((value3, dataIndex) => {
+            const datum = exactDataObject(value3, ["alignmentCoordinate", "alignmentCoordinateBits", "range", "rangeBits"], `embeddedFont.alignZones.zones[${index}].data[${dataIndex}]`);
+            nonnegative(datum.alignmentCoordinate, `embeddedFont.alignZones.zones[${index}].data[${dataIndex}].alignmentCoordinate`);
+            nonnegative(datum.range, `embeddedFont.alignZones.zones[${index}].data[${dataIndex}].range`);
+            integerRange(datum.alignmentCoordinateBits, 0, 0xffff, `embeddedFont.alignZones.zones[${index}].data[${dataIndex}].alignmentCoordinateBits`);
+            integerRange(datum.rangeBits, 0, 0xffff, `embeddedFont.alignZones.zones[${index}].data[${dataIndex}].rangeBits`);
+            return Object.freeze({
+                alignmentCoordinate: datum.alignmentCoordinate,
+                alignmentCoordinateBits: datum.alignmentCoordinateBits,
+                range: datum.range,
+                rangeBits: datum.rangeBits,
+            });
+        });
+        boolean(zone.maskX, `embeddedFont.alignZones.zones[${index}].maskX`);
+        boolean(zone.maskY, `embeddedFont.alignZones.zones[${index}].maskY`);
+        return Object.freeze({ data: Object.freeze(data), maskX: zone.maskX, maskY: zone.maskY });
+    });
+    return Object.freeze({ tableHint: 1, tableHintName: "medium", zones: Object.freeze(zones) });
+}
+
+function validateRasterization(value: unknown): AuthoredAdvancedTextRasterizationConfiguration {
+    const record = exactDataObject(value, RASTERIZATION_KEYS, "Authored advanced rasterization");
+    equal(record.antiAliasType, AntiAliasType.ADVANCED, "rasterization.antiAliasType");
+    equal(record.gridFitType, GridFitType.SUBPIXEL, "rasterization.gridFitType");
+    range(record.sharpness, -400, 400, "rasterization.sharpness");
+    range(record.thickness, -200, 200, "rasterization.thickness");
+    return Object.freeze({
+        antiAliasType: "advanced", gridFitType: "subpixel",
+        sharpness: record.sharpness, thickness: record.thickness,
     });
 }
 
@@ -261,6 +482,11 @@ function positive(value: unknown, label: string): asserts value is number {
     if (value <= 0) throw new RangeError(`${label} must be positive`);
 }
 
+function nonnegative(value: unknown, label: string): asserts value is number {
+    finite(value, label);
+    if (value < 0) throw new RangeError(`${label} must be nonnegative`);
+}
+
 function range(value: unknown, minimum: number, maximum: number, label: string): asserts value is number {
     finite(value, label);
     if (value < minimum || value > maximum)
@@ -275,6 +501,17 @@ function positiveInteger(value: unknown, label: string): asserts value is number
 function integerRange(value: unknown, minimum: number, maximum: number, label: string): asserts value is number {
     if (typeof value !== "number" || !Number.isInteger(value) || value < minimum || value > maximum)
         throw new RangeError(`${label} must be an integer from ${minimum} through ${maximum}`);
+}
+
+function unicodeScalar(value: unknown, label: string): asserts value is number {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 0x10ffff
+        || value >= 0xd800 && value <= 0xdfff)
+        throw new RangeError(`${label} must be a Unicode scalar value`);
+}
+
+function sha256(value: unknown, label: string): asserts value is string {
+    if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value))
+        throw new TypeError(`${label} must be lowercase SHA-256`);
 }
 
 function boolean(value: unknown, label: string): asserts value is boolean {

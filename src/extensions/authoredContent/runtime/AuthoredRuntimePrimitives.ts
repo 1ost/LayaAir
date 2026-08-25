@@ -1,11 +1,13 @@
 import { DisplayObject, MovieClip, SimpleButton, TextField } from "../../../layaAir/flash";
 import { Rectangle } from "../../../layaAir/flash/geom/Rectangle";
 import { ClassUtils } from "../../../layaAir/laya/utils/ClassUtils";
+import type { TextGlyphAlignmentZone } from "../../../layaAir/laya/webgl/text/TextRasterizationSettings";
 import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 import {
     AuthoredTextFieldConfiguration,
     configureAuthoredTextField,
     createAuthoredGlowFilters,
+    releaseAuthoredTextFieldFontBinding,
 } from "./AuthoredTextField";
 
 export { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
@@ -162,6 +164,27 @@ export class AuthoredDynamicTextField extends TextField {
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
         configureAuthoredTextField(this, this._authoredConfiguration);
+        this._applyAuthoredAlignmentZones();
+    }
+
+    override onDestroy(): void {
+        releaseAuthoredTextFieldFontBinding(this);
+        super.onDestroy();
+    }
+
+    private _applyAuthoredAlignmentZones(): void {
+        const font = this._authoredConfiguration.format.embeddedFont;
+        const settings = this._nativeTextInput.rasterizationSettings;
+        if (!font || !this._authoredConfiguration.useOutlines || !settings) return;
+        const alignmentZones: Record<string, TextGlyphAlignmentZone> = Object.create(null);
+        font.glyphs.forEach((glyph, index) => {
+            const zone = font.alignZones.zones[index];
+            alignmentZones[String(glyph.codePoint)] = Object.freeze({
+                ...(zone.maskX ? { x: Object.freeze({ coordinate: zone.data[0].alignmentCoordinate, range: zone.data[0].range }) } : {}),
+                ...(zone.maskY ? { y: Object.freeze({ coordinate: zone.data[1].alignmentCoordinate, range: zone.data[1].range }) } : {}),
+            });
+        });
+        this._nativeTextInput.rasterizationSettings = Object.freeze({ ...settings, alignmentZones: Object.freeze(alignmentZones) });
     }
 }
 

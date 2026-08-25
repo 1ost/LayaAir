@@ -52,11 +52,14 @@ async function main() {
     ]));
     const authorities = new Map();
     for (const asset of Object.values(library.assets)) {
-        if ((asset.kind !== "shape" && asset.kind !== "image") || typeof asset.path !== "string") continue;
+        if ((asset.kind !== "shape" && asset.kind !== "image" && asset.kind !== "font") || typeof asset.path !== "string") continue;
         const bytes = fs.readFileSync(resolveInside(sourceRoot, asset.path));
+        const lowerPath = asset.path.toLowerCase();
+        if (asset.kind === "font" && (!lowerPath.endsWith(".ttf") || !isTrueType(bytes)))
+            throw new Error(`FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED: ${asset.path}`);
         authorities.set(asset.path, {
             sourcePath: asset.path,
-            mediaType: asset.path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+            mediaType: asset.kind === "font" ? "font/ttf" : lowerPath.endsWith(".png") ? "image/png" : "image/jpeg",
             byteLength: bytes.byteLength,
             sha256: hash(bytes),
         });
@@ -331,6 +334,10 @@ function resolveInside(root, relative) {
 
 function hash(bytes) {
     return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+function isTrueType(bytes) {
+    return bytes.length >= 12 && bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0;
 }
 
 main().catch(error => {

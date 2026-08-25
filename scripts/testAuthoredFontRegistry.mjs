@@ -29,7 +29,10 @@ try {
         logLevel: "warning"
     });
 
-    const result = spawnSync(process.execPath, ["--test", output], { cwd: root, stdio: "inherit" });
+    // The runner intentionally replaces process-global browser/font harnesses.
+    // Keep its top-level cases serialized so one case cannot authenticate or
+    // publish through another case's temporary harness.
+    const result = spawnSync(process.execPath, ["--test", "--test-concurrency=1", output], { cwd: root, stdio: "inherit" });
     if (result.error) throw result.error;
     process.exitCode = result.status ?? 1;
 } finally {

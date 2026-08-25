@@ -1,14 +1,16 @@
 import {
     NeutralAuthoredContentIR,
     NeutralAuthoredNode,
+    NeutralGlowFilter,
     NeutralTimeline,
     normalizeNeutralAuthoredContent,
 } from "../core/NeutralAuthoredContentIR";
+import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
 
 type NeutralResourceInput = {
     readonly id: string;
     readonly sourcePath: string;
-    readonly mediaType: "image/jpeg" | "image/png";
+    readonly mediaType: "image/jpeg" | "image/png" | "font/ttf";
     readonly byteLength: number;
     readonly sha256: string;
 };
@@ -58,12 +60,25 @@ const TEXT_FIELD_FIELDS = new Set([
     "initialText", "leading", "leftMargin", "multiline", "password", "rightMargin", "selectable",
     "useOutlines", "variableName", "wordWrap",
 ]);
+const FONT_FIELDS = new Set([
+    "ascent", "bold", "descent", "embedded", "family", "glyphCount", "glyphs", "hasLayout",
+    "italic", "kerning", "leading", "unitsPerEm",
+]);
+const FONT_GLYPH_FIELDS = new Set(["advance", "bounds", "codePoint", "index"]);
+const FONT_GLYPH_BOUNDS_FIELDS = new Set(["xmax", "xmin", "ymax", "ymin"]);
+const FONT_KERNING_FIELDS = new Set(["adjustment", "leftCodePoint", "rightCodePoint"]);
+const FONT_ALIGN_ZONES_FIELDS = new Set(["fontId", "sourceTag", "tableHint", "tableHintName", "zones"]);
+const FONT_ALIGN_ZONE_FIELDS = new Set(["data", "maskX", "maskY"]);
+const FONT_ALIGN_ZONE_DATA_FIELDS = new Set(["alignmentCoordinate", "alignmentCoordinateBits", "range", "rangeBits"]);
+const TEXT_RENDERING_FIELDS = new Set([
+    "gridFit", "gridFitMode", "renderer", "sharpness", "sourceTag", "textId", "thickness", "useFlashType",
+]);
 const SCALING_GRID_FIELDS = new Set(["characterId", "rect", "sizeGrid", "sourceTag", "units", "valid"]);
 const SCALING_GRID_RECT_FIELDS = new Set(["height", "width", "x", "y"]);
 
 export interface FlashLibraryResourceAuthority {
     readonly sourcePath: string;
-    readonly mediaType: "image/jpeg" | "image/png";
+    readonly mediaType: "image/jpeg" | "image/png" | "font/ttf";
     readonly byteLength: number;
     readonly sha256: string;
 }
@@ -276,7 +291,7 @@ export class FlashLibrarySymbolAdapter {
         if (asset.kind === "shape")
             return this.createImage(asset, operation, assets, resourceAuthorities, rasterizedShapes, resources);
         if (asset.kind === "input-text")
-            return this.createDynamicText(asset, operation, assets);
+            return this.createDynamicText(asset, operation, assets, resourceAuthorities, resources);
         if (asset.kind === "text")
             return this.createStaticTextField(asset, operation, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
@@ -590,6 +605,8 @@ export class FlashLibrarySymbolAdapter {
         asset: Record<string, any>,
         operation: Record<string, any>,
         assets: Record<string, any>,
+        resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
         const textField = object(asset.textField, `library.assets.${characterId}.textField`);
@@ -598,7 +615,7 @@ export class FlashLibrarySymbolAdapter {
         // editable TextFields. The authenticated source font family/weight is
         // retained below; rasterizing embedded text would make localization
         // impossible and duplicate the surrounding artwork.
-        boolean(textField.useOutlines, `library.assets.${characterId}.textField.useOutlines`);
+        const useOutlines = boolean(textField.useOutlines, `library.assets.${characterId}.textField.useOutlines`);
         exactValue(textField.autoSize, false, "FLASH_LIBRARY_TEXT_AUTO_SIZE_UNSUPPORTED", `Text ${characterId} auto-size is unsupported.`);
         exactValue(textField.border, false, "FLASH_LIBRARY_TEXT_BORDER_UNSUPPORTED", `Text ${characterId} border rendering is unsupported.`);
         exactValue(textField.variableName, "", "FLASH_LIBRARY_TEXT_VARIABLE_UNSUPPORTED", `Text ${characterId} has an unsupported internal variable binding.`);
@@ -610,6 +627,20 @@ export class FlashLibrarySymbolAdapter {
         if (fontAsset.kind !== "font")
             fail("FLASH_LIBRARY_TEXT_FONT_REQUIRED", `Text ${characterId} does not reference a font asset.`);
         const font = object(fontAsset.font, `library.assets.${fontId}.font`);
+        exactKeys(font, FONT_FIELDS, `library.assets.${fontId}.font`, "FLASH_LIBRARY_FONT_FIELD_UNSUPPORTED");
+        const isEmbedded = font.embedded === undefined
+            ? false
+            : boolean(font.embedded, `library.assets.${fontId}.font.embedded`);
+        if (useOutlines && !isEmbedded)
+            fail("FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED", `Text ${characterId} uses outlines without an embedded font.`);
+        const embeddedFont = isEmbedded
+            ? authoredEmbeddedFont(fontAsset, font, fontId, resourceAuthorities, resources)
+            : undefined;
+        if (useOutlines && asset.textRendering === undefined)
+            fail("FLASH_LIBRARY_TEXT_RENDERING_REQUIRED", `Text ${characterId} uses outlines but lacks exact CSM settings.`);
+        const rasterization = asset.textRendering === undefined
+            ? undefined
+            : authoredAdvancedTextRasterization(asset, characterId);
         const color = object(textField.color, `library.assets.${characterId}.textField.color`);
         exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.textField.color`, "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
         exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
@@ -619,7 +650,7 @@ export class FlashLibrarySymbolAdapter {
         const authoredHtml = html
             ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color)
             : undefined;
-        const initialText = authoredHtml?.text ?? sourceInitialText;
+        const initialText = authoredHtml?.markup ?? sourceInitialText;
         return {
             linkage: flashLibraryAssetName(asset, characterId),
             name: operation.name ?? flashLibraryAssetName(asset, characterId),
@@ -639,13 +670,15 @@ export class FlashLibrarySymbolAdapter {
                 selectable: boolean(textField.selectable, "text.selectable"),
                 displayAsPassword: boolean(textField.password, "text.password"),
                 autoSize: "none",
-                html: false,
+                html,
+                useOutlines,
                 filters: authoredGlowFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,
+                ...(rasterization === undefined ? {} : { rasterization }),
                 format: {
-                    fontMode: "device",
+                    fontMode: embeddedFont === undefined ? "device" : "embedded",
                     font: string(font.family, `library.assets.${fontId}.font.family`),
                     size: finite(textField.fontSize, "text.fontSize"),
                     color: finite(color.color, "text.color.color"),
@@ -659,6 +692,7 @@ export class FlashLibrarySymbolAdapter {
                     leading: finite(textField.leading, "text.leading"),
                     letterSpacing: authoredHtml?.letterSpacing ?? 0,
                     kerning: authoredHtml?.kerning ?? false,
+                    ...(embeddedFont === undefined ? {} : { embeddedFont }),
                 },
             },
             children: [],
@@ -731,6 +765,7 @@ export class FlashLibrarySymbolAdapter {
                 displayAsPassword: false,
                 autoSize: "none",
                 html: false,
+                useOutlines: false,
                 filters: authoredGlowFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
@@ -788,22 +823,152 @@ function parseAuthoredFlashHtml(
     font: Record<string, any>,
     textField: Record<string, any>,
     color: Record<string, any>,
-): { readonly text: string; readonly letterSpacing: number; readonly kerning: boolean } {
-    const match = /^<p align="(left|center|right|justify)"><font face="([^"<>]+)" size="([0-9]+(?:\.[0-9]+)?)" color="#([0-9a-fA-F]{6})"(?: letterSpacing="(-?[0-9]+(?:\.[0-9]+)?)")?(?: kerning="([01])")?>((?:[^<&]|&nbsp;)*)<\/font><\/p>$/.exec(value);
-    if (!match)
-        fail("FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId} HTML is outside the translatable one-paragraph subset.`);
-    const [, align, face, sizeText, colorText, spacingText, kerningText, plainText] = match;
-    if (face !== string(font.family, `Text ${characterId} font family`)
-        || Number(sizeText) !== finite(textField.fontSize, `Text ${characterId} font size`)
-        || Number.parseInt(colorText, 16) !== finite(color.color, `Text ${characterId} color`)
-        || align !== string(textField.align, `Text ${characterId} align`)) {
+): ReturnType<typeof parseRestrictedFlashHtmlText> {
+    let layout: ReturnType<typeof parseRestrictedFlashHtmlText>;
+    try { layout = parseRestrictedFlashHtmlText(value); }
+    catch (error) {
+        fail("FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (layout.font !== string(font.family, `Text ${characterId} font family`)
+        || layout.size !== finite(textField.fontSize, `Text ${characterId} font size`)
+        || layout.color !== finite(color.color, `Text ${characterId} color`)
+        || layout.align !== string(textField.align, `Text ${characterId} align`)
+        || layout.bold !== boolean(font.bold, `Text ${characterId} font bold`)) {
         fail("FLASH_LIBRARY_TEXT_HTML_AUTHORITY_MISMATCH", `Text ${characterId} HTML formatting disagrees with its field metadata.`);
     }
+    return layout;
+}
+
+function authoredEmbeddedFont(
+    fontAsset: Record<string, any>,
+    font: Record<string, any>,
+    fontId: number,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+    resources: Map<string, NeutralResourceInput>,
+) {
+    exactValue(fontAsset.sourceTag, "DefineFont3Tag", "FLASH_LIBRARY_FONT_FORMAT_UNSUPPORTED", `Font ${fontId} is not an embedded DefineFont3 resource.`);
+    exactValue(font.embedded, true, "FLASH_LIBRARY_FONT_NOT_EMBEDDED", `Font ${fontId} is not embedded.`);
+    exactValue(font.hasLayout, true, "FLASH_LIBRARY_FONT_LAYOUT_REQUIRED", `Font ${fontId} does not retain layout metrics.`);
+    const sourcePath = string(fontAsset.path, `library.assets.${fontId}.path`);
+    if (!sourcePath.toLocaleLowerCase("en-US").endsWith(".ttf"))
+        fail("FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED", `Font ${fontId} must identify a .ttf resource.`);
+    const authority = resourceAuthorities.get(sourcePath);
+    if (!authority || authority.sourcePath !== sourcePath || authority.mediaType !== "font/ttf")
+        fail("FLASH_LIBRARY_FONT_RESOURCE_AUTHORITY_MISSING", `No authenticated TrueType authority exists for '${sourcePath}'.`);
+    const resourceId = `flash-font-${fontId}`;
+    registerResource(resources, resourceId, authority);
+
+    const glyphCount = positiveInteger(font.glyphCount, `library.assets.${fontId}.font.glyphCount`);
+    const glyphValues = array(font.glyphs, `library.assets.${fontId}.font.glyphs`);
+    if (glyphValues.length !== glyphCount)
+        fail("FLASH_LIBRARY_FONT_GLYPH_COUNT_MISMATCH", `Font ${fontId} glyph count does not match its retained metrics.`);
+    let previousCodePoint = -1;
+    const glyphs = glyphValues.map((candidate, index) => {
+        const glyph = object(candidate, `library.assets.${fontId}.font.glyphs[${index}]`);
+        exactKeys(glyph, FONT_GLYPH_FIELDS, `library.assets.${fontId}.font.glyphs[${index}]`, "FLASH_LIBRARY_FONT_GLYPH_FIELD_UNSUPPORTED");
+        exactValue(glyph.index, index, "FLASH_LIBRARY_FONT_GLYPH_INDEX_MISMATCH", `Font ${fontId} glyph indices must be contiguous source order.`);
+        const codePoint = unicodeScalar(glyph.codePoint, `font ${fontId} glyph ${index}.codePoint`);
+        if (codePoint <= previousCodePoint)
+            fail("FLASH_LIBRARY_FONT_GLYPH_ORDER_UNSUPPORTED", `Font ${fontId} glyph code points must be strictly ordered.`);
+        previousCodePoint = codePoint;
+        const bounds = object(glyph.bounds, `font ${fontId} glyph ${index}.bounds`);
+        exactKeys(bounds, FONT_GLYPH_BOUNDS_FIELDS, `font ${fontId} glyph ${index}.bounds`, "FLASH_LIBRARY_FONT_GLYPH_BOUNDS_FIELD_UNSUPPORTED");
+        const advance = nonnegativeFinite(glyph.advance, `font ${fontId} glyph ${index}.advance`);
+        return {
+            index,
+            codePoint,
+            advance,
+            bounds: {
+                xmin: finite(bounds.xmin, `font ${fontId} glyph ${index}.bounds.xmin`),
+                xmax: finite(bounds.xmax, `font ${fontId} glyph ${index}.bounds.xmax`),
+                ymin: finite(bounds.ymin, `font ${fontId} glyph ${index}.bounds.ymin`),
+                ymax: finite(bounds.ymax, `font ${fontId} glyph ${index}.bounds.ymax`),
+            },
+        };
+    });
+    const kerning = array(font.kerning, `library.assets.${fontId}.font.kerning`).map((candidate, index) => {
+        const pair = object(candidate, `font ${fontId} kerning ${index}`);
+        exactKeys(pair, FONT_KERNING_FIELDS, `font ${fontId} kerning ${index}`, "FLASH_LIBRARY_FONT_KERNING_FIELD_UNSUPPORTED");
+        const leftCodePoint = unicodeScalar(pair.leftCodePoint, `font ${fontId} kerning ${index}.leftCodePoint`);
+        const rightCodePoint = unicodeScalar(pair.rightCodePoint, `font ${fontId} kerning ${index}.rightCodePoint`);
+        return { leftCodePoint, rightCodePoint, adjustment: finite(pair.adjustment, `font ${fontId} kerning ${index}.adjustment`) };
+    }).sort((left, right) => left.leftCodePoint - right.leftCodePoint || left.rightCodePoint - right.rightCodePoint);
+    for (let index = 1; index < kerning.length; index++) {
+        const previous = kerning[index - 1];
+        const current = kerning[index];
+        if (previous.leftCodePoint === current.leftCodePoint && previous.rightCodePoint === current.rightCodePoint)
+            fail("FLASH_LIBRARY_FONT_KERNING_DUPLICATE", `Font ${fontId} kerning pairs must be unique.`);
+    }
+    const alignZones = authoredFontAlignZones(fontAsset.fontAlignZones, fontId, glyphCount);
+    const bold = boolean(font.bold, `library.assets.${fontId}.font.bold`);
+    const italic = boolean(font.italic, `library.assets.${fontId}.font.italic`);
     return {
-        text: plainText.replaceAll("&nbsp;", "\u00a0"),
-        letterSpacing: spacingText === undefined ? 0 : finite(Number(spacingText), `Text ${characterId} letter spacing`),
-        kerning: kerningText === "1",
+        resourceId,
+        sourceSha256: authority.sha256,
+        fontId,
+        fontType: "embedded" as const,
+        fontStyle: bold && italic ? "boldItalic" as const : bold ? "bold" as const : italic ? "italic" as const : "regular" as const,
+        unitsPerEm: positive(font.unitsPerEm, `library.assets.${fontId}.font.unitsPerEm`),
+        ascent: nonnegativeFinite(font.ascent, `library.assets.${fontId}.font.ascent`),
+        descent: nonnegativeFinite(font.descent, `library.assets.${fontId}.font.descent`),
+        leading: finite(font.leading, `library.assets.${fontId}.font.leading`),
+        glyphs,
+        kerning,
+        alignZones,
     };
+}
+
+function authoredFontAlignZones(value: unknown, fontId: number, glyphCount: number) {
+    const source = object(value, `library.assets.${fontId}.fontAlignZones`);
+    exactKeys(source, FONT_ALIGN_ZONES_FIELDS, `library.assets.${fontId}.fontAlignZones`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_FIELD_UNSUPPORTED");
+    exactValue(source.fontId, fontId, "FLASH_LIBRARY_FONT_ALIGN_ZONE_ID_MISMATCH", `Font ${fontId} align zones identify another font.`);
+    exactValue(source.sourceTag, "DefineFontAlignZonesTag", "FLASH_LIBRARY_FONT_ALIGN_ZONE_FORMAT_UNSUPPORTED", `Font ${fontId} align zones lack DefineFontAlignZones authority.`);
+    exactValue(source.tableHint, 1, "FLASH_LIBRARY_FONT_ALIGN_ZONE_TABLE_UNSUPPORTED", `Font ${fontId} align zones use an unsupported table hint.`);
+    exactValue(source.tableHintName, "medium", "FLASH_LIBRARY_FONT_ALIGN_ZONE_TABLE_UNSUPPORTED", `Font ${fontId} align zones use an unsupported table hint name.`);
+    const zones = array(source.zones, `library.assets.${fontId}.fontAlignZones.zones`);
+    if (zones.length !== glyphCount)
+        fail("FLASH_LIBRARY_FONT_ALIGN_ZONE_COUNT_MISMATCH", `Font ${fontId} align-zone count does not match its glyph count.`);
+    return {
+        tableHint: 1 as const,
+        tableHintName: "medium" as const,
+        zones: zones.map((candidate, zoneIndex) => {
+            const zone = object(candidate, `font ${fontId} align zone ${zoneIndex}`);
+            exactKeys(zone, FONT_ALIGN_ZONE_FIELDS, `font ${fontId} align zone ${zoneIndex}`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_FIELD_UNSUPPORTED");
+            const data = array(zone.data, `font ${fontId} align zone ${zoneIndex}.data`);
+            if (data.length !== 2)
+                fail("FLASH_LIBRARY_FONT_ALIGN_ZONE_DATA_COUNT", `Font ${fontId} align zone ${zoneIndex} must retain X and Y records.`);
+            return {
+                data: data.map((datumValue, dataIndex) => {
+                    const datum = object(datumValue, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`);
+                    exactKeys(datum, FONT_ALIGN_ZONE_DATA_FIELDS, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_DATA_FIELD_UNSUPPORTED");
+                    return {
+                        alignmentCoordinate: nonnegativeFinite(datum.alignmentCoordinate, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinate`),
+                        alignmentCoordinateBits: uint16(datum.alignmentCoordinateBits, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinateBits`),
+                        range: nonnegativeFinite(datum.range, `font ${fontId} align zone ${zoneIndex}.range`),
+                        rangeBits: uint16(datum.rangeBits, `font ${fontId} align zone ${zoneIndex}.rangeBits`),
+                    };
+                }),
+                maskX: boolean(zone.maskX, `font ${fontId} align zone ${zoneIndex}.maskX`),
+                maskY: boolean(zone.maskY, `font ${fontId} align zone ${zoneIndex}.maskY`),
+            };
+        }),
+    };
+}
+
+function authoredAdvancedTextRasterization(asset: Record<string, any>, characterId: number) {
+    const rendering = object(asset.textRendering, `library.assets.${characterId}.textRendering`);
+    exactKeys(rendering, TEXT_RENDERING_FIELDS, `library.assets.${characterId}.textRendering`, "FLASH_LIBRARY_TEXT_RENDERING_FIELD_UNSUPPORTED");
+    exactValue(rendering.sourceTag, "CSMSettingsTag", "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} does not retain CSM settings.`);
+    exactValue(rendering.textId, characterId, "FLASH_LIBRARY_TEXT_RENDERING_ID_MISMATCH", `Text ${characterId} rendering authority identifies another field.`);
+    exactValue(rendering.renderer, "advanced", "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} renderer is unsupported.`);
+    exactValue(rendering.useFlashType, 1, "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} does not use FlashType.`);
+    exactValue(rendering.gridFit, 2, "FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit code is unsupported.`);
+    exactValue(rendering.gridFitMode, "subpixel", "FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit mode is unsupported.`);
+    const sharpness = finite(rendering.sharpness, `library.assets.${characterId}.textRendering.sharpness`);
+    const thickness = finite(rendering.thickness, `library.assets.${characterId}.textRendering.thickness`);
+    if (sharpness < -400 || sharpness > 400 || thickness < -200 || thickness > 200)
+        fail("FLASH_LIBRARY_TEXT_RASTERIZATION_RANGE", `Text ${characterId} rasterization settings exceed Flash ranges.`);
+    return { antiAliasType: "advanced" as const, gridFitType: "subpixel" as const, sharpness, thickness };
 }
 
 function authoredScale9Grid(
@@ -877,7 +1042,7 @@ function registerResource(
     const resource: NeutralResourceInput = {
         id: resourceId,
         sourcePath: string(authority.sourcePath, `${resourceId}.sourcePath`),
-        mediaType: oneOf(authority.mediaType, ["image/jpeg", "image/png"], `${resourceId}.mediaType`),
+        mediaType: oneOf(authority.mediaType, ["image/jpeg", "image/png", "font/ttf"], `${resourceId}.mediaType`),
         byteLength: nonnegativeInteger(authority.byteLength, `${resourceId}.byteLength`),
         sha256: string(authority.sha256, `${resourceId}.sha256`),
     };
@@ -1206,7 +1371,7 @@ function placementTransform(operation: Record<string, any>): PlacementTransform 
     return { a, b, c, d, x, y, ...(a === 1 && b === 0 && c === 0 && d === 1 ? {} : { matrix: { a, b, c, d } }) };
 }
 
-function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<Record<string, unknown>> {
+function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<NeutralGlowFilter> {
     if (value === undefined) return [];
     return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
         const label = `place ${characterId}.filters[${index}]`;
@@ -1312,6 +1477,28 @@ function positiveInteger(value: unknown, label: string): number {
     const result = finite(value, label);
     if (!Number.isSafeInteger(result) || result < 1)
         fail("FLASH_LIBRARY_POSITIVE_INTEGER_REQUIRED", `${label} must be a positive safe integer.`);
+    return result;
+}
+
+function nonnegativeFinite(value: unknown, label: string): number {
+    const result = finite(value, label);
+    if (result < 0)
+        fail("FLASH_LIBRARY_NONNEGATIVE_NUMBER_REQUIRED", `${label} must be nonnegative.`);
+    return result;
+}
+
+function unicodeScalar(value: unknown, label: string): number {
+    const result = finite(value, label);
+    if (!Number.isInteger(result) || result < 0 || result > 0x10ffff
+        || result >= 0xd800 && result <= 0xdfff)
+        fail("FLASH_LIBRARY_UNICODE_SCALAR_REQUIRED", `${label} must be a Unicode scalar value.`);
+    return result;
+}
+
+function uint16(value: unknown, label: string): number {
+    const result = finite(value, label);
+    if (!Number.isInteger(result) || result < 0 || result > 0xffff)
+        fail("FLASH_LIBRARY_UINT16_REQUIRED", `${label} must be a uint16 value.`);
     return result;
 }
 

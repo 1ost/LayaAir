@@ -34,12 +34,15 @@ const timelines = new Map(Object.entries(library.timelines).map(([id, relative])
 ]));
 const resources = new Map();
 for (const asset of Object.values(library.assets)) {
-    if ((asset.kind !== "shape" && asset.kind !== "image") || typeof asset.path !== "string") continue;
+    if ((asset.kind !== "shape" && asset.kind !== "image" && asset.kind !== "font") || typeof asset.path !== "string") continue;
     const absolute = resolveInside(sourceRoot, asset.path);
     const bytes = fs.readFileSync(absolute);
+    const lowerPath = asset.path.toLowerCase();
+    if (asset.kind === "font" && (!lowerPath.endsWith(".ttf") || !isTrueType(bytes)))
+        throw new Error(`FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED: ${asset.path}`);
     resources.set(asset.path, {
         sourcePath: asset.path,
-        mediaType: asset.path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+        mediaType: asset.kind === "font" ? "font/ttf" : lowerPath.endsWith(".png") ? "image/png" : "image/jpeg",
         byteLength: bytes.byteLength,
         sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
     });
@@ -188,4 +191,9 @@ function resolveInside(root, relative) {
     if (!resolved.startsWith(prefix))
         throw new Error(`FLASH_LIBRARY_RESOURCE_ESCAPES_ROOT: ${relative}`);
     return resolved;
+}
+
+
+function isTrueType(bytes) {
+    return bytes.length >= 12 && bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0;
 }

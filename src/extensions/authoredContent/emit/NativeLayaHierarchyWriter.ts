@@ -5,8 +5,9 @@ import {
 } from "../core/NeutralAuthoredContentIR";
 import { NativeLayaEmitter } from "./NativeLayaEmitter";
 import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
+import { describeNativeAuthoredFontCatalog } from "./NativeAuthoredFontCatalog";
 
-export type NativeAuthoredContentBundleFileKind = "image" | "prefab" | "timeline";
+export type NativeAuthoredContentBundleFileKind = "font" | "font-manifest" | "font-startup" | "image" | "prefab" | "timeline";
 
 export interface NativeAuthoredContentBundleFile {
     readonly path: string;
@@ -89,6 +90,23 @@ export async function prepareNativeLayaAuthoredContentBundle(
         kind: "timeline",
         bytes: cloneBytes(preparation.timelineBytes)
     }];
+    const fontCatalog = describeNativeAuthoredFontCatalog(content, prefabPath);
+    if (fontCatalog !== undefined) {
+        const manifestBytes = canonicalJsonBytes(fontCatalog.manifest);
+        const manifestSha256 = await preparation.sha256(manifestBytes);
+        if (!/^[0-9a-f]{64}$/.test(manifestSha256))
+            fail("AUTHORED_CONTENT_FONT_MANIFEST_HASH_INVALID", "sha256 returned an invalid font-manifest digest.");
+        files.push({ path: fontCatalog.manifestPath, kind: "font-manifest", bytes: manifestBytes });
+        files.push({
+            path: fontCatalog.startupPath,
+            kind: "font-startup",
+            bytes: canonicalJsonBytes(fontCatalog.createStartup({
+                url: fontCatalog.manifestPath.slice(fontCatalog.manifestPath.lastIndexOf("/") + 1),
+                size: manifestBytes.byteLength,
+                sha256: manifestSha256,
+            })),
+        });
+    }
     for (const timeline of nestedTimelines) {
         files.push({
             path: timeline.timelinePath,
@@ -105,7 +123,13 @@ export async function prepareNativeLayaAuthoredContentBundle(
         const digest = await preparation.sha256(payload);
         if (digest !== resource.sha256)
             fail("AUTHORED_CONTENT_RESOURCE_HASH_MISMATCH", `Resource '${resource.id}' SHA-256 drifted.`);
-        files.push({ path: resource.outputPath, kind: "image", bytes: cloneBytes(payload) });
+        if (resource.mediaType === "font/ttf" && !isTrueType(payload))
+            fail("AUTHORED_CONTENT_FONT_RESOURCE_FORMAT_MISMATCH", `Resource '${resource.id}' is not an authenticated TrueType sfnt.`);
+        files.push({
+            path: resource.outputPath,
+            kind: resource.mediaType === "font/ttf" ? "font" : "image",
+            bytes: cloneBytes(payload),
+        });
     }
     files.sort((left, right) => compareText(left.path, right.path));
     const paths = files.map(file => file.path);
@@ -185,7 +209,7 @@ export function prepareNativeLayaHierarchy(
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
     canonicalizeHierarchyIds(hierarchy);
-    decorateAuthoredRuntime(content.root, hierarchy, content.timeline.frameLabels);
+    decorateAuthoredRuntime(content.root, hierarchy, content.documentId, content.timeline.frameLabels);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
     sealTimelineAssetReferences(hierarchy, timelineAssetId, nestedTimelineAssetIds);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
@@ -194,13 +218,14 @@ export function prepareNativeLayaHierarchy(
         resourceAssetIds,
         nestedTimelineAssetIds
     );
+    const imageResources = content.resources.filter(resource => resource.mediaType !== "font/ttf");
     hierarchy._$preloads = [
-        ...content.resources.map(resource => `res://${resourceAssetIds.get(resource.id)!}`),
+        ...imageResources.map(resource => `res://${resourceAssetIds.get(resource.id)!}`),
         `res://${timelineAssetId}`,
         ...[...nestedTimelineAssetIds.values()].map(assetId => `res://${assetId}`)
     ];
     hierarchy._$preloadTypes = [
-        ...content.resources.map(() => "Texture2D"),
+        ...imageResources.map(() => "Texture2D"),
         "AnimationClip2D",
         ...[...nestedTimelineAssetIds].map(() => "AnimationClip2D")
     ];
@@ -337,6 +362,7 @@ function validateHierarchyNode(
 function decorateAuthoredRuntime(
     source: NeutralAuthoredNode,
     value: Record<string, unknown>,
+    documentId: string,
     rootFrameLabels?: Readonly<Record<string, number>>,
 ): void {
     if (source.variable === true)
@@ -369,6 +395,7 @@ function decorateAuthoredRuntime(
             displayAsPassword: source.textField!.displayAsPassword,
             autoSize: source.textField!.autoSize,
             html: source.textField!.html,
+            useOutlines: source.textField!.useOutlines ?? false,
             // ObjDecoder treats untyped objects inside arrays as class payloads.
             // The sealed `any` envelope preserves exact inert filter data until
             // AuthoredTextField validates and constructs the native GlowFilter.
@@ -376,7 +403,16 @@ function decorateAuthoredRuntime(
             gutter: source.textField!.gutter,
             overflow: source.textField!.overflow,
             initialText: source.textField!.initialText,
-            format: source.textField!.format,
+            ...(source.textField!.rasterization === undefined ? {} : {
+                rasterization: { _$type: "any", value: source.textField!.rasterization },
+            }),
+            format: source.textField!.format.embeddedFont === undefined ? source.textField!.format : {
+                ...source.textField!.format,
+                embeddedFont: { _$type: "any", value: {
+                    ...source.textField!.format.embeddedFont,
+                    documentId,
+                } },
+            },
         };
     }
     else if (source.kind === "container" && source.timeline !== undefined) {
@@ -396,8 +432,12 @@ function decorateAuthoredRuntime(
     source.children.forEach((child, index) => {
         const target = children[index];
         if (target && typeof target === "object" && !Array.isArray(target))
-            decorateAuthoredRuntime(child, target as Record<string, unknown>);
+            decorateAuthoredRuntime(child, target as Record<string, unknown>, documentId);
     });
+}
+
+function isTrueType(bytes: Uint8Array): boolean {
+    return bytes.byteLength >= 12 && bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0;
 }
 
 function hashBytes(value: Uint8Array): string {

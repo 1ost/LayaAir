@@ -41,9 +41,31 @@ export interface AuthoredFontKey {
     readonly sourceSha256: string;
 }
 
+export interface AuthoredPublishedFontSelection extends AuthoredFontKey {
+    readonly fontName: string;
+}
+
 export interface AuthoredGlyphMetric {
+    readonly index?: number;
     readonly codePoint: number;
     readonly advance: number;
+    readonly bounds?: { readonly xmin: number; readonly xmax: number; readonly ymin: number; readonly ymax: number };
+}
+
+export interface AuthoredKerningMetric {
+    readonly leftCodePoint: number;
+    readonly rightCodePoint: number;
+    readonly adjustment: number;
+}
+
+export interface AuthoredFontAlignZones {
+    readonly tableHint: 1;
+    readonly tableHintName: "medium";
+    readonly zones: ReadonlyArray<{
+        readonly data: ReadonlyArray<{ readonly alignmentCoordinate: number; readonly alignmentCoordinateBits: number; readonly range: number; readonly rangeBits: number }>;
+        readonly maskX: boolean;
+        readonly maskY: boolean;
+    }>;
 }
 
 export interface AuthoredFontManifestEntry extends AuthoredFontKey {
@@ -54,6 +76,9 @@ export interface AuthoredFontManifestEntry extends AuthoredFontKey {
     readonly ascent: number;
     readonly descent: number;
     readonly glyphs: readonly AuthoredGlyphMetric[];
+    readonly leading?: number;
+    readonly kerning?: readonly AuthoredKerningMetric[];
+    readonly alignZones?: AuthoredFontAlignZones;
 }
 
 export interface AuthoredFontManifest {
@@ -82,6 +107,7 @@ export interface AuthoredFontBinding {
 type FrozenEntry = AuthoredFontManifestEntry & {
     readonly runtimeFamily: string;
     readonly glyphAdvances: Readonly<Record<string, number>>;
+    readonly kerningAdjustments: Readonly<Record<string, number>>;
 };
 
 type BindingState = {
@@ -108,7 +134,7 @@ export interface FlashFontRecordView {
     readonly glyphCodePoints: readonly number[];
 }
 
-const activeFlashRecordSets = new Set<readonly ActiveFlashFontRecord[]>();
+const activeFlashRegistries = new Map<AuthoredFontRegistry, readonly ActiveFlashFontRecord[]>();
 const FONT_TRANSACTION_PERMIT = Symbol("Laya font transaction permit");
 const fontTransactionPermits = new WeakSet<object>();
 const authenticatedFontReceipts = new WeakSet<object>();
@@ -130,7 +156,11 @@ const ENTRY_KEYS = Object.freeze([
     "ascent", "descent", "documentId", "fontId", "fontName", "fontStyle", "fontType",
     "glyphs", "sourceSha256", "sourceUrl", "unitsPerEm",
 ]);
+const EXTENDED_ENTRY_KEYS = Object.freeze([...ENTRY_KEYS, "alignZones", "kerning", "leading"]);
 const GLYPH_KEYS = Object.freeze(["advance", "codePoint"]);
+const EXTENDED_GLYPH_KEYS = Object.freeze(["advance", "bounds", "codePoint", "index"]);
+const GLYPH_BOUNDS_KEYS = Object.freeze(["xmax", "xmin", "ymax", "ymin"]);
+const KERNING_KEYS = Object.freeze(["adjustment", "leftCodePoint", "rightCodePoint"]);
 const KEY_KEYS = Object.freeze(["documentId", "fontId", "fontStyle", "sourceSha256"]);
 const SHA256 = /^[a-f0-9]{64}$/;
 const FONT_EXTENSIONS = new Set(["ttf", "woff", "woff2", "otf"]);
@@ -154,7 +184,7 @@ export class AuthoredFontRegistry {
 
     /** Sanitized read-only publication census; receipts and producer state never escape. */
     static enumeratePublishedFonts(): readonly FlashFontRecordView[] {
-        return Object.freeze([...activeFlashRecordSets]
+        return Object.freeze([...activeFlashRegistries.values()]
             .flatMap(records => records)
             .filter(record => record.receipt.committed && !record.receipt.disposed)
             .sort((left, right) => fontKey(left).localeCompare(fontKey(right)))
@@ -167,6 +197,33 @@ export class AuthoredFontRegistry {
                 sourceSha256: record.sourceSha256,
                 glyphCodePoints: Object.freeze(record.glyphs.map(glyph => glyph.codePoint)),
             })));
+    }
+
+    /**
+     * Binds a prefab-created field to one exact, already-authenticated font
+     * catalog entry. A field cannot fall back to a device font while claiming
+     * embedded authored identity.
+     */
+    static bindPublishedText(
+        consumer: AuthoredTextProviderConsumer,
+        selectionValue: AuthoredPublishedFontSelection,
+    ): AuthoredFontBinding {
+        const selectionRecord = exactDataObject(selectionValue, [...KEY_KEYS, "fontName"], "Published authored font selection");
+        const selection = {
+            ...normalizeKey(selectionRecord, "Published authored font selection"),
+            fontName: requireNonemptyString(selectionRecord.fontName, "Published authored font selection.fontName"),
+        };
+        const matches = [...activeFlashRegistries].filter(([, records]) => records.some(record =>
+            record.documentId === selection.documentId
+            && record.fontId === selection.fontId
+            && record.fontStyle === selection.fontStyle
+            && record.sourceSha256 === selection.sourceSha256
+            && record.fontName === selection.fontName));
+        if (matches.length !== 1)
+            throw new Error(matches.length === 0
+                ? `No active authored font for ${printKey(selection)}`
+                : `Ambiguous active authored font for ${printKey(selection)}`);
+        return matches[0][0].bindText(consumer, selection.documentId);
     }
 
     private readonly entriesByDocument = new Map<string, readonly FrozenEntry[]>();
@@ -262,16 +319,21 @@ export class AuthoredFontRegistry {
             });
         };
         const family: TextFontFamilyResolver = (font, bold, italic) => resolve(font, bold, italic).runtimeFamily;
-        const advance: TextAdvanceProvider = (text, font, size, bold, italic) => {
+        const advance: TextAdvanceProvider = (text, font, size, bold, italic, kerning) => {
             if (typeof text !== "string") throw new TypeError("Authored text must be a string");
             requirePositiveFinite(size, "fontSize");
             const entry = resolve(font, bold, italic);
-            const values = Array.from(text, character => {
+            const characters = Array.from(text);
+            const values = characters.map((character, index) => {
                 const codePoint = character.codePointAt(0)!;
                 const units = entry.glyphAdvances[String(codePoint)];
                 if (units == null)
                     throw new Error(`Authored font ${printKey(entry)} has no declared glyph U+${codePoint.toString(16).toUpperCase()}`);
-                return scaleFontUnits(units, size, entry.unitsPerEm);
+                const nextCodePoint = characters[index + 1]?.codePointAt(0);
+                const adjustment = kerning && nextCodePoint !== undefined
+                    ? entry.kerningAdjustments[`${codePoint}:${nextCodePoint}`] ?? 0
+                    : 0;
+                return scaleFontUnits(units + adjustment, size, entry.unitsPerEm);
             });
             return Object.freeze(values);
         };
@@ -341,6 +403,8 @@ export class AuthoredFontRegistry {
     }
 
     activateFlashBridge(): AuthoredFontBinding {
+        if (activeFlashRegistries.has(this))
+            throw new Error("Flash font bridge is already active for this registry");
         const candidates: readonly ActiveFlashFontRecord[] = Object.freeze([...this.loadedByKey.values()]
             .sort((left, right) => fontKey(left).localeCompare(fontKey(right)))
             .map(entry => Object.freeze({
@@ -354,14 +418,15 @@ export class AuthoredFontRegistry {
             || candidate.receipt.identity.sourceSha256 !== candidate.sourceSha256
             || candidate.receipt.family !== candidate.runtimeFamily))
             throw new Error("Flash font bridge requires committed authenticated font receipts");
-        activeFlashRecordSets.add(candidates);
+        activeFlashRegistries.set(this, candidates);
+        const registry = this;
         let active = true;
         return Object.freeze({
             get active() { return active; },
             cancel() {
                 if (!active) return;
                 active = false;
-                activeFlashRecordSets.delete(candidates);
+                activeFlashRegistries.delete(registry);
             },
         });
     }
@@ -675,6 +740,9 @@ function normalizeManifest(value: AuthoredFontManifest): { manifest: AuthoredFon
         ascent: entry.ascent,
         descent: entry.descent,
         glyphs: entry.glyphs,
+        ...(entry.leading === undefined ? {} : { leading: entry.leading }),
+        ...(entry.kerning === undefined ? {} : { kerning: entry.kerning }),
+        ...(entry.alignZones === undefined ? {} : { alignZones: entry.alignZones }),
     })));
     return {
         entries,
@@ -684,7 +752,8 @@ function normalizeManifest(value: AuthoredFontManifest): { manifest: AuthoredFon
 
 function normalizeEntry(value: unknown, index: number): FrozenEntry {
     const label = `Authored font manifest fonts[${index}]`;
-    const record = exactDataObject(value, ENTRY_KEYS, label);
+    const extended = hasOwnDataProperty(value, "leading") || hasOwnDataProperty(value, "kerning") || hasOwnDataProperty(value, "alignZones");
+    const record = exactDataObject(value, extended ? EXTENDED_ENTRY_KEYS : ENTRY_KEYS, label);
     const key = normalizeKey(record, label);
     const fontName = requireNonemptyString(record.fontName, `${label}.fontName`);
     if (record.fontType !== "embedded" && record.fontType !== "embeddedCFF")
@@ -701,14 +770,45 @@ function normalizeEntry(value: unknown, index: number): FrozenEntry {
     const glyphAdvances: Record<string, number> = Object.create(null);
     let previous = -1;
     const glyphs = Object.freeze(record.glyphs.map((candidate, glyphIndex) => {
-        const glyph = exactDataObject(candidate, GLYPH_KEYS, `${label}.glyphs[${glyphIndex}]`);
+        const glyph = exactDataObject(candidate, extended ? EXTENDED_GLYPH_KEYS : GLYPH_KEYS, `${label}.glyphs[${glyphIndex}]`);
+        if (extended && glyph.index !== glyphIndex)
+            throw new Error(`${label}.glyphs indices must be contiguous source order`);
         const codePoint = requireCodePoint(glyph.codePoint, `${label}.glyphs[${glyphIndex}].codePoint`);
         if (codePoint <= previous) throw new Error(`${label}.glyphs must be strictly ordered by codePoint`);
         previous = codePoint;
         const advance = requireNonnegativeFinite(glyph.advance, `${label}.glyphs[${glyphIndex}].advance`);
         glyphAdvances[String(codePoint)] = advance;
-        return Object.freeze({ codePoint, advance });
+        if (!extended) return Object.freeze({ codePoint, advance });
+        const bounds = exactDataObject(glyph.bounds, GLYPH_BOUNDS_KEYS, `${label}.glyphs[${glyphIndex}].bounds`);
+        for (const key of GLYPH_BOUNDS_KEYS) requireFinite(bounds[key], `${label}.glyphs[${glyphIndex}].bounds.${key}`);
+        return Object.freeze({
+            index: glyphIndex,
+            codePoint,
+            advance,
+            bounds: Object.freeze({ xmin: bounds.xmin as number, xmax: bounds.xmax as number, ymin: bounds.ymin as number, ymax: bounds.ymax as number }),
+        });
     }));
+    const kerningAdjustments: Record<string, number> = Object.create(null);
+    let leading: number | undefined;
+    let kerning: readonly AuthoredKerningMetric[] | undefined;
+    let alignZones: AuthoredFontAlignZones | undefined;
+    if (extended) {
+        leading = requireFinite(record.leading, `${label}.leading`);
+        if (!Array.isArray(record.kerning)) throw new TypeError(`${label}.kerning must be an array`);
+        let previousPair = -1;
+        kerning = Object.freeze(record.kerning.map((candidate, pairIndex) => {
+            const pair = exactDataObject(candidate, KERNING_KEYS, `${label}.kerning[${pairIndex}]`);
+            const leftCodePoint = requireCodePoint(pair.leftCodePoint, `${label}.kerning[${pairIndex}].leftCodePoint`);
+            const rightCodePoint = requireCodePoint(pair.rightCodePoint, `${label}.kerning[${pairIndex}].rightCodePoint`);
+            const key = leftCodePoint * 0x110000 + rightCodePoint;
+            if (key <= previousPair) throw new Error(`${label}.kerning must be unique and source-sorted`);
+            previousPair = key;
+            const adjustment = requireFinite(pair.adjustment, `${label}.kerning[${pairIndex}].adjustment`);
+            kerningAdjustments[`${leftCodePoint}:${rightCodePoint}`] = adjustment;
+            return Object.freeze({ leftCodePoint, rightCodePoint, adjustment });
+        }));
+        alignZones = normalizeFontAlignZones(record.alignZones, glyphs.length, `${label}.alignZones`);
+    }
     return Object.freeze({
         ...key,
         fontName,
@@ -718,9 +818,38 @@ function normalizeEntry(value: unknown, index: number): FrozenEntry {
         ascent,
         descent,
         glyphs,
+        ...(leading === undefined ? {} : { leading }),
+        ...(kerning === undefined ? {} : { kerning }),
+        ...(alignZones === undefined ? {} : { alignZones }),
         runtimeFamily: runtimeFamily(key),
         glyphAdvances: Object.freeze(glyphAdvances),
+        kerningAdjustments: Object.freeze(kerningAdjustments),
     });
+}
+
+function normalizeFontAlignZones(value: unknown, glyphCount: number, label: string): AuthoredFontAlignZones {
+    const record = exactDataObject(value, ["tableHint", "tableHintName", "zones"], label);
+    if (record.tableHint !== 1 || record.tableHintName !== "medium")
+        throw new TypeError(`${label} must retain the admitted medium table hint`);
+    if (!Array.isArray(record.zones) || record.zones.length !== glyphCount)
+        throw new TypeError(`${label}.zones must match the glyph count`);
+    const zones = Object.freeze(record.zones.map((candidate, index) => {
+        const zone = exactDataObject(candidate, ["data", "maskX", "maskY"], `${label}.zones[${index}]`);
+        if (!Array.isArray(zone.data) || zone.data.length !== 2)
+            throw new TypeError(`${label}.zones[${index}].data must contain X and Y records`);
+        const data = Object.freeze(zone.data.map((datumValue, dataIndex) => {
+            const datum = exactDataObject(datumValue, ["alignmentCoordinate", "alignmentCoordinateBits", "range", "rangeBits"], `${label}.zones[${index}].data[${dataIndex}]`);
+            const alignmentCoordinate = requireNonnegativeFinite(datum.alignmentCoordinate, `${label}.zones[${index}].data[${dataIndex}].alignmentCoordinate`);
+            const range = requireNonnegativeFinite(datum.range, `${label}.zones[${index}].data[${dataIndex}].range`);
+            const alignmentCoordinateBits = requireUint16(datum.alignmentCoordinateBits, `${label}.zones[${index}].data[${dataIndex}].alignmentCoordinateBits`);
+            const rangeBits = requireUint16(datum.rangeBits, `${label}.zones[${index}].data[${dataIndex}].rangeBits`);
+            return Object.freeze({ alignmentCoordinate, alignmentCoordinateBits, range, rangeBits });
+        }));
+        if (typeof zone.maskX !== "boolean" || typeof zone.maskY !== "boolean")
+            throw new TypeError(`${label}.zones[${index}] masks must be boolean`);
+        return Object.freeze({ data, maskX: zone.maskX, maskY: zone.maskY });
+    }));
+    return Object.freeze({ tableHint: 1, tableHintName: "medium", zones });
 }
 
 function normalizeKey(value: Record<string, unknown>, label = "Authored font key"): AuthoredFontKey {
@@ -752,6 +881,12 @@ function exactDataObject(value: unknown, expectedKeys: readonly string[], label:
     return result;
 }
 
+function hasOwnDataProperty(value: unknown, key: string): boolean {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor !== undefined && "value" in descriptor;
+}
+
 function requireConsumer(value: AuthoredTextProviderConsumer): void {
     if (!value || typeof value !== "object"
         || typeof value.destroyed !== "boolean")
@@ -772,6 +907,18 @@ function requirePositiveFinite(value: unknown, label: string): number {
 function requireNonnegativeFinite(value: unknown, label: string): number {
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
         throw new RangeError(`${label} must be nonnegative and finite`);
+    return value;
+}
+
+function requireFinite(value: unknown, label: string): number {
+    if (typeof value !== "number" || !Number.isFinite(value))
+        throw new RangeError(`${label} must be finite`);
+    return value;
+}
+
+function requireUint16(value: unknown, label: string): number {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 0xffff)
+        throw new RangeError(`${label} must be a uint16 value`);
     return value;
 }
 

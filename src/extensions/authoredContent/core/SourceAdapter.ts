@@ -69,11 +69,17 @@ export async function readAuthenticatedResourcePayloads(
         const digest = crypto.createHash("sha256").update(bytes).digest("hex");
         if (digest !== resource.sha256)
             throw new Error(`AUTHORED_CONTENT_RESOURCE_HASH_MISMATCH: ${resource.id}`);
+        if (resource.mediaType === "font/ttf" && !isTrueType(bytes))
+            throw new Error(`AUTHORED_CONTENT_FONT_RESOURCE_FORMAT_MISMATCH: ${resource.id}`);
         payloads.set(resource.id, bytes);
     }
     if (payloads.size !== content.resources.length)
         throw new Error("AUTHORED_CONTENT_RESOURCE_CLOSURE_MISMATCH");
     return payloads;
+}
+
+function isTrueType(bytes: Uint8Array): boolean {
+    return bytes.byteLength >= 12 && bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0;
 }
 
 async function rejectSymbolicPath(

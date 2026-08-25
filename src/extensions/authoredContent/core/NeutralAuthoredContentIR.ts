@@ -2,6 +2,8 @@ export const NEUTRAL_AUTHORED_CONTENT_SCHEMA = "neutral-authored-content@1" as c
 
 export type NeutralNodeKind = "button" | "button-state" | "container" | "dynamic-text" | "image" | "text";
 export type NeutralImageMediaType = "image/jpeg" | "image/png";
+export type NeutralFontMediaType = "font/ttf";
+export type NeutralAuthoredMediaType = NeutralImageMediaType | NeutralFontMediaType;
 export type NeutralTimelineProperty = "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible";
 export type NeutralKeyframeValue = number | boolean;
 
@@ -75,16 +77,19 @@ export interface NeutralDynamicTextField {
     readonly selectable: boolean;
     readonly displayAsPassword: boolean;
     readonly autoSize: "none";
-    readonly html: false;
+    readonly html: boolean;
+    /** Omitted by native bundles emitted before source useOutlines retention. */
+    readonly useOutlines?: boolean;
     readonly filters: ReadonlyArray<NeutralGlowFilter>;
     readonly gutter: 2;
     readonly overflow: "hidden";
     readonly initialText: string;
+    readonly rasterization?: NeutralAdvancedTextRasterization;
     readonly format: NeutralDynamicTextFormat;
 }
 
 export interface NeutralDynamicTextFormat {
-    readonly fontMode: "device";
+    readonly fontMode: "device" | "embedded";
     readonly font: string;
     readonly size: number;
     readonly color: number;
@@ -98,13 +103,68 @@ export interface NeutralDynamicTextFormat {
     readonly leading: number;
     readonly letterSpacing: number;
     readonly kerning: boolean;
+    readonly embeddedFont?: NeutralEmbeddedFont;
+}
+
+export interface NeutralEmbeddedFontGlyph {
+    readonly index: number;
+    readonly codePoint: number;
+    readonly advance: number;
+    readonly bounds: { readonly xmin: number; readonly xmax: number; readonly ymin: number; readonly ymax: number };
+}
+
+export interface NeutralEmbeddedFontKerning {
+    readonly leftCodePoint: number;
+    readonly rightCodePoint: number;
+    readonly adjustment: number;
+}
+
+export interface NeutralFontAlignZoneData {
+    readonly alignmentCoordinate: number;
+    readonly alignmentCoordinateBits: number;
+    readonly range: number;
+    readonly rangeBits: number;
+}
+
+export interface NeutralFontAlignZone {
+    readonly data: readonly [NeutralFontAlignZoneData, NeutralFontAlignZoneData];
+    readonly maskX: boolean;
+    readonly maskY: boolean;
+}
+
+export interface NeutralFontAlignZones {
+    readonly tableHint: 1;
+    readonly tableHintName: "medium";
+    readonly zones: ReadonlyArray<NeutralFontAlignZone>;
+}
+
+export interface NeutralEmbeddedFont {
+    readonly resourceId: string;
+    readonly sourceSha256: string;
+    readonly fontId: number;
+    readonly fontType: "embedded";
+    readonly fontStyle: "regular" | "bold" | "italic" | "boldItalic";
+    readonly unitsPerEm: number;
+    readonly ascent: number;
+    readonly descent: number;
+    readonly leading: number;
+    readonly glyphs: ReadonlyArray<NeutralEmbeddedFontGlyph>;
+    readonly kerning: ReadonlyArray<NeutralEmbeddedFontKerning>;
+    readonly alignZones: NeutralFontAlignZones;
+}
+
+export interface NeutralAdvancedTextRasterization {
+    readonly antiAliasType: "advanced";
+    readonly gridFitType: "subpixel";
+    readonly sharpness: number;
+    readonly thickness: number;
 }
 
 export interface NeutralAuthoredResource {
     readonly id: string;
     /** Normalized path relative to the immutable authored-content manifest. */
     readonly sourcePath: string;
-    readonly mediaType: NeutralImageMediaType;
+    readonly mediaType: NeutralAuthoredMediaType;
     readonly byteLength: number;
     readonly sha256: string;
     /** Deterministic standard Laya asset path within the generated bundle. */
@@ -155,7 +215,7 @@ export interface NeutralAuthoredContentIR {
 const NODE_KINDS: ReadonlySet<string> = new Set(["button", "button-state", "container", "dynamic-text", "image", "text"]);
 const BUTTON_STATE_ORDER = ["upState", "overState", "downState", "hitTestState"] as const;
 const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATE_ORDER);
-const IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png"]);
+const RESOURCE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "font/ttf"]);
 const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible"]);
 const SCALED_NODE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "width", "height", "fontSize"]);
 const SCALED_TRACK_PROPERTIES: ReadonlySet<string> = new Set(["x", "y"]);
@@ -344,12 +404,12 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
     const source = record(value, path);
     allowedKeys(source, [
         "autoSize", "displayAsPassword", "filters", "format", "gutter", "html", "initialText", "multiline",
-        "overflow", "selectable", "sourceId", "type", "wordWrap"
+        "overflow", "rasterization", "selectable", "sourceId", "type", "useOutlines", "wordWrap"
     ], path);
     const format = record(source.format, `${path}.format`);
     allowedKeys(format, [
         "align", "bold", "color", "font", "fontMode", "indent", "italic", "leading", "leftMargin",
-        "rightMargin", "size", "underline", "letterSpacing", "kerning"
+        "rightMargin", "size", "underline", "letterSpacing", "kerning", "embeddedFont"
     ], `${path}.format`);
     const sourceId = requiredFiniteNumber(source.sourceId, `${path}.sourceId`);
     if (!Number.isSafeInteger(sourceId) || sourceId <= 0)
@@ -358,8 +418,25 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
     if (type !== "dynamic" && type !== "input")
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_TYPE_UNSUPPORTED", `${path}.type '${type}' is unsupported.`);
     const fontMode = requiredString(format.fontMode, `${path}.format.fontMode`);
-    if (fontMode !== "device")
+    if (fontMode !== "device" && fontMode !== "embedded")
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_FONT_MODE_UNSUPPORTED", `${path}.format.fontMode '${fontMode}' is unsupported.`);
+    const embeddedFont = format.embeddedFont === undefined
+        ? undefined
+        : normalizeEmbeddedFont(format.embeddedFont, `${path}.format.embeddedFont`);
+    const rasterization = source.rasterization === undefined
+        ? undefined
+        : normalizeAdvancedTextRasterization(source.rasterization, `${path}.rasterization`);
+    const useOutlines = source.useOutlines === undefined
+        ? false
+        : requiredBoolean(source.useOutlines, `${path}.useOutlines`);
+    if (fontMode === "device" && (embeddedFont !== undefined || rasterization !== undefined || useOutlines))
+        fail("AUTHORED_CONTENT_DEVICE_TEXT_EMBEDDED_CONFIGURATION", `${path} device text cannot declare embedded-font state.`);
+    if (fontMode === "embedded" && embeddedFont === undefined)
+        fail("AUTHORED_CONTENT_EMBEDDED_TEXT_CONFIGURATION_MISSING", `${path} embedded text requires exact font authority.`);
+    if (fontMode === "embedded" && useOutlines && rasterization === undefined)
+        fail("AUTHORED_CONTENT_OUTLINED_TEXT_RASTERIZATION_MISSING", `${path} outlined text requires exact rasterization authority.`);
+    if (fontMode === "embedded" && type !== "dynamic")
+        fail("AUTHORED_CONTENT_EMBEDDED_INPUT_UNSUPPORTED", `${path} embedded input text is outside the admitted subset.`);
     const align = requiredString(format.align, `${path}.format.align`);
     if (!new Set(["left", "center", "right", "justify"]).has(align))
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_ALIGN_UNSUPPORTED", `${path}.format.align '${align}' is unsupported.`);
@@ -374,12 +451,14 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
         selectable: requiredBoolean(source.selectable, `${path}.selectable`),
         displayAsPassword: requiredBoolean(source.displayAsPassword, `${path}.displayAsPassword`),
         autoSize: exactLiteral(source.autoSize, "none", `${path}.autoSize`),
-        html: exactLiteral(source.html, false, `${path}.html`),
+        html: requiredBoolean(source.html, `${path}.html`),
+        useOutlines,
         filters: array(source.filters, `${path}.filters`).map((filter, index) =>
             normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
         gutter: exactLiteral(source.gutter, 2, `${path}.gutter`),
         overflow: exactLiteral(source.overflow, "hidden", `${path}.overflow`),
         initialText: requiredText(source.initialText, `${path}.initialText`),
+        ...(rasterization === undefined ? {} : { rasterization }),
         format: {
             fontMode,
             font: requiredString(format.font, `${path}.format.font`),
@@ -399,7 +478,129 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
             kerning: format.kerning === undefined
                 ? false
                 : requiredBoolean(format.kerning, `${path}.format.kerning`),
+            ...(embeddedFont === undefined ? {} : { embeddedFont }),
         }
+    };
+}
+
+function normalizeEmbeddedFont(value: unknown, path: string): NeutralEmbeddedFont {
+    const source = record(value, path);
+    allowedKeys(source, [
+        "alignZones", "ascent", "descent", "fontId", "fontStyle", "fontType", "glyphs", "kerning", "leading", "resourceId", "sourceSha256", "unitsPerEm"
+    ], path);
+    const fontId = requiredFiniteNumber(source.fontId, `${path}.fontId`);
+    if (!Number.isSafeInteger(fontId) || fontId <= 0)
+        fail("AUTHORED_CONTENT_EMBEDDED_FONT_ID_INVALID", `${path}.fontId must be a positive safe integer.`);
+    const fontStyle = requiredString(source.fontStyle, `${path}.fontStyle`);
+    if (!new Set(["regular", "bold", "italic", "boldItalic"]).has(fontStyle))
+        fail("AUTHORED_CONTENT_EMBEDDED_FONT_STYLE_UNSUPPORTED", `${path}.fontStyle '${fontStyle}' is unsupported.`);
+    const unitsPerEm = positiveNumber(source.unitsPerEm, `${path}.unitsPerEm`);
+    const ascent = nonnegativeNumber(source.ascent, `${path}.ascent`);
+    const descent = nonnegativeNumber(source.descent, `${path}.descent`);
+    const leading = requiredFiniteNumber(source.leading, `${path}.leading`);
+    const glyphsValue = array(source.glyphs, `${path}.glyphs`);
+    if (glyphsValue.length === 0)
+        fail("AUTHORED_CONTENT_EMBEDDED_FONT_GLYPHS_MISSING", `${path}.glyphs must not be empty.`);
+    let previousCodePoint = -1;
+    const glyphs = glyphsValue.map((value, index): NeutralEmbeddedFontGlyph => {
+        const glyph = record(value, `${path}.glyphs[${index}]`);
+        allowedKeys(glyph, ["advance", "bounds", "codePoint", "index"], `${path}.glyphs[${index}]`);
+        if (requiredFiniteNumber(glyph.index, `${path}.glyphs[${index}].index`) !== index)
+            fail("AUTHORED_CONTENT_EMBEDDED_FONT_GLYPH_INDEX", `${path}.glyphs indices must be contiguous.`);
+        const codePoint = requiredFiniteNumber(glyph.codePoint, `${path}.glyphs[${index}].codePoint`);
+        if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff
+            || codePoint >= 0xd800 && codePoint <= 0xdfff)
+            fail("AUTHORED_CONTENT_EMBEDDED_FONT_CODE_POINT_INVALID", `${path}.glyphs[${index}].codePoint must be a Unicode scalar value.`);
+        if (codePoint <= previousCodePoint)
+            fail("AUTHORED_CONTENT_EMBEDDED_FONT_GLYPH_ORDER", `${path}.glyphs must be strictly ordered by code point.`);
+        previousCodePoint = codePoint;
+        const bounds = record(glyph.bounds, `${path}.glyphs[${index}].bounds`);
+        allowedKeys(bounds, ["xmax", "xmin", "ymax", "ymin"], `${path}.glyphs[${index}].bounds`);
+        return {
+            index,
+            codePoint,
+            advance: nonnegativeNumber(glyph.advance, `${path}.glyphs[${index}].advance`),
+            bounds: {
+                xmin: requiredFiniteNumber(bounds.xmin, `${path}.glyphs[${index}].bounds.xmin`),
+                xmax: requiredFiniteNumber(bounds.xmax, `${path}.glyphs[${index}].bounds.xmax`),
+                ymin: requiredFiniteNumber(bounds.ymin, `${path}.glyphs[${index}].bounds.ymin`),
+                ymax: requiredFiniteNumber(bounds.ymax, `${path}.glyphs[${index}].bounds.ymax`),
+            },
+        };
+    });
+    const kerning = normalizeEmbeddedFontKerning(source.kerning, `${path}.kerning`);
+    const alignZones = normalizeFontAlignZones(source.alignZones, `${path}.alignZones`, glyphs.length);
+    return {
+        resourceId: canonicalResourceId(requiredString(source.resourceId, `${path}.resourceId`)),
+        sourceSha256: sha256(source.sourceSha256, `${path}.sourceSha256`),
+        fontId,
+        fontType: exactLiteral(source.fontType, "embedded", `${path}.fontType`),
+        fontStyle: fontStyle as NeutralEmbeddedFont["fontStyle"],
+        unitsPerEm, ascent, descent, leading, glyphs, kerning, alignZones,
+    };
+}
+
+function normalizeEmbeddedFontKerning(value: unknown, path: string): ReadonlyArray<NeutralEmbeddedFontKerning> {
+    let previous = "";
+    return array(value, path).map((candidate, index) => {
+        const pair = record(candidate, `${path}[${index}]`);
+        allowedKeys(pair, ["adjustment", "leftCodePoint", "rightCodePoint"], `${path}[${index}]`);
+        const leftCodePoint = unicodeScalar(pair.leftCodePoint, `${path}[${index}].leftCodePoint`);
+        const rightCodePoint = unicodeScalar(pair.rightCodePoint, `${path}[${index}].rightCodePoint`);
+        const key = `${leftCodePoint.toString().padStart(7, "0")}:${rightCodePoint.toString().padStart(7, "0")}`;
+        if (key <= previous)
+            fail("AUTHORED_CONTENT_EMBEDDED_FONT_KERNING_ORDER", `${path} must be unique and sorted by code-point pair.`);
+        previous = key;
+        return { leftCodePoint, rightCodePoint, adjustment: requiredFiniteNumber(pair.adjustment, `${path}[${index}].adjustment`) };
+    });
+}
+
+function normalizeFontAlignZones(value: unknown, path: string, glyphCount: number): NeutralFontAlignZones {
+    const source = record(value, path);
+    allowedKeys(source, ["tableHint", "tableHintName", "zones"], path);
+    const zones = array(source.zones, `${path}.zones`).map((candidate, index): NeutralFontAlignZone => {
+        const zone = record(candidate, `${path}.zones[${index}]`);
+        allowedKeys(zone, ["data", "maskX", "maskY"], `${path}.zones[${index}]`);
+        const values = array(zone.data, `${path}.zones[${index}].data`);
+        if (values.length !== 2)
+            fail("AUTHORED_CONTENT_FONT_ALIGN_ZONE_DATA_COUNT", `${path}.zones[${index}].data must contain X and Y records.`);
+        const data = values.map((datumValue, dataIndex): NeutralFontAlignZoneData => {
+            const datum = record(datumValue, `${path}.zones[${index}].data[${dataIndex}]`);
+            allowedKeys(datum, ["alignmentCoordinate", "alignmentCoordinateBits", "range", "rangeBits"], `${path}.zones[${index}].data[${dataIndex}]`);
+            const alignmentCoordinateBits = uint16(datum.alignmentCoordinateBits, `${path}.zones[${index}].data[${dataIndex}].alignmentCoordinateBits`);
+            const rangeBits = uint16(datum.rangeBits, `${path}.zones[${index}].data[${dataIndex}].rangeBits`);
+            return {
+                alignmentCoordinate: nonnegativeNumber(datum.alignmentCoordinate, `${path}.zones[${index}].data[${dataIndex}].alignmentCoordinate`),
+                alignmentCoordinateBits,
+                range: nonnegativeNumber(datum.range, `${path}.zones[${index}].data[${dataIndex}].range`),
+                rangeBits,
+            };
+        }) as [NeutralFontAlignZoneData, NeutralFontAlignZoneData];
+        return { data, maskX: requiredBoolean(zone.maskX, `${path}.zones[${index}].maskX`), maskY: requiredBoolean(zone.maskY, `${path}.zones[${index}].maskY`) };
+    });
+    if (zones.length !== glyphCount)
+        fail("AUTHORED_CONTENT_FONT_ALIGN_ZONE_COUNT", `${path}.zones must match the glyph count.`);
+    return {
+        tableHint: exactLiteral(source.tableHint, 1, `${path}.tableHint`),
+        tableHintName: exactLiteral(source.tableHintName, "medium", `${path}.tableHintName`),
+        zones,
+    };
+}
+
+function normalizeAdvancedTextRasterization(value: unknown, path: string): NeutralAdvancedTextRasterization {
+    const source = record(value, path);
+    allowedKeys(source, ["antiAliasType", "gridFitType", "sharpness", "thickness"], path);
+    const sharpness = requiredFiniteNumber(source.sharpness, `${path}.sharpness`);
+    const thickness = requiredFiniteNumber(source.thickness, `${path}.thickness`);
+    if (sharpness < -400 || sharpness > 400)
+        fail("AUTHORED_CONTENT_TEXT_SHARPNESS_RANGE", `${path}.sharpness must be from -400 through 400.`);
+    if (thickness < -200 || thickness > 200)
+        fail("AUTHORED_CONTENT_TEXT_THICKNESS_RANGE", `${path}.thickness must be from -200 through 200.`);
+    return {
+        antiAliasType: exactLiteral(source.antiAliasType, "advanced", `${path}.antiAliasType`),
+        gridFitType: exactLiteral(source.gridFitType, "subpixel", `${path}.gridFitType`),
+        sharpness,
+        thickness,
     };
 }
 
@@ -492,9 +693,9 @@ function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResour
             fail("AUTHORED_CONTENT_RESOURCE_PATH_COLLISION", `Resource source path '${sourcePath}' is duplicated.`);
         paths.add(foldedPath);
         const mediaType = requiredString(source.mediaType, `${path}.mediaType`);
-        if (!IMAGE_MEDIA_TYPES.has(mediaType))
+        if (!RESOURCE_MEDIA_TYPES.has(mediaType))
             fail("AUTHORED_CONTENT_RESOURCE_MEDIA_UNSUPPORTED", `${path}.mediaType '${mediaType}' is unsupported.`);
-        const expectedExtension = mediaType === "image/png" ? ".png" : ".jpg";
+        const expectedExtension = mediaType === "image/png" ? ".png" : mediaType === "font/ttf" ? ".ttf" : ".jpg";
         if (!sourcePath.toLocaleLowerCase("en-US").endsWith(expectedExtension)
             && !(mediaType === "image/jpeg" && sourcePath.toLocaleLowerCase("en-US").endsWith(".jpeg")))
             fail("AUTHORED_CONTENT_RESOURCE_EXTENSION_MISMATCH", `${path}.sourcePath does not match ${mediaType}.`);
@@ -507,7 +708,7 @@ function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResour
         return {
             id,
             sourcePath,
-            mediaType: mediaType as NeutralImageMediaType,
+            mediaType: mediaType as NeutralAuthoredMediaType,
             byteLength,
             sha256,
             outputPath: `resources/${id}${expectedExtension}`
@@ -523,6 +724,17 @@ function validateResourceClosure(root: NeutralAuthoredNode, resources: ReadonlyA
             if (!declared.has(node.resourceId!))
                 fail("AUTHORED_CONTENT_IMAGE_RESOURCE_UNKNOWN", `Image '${node.name ?? node.linkage}' references unknown resource '${node.resourceId}'.`);
             referenced.add(node.resourceId!);
+        }
+        const embeddedFont = node.textField?.format.embeddedFont;
+        if (embeddedFont !== undefined) {
+            const resource = resources.find(candidate => candidate.id === embeddedFont.resourceId);
+            if (!resource)
+                fail("AUTHORED_CONTENT_EMBEDDED_FONT_RESOURCE_UNKNOWN", `Text '${node.name ?? node.linkage}' references unknown font resource '${embeddedFont.resourceId}'.`);
+            if (resource.mediaType !== "font/ttf")
+                fail("AUTHORED_CONTENT_EMBEDDED_FONT_RESOURCE_MEDIA_MISMATCH", `Text '${node.name ?? node.linkage}' font resource '${embeddedFont.resourceId}' is not TrueType.`);
+            if (resource.sha256 !== embeddedFont.sourceSha256)
+                fail("AUTHORED_CONTENT_EMBEDDED_FONT_RESOURCE_IDENTITY_MISMATCH", `Text '${node.name ?? node.linkage}' font digest does not match resource '${embeddedFont.resourceId}'.`);
+            referenced.add(embeddedFont.resourceId);
         }
         node.children.forEach(visit);
     };
@@ -693,6 +905,13 @@ function positiveNumber(value: unknown, path: string): number {
     return result;
 }
 
+function nonnegativeNumber(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (result < 0)
+        fail("AUTHORED_CONTENT_NONNEGATIVE_NUMBER_REQUIRED", `${path} must be nonnegative.`);
+    return result;
+}
+
 function exactLiteral<T extends string | number | boolean>(value: unknown, expected: T, path: string): T {
     if (value !== expected)
         fail("AUTHORED_CONTENT_LITERAL_REQUIRED", `${path} must be ${String(expected)}.`);
@@ -709,6 +928,28 @@ function requiredFiniteNumber(value: unknown, path: string): number {
     if (typeof value !== "number" || !Number.isFinite(value))
         fail("AUTHORED_CONTENT_NUMBER_REQUIRED", `${path} must be a finite number.`);
     return value;
+}
+
+function sha256(value: unknown, path: string): string {
+    const result = requiredString(value, path);
+    if (!/^[0-9a-f]{64}$/.test(result))
+        fail("AUTHORED_CONTENT_SHA256_REQUIRED", `${path} must be a lowercase SHA-256 digest.`);
+    return result;
+}
+
+function unicodeScalar(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (!Number.isInteger(result) || result < 0 || result > 0x10ffff
+        || result >= 0xd800 && result <= 0xdfff)
+        fail("AUTHORED_CONTENT_UNICODE_SCALAR_REQUIRED", `${path} must be a Unicode scalar value.`);
+    return result;
+}
+
+function uint16(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (!Number.isInteger(result) || result < 0 || result > 0xffff)
+        fail("AUTHORED_CONTENT_UINT16_REQUIRED", `${path} must be a uint16 value.`);
+    return result;
 }
 
 function optionalNumber(value: unknown, path: string, scale = 1): number | undefined {

@@ -155,7 +155,9 @@ const staticButton = nativeTextContent.root.children[0];
 assert.deepEqual(staticButton.children.map(child => child.kind), ["image", "dynamic-text"]);
 assert.equal(staticButton.children[1].textField.initialText, "World");
 assert.equal(staticButton.children[1].textField.filters[0].kind, "glow");
-assert.equal(nativeTextContent.root.children[1].textField.initialText, "Guild");
+assert.equal(nativeTextContent.root.children[1].textField.initialText,
+    '<p align="center"><font face="Arial" size="12" color="#ffd59a" letterSpacing="2.000000" kerning="1">Guild</font></p>');
+assert.equal(nativeTextContent.root.children[1].textField.html, true);
 assert.equal(nativeTextContent.root.children[1].textField.format.letterSpacing, 2);
 assert.equal(nativeTextContent.root.children[1].textField.format.kerning, true);
 assert.deepEqual(nativeTextContent.resources.map(resource => resource.sourcePath), ["shapes/button-background.png"]);
@@ -182,7 +184,7 @@ assert.throws(() => adapter.parse({
     ...missingBounds,
     entrySymbolId: 30,
     runtimeLinkage: "fixtures.MissingBoundsRoot",
-}), /FLASH_LIBRARY_SPRITE_BOUNDS_REQUIRED/);
+}), /FLASH_LIBRARY_SPRITE_BOUNDS_MISSING/);
 
 const incompleteRaster = fixture();
 assert.throws(() => adapter.parse({

@@ -52,6 +52,7 @@ const expectedOutputs = [
     "emit/NativeAssetImporterTransaction.js",
     "emit/NativeLayaHierarchyWriter.js",
     "emit/NativeLayaEmitter.js",
+    "emit/NativeAuthoredFontCatalog.js",
     "package.json"
 ].sort();
 const actualOutputs = (await listFiles(packageRoot)).sort();

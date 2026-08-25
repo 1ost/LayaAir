@@ -30,6 +30,14 @@ import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRen
 import type { ILoadTask } from "../../src/layaAir/laya/net/Loader";
 import { Browser } from "../../src/layaAir/laya/utils/Browser";
 import { NativeFontAdapter } from "../../src/layaAir/platforms/native/NativeFontAdapter";
+import { Input as LayaInput } from "../../src/layaAir/laya/display/Input";
+import { HierarchyParser } from "../../src/layaAir/laya/loaders/HierarchyParser";
+import { PrefabImpl } from "../../src/layaAir/laya/resource/PrefabImpl";
+import {
+    AUTHORED_CONTENT_RUNTIME_IDS,
+    AuthoredDynamicTextField,
+    registerAuthoredContentPrimitives,
+} from "../../src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -215,8 +223,22 @@ test("immutable manifests give same-named documents collision-safe authenticated
 });
 
 test("style selection binds exact metrics and scalar advances to Text and TextField", async () => {
+    const extendedGlyphs = GLYPHS.map((glyph, index) => ({
+        ...glyph, index, bounds: { xmin: index, xmax: index + 10, ymin: -index, ymax: index + 20 },
+    }));
+    const zones = extendedGlyphs.map((_, index) => ({
+        data: [
+            { alignmentCoordinate: index / 10, alignmentCoordinateBits: index, range: 0, rangeBits: 0 },
+            { alignmentCoordinate: 0, alignmentCoordinateBits: 0, range: 1, rangeBits: 15360 },
+        ], maskX: index !== 0, maskY: index !== 0,
+    }));
     const fonts = [
-        entry("styled", 1, "regular", "regular"),
+        entry("styled", 1, "regular", "regular", {
+            glyphs: extendedGlyphs,
+            leading: 120,
+            kerning: [{ leftCodePoint: 0x41, rightCodePoint: 0x56, adjustment: -80 }],
+            alignZones: { tableHint: 1, tableHintName: "medium", zones },
+        }),
         entry("styled", 2, "bold", "bold", { ascent: 810, descent: 190 }),
         entry("styled", 3, "italic", "italic", { ascent: 790, descent: 210 }),
         entry("styled", 4, "boldItalic", "boldItalic", { ascent: 820, descent: 180 }),
@@ -232,7 +254,11 @@ test("style selection binds exact metrics and scalar advances to Text and TextFi
         ]).size, 4);
         assert.deepEqual(consumer.fontMetricsProvider("Body", 12, false, false), { ascent: 9.6, descent: 2.4 });
         assert.deepEqual(consumer.fontMetricsProvider("Body", 10, true, false), { ascent: 8.1, descent: 1.9 });
-        assert.deepEqual(consumer.textAdvanceProvider("AV💮", "Body", 10, false, false, true), [6, 6.2, 10]);
+        assert.deepEqual(consumer.textAdvanceProvider("AV", "Body", 10, false, false, false), [6, 6.2]);
+        assert.deepEqual(consumer.textAdvanceProvider("AV", "Body", 10, false, false, true), [5.2, 6.2]);
+        assert.equal(registry.manifest.fonts[0].leading, 120);
+        assert.equal(registry.manifest.fonts[0].alignZones?.zones[1].data[0].alignmentCoordinateBits, 1);
+        assert.deepEqual(consumer.textAdvanceProvider("AV💮", "Body", 10, false, false, true), [5.2, 6.2, 10]);
         assert.throws(() => consumer.textAdvanceProvider("B", "Body", 10, false, false, true), /no declared glyph U\+42/);
         assert.throws(() => consumer.fontFamilyResolver("Missing", false, false), /device fallback is not permitted/);
         binding.cancel();
@@ -498,6 +524,7 @@ test("font startup catalogs own integrity, preload order and ApplicationDomain d
     );
     assert.throws(() => authoredFontCatalogUrlForDirectory("/Resources/en_Eu/Swf/Font"), /end with/);
     const authored = entry("catalog-font", 3, "regular", "catalog-font");
+    ASSETS.set(`/authored/fonts/${authored.sourceUrl}`, ASSETS.get(authored.sourceUrl)!);
     new FontHarness();
     const manifestBytes = jsonBytes(manifest([authored]));
     const manifestReference = reference("/authored/fonts/manifest.json", manifestBytes);
@@ -567,4 +594,150 @@ test("font startup catalogs fail closed on descriptor integrity drift", async ()
         fetch: async () => ({ ok: true, status: 200, async arrayBuffer() { return bytes; } }),
         digest: webcrypto.subtle,
     }), /SHA-256 mismatch/);
+});
+
+test("published embedded prefab fields bind one exact active font identity without device fallback", { concurrency: false }, async () => {
+    const authored = entry("embedded-prefab", 18, "bold", "embedded-prefab");
+    new FontHarness();
+    const registry = new AuthoredFontRegistry(manifest([authored]));
+    await registry.preload(authored.documentId);
+    assert.throws(() => AuthoredFontRegistry.bindPublishedText(new TextField(), {
+        ...keyOf(authored), fontName: authored.fontName,
+    }), /No active authored font/);
+    const bridge = registry.activateFlashBridge();
+    const field = new TextField();
+    try {
+        const binding = AuthoredFontRegistry.bindPublishedText(field, {
+            ...keyOf(authored), fontName: authored.fontName,
+        });
+        assert.equal(field.fontFamilyResolver(authored.fontName, true, false), registry.runtimeFamilyFor(keyOf(authored)));
+        assert.deepEqual(field.fontMetricsProvider(authored.fontName, 10, true, false), { ascent: 8, descent: 2 });
+        assert.throws(() => field.fontFamilyResolver("Device Arial", true, false), /device fallback is not permitted/);
+        binding.cancel();
+        assert.equal(binding.active, false);
+    } finally {
+        field.destroy(true);
+        bridge.cancel();
+        await registry.dispose();
+    }
+});
+
+test("generated relative font catalogs resolve manifest and TTF URLs from their authenticated files", { concurrency: false }, async () => {
+    const original = entry("relative-catalog", 22, "regular", "relative-catalog");
+    const source = ASSETS.get(original.sourceUrl)!;
+    const authored = { ...original, sourceUrl: "resources/flash-font-22.ttf" };
+    ASSETS.set("/bundle/resources/flash-font-22.ttf", source);
+    new FontHarness();
+    const manifestBytes = jsonBytes(manifest([authored]));
+    const startupBytes = jsonBytes({
+        schema: "laya-authored-font-startup@1",
+        manifest: reference("pet-house.font-manifest.json", manifestBytes),
+        preloadOrder: [authored.documentId],
+        definitions: [{
+            className: "MC_PetHouse.__authoredFont_22_regular",
+            fontName: authored.fontName,
+            authoredFont: keyOf(authored),
+        }],
+    });
+    const responses = new Map<string, ArrayBuffer>([
+        ["/bundle/pet-house.font-startup.json", startupBytes],
+        ["/bundle/pet-house.font-manifest.json", manifestBytes],
+    ]);
+    const activation = await loadAndActivateAuthoredFontCatalog("/bundle/pet-house.font-startup.json", {
+        applicationDomain: new ApplicationDomain(),
+        fetch: async url => {
+            const body = responses.get(url);
+            return { ok: body !== undefined, status: body === undefined ? 404 : 200, async arrayBuffer() { return body!; } };
+        },
+        digest: webcrypto.subtle,
+    });
+    assert.equal(activation.startup.manifest.url, "/bundle/pet-house.font-manifest.json");
+    assert.equal(activation.registry.manifest.fonts[0].sourceUrl, "/bundle/resources/flash-font-22.ttf");
+    await activation.dispose();
+});
+
+test("font activation precedes real hierarchy decoding and owns embedded metrics until destroy", { concurrency: false }, async () => {
+    const glyphs = Object.freeze([
+        Object.freeze({ index: 0, codePoint: 0x41, advance: 600, bounds: Object.freeze({ xmin: 0, xmax: 590, ymin: -10, ymax: 800 }) }),
+        Object.freeze({ index: 1, codePoint: 0x56, advance: 620, bounds: Object.freeze({ xmin: 5, xmax: 615, ymin: -10, ymax: 800 }) }),
+    ]);
+    const zones = Object.freeze(glyphs.map((_glyph, index) => Object.freeze({
+        data: Object.freeze([
+            Object.freeze({ alignmentCoordinate: index / 10, alignmentCoordinateBits: index, range: 0, rangeBits: 0 }),
+            Object.freeze({ alignmentCoordinate: 0, alignmentCoordinateBits: 0, range: 1, rangeBits: 15360 }),
+        ]),
+        maskX: index === 1,
+        maskY: true,
+    })));
+    const authored = entry("hierarchy-font", 24, "bold", "hierarchy-font", {
+        leading: 50,
+        glyphs,
+        kerning: Object.freeze([Object.freeze({ leftCodePoint: 0x41, rightCodePoint: 0x56, adjustment: -80 })]),
+        alignZones: Object.freeze({ tableHint: 1, tableHintName: "medium", zones }),
+    });
+    const source = ASSETS.get(authored.sourceUrl)!;
+    ASSETS.set(`/bundle/${authored.sourceUrl}`, source);
+    new FontHarness();
+    const manifestBytes = jsonBytes(manifest([authored]));
+    const startupBytes = jsonBytes({
+        schema: "laya-authored-font-startup@1",
+        manifest: reference("embedded.font-manifest.json", manifestBytes),
+        preloadOrder: [authored.documentId],
+        definitions: [{ className: "MC_PopTips.__authoredFont_24_bold", fontName: authored.fontName, authoredFont: keyOf(authored) }],
+    });
+    const responses = new Map<string, ArrayBuffer>([
+        ["/bundle/embedded.font-startup.json", startupBytes],
+        ["/bundle/embedded.font-manifest.json", manifestBytes],
+    ]);
+    const activation = await loadAndActivateAuthoredFontCatalog("/bundle/embedded.font-startup.json", {
+        applicationDomain: new ApplicationDomain(),
+        fetch: async url => {
+            const body = responses.get(url);
+            return { ok: body !== undefined, status: body === undefined ? 404 : 200, async arrayBuffer() { return body!; } };
+        },
+        digest: webcrypto.subtle,
+    });
+    registerAuthoredContentPrimitives();
+    const errors: unknown[] = [];
+    const configuration = {
+        sourceId: 25, x: 0, y: 0, width: 160, height: 20, type: "dynamic",
+        multiline: false, wordWrap: false, selectable: true, displayAsPassword: false,
+        autoSize: "none", html: false, useOutlines: true, filters: Object.freeze([]), gutter: 2,
+        overflow: "hidden", initialText: "AV",
+        rasterization: { _$type: "any", value: {
+            antiAliasType: "advanced", gridFitType: "subpixel", sharpness: 0, thickness: 0,
+        } },
+        format: {
+            fontMode: "embedded", font: authored.fontName, size: 12, color: 0xffffff,
+            bold: true, italic: false, underline: false, align: "center", leftMargin: 0,
+            rightMargin: 0, indent: 0, leading: 0, letterSpacing: 0, kerning: true,
+            embeddedFont: { _$type: "any", value: {
+                documentId: authored.documentId, resourceId: "flash-font-24", sourceSha256: authored.sourceSha256,
+                fontId: authored.fontId, fontType: "embedded", fontStyle: authored.fontStyle,
+                unitsPerEm: authored.unitsPerEm, ascent: authored.ascent, descent: authored.descent,
+                leading: authored.leading, glyphs, kerning: authored.kerning, alignZones: authored.alignZones,
+            } },
+        },
+    };
+    const prefab = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1, "_$id": "symbol25", "_$type": "Sprite",
+        "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.textField,
+        authoredConfiguration: configuration,
+        name: "TF_PopTips", x: 0, y: 0, width: 160, height: 20,
+    });
+    const field = prefab.create({}, errors) as AuthoredDynamicTextField;
+    assert.deepEqual(errors, [], "authenticated font activation must precede hierarchy field construction");
+    assert.equal(field instanceof AuthoredDynamicTextField, true);
+    const runtimeFamily = activation.registry.runtimeFamilyFor(keyOf(authored));
+    const boundFamilyResolver = field.fontFamilyResolver;
+    assert.equal(field.fontFamilyResolver(authored.fontName, true, false), runtimeFamily);
+    assert.deepEqual(field.fontMetricsProvider(authored.fontName, 12, true, false), { ascent: 9.6, descent: 2.4 });
+    assert.deepEqual(field.textAdvanceProvider("AV", authored.fontName, 12, true, false, true), [6.24, 7.44]);
+    const settings = (field.children[0] as LayaInput).rasterizationSettings;
+    assert.equal(settings?.alignmentZones?.[String(0x56)]?.x?.coordinate, 0.1);
+    assert.equal(settings?.alignmentZones?.[String(0x41)]?.y?.range, 1);
+    field.destroy(true);
+    assert.notEqual(field.fontFamilyResolver, boundFamilyResolver,
+        "destroy releases the authenticated field binding before native input teardown");
+    await activation.dispose();
 });

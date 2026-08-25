@@ -334,7 +334,7 @@ export interface NativeAuthoredContentResourceMetadata {
     readonly id: string;
     readonly assetId: string;
     readonly outputPath: string;
-    readonly mediaType: "image/jpeg" | "image/png";
+    readonly mediaType: "image/jpeg" | "image/png" | "font/ttf";
     readonly byteLength: number;
     readonly sha256: string;
 }

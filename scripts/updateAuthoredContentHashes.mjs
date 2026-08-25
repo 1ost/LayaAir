@@ -231,7 +231,83 @@ delete authoredFontCapability.blockingReason;
 const mediaFontCapability = ledger.capabilities.find(item => item.id === "media.font");
 if (!mediaFontCapability || mediaFontCapability.status !== "blocking")
     throw new Error("The narrow authored-font registry may not clear broad media.font admission");
-mediaFontCapability.blockingReason = "The authored-font registry admits immutable converted manifests and exact text providers only; broad platform font-media coverage remains unresolved.";
+mediaFontCapability.blockingReason = "Authenticated TrueType resources referenced by the narrow embedded dynamic-field capability are admitted; other font containers, font tags, fallback, synthesis and broad platform font-media coverage remain unresolved.";
+
+let authoredEmbeddedFontCapability = ledger.capabilities.find(item =>
+    item.id === "text.authored-embedded-ttf-dynamic-field");
+if (!authoredEmbeddedFontCapability) {
+    authoredEmbeddedFontCapability = { id: "text.authored-embedded-ttf-dynamic-field" };
+    ledger.capabilities.push(authoredEmbeddedFontCapability);
+}
+Object.assign(authoredEmbeddedFontCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "NeutralFontMediaType", "type"],
+        ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "NeutralEmbeddedFont", "interface"],
+        ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "NeutralFontAlignZones", "interface"],
+        ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "NeutralAdvancedTextRasterization", "interface"],
+        ["src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts", "NativeAuthoredFontCatalogDescription", "interface"],
+        ["src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts", "describeNativeAuthoredFontCatalog", "function"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredEmbeddedFontConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredFontAlignZonesConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredAdvancedTextRasterizationConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "configureAuthoredTextField", "function"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredPublishedFontSelection", "interface"],
+        ["src/layaAir/laya/platform/AuthoredFontRegistry.ts", "AuthoredFontRegistry", "class"],
+    ].map(([module, exported, kind]) => authoredEmbeddedFontCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "", sha256: "",
+            ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}) }),
+    evidence: [{
+        path: "tests/architecture/authoredEmbeddedFontBundleEvidence.test.ts",
+        test: "Authenticated embedded TTF dynamic-field compiler surface",
+        sha256: "",
+        capability: "text.authored-embedded-ttf-dynamic-field",
+        covers: [],
+    }],
+});
+delete authoredEmbeddedFontCapability.blockingReason;
+
+for (const [id, blockingReason] of [
+    ["text.dynamic", "Authenticated source-shaped device, embedded TrueType and restricted-HTML dynamic-field subsets are admitted; input fields, broader HTML, font synthesis and other dynamic text semantics remain unresolved."],
+    ["text.advanced-rasterization", "Exact advanced/subpixel CSM settings for authenticated embedded TrueType dynamic fields are admitted; other renderers, grid-fit modes, outline conversion and broader rasterization semantics remain unresolved."],
+]) {
+    const capability = ledger.capabilities.find(item => item.id === id);
+    if (!capability || capability.status !== "blocking")
+        throw new Error(`The narrow embedded-font field admission may not clear broad ${id} admission`);
+    capability.blockingReason = blockingReason;
+}
+
+let authoredRestrictedHtmlCapability = ledger.capabilities.find(item =>
+    item.id === "text.authored-restricted-html-field");
+if (!authoredRestrictedHtmlCapability) {
+    authoredRestrictedHtmlCapability = { id: "text.authored-restricted-html-field" };
+    ledger.capabilities.push(authoredRestrictedHtmlCapability);
+}
+Object.assign(authoredRestrictedHtmlCapability, {
+    status: "typescript-obligation",
+    obligations: [
+        ["src/extensions/authoredContent/core/RestrictedFlashHtmlText.ts", "RestrictedFlashHtmlTextLayout", "interface"],
+        ["src/extensions/authoredContent/core/RestrictedFlashHtmlText.ts", "parseRestrictedFlashHtmlText", "function"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "AuthoredTextFieldConfiguration", "interface"],
+        ["src/extensions/authoredContent/runtime/AuthoredTextField.ts", "configureAuthoredTextField", "function"],
+    ].map(([module, exported, kind]) => authoredRestrictedHtmlCapability.obligations?.find(
+        item => item.module === module && item.export === exported)
+        || { module, export: exported, kind, signature: "", sha256: "" }),
+    evidence: [{
+        path: "tests/architecture/authoredRestrictedHtmlTextEvidence.test.ts",
+        test: "Restricted authored Flash HTML TextField compiler surface",
+        sha256: "",
+        capability: "text.authored-restricted-html-field",
+        covers: [],
+    }],
+});
+delete authoredRestrictedHtmlCapability.blockingReason;
+
+const broadHtmlCapability = ledger.capabilities.find(item => item.id === "text.html-layout");
+if (!broadHtmlCapability || broadHtmlCapability.status !== "blocking")
+    throw new Error("The restricted authored HTML field may not clear broad text.html-layout admission");
+broadHtmlCapability.blockingReason = "A fail-closed authored p/font/b/br/sbr HTML slice is admitted; arbitrary browser HTML, links, images, CSS, script, unknown tags and general mixed-format layout remain unresolved.";
 
 let authoredStaticTextCapability = ledger.capabilities.find(item =>
     item.id === "text.authored-static-text-texture-foundation");

@@ -54,6 +54,8 @@
     "text.authored-device-field-configuration",
     "text.authored-static-text-texture-foundation",
     "text.authored-font-registry",
+    "text.authored-embedded-ttf-dynamic-field",
+    "text.authored-restricted-html-field",
     "interaction.button-states",
     "interaction.hit-test",
     "interaction.pointer",

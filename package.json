@@ -50,6 +50,8 @@
     "test:authored-bridge": "node --max-old-space-size=768 scripts/testAuthoredContentBridge.mjs",
     "test:authored-bridge:types": "tsc -p tests/extensions/authoredContentBridge/tsconfig.json --pretty false",
     "test:authored-font-registry": "node scripts/testAuthoredFontRegistry.mjs",
+    "test:authored-embedded-font": "node --max-old-space-size=512 tests/authoredEmbeddedFont/run.cjs",
+    "test:authored-restricted-html": "node scripts/testAuthoredRestrictedHtmlText.mjs",
     "test:authored-font-registry:types": "tsc -p tests/authoredFontRegistry/tsconfig.json --pretty false",
     "test:flash-filters": "node scripts/testFlashFilters.mjs",
     "test:flash-filters:types": "tsc -p tests/flashFilters/tsconfig.json --pretty false",

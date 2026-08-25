@@ -18,14 +18,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d"
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -35,8 +35,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
           ]
         }
       ]
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -67,8 +67,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.imported-assets",
           "covers": [
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
           ]
         }
       ]
@@ -82,14 +82,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d"
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -99,8 +99,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
           ]
         }
       ]
@@ -114,7 +114,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "8bb40cefe1d055a35416bcb8068f5f91e09b6aa8be9e0cc6d1002969a7f8f114",
+          "sha256": "9e50f50a7272e3b3a89d4e5593686e520a8e64574a0e10094c7b514c16add657",
           "members": [
             {
               "abstract": false,
@@ -140,7 +140,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "display.place-remove-depth",
           "covers": [
-            "8bb40cefe1d055a35416bcb8068f5f91e09b6aa8be9e0cc6d1002969a7f8f114"
+            "9e50f50a7272e3b3a89d4e5593686e520a8e64574a0e10094c7b514c16add657"
           ]
         }
       ]
@@ -154,14 +154,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d"
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -171,8 +171,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
           ]
         }
       ]
@@ -213,7 +213,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -223,8 +223,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "media.bitmap",
           "covers": [
-            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134"
           ]
         }
       ]
@@ -232,7 +232,7 @@
     {
       "id": "media.font",
       "status": "blocking",
-      "blockingReason": "The authored-font registry admits immutable converted manifests and exact text providers only; broad platform font-media coverage remains unresolved."
+      "blockingReason": "Authenticated TrueType resources referenced by the narrow embedded dynamic-field capability are admitted; other font containers, font tags, fallback, synthesis and broad platform font-media coverage remain unresolved."
     },
     {
       "id": "media.audio",
@@ -257,7 +257,7 @@
     {
       "id": "text.dynamic",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "Authenticated source-shaped device, embedded TrueType and restricted-HTML dynamic-field subsets are admitted; input fields, broader HTML, font synthesis and other dynamic text semantics remain unresolved."
     },
     {
       "id": "text.input",
@@ -267,12 +267,12 @@
     {
       "id": "text.html-layout",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "A fail-closed authored p/font/b/br/sbr HTML slice is admitted; arbitrary browser HTML, links, images, CSS, script, unknown tags and general mixed-format layout remain unresolved."
     },
     {
       "id": "text.advanced-rasterization",
       "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "blockingReason": "Exact advanced/subpixel CSM settings for authenticated embedded TrueType dynamic fields are admitted; other renderers, grid-fit modes, outline conversion and broader rasterization semantics remain unresolved."
     },
     {
       "id": "interaction.button-states",
@@ -283,14 +283,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d"
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
         },
         {
           "module": "src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts",
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "8bb40cefe1d055a35416bcb8068f5f91e09b6aa8be9e0cc6d1002969a7f8f114",
+          "sha256": "9e50f50a7272e3b3a89d4e5593686e520a8e64574a0e10094c7b514c16add657",
           "members": [
             {
               "abstract": false,
@@ -313,14 +313,14 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
           "export": "registerAuthoredContentPrimitives",
           "kind": "function",
           "signature": "() => void",
-          "sha256": "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+          "sha256": "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
         }
       ],
       "evidence": [
@@ -330,10 +330,10 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.button-states",
           "covers": [
-            "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d",
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6",
-            "8bb40cefe1d055a35416bcb8068f5f91e09b6aa8be9e0cc6d1002969a7f8f114",
-            "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7",
+            "9e50f50a7272e3b3a89d4e5593686e520a8e64574a0e10094c7b514c16add657",
+            "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
           ]
         }
       ]
@@ -371,7 +371,7 @@
           "export": "isAuthoredSimpleButton",
           "kind": "function",
           "signature": "(value: unknown) => value is AuthoredSimpleButton",
-          "sha256": "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+          "sha256": "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
         }
       ],
       "evidence": [
@@ -381,7 +381,7 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.pointer",
           "covers": [
-            "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+            "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
           ]
         }
       ]
@@ -522,7 +522,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d"
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -539,7 +539,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.frames-labels",
           "covers": [
-            "6d056409ec0ecbd28ba61ff4705144543300af195baab729f1927ca41869e53d",
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7",
             "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
           ]
         }
@@ -554,7 +554,7 @@
           "export": "NativeLayaEmitter",
           "kind": "class",
           "signature": "typeof NativeLayaEmitter",
-          "sha256": "ff08ae0103ca6f7b25cb4205d9815b90254c14ab7e2986a6f9a303d58b1fde2c",
+          "sha256": "b1867426808294105d8d692a8837111abe292c15f8d8daa1c47843effcdd4442",
           "members": [
             {
               "abstract": false,
@@ -640,7 +640,7 @@
           "capability": "timeline.property-track",
           "covers": [
             "10a06837473eaadef5eaf61f58da3e68ccd19a406634421815220e508b340ed0",
-            "ff08ae0103ca6f7b25cb4205d9815b90254c14ab7e2986a6f9a303d58b1fde2c"
+            "b1867426808294105d8d692a8837111abe292c15f8d8daa1c47843effcdd4442"
           ]
         }
       ]
@@ -654,14 +654,14 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
           "export": "registerAuthoredContentPrimitives",
           "kind": "function",
           "signature": "() => void",
-          "sha256": "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+          "sha256": "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
         }
       ],
       "evidence": [
@@ -671,8 +671,8 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.nested-symbol",
           "covers": [
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6",
-            "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7",
+            "fd0d4fa21d1da412757a88f6eb15a69aa898eb079273f3825351c0a46dd4a8ad"
           ]
         }
       ]
@@ -741,28 +741,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+          "sha256": "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
         }
       ],
       "evidence": [
@@ -772,7 +772,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "7db88c9ec3bf3bde9c0b36e5fba4369ddd0e63b2e5607f2b0de5161d6bdc26e6"
+            "1b1474db53ebb914c889096cba7c1be7495241ab0613159ea1d70dd1e0192ac7"
           ]
         }
       ]
@@ -39445,7 +39445,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2249",
+              "name": "__@iterator@2261",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -42328,21 +42328,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "2fc478486f46a04795d27601ec51dce00065072b9ed66faa952360790912d88f"
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "2fc478486f46a04795d27601ec51dce00065072b9ed66faa952360790912d88f"
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "2fc478486f46a04795d27601ec51dce00065072b9ed66faa952360790912d88f"
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
         }
       ],
       "evidence": [
@@ -42352,7 +42352,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "2fc478486f46a04795d27601ec51dce00065072b9ed66faa952360790912d88f"
+            "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
           ]
         }
       ]
@@ -42850,14 +42850,14 @@
           "export": "AuthoredFontBinding",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontBindingCancelledError",
           "kind": "class",
           "signature": "typeof AuthoredFontBindingCancelledError",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71",
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1",
           "members": [
             {
               "abstract": false,
@@ -42930,28 +42930,28 @@
           "export": "AuthoredFontKey",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontManifest",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontManifestEntry",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontRegistry",
           "kind": "class",
           "signature": "typeof AuthoredFontRegistry",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71",
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1",
           "members": [
             {
               "abstract": false,
@@ -43037,6 +43037,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "bindPublishedText",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, selectionValue: AuthoredPublishedFontSelection) => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "enumeratePublishedFonts",
               "scope": "static",
               "optional": false,
@@ -43055,7 +43064,7 @@
           "export": "AuthoredTextProviderConsumer",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
         }
       ],
       "evidence": [
@@ -43065,7 +43074,7 @@
           "sha256": "483569ec786959bb2c90c3b6568831baf6534e77bf63f36741e4904824e46852",
           "capability": "text.authored-font-registry",
           "covers": [
-            "53d6413a0bf100a25b4b422f35f60078d00cd3809697c9cfa798b0ef86a8bf71"
+            "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
           ]
         }
       ]
@@ -44651,6 +44660,262 @@
             "1a23ec893dbed187ecbf6d7affcac0e03dd2874b2e537a8e5169fd5d99d91716",
             "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25",
             "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text.authored-embedded-ttf-dynamic-field",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "NeutralFontMediaType",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
+        },
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "NeutralEmbeddedFont",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
+        },
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "NeutralFontAlignZones",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
+        },
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "NeutralAdvancedTextRasterization",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts",
+          "export": "NativeAuthoredFontCatalogDescription",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts",
+          "export": "describeNativeAuthoredFontCatalog",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, prefabPath: string) => NativeAuthoredFontCatalogDescription | undefined",
+          "sha256": "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredEmbeddedFontConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredFontAlignZonesConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredAdvancedTextRasterizationConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "configureAuthoredTextField",
+          "kind": "function",
+          "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredPublishedFontSelection",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1"
+        },
+        {
+          "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
+          "export": "AuthoredFontRegistry",
+          "kind": "class",
+          "signature": "typeof AuthoredFontRegistry",
+          "sha256": "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "activateFlashBridge",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "bindText",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, documentId: string) => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "dispose",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Promise<void>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "disposeDocument",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string) => Promise<void>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "isDocumentLoaded",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "property",
+              "name": "manifest",
+              "scope": "instance",
+              "optional": false,
+              "readonly": true,
+              "signature": "AuthoredFontManifest"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preload",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(documentId: string, signal?: AbortSignal) => Promise<readonly AuthoredFontRuntimeRecord[]>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "preloadAndBind",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, documentId: string, signal?: AbortSignal) => Promise<AuthoredFontBinding>"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "runtimeFamilyFor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(key: AuthoredFontKey) => string"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "bindPublishedText",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "(consumer: AuthoredTextProviderConsumer, selectionValue: AuthoredPublishedFontSelection) => AuthoredFontBinding"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "enumeratePublishedFonts",
+              "scope": "static",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => readonly FlashFontRecordView[]"
+            }
+          ],
+          "constructors": [
+            "new (manifest: AuthoredFontManifest): AuthoredFontRegistry"
+          ],
+          "indexSignatures": [],
+          "heritage": []
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredEmbeddedFontBundleEvidence.test.ts",
+          "test": "Authenticated embedded TTF dynamic-field compiler surface",
+          "sha256": "91de7099bb70ff97cadb35b15e7787029a303be7b5e6cc9428b9d032df4c507d",
+          "capability": "text.authored-embedded-ttf-dynamic-field",
+          "covers": [
+            "45d2bcb9f1e4137d14f1f5b209d457611a33d3e280faca914df910c899f478d7",
+            "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1",
+            "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968",
+            "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text.authored-restricted-html-field",
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/RestrictedFlashHtmlText.ts",
+          "export": "RestrictedFlashHtmlTextLayout",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "e23c7bc9860708b5ef1438e8ecd22aabc4ef29539b100fdc89939d49c8665ca9"
+        },
+        {
+          "module": "src/extensions/authoredContent/core/RestrictedFlashHtmlText.ts",
+          "export": "parseRestrictedFlashHtmlText",
+          "kind": "function",
+          "signature": "(markup: string) => RestrictedFlashHtmlTextLayout",
+          "sha256": "e23c7bc9860708b5ef1438e8ecd22aabc4ef29539b100fdc89939d49c8665ca9"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "AuthoredTextFieldConfiguration",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
+          "export": "configureAuthoredTextField",
+          "kind": "function",
+          "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
+          "sha256": "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredRestrictedHtmlTextEvidence.test.ts",
+          "test": "Restricted authored Flash HTML TextField compiler surface",
+          "sha256": "da9e5d67b77e1fdb65908f0fea7f78f0ffe5dd36c044b9681aeeca8edf84d573",
+          "capability": "text.authored-restricted-html-field",
+          "covers": [
+            "98c4add28b2ce67ed0f1360b5a4ee649cc5e4b1f335fc0526b3c2d7a0f52f968",
+            "e23c7bc9860708b5ef1438e8ecd22aabc4ef29539b100fdc89939d49c8665ca9"
           ]
         }
       ]

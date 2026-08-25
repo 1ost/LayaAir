@@ -114,9 +114,9 @@ export async function loadAndActivateAuthoredFontCatalog(
     if (!response?.ok)
         throw new Error(`Authored font startup returned HTTP ${response?.status ?? "unknown"}: ${startupUrl}`);
     const startupBuffer = await response.arrayBuffer();
-    const startup = normalizeStartup(JSON.parse(
+    const startup = resolveStartupUrls(normalizeStartup(JSON.parse(
         new TextDecoder("utf-8", { fatal: true }).decode(startupBuffer),
-    ));
+    )), URL.getPath(startupUrl));
     return activateNormalizedStartup(startupUrl, startup, options, fetcher);
 }
 
@@ -185,7 +185,10 @@ async function activate(
     digest: AuthoredFontCatalogDigest,
     signal?: AbortSignal,
 ): Promise<AuthoredFontCatalogActivation> {
-    const startup = normalizeStartup(await readAuthenticatedJson(startupReference, fetcher, digest, signal));
+    const startup = resolveStartupUrls(
+        normalizeStartup(await readAuthenticatedJson(startupReference, fetcher, digest, signal)),
+        URL.getPath(startupReference.url),
+    );
     return activateStartup(startup, domain, fetcher, digest, signal);
 }
 
@@ -196,7 +199,10 @@ async function activateStartup(
     digest: AuthoredFontCatalogDigest,
     signal?: AbortSignal,
 ): Promise<AuthoredFontCatalogActivation> {
-    const manifest = await readAuthenticatedJson(startup.manifest, fetcher, digest, signal) as AuthoredFontManifest;
+    const manifest = resolveManifestUrls(
+        await readAuthenticatedJson(startup.manifest, fetcher, digest, signal),
+        URL.getPath(startup.manifest.url),
+    ) as AuthoredFontManifest;
     const registry = new AuthoredFontRegistry(manifest);
     const definitions = createDefinitions(startup, registry.manifest);
     for (const [className, definition] of Object.entries(definitions)) {
@@ -285,6 +291,38 @@ function normalizeStartup(value: unknown): AuthoredFontStartupManifest {
         preloadOrder: Object.freeze(preloadOrder),
         definitions: Object.freeze(definitions),
     });
+}
+
+function resolveStartupUrls(startup: AuthoredFontStartupManifest, baseUrl: string): AuthoredFontStartupManifest {
+    return Object.freeze({
+        ...startup,
+        manifest: Object.freeze({
+            ...startup.manifest,
+            url: resolveCatalogUrl(baseUrl, startup.manifest.url),
+        }),
+    });
+}
+
+function resolveManifestUrls(value: unknown, baseUrl: string): unknown {
+    const source = requirePlainRecord(value, "font manifest");
+    if (!Array.isArray(source.fonts)) return value;
+    return {
+        ...source,
+        fonts: source.fonts.map(candidate => {
+            const entry = requirePlainRecord(candidate, "font manifest entry");
+            return {
+                ...entry,
+                sourceUrl: typeof entry.sourceUrl === "string"
+                    ? resolveCatalogUrl(baseUrl, entry.sourceUrl)
+                    : entry.sourceUrl,
+            };
+        }),
+    };
+}
+
+function resolveCatalogUrl(baseUrl: string, value: string): string {
+    if (/^(?:[A-Za-z][A-Za-z0-9+.-]*:|\/|\\)/.test(value)) return value;
+    return URL.join(baseUrl, value);
 }
 
 function createDefinitions(
