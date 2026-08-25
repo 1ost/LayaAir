@@ -7,6 +7,8 @@ import { FlashDisplayRootBoundary } from "../../src/layaAir/flash/display/FlashD
 import { FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary";
 import { Stage, isFlashStage } from "../../src/layaAir/flash/display/Stage";
 import { Event } from "../../src/layaAir/flash/events/Event";
+import { TextField } from "../../src/layaAir/flash/text/TextField";
+import { Input as LayaInput } from "../../src/layaAir/laya/display/Input";
 import { Node as LayaNode } from "../../src/layaAir/laya/display/Node";
 import { Stage as LayaStage } from "../../src/layaAir/laya/display/Stage";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
@@ -35,6 +37,12 @@ class FrameScheduler {
     clear(caller: unknown, method: Function): void {
         for (const registration of this.registrations)
             if (registration.caller === caller && registration.method === method) registration.active = false;
+    }
+
+    callLater(_caller: unknown, _method: Function): void {}
+    runCallLater(_caller: unknown, _method: Function): void {}
+    frameOnce(_delay: number, caller: unknown, method: Function): void {
+        queueMicrotask(() => Reflect.apply(method, caller, []));
     }
 
     tick(): void {
@@ -219,6 +227,109 @@ test("Stage child operations retain Laya attachment and Flash lifecycle semantic
         FlashStageBoundary.dispose(nativeStage);
         ILaya.stage = previousStage;
         ILaya.timer = previousTimer;
+        Browser.mainCanvas = previousCanvas;
+    }
+});
+
+test("DisplayObject stage exposes the stable source Stage and routes composed TextField focus", () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const previousSystemTimer = ILaya.systemTimer;
+    const previousCanvas = Browser.mainCanvas;
+    const adapter = (PAL as any).textInput;
+    const previousTarget = adapter.target;
+    const previousBegin = adapter.begin;
+    const previousEnd = adapter.end;
+    const nativeStage = new LayaStage();
+    const scheduler = new FrameScheduler();
+    try {
+        install(nativeStage, scheduler);
+        ILaya.systemTimer = scheduler as unknown as LayaTimer;
+        const sourceStage = bootstrap(nativeStage).sourceStage;
+        adapter.target = null;
+        adapter.begin = function (target: LayaInput): void {
+            this.target = target;
+            (nativeStage as any).focus = target;
+        };
+        adapter.end = function (): void {
+            if ((nativeStage as any).focus === this.target) (nativeStage as any).focus = null;
+            this.target = null;
+        };
+        const field = new ProbeTextField();
+
+        assert.equal(field.stage, null, "detached source objects never leak the native Stage");
+        sourceStage.addChild(field);
+        assert.equal(field.stage, sourceStage);
+        assert.equal(field.stage, field.stage, "attached stage reads retain one stable source identity");
+        assert.notEqual(field.stage, nativeStage);
+
+        field.stage!.focus = field;
+        assert.equal(field.stage!.focus, field);
+        assert.equal(field.focus, true);
+        assert.equal(adapter.target, field.nativeInput,
+            "source Stage focus routes through the composed native input owner");
+
+        sourceStage.removeChild(field);
+        assert.equal(field.stage, null);
+        assert.equal(sourceStage.focus, null, "reading focus clears a target detached from this Stage");
+        assert.equal(field.focus, false);
+    } finally {
+        adapter.target = previousTarget;
+        adapter.begin = previousBegin;
+        adapter.end = previousEnd;
+        FlashStageBoundary.dispose(nativeStage);
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+        ILaya.systemTimer = previousSystemTimer;
+        Browser.mainCanvas = previousCanvas;
+    }
+});
+
+test("TextField background and border preserve Flash state and native retained chrome", () => {
+    class ProbeTextField extends TextField {
+        get nativeInput(): LayaInput { return this._nativeTextInput; }
+    }
+    const previousStage = ILaya.stage;
+    const previousTimer = ILaya.timer;
+    const previousSystemTimer = ILaya.systemTimer;
+    const previousCanvas = Browser.mainCanvas;
+    const nativeStage = new LayaStage();
+    const scheduler = new FrameScheduler();
+    try {
+        install(nativeStage, scheduler);
+        ILaya.systemTimer = scheduler as unknown as LayaTimer;
+        const field = new ProbeTextField();
+        assert.deepEqual([
+            field.background, field.backgroundColor, field.border, field.borderColor,
+            field.nativeInput.bgColor, field.nativeInput.borderColor,
+        ], [false, 0xffffff, false, 0x000000, "", ""]);
+
+        field.backgroundColor = 0x12345678;
+        field.borderColor = -1;
+        assert.deepEqual([field.backgroundColor, field.borderColor], [0x12345678, 0xffffffff],
+            "disabled chrome retains independently coerced uint colors");
+        assert.deepEqual([field.nativeInput.bgColor, field.nativeInput.borderColor], ["", ""]);
+
+        field.background = true;
+        field.border = true;
+        assert.deepEqual([field.nativeInput.bgColor, field.nativeInput.borderColor], ["#345678", "#ffffff"],
+            "native retained drawing consumes the low RGB bytes");
+        field.size(240, 36);
+        assert.deepEqual([field.nativeInput.width, field.nativeInput.height,
+            field.nativeInput.bgColor, field.nativeInput.borderColor], [240, 36, "#345678", "#ffffff"]);
+
+        field.background = false;
+        field.border = false;
+        assert.deepEqual([field.nativeInput.bgColor, field.nativeInput.borderColor], ["", ""],
+            "disabling chrome removes native drawing without discarding source colors");
+        assert.deepEqual([field.backgroundColor, field.borderColor], [0x12345678, 0xffffffff]);
+    } finally {
+        ILaya.stage = previousStage;
+        ILaya.timer = previousTimer;
+        ILaya.systemTimer = previousSystemTimer;
         Browser.mainCanvas = previousCanvas;
     }
 });

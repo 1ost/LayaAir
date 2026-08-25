@@ -1014,7 +1014,7 @@ export class Sprite extends Node {
     setSubpassFlag(flag: SubPassFlag) {
         this._subpassUpdateFlag |= flag;
         if (this._needUpdateSubpass()) {
-            this.stage._subpassUpdateList.add(this);
+            ILaya.stage._subpassUpdateList.add(this);
             this._globalTrans._notifyRenderSpriteTransChange();
         }
     }
@@ -2204,7 +2204,7 @@ export class Sprite extends Node {
             this._repaintCount = Stat.render2DCount;
             this._previousType = this._renderType;
             this._struct.setRepaint();
-            this.stage._graphicUpdateList.add(this);
+            ILaya.stage._graphicUpdateList.add(this);
             this.parentRepaint();
 
             if (this._renderType & SpriteConst.DRAW2RT) {
@@ -2715,7 +2715,7 @@ export class Sprite extends Node {
         if (this._needGraphicsUpdate()) {
             if (this._graphicsRenderer)
                 this._graphicsRenderer.onModified();
-            this.stage._graphicUpdateList.add(this);
+            ILaya.stage._graphicUpdateList.add(this);
             this._globalTrans._notifyRenderSpriteTransChange();
         }
         this._checkSubRenderPass();

@@ -5,6 +5,7 @@ import { Event } from "../events/Event";
 import { FlashEventListener } from "../events/FlashEventRouter";
 import { DisplayObject, isFlashDisplayObject } from "./DisplayObject";
 import { FlashStageBootstrapOptions, FlashStageBoundary } from "./FlashStageBoundary";
+import { registerSourceStageViewResolver } from "../../laya/display/SourceStageViewRegistry";
 import { InteractiveObject } from "./InteractiveObject";
 
 const STAGE_TOKEN = Symbol("LayaAir.flash.Stage");
@@ -185,3 +186,5 @@ export class Stage {
         FlashStageBoundary.configure(stage, { ...current, ...patch });
     }
 }
+
+registerSourceStageViewResolver(value => Stage.forDisplayObject(value as DisplayObject));

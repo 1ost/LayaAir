@@ -1061,7 +1061,9 @@ export class Node extends EventDispatcher {
      * @en Reference to the stage.
      * @zh 对舞台的引用。
      */
-    get stage(): Stage {
+    // The native value remains ILaya.stage. The virtual return type stays open
+    // so admitted source-shaped display subclasses can expose their own facade.
+    get stage(): any {
         return ILaya.stage;
     }
 

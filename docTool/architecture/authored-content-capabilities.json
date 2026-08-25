@@ -281,7 +281,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4"
+          "sha256": "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f"
         }
       ],
       "evidence": [
@@ -294,7 +294,7 @@
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4"
+            "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f"
           ]
         }
       ]
@@ -316,7 +316,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4"
+          "sha256": "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f"
         }
       ],
       "evidence": [
@@ -327,7 +327,7 @@
           "capability": "rendering.color-transform",
           "covers": [
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4",
+            "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
           ]
         }
@@ -5387,7 +5387,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4",
+          "sha256": "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f",
           "heritage": [
             {
               "kind": "extends",
@@ -19587,7 +19587,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4"
+          "sha256": "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -23230,7 +23230,7 @@
             "new (token: typeof STAGE_TOKEN, nativeStage: LayaStage): Stage"
           ],
           "indexSignatures": [],
-          "sha256": "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
+          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829",
           "heritage": []
         },
         {
@@ -23238,14 +23238,14 @@
           "export": "FlashStageLoaderInfo",
           "kind": "interface",
           "signature": "any",
-          "sha256": "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1"
+          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829"
         },
         {
           "module": "src/layaAir/flash/display/Stage.ts",
           "export": "isFlashStage",
           "kind": "function",
           "signature": "(value: unknown) => value is Stage",
-          "sha256": "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1"
+          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -23299,10 +23299,10 @@
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
-            "7e58e4e11136557ad0c758ef9ef8207a032c64de35f46001ace4ec665cda3bf4",
+            "90c5409cd3d3e582a41b1193c780fa406dacaa18c3694e061acf0296528ab54f",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
-            "95e9b694ea898bd9454b6680d7843b8fa761c69878d163e3b45570158b81d5b1",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
+            "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829",
             "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
@@ -31722,11 +31722,47 @@
             {
               "abstract": false,
               "kind": "get+set",
+              "name": "background",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "backgroundColor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
               "name": "blendMode",
               "scope": "instance",
               "optional": false,
               "readonly": false,
               "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "border",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "borderColor",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
             },
             {
               "abstract": false,
@@ -33578,7 +33614,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6",
+          "sha256": "0f821ddf53667c88dc0a85791c0325d45bdc2d1cb9f81559df563edc37779bb3",
           "heritage": [
             {
               "kind": "extends",
@@ -33594,7 +33630,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
+          "sha256": "0f821ddf53667c88dc0a85791c0325d45bdc2d1cb9f81559df563edc37779bb3"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -33604,7 +33640,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
+          "sha256": "0f821ddf53667c88dc0a85791c0325d45bdc2d1cb9f81559df563edc37779bb3"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -33614,7 +33650,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6"
+          "sha256": "0f821ddf53667c88dc0a85791c0325d45bdc2d1cb9f81559df563edc37779bb3"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -36653,8 +36689,8 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "api.flash.text",
           "covers": [
+            "0f821ddf53667c88dc0a85791c0325d45bdc2d1cb9f81559df563edc37779bb3",
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
-            "548404dfbf05d9bd916f644d4e33779773a69cfa9f533d4b426939b8081758c6",
             "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
@@ -39065,7 +39101,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2163",
+              "name": "__@iterator@2169",
               "scope": "instance",
               "optional": false,
               "readonly": false,

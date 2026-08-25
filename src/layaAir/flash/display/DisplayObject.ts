@@ -2,6 +2,7 @@ import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Point as LayaPoint } from "../../laya/maths/Point";
 import { Rectangle as LayaRectangle } from "../../laya/maths/Rectangle";
+import { sourceStageViewForDisplayObject } from "../../laya/display/SourceStageViewRegistry";
 import {
     AccessibilityProperties, isFlashAccessibilityProperties
 } from "../accessibility/AccessibilityProperties";
@@ -20,6 +21,7 @@ import {
     transformForDisplayObject,
 } from "../geom/Transform";
 import type { LoaderInfo } from "./Loader";
+import type { Stage } from "./Stage";
 
 /**
  * Internal type-only adapter: Laya owns the native matrix while the exported
@@ -29,6 +31,7 @@ class NativeDisplayObjectHost extends LayaSprite {
     override get transform(): any { return super.transform; }
     override set transform(value: any) { super.transform = value; }
     override getBounds(out?: any): any { return super.getBounds(out); }
+    override get stage(): any { return super.stage; }
 }
 
 const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
@@ -236,6 +239,11 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
             value = parent;
         }
         return value;
+    }
+
+    /** Stable source-shaped Stage view for attached Flash display objects. */
+    override get stage(): Stage | null {
+        return sourceStageViewForDisplayObject(this) as Stage | null;
     }
 
     private _boundsIn(targetCoordinateSpace: DisplayObject): Rectangle {

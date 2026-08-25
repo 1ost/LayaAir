@@ -188,6 +188,10 @@ class NativeFlashTextInput extends LayaInput {
  */
 export class TextField extends InteractiveObject {
     private readonly _nativeInput = new NativeFlashTextInput();
+    private _background = false;
+    private _backgroundColor = 0xffffff;
+    private _border = false;
+    private _borderColor = 0x000000;
     private _flashType = TextFieldType.DYNAMIC;
     private _flashAutoSize = TextFieldAutoSize.NONE;
     private _embedFonts = false;
@@ -250,6 +254,7 @@ export class TextField extends InteractiveObject {
             (value: unknown) => this.event(LayaEvent.COMPOSITION_UPDATE, value));
         this._nativeInput.on(LayaEvent.COMPOSITION_END, this,
             (value: unknown) => this._dispatchNativeIme("end", value));
+        this._syncChrome();
     }
 
     get text(): string {
@@ -297,6 +302,32 @@ export class TextField extends InteractiveObject {
         this._defaultFormat.color = color;
         if (this.length) this.setTextFormat(format);
         else this._applyFormat(format);
+    }
+
+    /** Flash TextField background chrome, rendered by the composed native input. */
+    get background(): boolean { return this._background; }
+    set background(value: boolean) {
+        this._background = !!value;
+        this._syncChrome();
+    }
+
+    get backgroundColor(): number { return this._backgroundColor; }
+    set backgroundColor(value: number) {
+        this._backgroundColor = Number(value) >>> 0;
+        if (this._background) this._syncChrome();
+    }
+
+    /** Flash TextField one-pixel border chrome, independent from background state. */
+    get border(): boolean { return this._border; }
+    set border(value: boolean) {
+        this._border = !!value;
+        this._syncChrome();
+    }
+
+    get borderColor(): number { return this._borderColor; }
+    set borderColor(value: number) {
+        this._borderColor = Number(value) >>> 0;
+        if (this._border) this._syncChrome();
     }
 
     get displayAsPassword(): boolean { return this._displayAsPassword; }
@@ -643,6 +674,11 @@ export class TextField extends InteractiveObject {
     protected override _applyNativeFocus(value: boolean): void {
         this.focus = value;
         this._syncNativeFocusIndicator(value);
+    }
+
+    private _syncChrome(): void {
+        this._nativeInput.bgColor = this._background ? cssColor(this._backgroundColor) : "";
+        this._nativeInput.borderColor = this._border ? cssColor(this._borderColor) : "";
     }
 
     override destroy(destroyChild = true): void {
