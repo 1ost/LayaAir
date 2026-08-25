@@ -49,7 +49,8 @@ const BUTTON_STATES = ["up", "over", "down", "hitTest"] as const;
 type ButtonStateName = typeof BUTTON_STATES[number];
 const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATES);
 const TIMELINE_FIELDS = new Set(["frameCount", "frameRate", "frames", "schema", "symbolId", "symbolName"]);
-const FRAME_FIELDS = new Set(["durationTicks", "index", "labels", "operations", "sounds"]);
+const FRAME_FIELDS = new Set(["durationTicks", "index", "label", "labels", "operations", "sounds"]);
+const FRAME_LABEL_OPERATION_FIELDS = new Set(["name", "op"]);
 const STAGE_FIELDS = new Set(["backgroundColor", "frameCount", "frameRate", "height", "width"]);
 const STAGE_BACKGROUND_FIELDS = new Set(["alpha", "color"]);
 const TEXT_FIELD_FIELDS = new Set([
@@ -178,9 +179,10 @@ export class FlashLibrarySymbolAdapter {
         const sourceTimeline = timeline(timelines, characterId);
         if (sourceTimeline.symbolId !== characterId)
             fail("FLASH_LIBRARY_TIMELINE_ID_MISMATCH", `Timeline ${characterId} identifies another symbol.`);
-        const bounds = spriteBounds(asset, sourceTimeline, characterId);
         const firstFrame = frame(sourceTimeline, 0);
-        const initialOperations = array(firstFrame.operations, `timeline ${characterId} frame 1 operations`);
+        validateFrame(firstFrame, characterId);
+        const initialOperations = displayOperations(firstFrame, characterId);
+        const bounds = spriteBounds(asset, characterId, operation, sourceTimeline, initialOperations);
         // Text remains semantic authored content. A diagnostic full-frame
         // raster may authenticate visual evidence, but it must never replace
         // a reachable DefineText/DefineEditText node in production output.
@@ -391,11 +393,12 @@ export class FlashLibrarySymbolAdapter {
         const active = new Map<number, FlashDisplayState>();
         const instances: FlashDisplayState[] = [];
         const snapshots: Array<Map<number, FlashDisplayState>> = [];
-        const frames = array(sourceTimeline.frames, `timeline ${sourceTimeline.symbolId}.frames`);
+        const frames = validatedTimelineFrames(sourceTimeline);
+        const frameLabels = extractFrameLabels(sourceTimeline);
         frames.forEach((value, frameIndex) => {
             const current = object(value, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1}`);
-            rejectFrameSideEffects(current, sourceTimeline.symbolId);
-            array(current.operations, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1} operations`)
+            validateFrame(current, sourceTimeline.symbolId);
+            displayOperations(current, sourceTimeline.symbolId)
                 .forEach((operationValue, operationIndex) => {
                     const operation = object(operationValue, `timeline operation ${operationIndex}`);
                     const depth = positiveInteger(operation.depth, `${operation.op}.depth`);
@@ -492,6 +495,7 @@ export class FlashLibrarySymbolAdapter {
                 frameRate,
                 duration: frames.length / frameRate,
                 loop: true,
+                frameLabels,
                 tracks,
             },
         };
@@ -506,15 +510,9 @@ export class FlashLibrarySymbolAdapter {
         const symbolId = positiveInteger(sourceTimeline.symbolId, "rasterized sprite symbolId");
         const frameRate = positiveInteger(sourceTimeline.frameRate, `timeline ${symbolId}.frameRate`);
         const frameCount = positiveInteger(sourceTimeline.frameCount, `timeline ${symbolId}.frameCount`);
-        const frames = array(sourceTimeline.frames, `timeline ${symbolId}.frames`);
-        if (frames.length !== frameCount || authorities.length !== frameCount)
+        validatedTimelineFrames(sourceTimeline, "FLASH_LIBRARY_RASTERIZED_SPRITE_FRAME_CLOSURE");
+        if (authorities.length !== frameCount)
             fail("FLASH_LIBRARY_RASTERIZED_SPRITE_FRAME_CLOSURE", `Rasterized sprite ${symbolId} must authenticate exactly ${frameCount} frames.`);
-        frames.forEach((value, index) => {
-            const current = object(value, `timeline ${symbolId} frame ${index + 1}`);
-            if (current.index !== index + 1 || (current.durationTicks !== undefined && current.durationTicks !== 1))
-                fail("FLASH_LIBRARY_FRAME_INDEX_INVALID", `Timeline ${symbolId} frame indexing/duration is unsupported.`);
-            rejectFrameSideEffects(current, symbolId);
-        });
         const children = authorities.map((authority, index): NeutralAuthoredNode => {
             const resourceId = `flash-sprite-${symbolId}-frame-${index + 1}`;
             registerResource(resources, resourceId, authority);
@@ -538,6 +536,7 @@ export class FlashLibrarySymbolAdapter {
                 frameRate,
                 duration: frameCount / frameRate,
                 loop: frameCount > 1,
+                frameLabels: extractFrameLabels(sourceTimeline),
                 tracks: children.map((child, childIndex) => ({
                     targetPath: [linkage, child.linkage],
                     property: "visible" as const,
@@ -854,16 +853,19 @@ function authoredScale9Grid(
     };
 }
 
-function spriteBounds(asset: Record<string, any>, sourceTimeline: Record<string, any>, characterId: number): Record<string, any> {
+function spriteBounds(
+    asset: Record<string, any>,
+    characterId: number,
+    operation: Record<string, any> | undefined,
+    sourceTimeline: Record<string, any>,
+    initialOperations: ReadonlyArray<unknown>,
+): Record<string, any> {
     if (asset.bounds !== undefined)
         return object(asset.bounds, `library.assets.${characterId}.bounds`);
-    const frames = array(sourceTimeline.frames, `timeline ${characterId}.frames`);
-    for (const value of frames) {
-        const current = object(value, `timeline ${characterId} empty sprite frame`);
-        rejectFrameSideEffects(current, characterId);
-        if (array(current.operations, `timeline ${characterId} empty sprite operations`).length !== 0)
-            fail("FLASH_LIBRARY_SPRITE_BOUNDS_REQUIRED", `Non-empty sprite ${characterId} requires authored bounds.`);
-    }
+    const namedAnchor = operation !== undefined && typeof operation.name === "string";
+    const emptySingleFrame = sourceTimeline.frameCount === 1 && initialOperations.length === 0;
+    if (!namedAnchor || !emptySingleFrame)
+        fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is an empty named anchor.`);
     return { x: 0, y: 0, width: 0, height: 0 };
 }
 
@@ -1051,20 +1053,12 @@ function validateTimelineRatio(operation: Record<string, any>, assets: Record<st
 function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode): NeutralTimeline {
     const frameRate = finite(source.frameRate, `timeline ${source.symbolId}.frameRate`);
     const frameCount = positiveInteger(source.frameCount, `timeline ${source.symbolId}.frameCount`);
-    const frames = array(source.frames, `timeline ${source.symbolId}.frames`);
-    if (frames.length !== frameCount)
-        fail("FLASH_LIBRARY_FRAME_CLOSURE", `Timeline ${source.symbolId} frame count drifted.`);
-    frames.forEach((value, index) => {
-        const current = object(value, `timeline ${source.symbolId} frame ${index + 1}`);
-        if (current.index !== index + 1 || (current.durationTicks !== undefined && current.durationTicks !== 1))
-            fail("FLASH_LIBRARY_FRAME_INDEX_INVALID", `Timeline ${source.symbolId} frame indexing/duration is unsupported.`);
-        rejectFrameSideEffects(current, source.symbolId);
-    });
+    const frames = validatedTimelineFrames(source);
     const tracks = frameCount === 1 ? [] : owner.children.map(child => ({
         targetPath: [owner.linkage, child.linkage],
         property: "visible" as const,
         keyframes: frames.flatMap((value, index) => {
-            const operations = array(object(value, "frame").operations, "frame.operations");
+            const operations = displayOperations(object(value, "frame"), source.symbolId);
             if (operations.length === 0)
                 return [];
             const activeId = positiveInteger(object(operations[0], "operation").characterId, "operation.characterId");
@@ -1072,7 +1066,31 @@ function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode)
             return [{ time: index / frameRate, value: activeId === childId }];
         }),
     }));
-    return { frameRate, duration: frameCount / frameRate, loop: frameCount > 1, tracks };
+    return {
+        frameRate,
+        duration: frameCount / frameRate,
+        loop: frameCount > 1,
+        frameLabels: extractFrameLabels(source),
+        tracks,
+    };
+}
+
+function validatedTimelineFrames(
+    sourceTimeline: Record<string, any>,
+    closureCode = "FLASH_LIBRARY_FRAME_CLOSURE",
+): any[] {
+    const symbolId = positiveInteger(sourceTimeline.symbolId, "timeline.symbolId");
+    const frameCount = positiveInteger(sourceTimeline.frameCount, `timeline ${symbolId}.frameCount`);
+    const frames = array(sourceTimeline.frames, `timeline ${symbolId}.frames`);
+    if (frames.length !== frameCount)
+        fail(closureCode, `Timeline ${symbolId} frame count drifted.`);
+    frames.forEach((value, index) => {
+        const current = object(value, `timeline ${symbolId} frame ${index + 1}`);
+        if (current.index !== index + 1 || (current.durationTicks !== undefined && current.durationTicks !== 1))
+            fail("FLASH_LIBRARY_FRAME_INDEX_INVALID", `Timeline ${symbolId} frame indexing/duration is unsupported.`);
+        validateFrame(current, symbolId);
+    });
+    return frames;
 }
 
 function timeline(values: ReadonlyMap<number, unknown>, id: number): Record<string, any> {
@@ -1086,12 +1104,54 @@ function frame(sourceTimeline: Record<string, any>, index: number): Record<strin
     return object(array(sourceTimeline.frames, `timeline ${sourceTimeline.symbolId}.frames`)[index], `timeline frame ${index + 1}`);
 }
 
-function rejectFrameSideEffects(value: Record<string, any>, symbolId: number): void {
+function validateFrame(value: Record<string, any>, symbolId: number): void {
     exactKeys(value, FRAME_FIELDS, `timeline ${symbolId} frame`, "FLASH_LIBRARY_FRAME_FIELD_UNSUPPORTED");
     if (array(value.labels ?? [], `timeline ${symbolId}.labels`).length !== 0)
         fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", `Timeline ${symbolId} contains frame labels.`);
     if (array(value.sounds ?? [], `timeline ${symbolId}.sounds`).length !== 0)
         fail("FLASH_LIBRARY_FRAME_SOUNDS_UNSUPPORTED", `Timeline ${symbolId} contains frame sounds.`);
+    const frameLabel = value.label === undefined
+        ? undefined
+        : validFrameLabel(value.label, `timeline ${symbolId}.label`);
+    const labelOperations = array(value.operations, `timeline ${symbolId}.operations`)
+        .map((operation, index) => object(operation, `timeline ${symbolId}.operations[${index}]`))
+        .filter(operation => operation.op === "label");
+    if (labelOperations.length > 1)
+        fail("FLASH_LIBRARY_FRAME_LABEL_OPERATION_DUPLICATE", `Timeline ${symbolId} contains multiple label operations on one frame.`);
+    if (labelOperations.length === 1) {
+        const operation = labelOperations[0];
+        exactKeys(operation, FRAME_LABEL_OPERATION_FIELDS, "label", "FLASH_LIBRARY_FRAME_LABEL_OPERATION_FIELD_UNSUPPORTED");
+        const operationLabel = validFrameLabel(operation.name, `timeline ${symbolId} label operation`);
+        if (frameLabel === undefined || operationLabel !== frameLabel)
+            fail("FLASH_LIBRARY_FRAME_LABEL_OPERATION_MISMATCH", `Timeline ${symbolId} label operation does not match frame.label.`);
+    }
+}
+
+function displayOperations(value: Record<string, any>, symbolId: number): any[] {
+    return array(value.operations, `timeline ${symbolId}.operations`)
+        .filter(operation => object(operation, `timeline ${symbolId} operation`).op !== "label");
+}
+
+function extractFrameLabels(sourceTimeline: Record<string, any>): Readonly<Record<string, number>> {
+    const symbolId = positiveInteger(sourceTimeline.symbolId, "timeline.symbolId");
+    const labels: Record<string, number> = {};
+    array(sourceTimeline.frames, `timeline ${symbolId}.frames`).forEach((value, index) => {
+        const current = object(value, `timeline ${symbolId} frame ${index + 1}`);
+        validateFrame(current, symbolId);
+        if (current.label === undefined) return;
+        const label = validFrameLabel(current.label, `timeline ${symbolId} frame ${index + 1}.label`);
+        if (Object.prototype.hasOwnProperty.call(labels, label))
+            fail("FLASH_LIBRARY_FRAME_LABEL_DUPLICATE", `Timeline ${symbolId} repeats frame label '${label}'.`);
+        Object.defineProperty(labels, label, { value: index + 1, enumerable: true });
+    });
+    return Object.freeze(labels);
+}
+
+function validFrameLabel(value: unknown, label: string): string {
+    const result = string(value, label);
+    if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(result))
+        fail("FLASH_LIBRARY_FRAME_LABEL_INVALID", `${label} is not a stable identifier.`);
+    return result;
 }
 
 function exactPlace(operation: Record<string, any>, mode: "static" | "replacement" = "static"): void {

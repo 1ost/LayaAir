@@ -21,7 +21,8 @@ function validateTimeline(timeline: NativeMovieClipTimeline): void {
     if (typeof timeline.playing !== "boolean") throw new TypeError("MovieClip timeline playing must be boolean");
 }
 
-function validateLabels(value: Record<string, number>, totalFrames: number): Readonly<Record<string, number>> {
+/** @internal Validates the authored frame-label publication before it reaches a native timeline. */
+export function validateAuthoredMovieClipFrameLabels(value: Record<string, number>, totalFrames?: number): Readonly<Record<string, number>> {
     if (value === null || typeof value !== "object" || Array.isArray(value)) throw new TypeError("MovieClip labels must be a plain object");
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) throw new TypeError("MovieClip labels must be a plain object");
@@ -31,8 +32,10 @@ function validateLabels(value: Record<string, number>, totalFrames: number): Rea
         const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
         if (!descriptor.enumerable || !("value" in descriptor)) throw new TypeError(`MovieClip label '${key}' must be an enumerable data property`);
         const frame = descriptor.value;
-        if (!Number.isSafeInteger(frame) || frame < 1 || frame > totalFrames)
-            throw new RangeError(`Frame label '${key}' points outside 1..${totalFrames}`);
+        if (!Number.isSafeInteger(frame) || frame < 1 || (totalFrames !== undefined && frame > totalFrames))
+            throw new RangeError(totalFrames === undefined
+                ? `Frame label '${key}' must point to a positive safe integer frame`
+                : `Frame label '${key}' points outside 1..${totalFrames}`);
         result[key] = frame;
     }
     return Object.freeze(result);
@@ -51,15 +54,30 @@ export class MovieClip extends Sprite {
     }
 
     get flashFrameLabels(): Readonly<Record<string, number>> { return this._flashFrameLabels; }
+    /** @internal Serialized authored-content seam; validated again against the native clip when bound. */
+    set authoredFrameLabels(value: Record<string, number>) {
+        this._flashFrameLabels = validateAuthoredMovieClipFrameLabels(value, this._nativeTimeline?.totalFrames);
+    }
     get currentFrame(): number { return this._requireTimeline().currentFrame + 1; }
     get totalFrames(): number { return this._requireTimeline().totalFrames; }
     get framesLoaded(): number { return this.totalFrames; }
     get isPlaying(): boolean { return this._requireTimeline().playing; }
     get currentLabel(): string | null {
         const frame = this.currentFrame;
+        let label: string | null = null;
+        let labeledFrame = 0;
+        for (const [candidate, candidateFrame] of Object.entries(this._flashFrameLabels)) {
+            if (candidateFrame <= frame && candidateFrame > labeledFrame) {
+                label = candidate;
+                labeledFrame = candidateFrame;
+            }
+        }
+        return label;
+    }
+    get currentFrameLabel(): string | null {
+        const frame = this.currentFrame;
         return Object.keys(this._flashFrameLabels).find(label => this._flashFrameLabels[label] === frame) ?? null;
     }
-    get currentFrameLabel(): string | null { return this.currentLabel; }
     play(): void { const timeline = this._requireTimeline(); timeline.play(timeline.currentFrame); }
     stop(): void { this._requireTimeline().stop(); }
     gotoAndPlay(frame: FlashFrameReference, scene: string | null = null): void {
@@ -100,7 +118,7 @@ export class MovieClip extends Sprite {
     /** @internal Atomic native factory seam: validation completes before state replacement. */
     _bindNativeTimeline(timeline: NativeMovieClipTimeline, labels: Record<string, number> = {}): void {
         validateTimeline(timeline);
-        const validatedLabels = validateLabels(labels, timeline.totalFrames);
+        const validatedLabels = validateAuthoredMovieClipFrameLabels(labels, timeline.totalFrames);
         for (const frame of this._frameScripts.keys()) {
             if (frame >= timeline.totalFrames)
                 throw new RangeError(`MovieClip frame script ${frame} is outside 0..${timeline.totalFrames - 1}`);
@@ -132,12 +150,15 @@ export class MovieClip extends Sprite {
     }
 
     private _resolveFrame(frame: FlashFrameReference, timeline: NativeMovieClipTimeline): number {
-        const oneBased = typeof frame === "string" ? this._flashFrameLabels[frame] : frame;
-        if (!Number.isSafeInteger(oneBased) || oneBased < 1 || oneBased > timeline.totalFrames)
-            throw new RangeError(typeof frame === "string" && oneBased == null
-                ? `Unknown MovieClip frame label '${frame}'`
-                : `MovieClip frame ${String(frame)} is outside 1..${timeline.totalFrames}`);
-        return oneBased - 1;
+        if (typeof frame === "string") {
+            const labeledFrame = this._flashFrameLabels[frame];
+            if (labeledFrame === undefined)
+                throw new RangeError(`Unknown MovieClip frame label '${frame}'`);
+            return labeledFrame - 1;
+        }
+        if (!Number.isSafeInteger(frame))
+            throw new RangeError(`MovieClip frame ${String(frame)} must be a finite safe integer`);
+        return Math.min(Math.max(frame, 1), timeline.totalFrames) - 1;
     }
 
     private _requireTimeline(): NativeMovieClipTimeline {

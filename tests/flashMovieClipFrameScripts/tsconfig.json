@@ -10,6 +10,7 @@
   },
   "include": [
     "./*.ts",
+    "../../src/extensions/authoredContent/runtime/**/*.ts",
     "../../src/layaAir/**/*",
     "../../node_modules/@webgpu/types",
     "../../node_modules/minigame-api-typings/**/*.d.ts"

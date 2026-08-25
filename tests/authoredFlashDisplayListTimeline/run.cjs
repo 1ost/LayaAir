@@ -123,10 +123,73 @@ for (const [label, mutate, expected] of [
     ["RGB color transform", value => value.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
     ["skew matrix", value => value.timelines.get(10).frames[1].operations[1].matrix.b = 0.1, /FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED/],
     ["duplicate semantic linkage", value => value.timelines.get(10).frames[1].operations[1].characterId = 3, /FLASH_LIBRARY_ANIMATED_LINKAGE_COLLISION/],
+    ["declared frame-count drift", value => value.timelines.get(10).frameCount = 4, /FLASH_LIBRARY_FRAME_CLOSURE/],
+    ["nonconsecutive frame index", value => value.timelines.get(10).frames[1].index = 3, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
+    ["non-unit frame duration", value => value.timelines.get(10).frames[1].durationTicks = 2, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
 ]) {
     const value = fixture();
     mutate(value);
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored Flash display-list timeline: 6/6 passed\n");
+const labeled = fixture();
+labeled.library.stage.frameCount = 4;
+labeled.library.assets["43"] = { characterId: 43, kind: "sprite" };
+labeled.timelines.set(43, {
+    schema: "flash-timeline@1", symbolId: 43, frameRate: 30, frameCount: 1,
+    frames: [{ index: 1, operations: [] }],
+});
+const labeledTimeline = labeled.timelines.get(10);
+labeledTimeline.frameCount = 4;
+labeledTimeline.frames[0].operations.unshift(
+    { op: "label", name: "up" },
+    { op: "place", characterId: 43, depth: 5, move: false, ratio: 0, name: "SP_MountPoint", matrix: matrix(1, 1, -25, -3) },
+);
+labeledTimeline.frames[0].label = "up";
+labeledTimeline.frames[1].operations.unshift({ op: "label", name: "over" });
+labeledTimeline.frames[1].label = "over";
+labeledTimeline.frames[2].operations.unshift({ op: "label", name: "down" });
+labeledTimeline.frames[2].label = "down";
+labeledTimeline.frames.push({
+    index: 4,
+    label: "disabled",
+    operations: [{ op: "label", name: "disabled" }],
+});
+const labeledContent = adapter.parse(labeled);
+assert.deepEqual({ ...labeledContent.timeline.frameLabels }, { up: 1, over: 2, down: 3, disabled: 4 });
+const anchor = labeledContent.root.children.find(value => value.name === "SP_MountPoint");
+assert.ok(anchor, "empty named anchor was not retained");
+assert.deepEqual(
+    { kind: anchor.kind, width: anchor.width, height: anchor.height, children: anchor.children.length, variable: anchor.variable },
+    { kind: "container", width: 0, height: 0, children: 0, variable: true },
+    "empty named anchor did not remain a zero-size named container",
+);
+
+for (const [label, mutate, expected] of [
+    ["duplicate frame label", value => {
+        value.timelines.get(10).frames[1].label = "up";
+        value.timelines.get(10).frames[1].operations[0].name = "up";
+    }, /FLASH_LIBRARY_FRAME_LABEL_DUPLICATE/],
+    ["invalid frame label", value => {
+        value.timelines.get(10).frames[0].label = "up state";
+        value.timelines.get(10).frames[0].operations[0].name = "up state";
+    }, /FLASH_LIBRARY_FRAME_LABEL_INVALID/],
+    ["mismatched frame label operation", value => {
+        value.timelines.get(10).frames[1].operations[0].name = "down";
+    }, /FLASH_LIBRARY_FRAME_LABEL_OPERATION_MISMATCH/],
+    ["unnamed empty sprite without bounds", value => {
+        delete value.timelines.get(10).frames[0].operations[1].name;
+    }, /FLASH_LIBRARY_SPRITE_BOUNDS_MISSING/],
+    ["named content sprite without bounds", value => {
+        value.timelines.get(43).frames[0].operations.push({
+            op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: matrix(),
+        });
+    }, /FLASH_LIBRARY_SPRITE_BOUNDS_MISSING/],
+]) {
+    const value = structuredClone(labeled);
+    value.timelines = new Map([...labeled.timelines].map(([id, timeline]) => [id, structuredClone(timeline)]));
+    mutate(value);
+    assert.throws(() => adapter.parse(value), expected, label);
+}
+
+process.stdout.write("authored Flash display-list timeline: 15/15 passed\n");

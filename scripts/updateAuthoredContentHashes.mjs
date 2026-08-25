@@ -816,14 +816,48 @@ admitAuthoredButtonInteraction("interaction.pointer", [
     "authoredButtonPredicate",
 ]);
 
-Object.assign(ledger.capabilities.find(item => item.id === "display.place-remove-depth"), {
-    status: "blocking",
-    blockingReason: "Authenticated static placement depth is supported, but frame-driven place and remove semantics are not implemented."
-});
-Object.assign(ledger.capabilities.find(item => item.id === "timeline.nested-symbol"), {
-    status: "blocking",
-    blockingReason: "Static nested symbol hierarchy is supported, but independently clocked nested timeline playback is not implemented."
-});
+const authoredTimelinePublicationSubjects = {
+    normalize: ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "normalizeNeutralAuthoredContent", "function"],
+    adapter: ["src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts", "FlashLibrarySymbolAdapter", "class"],
+    emitter: ["src/extensions/authoredContent/emit/NativeLayaEmitter.ts", "NativeLayaEmitter", "class"],
+    animationClipWriter: ["src/extensions/authoredContent/emit/NativeAnimationClip2DWriter.ts", "NativeAnimationClip2DWriter", "class"],
+    hierarchy: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "prepareNativeLayaHierarchy", "function"],
+    runtimePrimitives: ["src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts", "registerAuthoredContentPrimitives", "function"],
+    movieClipLabels: ["src/layaAir/flash/display/MovieClip.ts", "validateAuthoredMovieClipFrameLabels", "function"],
+};
+const admitAuthoredTimelinePublication = (id, keys) => {
+    const capability = ledger.capabilities.find(item => item.id === id);
+    if (!capability) throw new Error(`Missing authored-content capability ${id}`);
+    Object.assign(capability, {
+        status: "typescript-obligation",
+        obligations: keys.map(key => {
+            const [module, exported, kind] = authoredTimelinePublicationSubjects[key];
+            return capability.obligations?.find(item => item.module === module && item.export === exported)
+                || { module, export: exported, kind, signature: "", sha256: "",
+                    ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}) };
+        }),
+        evidence: [{
+            path: "tests/architecture/authoredTimelinePublicationEvidence.test.ts",
+            test: "Authored Flash timeline publication compiler surface",
+            sha256: "",
+            capability: id,
+            covers: [],
+        }],
+    });
+    delete capability.blockingReason;
+};
+admitAuthoredTimelinePublication("display.place-remove-depth", [
+    "adapter",
+]);
+admitAuthoredTimelinePublication("timeline.frames-labels", [
+    "normalize", "movieClipLabels",
+]);
+admitAuthoredTimelinePublication("timeline.property-track", [
+    "emitter", "animationClipWriter",
+]);
+admitAuthoredTimelinePublication("timeline.nested-symbol", [
+    "hierarchy", "runtimePrimitives",
+]);
 
 if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters.GradientBevelFilter")) {
     runtimeTypeAuthority.types.push({

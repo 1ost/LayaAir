@@ -185,7 +185,7 @@ export function prepareNativeLayaHierarchy(
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
     canonicalizeHierarchyIds(hierarchy);
-    decorateAuthoredRuntime(content.root, hierarchy);
+    decorateAuthoredRuntime(content.root, hierarchy, content.timeline.frameLabels);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
     sealTimelineAssetReferences(hierarchy, timelineAssetId, nestedTimelineAssetIds);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
@@ -337,6 +337,7 @@ function validateHierarchyNode(
 function decorateAuthoredRuntime(
     source: NeutralAuthoredNode,
     value: Record<string, unknown>,
+    rootFrameLabels?: Readonly<Record<string, number>>,
 ): void {
     if (source.variable === true)
         value._$var = true;
@@ -382,6 +383,9 @@ function decorateAuthoredRuntime(
         value._$type = "Sprite";
         value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.movieClip;
     }
+    const frameLabels = rootFrameLabels ?? source.timeline?.frameLabels;
+    if (frameLabels !== undefined)
+        value.authoredFrameLabels = { _$type: "any", value: frameLabels };
     if (source.runtimeLinkage !== undefined) {
         value._$type = "Sprite";
         value._$runtime = source.runtimeLinkage;

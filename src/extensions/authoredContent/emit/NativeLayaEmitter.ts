@@ -86,9 +86,11 @@ export class NativeLayaEmitter {
             ...(content.stage === undefined ? {} : { stage: content.stage }),
             rootLinkageClass: content.root.linkage,
             timelineAssetId,
+            frameLabels: content.timeline.frameLabels,
             nestedTimelines: [...nestedTimelineAssetIds].map(([semanticPath, assetId]) => ({
                 semanticPath: semanticPath.split("/"),
                 assetId,
+                frameLabels: this.findNestedTimeline(content.root, semanticPath).frameLabels,
             })),
             resources: content.resources.map(resource => ({
                 id: resource.id,
@@ -211,6 +213,22 @@ export class NativeLayaEmitter {
         this.assertNestedTimelineBindings(root, structural);
     }
 
+    private static findNestedTimeline(root: NeutralAuthoredNode, semanticPath: string): NeutralTimeline {
+        const segments = semanticPath.split("/");
+        if (segments[0] !== root.linkage)
+            throw new Error(`AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_PATH_INVALID: ${semanticPath}`);
+        let node = root;
+        for (const segment of segments.slice(1)) {
+            const child = node.children.find(candidate => candidate.linkage === segment);
+            if (!child)
+                throw new Error(`AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_PATH_INVALID: ${semanticPath}`);
+            node = child;
+        }
+        if (node.timeline === undefined)
+            throw new Error(`AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_PATH_INVALID: ${semanticPath}`);
+        return node.timeline;
+    }
+
     private static assertResourceBindings(
         content: NeutralAuthoredContentIR,
         resourceAssetIds: ReadonlyMap<string, string>
@@ -327,9 +345,11 @@ export interface NativeAuthoredContentMetadata {
     readonly stage?: NeutralAuthoredContentIR["stage"];
     readonly rootLinkageClass: string;
     readonly timelineAssetId: string;
+    readonly frameLabels: Readonly<Record<string, number>>;
     readonly nestedTimelines: ReadonlyArray<{
         readonly semanticPath: ReadonlyArray<string>;
         readonly assetId: string;
+        readonly frameLabels: Readonly<Record<string, number>>;
     }>;
     readonly resources: ReadonlyArray<NativeAuthoredContentResourceMetadata>;
     readonly nodes: ReadonlyArray<NativeAuthoredContentNodeMetadata>;

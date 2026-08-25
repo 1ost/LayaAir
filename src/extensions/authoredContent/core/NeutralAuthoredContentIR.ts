@@ -127,6 +127,8 @@ export interface NeutralTimeline {
     readonly frameRate: number;
     readonly duration: number;
     readonly loop: boolean;
+    /** One-based Flash frame labels retained for native MovieClip navigation. */
+    readonly frameLabels: Readonly<Record<string, number>>;
     readonly tracks: ReadonlyArray<NeutralTimelineTrack>;
 }
 
@@ -532,7 +534,7 @@ function validateResourceClosure(root: NeutralAuthoredNode, resources: ReadonlyA
 
 function normalizeTimeline(value: unknown, scale: number, nodePaths: ReadonlySet<string>): NeutralTimeline {
     const source = record(value, "timeline");
-    allowedKeys(source, ["frameRate", "duration", "loop", "tracks"], "timeline");
+    allowedKeys(source, ["frameRate", "duration", "loop", "frameLabels", "tracks"], "timeline");
     const frameRate = requiredFiniteNumber(source.frameRate, "timeline.frameRate");
     const duration = requiredFiniteNumber(source.duration, "timeline.duration");
     if (!Number.isInteger(frameRate) || frameRate < 1 || frameRate > 0x7fff)
@@ -540,6 +542,7 @@ function normalizeTimeline(value: unknown, scale: number, nodePaths: ReadonlySet
     if (duration < 0)
         fail("AUTHORED_CONTENT_TIMELINE_RANGE", "Timeline duration cannot be negative.");
     const loop = requiredBoolean(source.loop, "timeline.loop");
+    const frameLabels = normalizeFrameLabels(source.frameLabels ?? {}, Math.round(duration * frameRate));
     const trackKeys = new Set<string>();
     const tracks = array(source.tracks, "timeline.tracks").map((value2, index) => {
         const trackSource = record(value2, `timeline.tracks[${index}]`);
@@ -585,7 +588,21 @@ function normalizeTimeline(value: unknown, scale: number, nodePaths: ReadonlySet
             fail("AUTHORED_CONTENT_EMPTY_TRACK", `Timeline track '${joinedPath}.${property}' has no keyframes.`);
         return { targetPath, property: property as NeutralTimelineProperty, keyframes };
     }).sort((a, b) => `${a.targetPath.join("/")}.${a.property}`.localeCompare(`${b.targetPath.join("/")}.${b.property}`));
-    return { frameRate, duration, loop, tracks };
+    return { frameRate, duration, loop, frameLabels, tracks };
+}
+
+function normalizeFrameLabels(value: unknown, totalFrames: number): Readonly<Record<string, number>> {
+    const source = record(value, "timeline.frameLabels");
+    const result: Record<string, number> = {};
+    for (const label of Object.keys(source).sort(compareText)) {
+        if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(label))
+            fail("AUTHORED_CONTENT_FRAME_LABEL_INVALID", `Frame label '${label}' is not a stable identifier.`);
+        const frame = requiredFiniteNumber(source[label], `timeline.frameLabels.${label}`);
+        if (!Number.isSafeInteger(frame) || frame < 1 || frame > totalFrames)
+            fail("AUTHORED_CONTENT_FRAME_LABEL_RANGE", `Frame label '${label}' points outside 1..${totalFrames}.`);
+        Object.defineProperty(result, label, { value: frame, enumerable: true });
+    }
+    return Object.freeze(result);
 }
 
 function collectNodePaths(root: NeutralAuthoredNode): ReadonlySet<string> {

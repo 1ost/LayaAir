@@ -310,6 +310,44 @@ function nestedHappyBearDocument(): Record<string, unknown> {
     };
 }
 
+function labeledMovieClipDocument(): Record<string, unknown> {
+    return {
+        schema: "neutral-authored-content@1",
+        documentId: "labeled-button",
+        resources: [],
+        root: {
+            linkage: "Root",
+            runtimeLinkage: "fixtures.LabeledRoot",
+            kind: "container",
+            width: 100,
+            height: 80,
+            children: [{
+                linkage: "ButtonStates",
+                name: "Btn_Activate",
+                kind: "container",
+                depth: 1,
+                width: 20,
+                height: 10,
+                children: [],
+                timeline: {
+                    frameRate: 24,
+                    duration: 4 / 24,
+                    loop: true,
+                    frameLabels: { up: 1, over: 2, down: 3, disabled: 4 },
+                    tracks: [],
+                },
+            }],
+        },
+        timeline: {
+            frameRate: 24,
+            duration: 1 / 24,
+            loop: false,
+            frameLabels: { ready: 1 },
+            tracks: [],
+        },
+    };
+}
+
 function sha256(bytes: Uint8Array): string {
     return createHash("sha256").update(bytes).digest("hex");
 }
@@ -1599,6 +1637,70 @@ async function main(): Promise<void> {
         assert(metadata.nodes[1].instanceName === "titleField", "authored instance name was lost");
         assert(metadata.nodes[1].nativePath.join("/") === "Root/titleField", "native named-instance path is unstable");
         assert(metadata.nodes[1].animatorOwnerPath.join("/") === "titleField", "animator owner path is not root-relative");
+    });
+
+    await test("frame labels survive neutral normalization, native hierarchy emission, and metadata", () => {
+        const content = normalizeNeutralAuthoredContent(labeledMovieClipDocument());
+        assert(JSON.stringify(content.timeline.frameLabels) === JSON.stringify({ ready: 1 }),
+            "root frame labels were not normalized deterministically");
+        assert(JSON.stringify(content.root.children[0].timeline?.frameLabels)
+            === JSON.stringify({ disabled: 4, down: 3, over: 2, up: 1 }),
+            "nested frame labels were not normalized deterministically");
+        const nestedIds = new Map([["Root/ButtonStates", "button-states.mc"]]);
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1,
+            "_$type": "Sprite",
+            name: "Root",
+            width: 100,
+            height: 80,
+            "_$child": [{
+                "_$type": "Sprite",
+                name: "Btn_Activate",
+                width: 20,
+                height: 10,
+            }],
+        }, "root.mc", new Map(), nestedIds);
+        assert(JSON.stringify(Reflect.get(Reflect.get(hierarchy, "authoredFrameLabels"), "value")) === JSON.stringify({ ready: 1 }),
+            "root frame labels were not serialized into the native hierarchy");
+        const hierarchyChildren = hierarchy._$child;
+        assert(Array.isArray(hierarchyChildren) && hierarchyChildren.length === 1,
+            "nested labeled hierarchy child closure drifted");
+        const button = hierarchyChildren[0];
+        assert(typeof button === "object" && button !== null && !Array.isArray(button),
+            "nested labeled hierarchy is not an object");
+        assert(Reflect.get(button, "_$runtime") === "Laya.AuthoredContent.MovieClip",
+            "nested labeled symbol did not retain its native MovieClip runtime");
+        assert(JSON.stringify(Reflect.get(Reflect.get(button, "authoredFrameLabels"), "value"))
+            === JSON.stringify({ disabled: 4, down: 3, over: 2, up: 1 }),
+            "nested frame labels were not serialized into the native hierarchy");
+        const metadata = hierarchy._$authoredContent;
+        assert(typeof metadata === "object" && metadata !== null, "authored metadata is missing");
+        assert(JSON.stringify(Reflect.get(metadata, "frameLabels")) === JSON.stringify({ ready: 1 }),
+            "root frame labels were not published in authored metadata");
+        const nestedMetadata = Reflect.get(metadata, "nestedTimelines");
+        assert(Array.isArray(nestedMetadata) && nestedMetadata.length === 1,
+            "nested timeline metadata closure drifted");
+        assert(JSON.stringify(Reflect.get(nestedMetadata[0], "frameLabels"))
+            === JSON.stringify({ disabled: 4, down: 3, over: 2, up: 1 }),
+            "nested frame labels were not published in authored metadata");
+
+        const prototypeLabelDocument = structuredClone(labeledMovieClipDocument());
+        Reflect.set(Reflect.get(prototypeLabelDocument, "timeline"), "frameLabels", JSON.parse('{"__proto__":1}'));
+        const prototypeLabels = normalizeNeutralAuthoredContent(prototypeLabelDocument).timeline.frameLabels;
+        assert(Object.prototype.hasOwnProperty.call(prototypeLabels, "__proto__") && prototypeLabels.__proto__ === 1,
+            "valid prototype-shaped frame label was not retained as immutable data");
+
+        for (const [label, frame, code] of [
+            ["invalid label", 1, "AUTHORED_CONTENT_FRAME_LABEL_INVALID"],
+            ["outside", 5, "AUTHORED_CONTENT_FRAME_LABEL_RANGE"],
+        ] as const) {
+            const invalid = structuredClone(labeledMovieClipDocument());
+            const root = Reflect.get(invalid, "root");
+            const children = Reflect.get(root, "children");
+            const nestedTimeline = Reflect.get(children[0], "timeline");
+            Reflect.set(nestedTimeline, "frameLabels", { [label]: frame });
+            assertThrows(() => normalizeNeutralAuthoredContent(invalid), code);
+        }
     });
 
     await test("authored button hierarchy serializes native state primitives and named placement", () => {

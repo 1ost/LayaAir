@@ -7,10 +7,18 @@ import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
 import type { NativeMovieClipTimeline } from "../../src/layaAir/flash/display/NativeMovieClipTimeline";
 import { AnimationClip2D } from "../../src/layaAir/laya/components/AnimationClip2D";
 import { AnimatorClip2D } from "../../src/layaAir/laya/components/AnimatorClip2D";
+import { HierarchyParser } from "../../src/layaAir/laya/loaders/HierarchyParser";
+import { Loader } from "../../src/layaAir/laya/net/Loader";
+import { PrefabImpl } from "../../src/layaAir/laya/resource/PrefabImpl";
 import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import "../../src/layaAir/laya/ModuleDef";
+import {
+    AUTHORED_CONTENT_RUNTIME_IDS,
+    AuthoredMovieClip,
+    registerAuthoredContentPrimitives,
+} from "../../src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -28,6 +36,15 @@ class TestTimeline implements NativeMovieClipTimeline {
     play(frame: number): void { this.currentFrame = frame; this.playing = true; }
     stop(): void { this.playing = false; }
     gotoAndStop(frame: number): void { this.currentFrame = frame; this.playing = false; }
+}
+
+function authoredClip(assetId: string, frameCount: number, frameRate: number): AnimationClip2D {
+    const clip = new AnimationClip2D();
+    clip._duration = frameCount / frameRate;
+    clip._frameRate = frameRate;
+    clip.islooping = true;
+    clip._setCreateURL(`res://${assetId}`, assetId);
+    return clip;
 }
 
 test("addFrameScript uses zero-based Flash frames and validates pair updates atomically", () => {
@@ -63,6 +80,132 @@ test("timeline replacement rejects registered scripts outside the new frame rang
     assert.throws(() => movie._bindNativeTimeline(new TestTimeline(3)), /frame script 3 is outside/);
     assert.equal(movie.totalFrames, 4);
     assert.deepEqual({ ...movie.flashFrameLabels }, { end: 4 });
+});
+
+test("serialized authored frame labels bind exact native MovieClip navigation and fail closed", () => {
+    const movie = new MovieClip();
+    movie.authoredFrameLabels = { up: 1, over: 2, down: 3, disabled: 4 };
+    const animator = movie.addComponent(AnimatorClip2D);
+    const clip = new AnimationClip2D();
+    clip._duration = 4 / 24;
+    clip._frameRate = 24;
+    animator.autoPlay = false;
+    animator.clip = clip;
+    movie._onAnimatorClip2DReady(animator);
+
+    assert.deepEqual(
+        { ...movie.flashFrameLabels },
+        { up: 1, over: 2, down: 3, disabled: 4 },
+    );
+    movie.gotoAndStop("over");
+    assert.equal(movie.currentFrame, 2);
+    assert.equal(movie.currentLabel, "over");
+    movie.gotoAndPlay("disabled");
+    assert.equal(movie.currentFrame, 4);
+    assert.equal(movie.currentFrameLabel, "disabled");
+    assert.equal(movie.isPlaying, true);
+
+    movie.authoredFrameLabels = { start: 1, end: 4 };
+    movie.gotoAndStop(3);
+    assert.equal(movie.currentLabel, "start", "currentLabel must retain the nearest prior frame label");
+    assert.equal(movie.currentFrameLabel, null, "currentFrameLabel must be null on an unlabeled frame");
+    movie.gotoAndStop(-10);
+    assert.deepEqual([movie.currentFrame, movie.isPlaying], [1, false], "numeric gotoAndStop must clamp below frame 1");
+    movie.gotoAndPlay(100);
+    assert.deepEqual([movie.currentFrame, movie.isPlaying], [4, true], "numeric gotoAndPlay must clamp above totalFrames");
+
+    for (const invalid of [Number.NaN, Number.POSITIVE_INFINITY, 1.5, "missing"] as const) {
+        assert.throws(() => movie.gotoAndStop(invalid), /finite safe integer|Unknown MovieClip frame label/);
+        assert.deepEqual([movie.currentFrame, movie.isPlaying], [4, true],
+            "rejected frame navigation must not mutate the current frame or playback state");
+    }
+
+    assert.throws(() => {
+        movie.authoredFrameLabels = { "not a label": 1 };
+    }, /stable identifiers/);
+    assert.throws(() => {
+        movie.authoredFrameLabels = { outside: 5 };
+    }, /outside 1\.\.4/);
+    assert.deepEqual(
+        { ...movie.flashFrameLabels },
+        { start: 1, end: 4 },
+        "rejected serialized labels corrupted the prior native label map",
+    );
+});
+
+test("real authored hierarchy deserialization preserves root and nested labels with independent clocks", () => {
+    registerAuthoredContentPrimitives();
+    const rootClip = authoredClip("root-timeline", 3, 24);
+    const nestedClip = authoredClip("nested-timeline", 4, 24);
+    const rootInfo = Loader.getURLInfo("root-timeline.mc");
+    const nestedInfo = Loader.getURLInfo("nested-timeline.mc");
+    Loader._cacheRes("root-timeline", rootClip, rootInfo.typeId, rootInfo.main);
+    Loader._cacheRes("nested-timeline", nestedClip, nestedInfo.typeId, nestedInfo.main);
+    const priorLoader = ILaya.loader;
+    ILaya.loader = new Loader();
+    try {
+        const errors: unknown[] = [];
+        const instance = new PrefabImpl(HierarchyParser, {
+            "_$ver": 1,
+            "_$id": "root",
+            "_$type": "Sprite",
+            "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.movieClip,
+            name: "Root",
+            authoredFrameLabels: { "_$type": "any", value: { start: 1, middle: 2, finish: 3 } },
+            "_$child": [{
+                "_$id": "nested",
+                "_$type": "Sprite",
+                "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.movieClip,
+                name: "Nested",
+                authoredFrameLabels: { "_$type": "any", value: { up: 1, over: 2, down: 3, disabled: 4 } },
+                "_$comp": [{
+                    "_$type": "AnimatorClip2D",
+                    clip: { "_$uuid": "nested-timeline", "_$type": "AnimationClip2D" },
+                    autoPlay: true,
+                }],
+            }],
+            "_$comp": [{
+                "_$type": "AnimatorClip2D",
+                clip: { "_$uuid": "root-timeline", "_$type": "AnimationClip2D" },
+                autoPlay: true,
+            }],
+        }).create({}, errors);
+        assert.deepEqual(errors, []);
+        assert.equal(instance instanceof AuthoredMovieClip, true);
+        if (!(instance instanceof AuthoredMovieClip))
+            throw new TypeError("Authored root hierarchy did not deserialize as MovieClip");
+        const nested = instance.getChildByName("Nested");
+        assert.equal(nested instanceof AuthoredMovieClip, true);
+        if (!(nested instanceof AuthoredMovieClip))
+            throw new TypeError("Authored nested hierarchy did not deserialize as MovieClip");
+        assert.deepEqual({ ...instance.flashFrameLabels }, { start: 1, middle: 2, finish: 3 });
+        assert.deepEqual({ ...nested.flashFrameLabels }, { up: 1, over: 2, down: 3, disabled: 4 });
+        assert.equal(instance.isPlaying, true);
+        assert.equal(nested.isPlaying, true);
+
+        instance.gotoAndStop("middle");
+        assert.deepEqual([instance.currentFrame, instance.currentLabel, instance.isPlaying], [2, "middle", false]);
+        assert.equal(nested.isPlaying, true, "stopping the root clock must not stop the nested clock");
+        nested.gotoAndStop(3);
+        assert.deepEqual([nested.currentFrame, nested.currentLabel, nested.isPlaying], [3, "down", false]);
+        assert.equal(instance.currentFrame, 2, "nested numeric navigation must not move the root timeline");
+        nested.play();
+        assert.deepEqual([nested.currentFrame, nested.currentLabel, nested.isPlaying], [3, "down", true]);
+        nested.stop();
+        assert.deepEqual([nested.currentFrame, nested.currentLabel, nested.isPlaying], [3, "down", false]);
+        instance.gotoAndPlay(3);
+        assert.deepEqual([instance.currentFrame, instance.currentLabel, instance.isPlaying], [3, "finish", true]);
+        assert.equal(nested.isPlaying, false, "playing the root clock must not resume the stopped nested clock");
+        nested.gotoAndPlay("disabled");
+        assert.deepEqual([nested.currentFrame, nested.currentLabel, nested.isPlaying], [4, "disabled", true]);
+        instance.stop();
+        nested.stop();
+        instance.destroy(true);
+    } finally {
+        Loader.clearRes("root-timeline", rootClip);
+        Loader.clearRes("nested-timeline", nestedClip);
+        ILaya.loader = priorLoader;
+    }
 });
 
 test("authenticated AnimatorClip2D transitions run crossed scripts after the native pose", () => {
