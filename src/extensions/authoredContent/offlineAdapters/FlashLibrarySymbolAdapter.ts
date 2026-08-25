@@ -42,6 +42,12 @@ const COLOR_TRANSFORM_FIELDS = new Set([
     "alphaMultiplier", "alphaOffset", "blueMultiplier", "blueOffset", "greenMultiplier",
     "greenOffset", "redMultiplier", "redOffset",
 ]);
+const BUTTON_FIELDS = new Set(["hasActions", "records", "trackAsMenu"]);
+const BUTTON_RECORD_FIELDS = new Set(["characterId", "colorTransform", "depth", "matrix", "states"]);
+const BOUNDS_FIELDS = new Set(["height", "width", "x", "y"]);
+const BUTTON_STATES = ["up", "over", "down", "hitTest"] as const;
+type ButtonStateName = typeof BUTTON_STATES[number];
+const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATES);
 const TIMELINE_FIELDS = new Set(["frameCount", "frameRate", "frames", "schema", "symbolId", "symbolName"]);
 const FRAME_FIELDS = new Set(["durationTicks", "index", "labels", "operations", "sounds"]);
 const STAGE_FIELDS = new Set(["backgroundColor", "frameCount", "frameRate", "height", "width"]);
@@ -253,6 +259,18 @@ export class FlashLibrarySymbolAdapter {
                 resources,
             );
         }
+        if (asset.kind === "button") {
+            return this.createButton(
+                asset,
+                operation,
+                assets,
+                timelines,
+                resourceAuthorities,
+                rasterizedShapes,
+                rasterizedSprites,
+                resources,
+            );
+        }
         if (asset.kind === "shape")
             return this.createImage(asset, operation, assets, resourceAuthorities, rasterizedShapes, resources);
         if (asset.kind === "input-text")
@@ -260,6 +278,105 @@ export class FlashLibrarySymbolAdapter {
         if (asset.kind === "text")
             return this.createStaticTextField(asset, operation, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
+    }
+
+    private createButton(
+        asset: Record<string, any>,
+        operation: Record<string, any>,
+        assets: Record<string, any>,
+        timelines: ReadonlyMap<number, unknown>,
+        resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
+        resources: Map<string, NeutralResourceInput>,
+    ): NeutralAuthoredNode {
+        const characterId = positiveInteger(asset.characterId, "button.characterId");
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        exactKeys(bounds, BOUNDS_FIELDS, `library.assets.${characterId}.bounds`, "FLASH_LIBRARY_BUTTON_BOUNDS_FIELD_UNSUPPORTED");
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+        const width = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
+        const height = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
+        if (boundsX !== 0 || boundsY !== 0 || width <= 0 || height <= 0)
+            fail("FLASH_LIBRARY_BUTTON_BOUNDS_UNSUPPORTED", `Button ${characterId} requires positive zero-origin bounds.`);
+
+        const button = object(asset.button, `library.assets.${characterId}.button`);
+        exactKeys(button, BUTTON_FIELDS, `library.assets.${characterId}.button`, "FLASH_LIBRARY_BUTTON_FIELD_UNSUPPORTED");
+        exactValue(button.hasActions, false, "FLASH_LIBRARY_BUTTON_ACTIONS_UNSUPPORTED", `Button ${characterId} contains action records.`);
+        exactValue(button.trackAsMenu, false, "FLASH_LIBRARY_BUTTON_MENU_UNSUPPORTED", `Button ${characterId} uses menu tracking.`);
+        const records = array(button.records, `library.assets.${characterId}.button.records`);
+
+        type ButtonRecord = { readonly record: Record<string, any>; readonly alpha: number };
+        const recordsByState = new Map<ButtonStateName, ButtonRecord[]>(BUTTON_STATES.map(state => [state, []]));
+        records.forEach((value, index) => {
+            const label = `library.assets.${characterId}.button.records[${index}]`;
+            const record = object(value, label);
+            exactKeys(record, BUTTON_RECORD_FIELDS, label, "FLASH_LIBRARY_BUTTON_RECORD_FIELD_UNSUPPORTED");
+            positiveInteger(record.characterId, `${label}.characterId`);
+            const depth = positiveInteger(record.depth, `${label}.depth`);
+            placementTransform({ matrix: object(record.matrix, `${label}.matrix`) });
+            const alpha = displayAlpha(record.colorTransform);
+            const states = array(record.states, `${label}.states`);
+            if (states.length === 0)
+                fail("FLASH_LIBRARY_BUTTON_STATE_REQUIRED", `${label}.states must not be empty.`);
+            const uniqueStates = new Set<ButtonStateName>();
+            states.forEach((stateValue, stateIndex) => {
+                const state = string(stateValue, `${label}.states[${stateIndex}]`);
+                if (!isButtonStateName(state))
+                    fail("FLASH_LIBRARY_BUTTON_STATE_UNSUPPORTED", `${label} contains unsupported state '${state}'.`);
+                if (uniqueStates.has(state))
+                    fail("FLASH_LIBRARY_BUTTON_STATE_DUPLICATE", `${label} repeats state '${state}'.`);
+                uniqueStates.add(state);
+                const stateRecords = recordsByState.get(state)!;
+                if (stateRecords.some(entry => positiveInteger(entry.record.depth, "button record depth") === depth))
+                    fail("FLASH_LIBRARY_BUTTON_DEPTH_DUPLICATE", `Button ${characterId} state '${state}' repeats depth ${depth}.`);
+                stateRecords.push({ record, alpha });
+            });
+        });
+        const linkage = flashLibraryAssetName(asset, characterId);
+        const stateChildren = BUTTON_STATES.map<NeutralAuthoredNode>(state => {
+            const seenLinkages = new Set<string>();
+            const children = recordsByState.get(state)!
+                .sort((left, right) => positiveInteger(left.record.depth, "button record depth")
+                    - positiveInteger(right.record.depth, "button record depth"))
+                .map(({ record, alpha }) => {
+                    const child = this.createPlacedNode({
+                        op: "place",
+                        characterId: record.characterId,
+                        depth: record.depth,
+                        move: false,
+                        ratio: 0,
+                        matrix: record.matrix,
+                    }, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources);
+                    if (seenLinkages.has(child.linkage))
+                        fail("FLASH_LIBRARY_BUTTON_LINKAGE_DUPLICATE", `Button ${characterId} state '${state}' repeats '${child.linkage}'.`);
+                    seenLinkages.add(child.linkage);
+                    return alpha === 1 ? child : { ...child, alpha };
+                });
+            const stateName = `${state}State`;
+            return {
+                linkage: `${linkage}_${stateName}`,
+                name: stateName,
+                kind: "button-state",
+                children,
+            };
+        });
+        const placement = placementTransform(operation);
+        const placementAlpha = operation.colorTransform === undefined ? 1 : displayAlpha(operation.colorTransform);
+        return {
+            linkage,
+            name: operation.name ?? linkage,
+            kind: "button",
+            depth: positiveInteger(operation.depth, "place.depth"),
+            x: placement.x,
+            y: placement.y,
+            matrix: placement.matrix,
+            width,
+            height,
+            ...(placementAlpha === 1 ? {} : { alpha: placementAlpha }),
+            variable: typeof operation.name === "string",
+            children: stateChildren,
+        };
     }
 
     private createAnimatedDisplayList(
@@ -639,6 +756,10 @@ export class FlashLibrarySymbolAdapter {
             children: [],
         };
     }
+}
+
+function isButtonStateName(value: string): value is ButtonStateName {
+    return BUTTON_STATE_NAMES.has(value);
 }
 
 function spriteContainsTranslatableText(

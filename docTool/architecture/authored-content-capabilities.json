@@ -18,14 +18,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64"
+          "sha256": "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -35,8 +35,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64",
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef",
+            "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
           ]
         }
       ]
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -68,7 +68,7 @@
           "capability": "library.imported-assets",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
           ]
         }
       ]
@@ -82,14 +82,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64"
+          "sha256": "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -99,8 +99,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64",
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef",
+            "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
           ]
         }
       ]
@@ -119,14 +119,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64"
+          "sha256": "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -136,8 +136,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "a2a56f8666eb1048edfa3277742b208e3db0e403bcefb4ec1b4a184c7f893e64",
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef",
+            "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
           ]
         }
       ]
@@ -178,7 +178,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -189,7 +189,7 @@
           "capability": "media.bitmap",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
           ]
         }
       ]
@@ -241,18 +241,115 @@
     },
     {
       "id": "interaction.button-states",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
+          "export": "normalizeNeutralAuthoredContent",
+          "kind": "function",
+          "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
+          "sha256": "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
+        },
+        {
+          "module": "src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts",
+          "export": "FlashLibrarySymbolAdapter",
+          "kind": "class",
+          "signature": "typeof FlashLibrarySymbolAdapter",
+          "sha256": "a7823993cdb104c061e396d05f10bff1dd837238ab9dee3520ce2b61d35d9134",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "parse",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(request: FlashLibrarySymbolRequest) => NeutralAuthoredContentIR"
+            }
+          ],
+          "constructors": [
+            "new (): FlashLibrarySymbolAdapter"
+          ],
+          "indexSignatures": [],
+          "heritage": []
+        },
+        {
+          "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
+          "export": "prepareNativeLayaHierarchy",
+          "kind": "function",
+          "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
+        },
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
+          "export": "registerAuthoredContentPrimitives",
+          "kind": "function",
+          "signature": "() => void",
+          "sha256": "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredButtonInteractionEvidence.test.ts",
+          "test": "Authored Flash button interaction compiler surface",
+          "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
+          "capability": "interaction.button-states",
+          "covers": [
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef",
+            "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6",
+            "a7823993cdb104c061e396d05f10bff1dd837238ab9dee3520ce2b61d35d9134",
+            "b2de8c4d490d3f6a05a6bb1b4e44f12c51600a03bf7ba488498e872d75205f7c"
+          ]
+        }
+      ]
     },
     {
       "id": "interaction.hit-test",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/layaAir/flash/display/SimpleButton.ts",
+          "export": "isFlashSimpleButton",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SimpleButton",
+          "sha256": "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredButtonInteractionEvidence.test.ts",
+          "test": "Authored Flash button interaction compiler surface",
+          "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
+          "capability": "interaction.hit-test",
+          "covers": [
+            "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735"
+          ]
+        }
+      ]
     },
     {
       "id": "interaction.pointer",
-      "status": "blocking",
-      "blockingReason": "No admitted implementation is present on the consolidated engine base."
+      "status": "typescript-obligation",
+      "obligations": [
+        {
+          "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
+          "export": "isAuthoredSimpleButton",
+          "kind": "function",
+          "signature": "(value: unknown) => value is AuthoredSimpleButton",
+          "sha256": "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "tests/architecture/authoredButtonInteractionEvidence.test.ts",
+          "test": "Authored Flash button interaction compiler surface",
+          "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
+          "capability": "interaction.pointer",
+          "covers": [
+            "a367801d055cea6d24e1a11e797fcde8a8488c4da1c8de80c999bd7129a681f6"
+          ]
+        }
+      ]
     },
     {
       "id": "interaction.focus-tab",
@@ -460,28 +557,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+          "sha256": "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
         }
       ],
       "evidence": [
@@ -491,7 +588,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "d160c6a94ce996579dc817449674bf28489f5b2b1df612b41311dde8d8eb9c7f"
+            "486d07386f1f2d865527593b0f4c1051bae99bd5535e1729e427bcaff464a5ef"
           ]
         }
       ]
@@ -39155,7 +39252,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2176",
+              "name": "__@iterator@2209",
               "scope": "instance",
               "optional": false,
               "readonly": false,

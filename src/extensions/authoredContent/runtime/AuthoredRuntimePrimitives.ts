@@ -1,4 +1,4 @@
-import { MovieClip, TextField } from "../../../layaAir/flash";
+import { DisplayObject, MovieClip, SimpleButton, TextField } from "../../../layaAir/flash";
 import { Rectangle } from "../../../layaAir/flash/geom/Rectangle";
 import { ClassUtils } from "../../../layaAir/laya/utils/ClassUtils";
 import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
@@ -89,6 +89,24 @@ export class AuthoredMovieClip extends MovieClip {
     }
 }
 
+/** Serialized owner for one independently instantiated DefineButton2 state display list. */
+export class AuthoredButtonState extends DisplayObject { }
+
+/** Native Flash-shaped button whose four named state children are bound after hierarchy decoding. */
+export class AuthoredSimpleButton extends SimpleButton {
+    override onAfterDeserialize(): void {
+        super.onAfterDeserialize();
+        for (const state of [this.upState, this.overState, this.downState, this.hitTestState]) {
+            if (state !== null)
+                state.mouseEnabled = false;
+        }
+    }
+}
+
+export function isAuthoredSimpleButton(value: unknown): value is AuthoredSimpleButton {
+    return value instanceof AuthoredSimpleButton;
+}
+
 export interface AuthoredScale9GridConfiguration {
     readonly x: number;
     readonly y: number;
@@ -149,6 +167,16 @@ export class AuthoredDynamicTextField extends TextField {
 
 export function registerAuthoredContentPrimitives(): void {
     registerPrimitive(
+        AUTHORED_CONTENT_RUNTIME_IDS.button,
+        AuthoredSimpleButton,
+        "SimpleButton",
+    );
+    registerPrimitive(
+        AUTHORED_CONTENT_RUNTIME_IDS.buttonState,
+        AuthoredButtonState,
+        "DisplayObject",
+    );
+    registerPrimitive(
         AUTHORED_CONTENT_RUNTIME_IDS.movieClip,
         AuthoredMovieClip,
         "MovieClip",
@@ -162,15 +190,15 @@ export function registerAuthoredContentPrimitives(): void {
 
 function registerPrimitive(
     id: string,
-    ctor: typeof AuthoredMovieClip | typeof AuthoredDynamicTextField,
-    sourceType: "MovieClip" | "TextField",
+    ctor: typeof AuthoredButtonState | typeof AuthoredDynamicTextField | typeof AuthoredMovieClip | typeof AuthoredSimpleButton,
+    sourceType: "DisplayObject" | "MovieClip" | "SimpleButton" | "TextField",
 ): void {
     const existing = ClassUtils.getClass(id);
     if (existing && existing !== ctor)
         throw new Error(`Authored content primitive collision: ${id}`);
     const registered = ctor as typeof ctor & {
         readonly _$authoredSerializedType?: "Sprite";
-        readonly _$authoredSourceType?: "MovieClip" | "TextField";
+        readonly _$authoredSourceType?: "DisplayObject" | "MovieClip" | "SimpleButton" | "TextField";
     };
     if (registered._$authoredSerializedType === undefined) {
         Object.defineProperties(registered, {

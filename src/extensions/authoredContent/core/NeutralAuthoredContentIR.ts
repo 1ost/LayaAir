@@ -1,6 +1,6 @@
 export const NEUTRAL_AUTHORED_CONTENT_SCHEMA = "neutral-authored-content@1" as const;
 
-export type NeutralNodeKind = "container" | "dynamic-text" | "image" | "text";
+export type NeutralNodeKind = "button" | "button-state" | "container" | "dynamic-text" | "image" | "text";
 export type NeutralImageMediaType = "image/jpeg" | "image/png";
 export type NeutralTimelineProperty = "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible";
 export type NeutralKeyframeValue = number | boolean;
@@ -150,7 +150,9 @@ export interface NeutralAuthoredContentIR {
     readonly stage?: NeutralAuthoredStage;
 }
 
-const NODE_KINDS: ReadonlySet<string> = new Set(["container", "dynamic-text", "image", "text"]);
+const NODE_KINDS: ReadonlySet<string> = new Set(["button", "button-state", "container", "dynamic-text", "image", "text"]);
+const BUTTON_STATE_ORDER = ["upState", "overState", "downState", "hitTestState"] as const;
+const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATE_ORDER);
 const IMAGE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png"]);
 const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible"]);
 const SCALED_NODE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "width", "height", "fontSize"]);
@@ -292,8 +294,19 @@ function normalizeNode(
         if (node.x === undefined || node.y === undefined || node.width === undefined || node.height === undefined)
             fail("AUTHORED_CONTENT_DYNAMIC_TEXT_BOUNDS_MISSING", `${path} requires exact x, y, width, and height.`);
     }
-    if (node.kind !== "container" && node.children.length !== 0)
+    if (node.kind !== "button" && node.kind !== "button-state" && node.kind !== "container" && node.children.length !== 0)
         fail("AUTHORED_CONTENT_LEAF_CHILDREN_UNSUPPORTED", `${path} ${node.kind} nodes cannot contain children.`);
+    if (node.kind === "button") {
+        if (node.width === undefined || node.height === undefined || node.width <= 0 || node.height <= 0)
+            fail("AUTHORED_CONTENT_BUTTON_BOUNDS_MISSING", `${path} requires positive width and height.`);
+        if (node.children.length !== BUTTON_STATE_ORDER.length
+            || node.children.some(child => child.kind !== "button-state" || !BUTTON_STATE_NAMES.has(child.name ?? ""))
+            || new Set(node.children.map(child => child.name)).size !== BUTTON_STATE_ORDER.length
+            || node.children.some((child, index) => child.name !== BUTTON_STATE_ORDER[index]))
+            fail("AUTHORED_CONTENT_BUTTON_STATE_CLOSURE", `${path} requires exactly one upState, overState, downState, and hitTestState child in canonical order.`);
+    }
+    if (node.kind === "button-state" && !BUTTON_STATE_NAMES.has(node.name ?? ""))
+        fail("AUTHORED_CONTENT_BUTTON_STATE_NAME_INVALID", `${path} requires a canonical SimpleButton state name.`);
     if (source.timeline !== undefined && node.kind !== "container")
         fail("AUTHORED_CONTENT_NESTED_TIMELINE_HOST_INVALID", `${path}.timeline requires a container node.`);
     return source.timeline === undefined

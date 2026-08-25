@@ -306,7 +306,7 @@ export interface NativeAuthoredContentNodeMetadata {
     readonly animatorOwnerPath: ReadonlyArray<string>;
     readonly linkageClass: string;
     readonly instanceName: string;
-    readonly kind: "container" | "dynamic-text" | "image" | "text";
+    readonly kind: NeutralAuthoredNode["kind"];
     readonly depth?: number;
     readonly variable?: boolean;
     readonly matrix?: NeutralAuthoredNode["matrix"];

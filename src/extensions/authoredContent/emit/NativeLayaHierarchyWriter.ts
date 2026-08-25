@@ -295,7 +295,8 @@ function validateHierarchyNode(
     path: string,
     root: boolean
 ): void {
-    const expectedType = source.kind === "container" || source.kind === "dynamic-text"
+    const expectedType = source.kind === "button" || source.kind === "button-state"
+        || source.kind === "container" || source.kind === "dynamic-text"
         ? "Sprite"
         : source.kind === "image" ? "Image" : "Text";
     if (value._$type !== expectedType)
@@ -343,7 +344,15 @@ function decorateAuthoredRuntime(
         value.authoredFilters = source.filters.map(filter => ({ _$type: "any", value: filter }));
     if (source.scale9Grid !== undefined)
         value.authoredScale9Grid = source.scale9Grid;
-    if (source.kind === "dynamic-text") {
+    if (source.kind === "button") {
+        value._$type = "Sprite";
+        value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.button;
+    }
+    else if (source.kind === "button-state") {
+        value._$type = "Sprite";
+        value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.buttonState;
+    }
+    else if (source.kind === "dynamic-text") {
         value._$type = "Sprite";
         value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.textField;
         value.authoredConfiguration = {

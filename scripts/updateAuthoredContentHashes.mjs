@@ -777,6 +777,45 @@ admitAuthoredBitmapHierarchy("display.instance-name", ["normalize", "prepareHier
 admitAuthoredBitmapHierarchy("media.bitmap", ["parseXml", "prepareBundle"]);
 admitAuthoredBitmapHierarchy("native.prefab", ["prepareHierarchy", "canonicalHierarchy", "prepareBundle", "writeTransaction"]);
 
+const authoredButtonInteractionSubjects = {
+    normalize: ["src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts", "normalizeNeutralAuthoredContent", "function"],
+    adapter: ["src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts", "FlashLibrarySymbolAdapter", "class"],
+    hierarchy: ["src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts", "prepareNativeLayaHierarchy", "function"],
+    runtimePrimitives: ["src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts", "registerAuthoredContentPrimitives", "function"],
+    authoredButtonPredicate: ["src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts", "isAuthoredSimpleButton", "function"],
+    flashButtonPredicate: ["src/layaAir/flash/display/SimpleButton.ts", "isFlashSimpleButton", "function"],
+};
+const admitAuthoredButtonInteraction = (id, keys) => {
+    const capability = ledger.capabilities.find(item => item.id === id);
+    if (!capability) throw new Error(`Missing authored-content capability ${id}`);
+    Object.assign(capability, {
+        status: "typescript-obligation",
+        obligations: keys.map(key => {
+            const [module, exported, kind] = authoredButtonInteractionSubjects[key];
+            return capability.obligations?.find(item => item.module === module && item.export === exported)
+                || { module, export: exported, kind, signature: "", sha256: "",
+                    ...(kind === "class" ? { members: [], constructors: [], indexSignatures: [] } : {}) };
+        }),
+        evidence: [{
+            path: "tests/architecture/authoredButtonInteractionEvidence.test.ts",
+            test: "Authored Flash button interaction compiler surface",
+            sha256: "",
+            capability: id,
+            covers: [],
+        }],
+    });
+    delete capability.blockingReason;
+};
+admitAuthoredButtonInteraction("interaction.button-states", [
+    "normalize", "adapter", "hierarchy", "runtimePrimitives",
+]);
+admitAuthoredButtonInteraction("interaction.hit-test", [
+    "flashButtonPredicate",
+]);
+admitAuthoredButtonInteraction("interaction.pointer", [
+    "authoredButtonPredicate",
+]);
+
 Object.assign(ledger.capabilities.find(item => item.id === "display.place-remove-depth"), {
     status: "blocking",
     blockingReason: "Authenticated static placement depth is supported, but frame-driven place and remove semantics are not implemented."

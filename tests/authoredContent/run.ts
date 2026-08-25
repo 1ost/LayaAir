@@ -1601,6 +1601,81 @@ async function main(): Promise<void> {
         assert(metadata.nodes[1].animatorOwnerPath.join("/") === "titleField", "animator owner path is not root-relative");
     });
 
+    await test("authored button hierarchy serializes native state primitives and named placement", () => {
+        const state = (name: string) => ({
+            linkage: `Close_${name}`,
+            name,
+            kind: "button-state",
+            children: [],
+        });
+        const content = normalizeNeutralAuthoredContent({
+            schema: "neutral-authored-content@1",
+            documentId: "button-host",
+            resources: [],
+            root: {
+                linkage: "ButtonHost",
+                kind: "container",
+                width: 100,
+                height: 50,
+                children: [{
+                    linkage: "CloseButton",
+                    name: "Btn_Close",
+                    kind: "button",
+                    depth: 3,
+                    x: 11,
+                    y: 12,
+                    width: 28,
+                    height: 19,
+                    variable: true,
+                    children: [state("upState"), state("overState"), state("downState"), state("hitTestState")],
+                }],
+            },
+            timeline: { frameRate: 30, duration: 1 / 30, loop: false, tracks: [] },
+        });
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1,
+            "_$type": "Sprite",
+            name: "ButtonHost",
+            width: 100,
+            height: 50,
+            "_$child": [{
+                "_$type": "Sprite",
+                name: "Btn_Close",
+                x: 11,
+                y: 12,
+                width: 28,
+                height: 19,
+                "_$child": ["upState", "overState", "downState", "hitTestState"].map(name => ({
+                    "_$type": "Sprite",
+                    name,
+                })),
+            }],
+        }, "root.mc", new Map());
+        const hierarchyChildren = hierarchy._$child;
+        assert(Array.isArray(hierarchyChildren) && hierarchyChildren.length === 1,
+            "button hierarchy child closure drifted");
+        const button = hierarchyChildren[0];
+        assert(typeof button === "object" && button !== null && !Array.isArray(button),
+            "serialized button is not a hierarchy object");
+        assert(Reflect.get(button, "_$runtime") === "Laya.AuthoredContent.SimpleButton",
+            "button runtime primitive was not serialized");
+        assert(Reflect.get(button, "_$var") === true && Reflect.get(button, "name") === "Btn_Close",
+            "named button placement did not retain variable injection");
+        const serializedStates = Reflect.get(button, "_$child");
+        assert(Array.isArray(serializedStates), "serialized button states are missing");
+        assert(JSON.stringify(serializedStates.map(child => [Reflect.get(child, "name"), Reflect.get(child, "_$runtime")])) === JSON.stringify([
+            ["upState", "Laya.AuthoredContent.ButtonState"],
+            ["overState", "Laya.AuthoredContent.ButtonState"],
+            ["downState", "Laya.AuthoredContent.ButtonState"],
+            ["hitTestState", "Laya.AuthoredContent.ButtonState"],
+        ]), "button state runtime hierarchy drifted");
+        const metadata = hierarchy._$authoredContent;
+        assert(typeof metadata === "object" && metadata !== null, "authored metadata is missing");
+        const metadataNodes = Reflect.get(metadata, "nodes");
+        assert(Array.isArray(metadataNodes) && Reflect.get(metadataNodes[1], "kind") === "button",
+            "button metadata kind was not retained");
+    });
+
     await test("stage metadata remains authoritative through normalization and native emission", () => {
         const source = {
             ...sourceDocument(),
