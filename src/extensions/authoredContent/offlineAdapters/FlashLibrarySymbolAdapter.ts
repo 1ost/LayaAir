@@ -1,5 +1,6 @@
 import {
     NeutralAuthoredContentIR,
+    NeutralInertPlacementRatio,
     NeutralAuthoredNode,
     NeutralGlowFilter,
     NeutralTimeline,
@@ -31,6 +32,11 @@ type FlashDisplayState = {
     readonly operation: Record<string, any>;
     matrix: DisplayMatrix;
     alpha: number;
+};
+type PlacementEvidenceContext = {
+    readonly timelineSymbolId: number;
+    readonly frameIndex: number;
+    readonly operationIndex: number;
 };
 
 const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
@@ -140,8 +146,10 @@ export class FlashLibrarySymbolAdapter {
         if (frameLabels.length !== 0)
             fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", "This native projection requires an empty frame-label set.");
         const resources = new Map<string, NeutralResourceInput>();
+        const inertPlacementRatios = new Map<string, NeutralInertPlacementRatio>();
         const root = this.createSprite(
             request.entrySymbolId,
+            undefined,
             undefined,
             undefined,
             assets,
@@ -150,6 +158,7 @@ export class FlashLibrarySymbolAdapter {
             request.rasterizedShapes ?? new Map(),
             request.rasterizedSprites ?? new Map(),
             resources,
+            inertPlacementRatios,
             true,
         );
         const content = {
@@ -162,6 +171,7 @@ export class FlashLibrarySymbolAdapter {
                 timeline: undefined,
             },
             timeline: root.timeline,
+            ...(inertPlacementRatios.size === 0 ? {} : { inertPlacementRatios: [...inertPlacementRatios.values()] }),
             stage: {
                 width: root.width,
                 height: root.height,
@@ -180,23 +190,26 @@ export class FlashLibrarySymbolAdapter {
         characterId: number,
         operation: Record<string, any> | undefined,
         forcedName: string | undefined,
+        instanceId: string | undefined,
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
+        inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
         root = false,
     ): NeutralAuthoredNode {
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
         if (asset.kind !== "sprite")
             fail("FLASH_LIBRARY_SPRITE_REQUIRED", `Character ${characterId} is not a sprite.`);
+        const linkage = flashLibraryAssetName(asset, characterId);
         const sourceTimeline = timeline(timelines, characterId);
         if (sourceTimeline.symbolId !== characterId)
             fail("FLASH_LIBRARY_TIMELINE_ID_MISMATCH", `Timeline ${characterId} identifies another symbol.`);
         const firstFrame = frame(sourceTimeline, 0);
         validateFrame(firstFrame, characterId);
-        const initialOperations = displayOperations(firstFrame, characterId);
+        const initialPlacements = indexedDisplayOperations(firstFrame, characterId);
         const boundslessEmptyNamedAnchor = asset.bounds === undefined
             && isBoundslessEmptyNamedAnchor(operation, sourceTimeline);
         const bounds = spriteBounds(asset, characterId, boundslessEmptyNamedAnchor);
@@ -206,29 +219,39 @@ export class FlashLibrarySymbolAdapter {
         const rasterFrames = spriteContainsTranslatableText(characterId, assets, timelines)
             ? undefined
             : rasterizedSprites.get(characterId);
+        if (rasterFrames !== undefined)
+            recordRasterizedTimelineInertPlacementRatios(sourceTimeline, assets, inertPlacementRatios);
         const animated = rasterFrames === undefined
             ? sourceTimeline.frameCount === 1 || boundslessEmptyNamedAnchor ? undefined : this.createAnimatedDisplayList(
                 sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+                inertPlacementRatios, root ? linkage : instanceId!,
             )
             : this.createRasterizedSprite(
-                sourceTimeline, flashLibraryAssetName(asset, characterId), rasterFrames, resources,
+                sourceTimeline, linkage, root ? linkage : instanceId!, rasterFrames, resources,
             );
         const children = animated === undefined
-            ? initialOperations.map((value, index) => this.createPlacedNode(
-                object(value, `timeline ${characterId} frame 1 operation ${index}`),
+            ? initialPlacements.map(({ operation: placed, operationIndex }, index) => {
+                const placedCharacterId = positiveInteger(placed.characterId, "place.characterId");
+                const placedAsset = object(assets[String(placedCharacterId)], `library.assets.${placedCharacterId}`);
+                return this.createPlacedNode(
+                placed,
+                placementInstanceId(placedAsset, placed, 1, index + 1),
                 assets,
                 timelines,
                 resourceAuthorities,
                 rasterizedShapes,
                 rasterizedSprites,
                 resources,
-            ))
+                inertPlacementRatios,
+                { timelineSymbolId: characterId, frameIndex: 1, operationIndex },
+            );})
             : animated.children;
         const placement = operation === undefined ? unitPlacement() : placementTransform(operation);
-        const linkage = flashLibraryAssetName(asset, characterId);
+        const authoredName = forcedName ?? operation?.name;
         const node: NeutralAuthoredNode = {
             linkage,
-            name: forcedName ?? operation?.name ?? linkage,
+            instanceId: root ? linkage : instanceId,
+            ...(root ? { name: linkage } : authoredName === undefined ? {} : { name: authoredName }),
             kind: "container",
             depth: root ? undefined : positiveInteger(operation?.depth, `sprite ${characterId} depth`),
             x: placement.x,
@@ -241,6 +264,7 @@ export class FlashLibrarySymbolAdapter {
             children,
             timeline: animated?.timeline ?? nativeTimeline(sourceTimeline, {
                 linkage,
+                instanceId: root ? linkage : instanceId,
                 kind: "container",
                 children,
             }),
@@ -253,16 +277,20 @@ export class FlashLibrarySymbolAdapter {
 
     private createPlacedNode(
         operation: Record<string, any>,
+        instanceId: string,
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
+        inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
+        evidenceContext?: PlacementEvidenceContext,
     ): NeutralAuthoredNode {
         exactPlace(operation);
         const characterId = positiveInteger(operation.characterId, "place.characterId");
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
+        recordInertPlacementRatio(operation, asset, characterId, evidenceContext, inertPlacementRatios);
         if (asset.kind !== "input-text" && asset.kind !== "text" && asset.kind !== "sprite" && operation.filters !== undefined)
             fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
         if (asset.kind === "sprite") {
@@ -270,44 +298,50 @@ export class FlashLibrarySymbolAdapter {
                 characterId,
                 operation,
                 operation.name,
+                instanceId,
                 assets,
                 timelines,
                 resourceAuthorities,
                 rasterizedShapes,
                 rasterizedSprites,
                 resources,
+                inertPlacementRatios,
             );
         }
         if (asset.kind === "button") {
             return this.createButton(
                 asset,
                 operation,
+                instanceId,
                 assets,
                 timelines,
                 resourceAuthorities,
                 rasterizedShapes,
                 rasterizedSprites,
                 resources,
+                inertPlacementRatios,
             );
         }
         if (asset.kind === "shape")
-            return this.createImage(asset, operation, assets, resourceAuthorities, rasterizedShapes, resources);
+            return this.createImage(asset, operation, instanceId, assets, resourceAuthorities, rasterizedShapes, resources);
         if (asset.kind === "input-text")
-            return this.createDynamicText(asset, operation, assets, resourceAuthorities, resources);
+            return this.createDynamicText(asset, operation, instanceId, assets, resourceAuthorities, resources);
         if (asset.kind === "text")
-            return this.createStaticTextField(asset, operation, assets);
+            return this.createStaticTextField(asset, operation, instanceId, assets);
         fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
     }
 
     private createButton(
         asset: Record<string, any>,
         operation: Record<string, any>,
+        instanceId: string,
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
+        inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "button.characterId");
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
@@ -354,27 +388,32 @@ export class FlashLibrarySymbolAdapter {
         });
         const linkage = flashLibraryAssetName(asset, characterId);
         const stateChildren = BUTTON_STATES.map<NeutralAuthoredNode>(state => {
-            const seenLinkages = new Set<string>();
             const children = recordsByState.get(state)!
                 .sort((left, right) => positiveInteger(left.record.depth, "button record depth")
                     - positiveInteger(right.record.depth, "button record depth"))
-                .map(({ record, alpha }) => {
-                    const child = this.createPlacedNode({
+                .map(({ record, alpha }, index) => {
+                    const placed = {
                         op: "place",
                         characterId: record.characterId,
                         depth: record.depth,
                         move: false,
                         ratio: 0,
                         matrix: record.matrix,
-                    }, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources);
-                    if (seenLinkages.has(child.linkage))
-                        fail("FLASH_LIBRARY_BUTTON_LINKAGE_DUPLICATE", `Button ${characterId} state '${state}' repeats '${child.linkage}'.`);
-                    seenLinkages.add(child.linkage);
+                    };
+                    const placedCharacterId = positiveInteger(record.characterId, "button record characterId");
+                    const placedAsset = object(assets[String(placedCharacterId)], `library.assets.${placedCharacterId}`);
+                    const child = this.createPlacedNode(
+                        placed,
+                        placementInstanceId(placedAsset, placed, 1, index + 1),
+                        assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+                        inertPlacementRatios,
+                    );
                     return alpha === 1 ? child : { ...child, alpha };
                 });
             const stateName = `${state}State`;
             return {
                 linkage: `${linkage}_${stateName}`,
+                instanceId: stateName,
                 name: stateName,
                 kind: "button-state",
                 children,
@@ -384,7 +423,8 @@ export class FlashLibrarySymbolAdapter {
         const placementAlpha = operation.colorTransform === undefined ? 1 : displayAlpha(operation.colorTransform);
         return {
             linkage,
-            name: operation.name ?? linkage,
+            instanceId,
+            ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "button",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x,
@@ -406,6 +446,8 @@ export class FlashLibrarySymbolAdapter {
         rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
+        inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
+        ownerInstanceId: string,
     ): { readonly children: ReadonlyArray<NeutralAuthoredNode>; readonly timeline: NeutralTimeline } {
         const active = new Map<number, FlashDisplayState>();
         const instances: FlashDisplayState[] = [];
@@ -415,9 +457,8 @@ export class FlashLibrarySymbolAdapter {
         frames.forEach((value, frameIndex) => {
             const current = object(value, `timeline ${sourceTimeline.symbolId} frame ${frameIndex + 1}`);
             validateFrame(current, sourceTimeline.symbolId);
-            displayOperations(current, sourceTimeline.symbolId)
-                .forEach((operationValue, operationIndex) => {
-                    const operation = object(operationValue, `timeline operation ${operationIndex}`);
+            indexedDisplayOperations(current, sourceTimeline.symbolId)
+                .forEach(({ operation, operationIndex }) => {
                     const depth = positiveInteger(operation.depth, `${operation.op}.depth`);
                     if (operation.op === "remove") {
                         exactKeys(operation, REMOVE_FIELDS, "remove", "FLASH_LIBRARY_REMOVE_FIELD_UNSUPPORTED");
@@ -433,7 +474,11 @@ export class FlashLibrarySymbolAdapter {
                     if (!move) {
                         if (prior !== undefined)
                             fail("FLASH_LIBRARY_DISPLAY_DEPTH_INVALID", `Depth ${depth} is placed twice without removal or move=true.`);
-                        const state = createDisplayState(operation, frameIndex + 1, instances.length + 1, assets);
+                        const state = createDisplayState(
+                            operation, frameIndex + 1, instances.length + 1, assets, 1,
+                            { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
+                            inertPlacementRatios,
+                        );
                         instances.push(state);
                         active.set(depth, state);
                         return;
@@ -444,11 +489,16 @@ export class FlashLibrarySymbolAdapter {
                         ? prior.characterId
                         : positiveInteger(operation.characterId, "place.characterId");
                     if (replacementId !== prior.characterId) {
-                        const state = createDisplayState({
-                            ...operation,
-                            characterId: replacementId,
-                            matrix: operation.matrix ?? prior.matrix,
-                        }, frameIndex + 1, instances.length + 1, assets, prior.alpha);
+                        const state = createDisplayState(
+                            {
+                                ...operation,
+                                characterId: replacementId,
+                                matrix: operation.matrix ?? prior.matrix,
+                            },
+                            frameIndex + 1, instances.length + 1, assets, prior.alpha,
+                            { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
+                            inertPlacementRatios,
+                        );
                         instances.push(state);
                         active.set(depth, state);
                         return;
@@ -457,7 +507,13 @@ export class FlashLibrarySymbolAdapter {
                         prior.matrix = displayMatrix(operation.matrix);
                     if (operation.colorTransform !== undefined)
                         prior.alpha = displayAlpha(operation.colorTransform);
-                    validateTimelineRatio(operation, assets, replacementId);
+                    recordInertPlacementRatio(
+                        operation,
+                        object(assets[String(replacementId)], `library.assets.${replacementId}`),
+                        replacementId,
+                        { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
+                        inertPlacementRatios,
+                    );
                 });
             snapshots.push(new Map([...active].map(([depth, state]) => [depth, { ...state, matrix: { ...state.matrix } }])));
         });
@@ -465,7 +521,6 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_ANIMATED_DISPLAY_LIST_EMPTY", `Timeline ${sourceTimeline.symbolId} contains no display objects.`);
         const ordered = [...instances].sort((left, right) =>
             left.authoredDepth - right.authoredDepth || left.firstFrame - right.firstFrame || left.instanceId - right.instanceId);
-        const seenLinkages = new Set<string>();
         const children = ordered.map((instance, index) => {
             const operation = {
                 op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
@@ -473,12 +528,13 @@ export class FlashLibrarySymbolAdapter {
                 ...(instance.operation.filters === undefined ? {} : { filters: instance.operation.filters }),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
+            const placedAsset = object(assets[String(instance.characterId)], `library.assets.${instance.characterId}`);
             const child = this.createPlacedNode(
-                operation, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+                operation,
+                placementInstanceId(placedAsset, instance.operation, instance.firstFrame, instance.instanceId),
+                assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
+                inertPlacementRatios,
             );
-            if (seenLinkages.has(child.linkage))
-                fail("FLASH_LIBRARY_ANIMATED_LINKAGE_COLLISION", `Timeline ${sourceTimeline.symbolId} places '${child.linkage}' more than once.`);
-            seenLinkages.add(child.linkage);
             return { ...child, visible: false };
         });
         const frameRate = positiveInteger(sourceTimeline.frameRate, `timeline ${sourceTimeline.symbolId}.frameRate`);
@@ -498,7 +554,7 @@ export class FlashLibrarySymbolAdapter {
                 };
             });
             return (["x", "y", "scaleX", "scaleY", "alpha", "visible"] as const).map(property => ({
-                targetPath: [string(sourceTimeline.symbolName ?? `character_${sourceTimeline.symbolId}`, "timeline.symbolName"), child.linkage],
+                targetPath: [ownerInstanceId, child.instanceId ?? child.linkage],
                 property,
                 keyframes: values.map((state, frameIndex) => ({
                     time: frameIndex / frameRate,
@@ -521,6 +577,7 @@ export class FlashLibrarySymbolAdapter {
     private createRasterizedSprite(
         sourceTimeline: Record<string, any>,
         linkage: string,
+        ownerInstanceId: string,
         authorities: ReadonlyArray<FlashLibraryRasterizedFrameAuthority>,
         resources: Map<string, NeutralResourceInput>,
     ): { readonly children: ReadonlyArray<NeutralAuthoredNode>; readonly timeline: NeutralTimeline } {
@@ -555,7 +612,7 @@ export class FlashLibrarySymbolAdapter {
                 loop: frameCount > 1,
                 frameLabels: extractFrameLabels(sourceTimeline),
                 tracks: children.map((child, childIndex) => ({
-                    targetPath: [linkage, child.linkage],
+                    targetPath: [ownerInstanceId, child.instanceId ?? child.linkage],
                     property: "visible" as const,
                     keyframes: authorities.map((_, frameIndex) => ({
                         time: frameIndex / frameRate,
@@ -569,6 +626,7 @@ export class FlashLibrarySymbolAdapter {
     private createImage(
         asset: Record<string, any>,
         operation: Record<string, any>,
+        instanceId: string,
         assets: Record<string, any>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
@@ -589,7 +647,8 @@ export class FlashLibrarySymbolAdapter {
         const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
         return {
             linkage: flashLibraryAssetName(asset, characterId),
-            name: operation.name ?? flashLibraryAssetName(asset, characterId),
+            instanceId,
+            ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "image",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x + placement.a * boundsX + placement.c * boundsY,
@@ -606,6 +665,7 @@ export class FlashLibrarySymbolAdapter {
     private createDynamicText(
         asset: Record<string, any>,
         operation: Record<string, any>,
+        instanceId: string,
         assets: Record<string, any>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
         resources: Map<string, NeutralResourceInput>,
@@ -655,7 +715,8 @@ export class FlashLibrarySymbolAdapter {
         const initialText = authoredHtml?.markup ?? sourceInitialText;
         return {
             linkage: flashLibraryAssetName(asset, characterId),
-            name: operation.name ?? flashLibraryAssetName(asset, characterId),
+            instanceId,
+            ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "dynamic-text",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x,
@@ -704,6 +765,7 @@ export class FlashLibrarySymbolAdapter {
     private createStaticTextField(
         asset: Record<string, any>,
         operation: Record<string, any>,
+        instanceId: string,
         assets: Record<string, any>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
@@ -749,7 +811,8 @@ export class FlashLibrarySymbolAdapter {
         const placement = placementTransform(operation);
         return {
             linkage: flashLibraryAssetName(asset, characterId),
-            name: operation.name ?? flashLibraryAssetName(asset, characterId),
+            instanceId,
+            ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "dynamic-text",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x + placement.a * boundsX + placement.c * boundsY,
@@ -1016,7 +1079,7 @@ function authoredScale9Grid(
         width,
         height,
         sizeGrid: sizeGrid as [number, number, number, number, 0],
-        target: child.name ?? child.linkage,
+        target: child.name ?? child.instanceId ?? child.linkage,
     };
 }
 
@@ -1167,12 +1230,17 @@ function createDisplayState(
     instanceId: number,
     assets: Record<string, any>,
     inheritedAlpha = 1,
+    evidenceContext?: PlacementEvidenceContext,
+    inertPlacementRatios?: Map<string, NeutralInertPlacementRatio>,
 ): FlashDisplayState {
     const characterId = positiveInteger(operation.characterId, "place.characterId");
     const authoredDepth = positiveInteger(operation.depth, "place.depth");
-    object(assets[String(characterId)], `library.assets.${characterId}`);
+    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
     if (operation.name !== undefined) string(operation.name, "place.name");
-    validateTimelineRatio(operation, assets, characterId);
+    if (inertPlacementRatios === undefined)
+        validateTimelineRatio(operation, asset);
+    else
+        recordInertPlacementRatio(operation, asset, characterId, evidenceContext, inertPlacementRatios);
     return {
         instanceId,
         characterId,
@@ -1216,14 +1284,97 @@ function displayAlpha(value: unknown): number {
     return alpha;
 }
 
-function validateTimelineRatio(operation: Record<string, any>, assets: Record<string, any>, characterId: number): void {
-    if (operation.ratio === undefined || operation.ratio === 0) return;
+function validateTimelineRatio(operation: Record<string, any>, asset: Record<string, any>): number | undefined {
+    if (operation.ratio === undefined) return undefined;
     const ratio = finite(operation.ratio, "place.ratio");
     if (!Number.isInteger(ratio) || ratio < 0 || ratio > 0xffff)
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Placement ratio must fit the unsigned Flash field.");
-    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
-    if (asset.kind !== "sprite")
-        fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Non-zero morph ratios are admitted only when Flash ignores them for sprite characters.");
+    if (ratio === 0) return undefined;
+    if (asset.kind !== "button" && asset.kind !== "input-text" && asset.kind !== "shape"
+        && asset.kind !== "sprite" && asset.kind !== "text")
+        fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", `Non-zero placement ratios require a proven non-morph character; kind '${String(asset.kind)}' remains fail-closed.`);
+    return ratio;
+}
+
+function placementInstanceId(
+    asset: Record<string, any>,
+    operation: Record<string, any>,
+    firstFrame: number,
+    ordinal: number,
+): string {
+    if (operation.name !== undefined)
+        return string(operation.name, "place.name");
+    const characterId = positiveInteger(asset.characterId, "asset.characterId");
+    const depth = positiveInteger(operation.depth, "place.depth");
+    if (!Number.isSafeInteger(firstFrame) || firstFrame < 1
+        || !Number.isSafeInteger(ordinal) || ordinal < 1)
+        fail("FLASH_LIBRARY_INSTANCE_ID_AUTHORITY_INVALID", "Placement frame and ordinal must be positive safe integers.");
+    return `${flashLibraryAssetName(asset, characterId)}$d${depth}$f${firstFrame}$i${ordinal}`;
+}
+
+function recordInertPlacementRatio(
+    operation: Record<string, any>,
+    asset: Record<string, any>,
+    characterId: number,
+    context: PlacementEvidenceContext | undefined,
+    evidence: Map<string, NeutralInertPlacementRatio>,
+): void {
+    const ratio = validateTimelineRatio(operation, asset);
+    if (ratio === undefined) return;
+    if (context === undefined)
+        fail("FLASH_LIBRARY_RATIO_EVIDENCE_CONTEXT_MISSING", "A non-zero inert placement ratio has no source coordinate.");
+    const characterKind = string(asset.kind, `library.assets.${characterId}.kind`) as NeutralInertPlacementRatio["characterKind"];
+    const value: NeutralInertPlacementRatio = {
+        timelineSymbolId: positiveInteger(context.timelineSymbolId, "ratio.timelineSymbolId"),
+        frameIndex: positiveInteger(context.frameIndex, "ratio.frameIndex"),
+        operationIndex: nonnegativeInteger(context.operationIndex, "ratio.operationIndex"),
+        depth: positiveInteger(operation.depth, "place.depth"),
+        characterId,
+        characterKind,
+        ratio,
+    };
+    const key = `${value.timelineSymbolId}/${value.frameIndex}/${value.operationIndex}`;
+    const prior = evidence.get(key);
+    if (prior !== undefined && JSON.stringify(prior) !== JSON.stringify(value))
+        fail("FLASH_LIBRARY_RATIO_EVIDENCE_DRIFT", `Placement ratio evidence at ${key} resolved inconsistently.`);
+    evidence.set(key, value);
+}
+
+function recordRasterizedTimelineInertPlacementRatios(
+    sourceTimeline: Record<string, any>,
+    assets: Record<string, any>,
+    evidence: Map<string, NeutralInertPlacementRatio>,
+): void {
+    const symbolId = positiveInteger(sourceTimeline.symbolId, "timeline.symbolId");
+    const active = new Map<number, number>();
+    validatedTimelineFrames(sourceTimeline).forEach((value, frameIndex) => {
+        const frameValue = object(value, `timeline ${symbolId} frame ${frameIndex + 1}`);
+        indexedDisplayOperations(frameValue, symbolId).forEach(({ operation, operationIndex }) => {
+            const depth = positiveInteger(operation.depth, `${operation.op}.depth`);
+            if (operation.op === "remove") {
+                active.delete(depth);
+                return;
+            }
+            if (operation.op !== "place") return;
+            const prior = active.get(depth);
+            const characterId = operation.characterId === undefined
+                ? prior
+                : positiveInteger(operation.characterId, "place.characterId");
+            if (characterId === undefined) {
+                if (operation.ratio !== undefined && operation.ratio !== 0)
+                    fail("FLASH_LIBRARY_RATIO_EVIDENCE_CHARACTER_MISSING", `Timeline ${symbolId} ratio at frame ${frameIndex + 1} operation ${operationIndex} has no effective character.`);
+                return;
+            }
+            active.set(depth, characterId);
+            recordInertPlacementRatio(
+                operation,
+                object(assets[String(characterId)], `library.assets.${characterId}`),
+                characterId,
+                { timelineSymbolId: symbolId, frameIndex: frameIndex + 1, operationIndex },
+                evidence,
+            );
+        });
+    });
 }
 
 function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode): NeutralTimeline {
@@ -1231,7 +1382,7 @@ function nativeTimeline(source: Record<string, any>, owner: NeutralAuthoredNode)
     const frameCount = positiveInteger(source.frameCount, `timeline ${source.symbolId}.frameCount`);
     const frames = validatedTimelineFrames(source);
     const tracks = frameCount === 1 ? [] : owner.children.map(child => ({
-        targetPath: [owner.linkage, child.linkage],
+        targetPath: [owner.instanceId ?? owner.linkage, child.instanceId ?? child.linkage],
         property: "visible" as const,
         keyframes: frames.flatMap((value, index) => {
             const operations = displayOperations(object(value, "frame"), source.symbolId);
@@ -1304,8 +1455,19 @@ function validateFrame(value: Record<string, any>, symbolId: number): void {
 }
 
 function displayOperations(value: Record<string, any>, symbolId: number): any[] {
+    return indexedDisplayOperations(value, symbolId).map(value => value.operation);
+}
+
+function indexedDisplayOperations(
+    value: Record<string, any>,
+    symbolId: number,
+): ReadonlyArray<{ readonly operation: Record<string, any>; readonly operationIndex: number }> {
     return array(value.operations, `timeline ${symbolId}.operations`)
-        .filter(operation => object(operation, `timeline ${symbolId} operation`).op !== "label");
+        .map((value, operationIndex) => ({
+            operation: object(value, `timeline ${symbolId} operation ${operationIndex}`),
+            operationIndex,
+        }))
+        .filter(value => value.operation.op !== "label");
 }
 
 function extractFrameLabels(sourceTimeline: Record<string, any>): Readonly<Record<string, number>> {

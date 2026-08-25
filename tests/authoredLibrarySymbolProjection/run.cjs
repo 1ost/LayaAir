@@ -85,8 +85,10 @@ assert.deepEqual(content.stage, {
 assert.ok(content.root.children.some(child => child.name === "MC_Effect"));
 assert.ok(content.root.children.some(child => child.name === "TF_Name"));
 assert.equal(content.root.children.find(child => child.name === "MC_Effect").timeline.duration, 2 / 30);
-assert.ok(content.timeline.tracks.some(track => track.targetPath.includes("character_2")));
-assert.ok(content.timeline.tracks.some(track => track.targetPath.includes("character_4")));
+const rootCharacter2 = content.root.children.find(child => child.linkage === "character_2");
+const rootCharacter4 = content.root.children.find(child => child.linkage === "character_4");
+assert.ok(content.timeline.tracks.some(track => track.targetPath.includes(rootCharacter2.instanceId)));
+assert.ok(content.timeline.tracks.some(track => track.targetPath.includes(rootCharacter4.instanceId)));
 
 const documentFixture = fixture();
 documentFixture.projection = "document";

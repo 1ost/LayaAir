@@ -326,7 +326,7 @@ function validateHierarchyNode(
         : source.kind === "image" ? "Image" : "Text";
     if (value._$type !== expectedType)
         fail("AUTHORED_CONTENT_NATIVE_NODE_TYPE_MISMATCH", `${path} expected ${expectedType}; received ${String(value._$type)}.`);
-    const expectedName = source.name ?? source.linkage;
+    const expectedName = source.name ?? source.instanceId ?? source.linkage;
     if (value.name !== expectedName)
         fail("AUTHORED_CONTENT_NATIVE_INSTANCE_NAME_MISMATCH", `${path} expected instance '${expectedName}'.`);
     validateEffectiveNodeField(source, value, path, "x", 0);
@@ -355,7 +355,7 @@ function validateHierarchyNode(
         const childValue = children[index];
         if (!childValue || typeof childValue !== "object" || Array.isArray(childValue))
             fail("AUTHORED_CONTENT_NATIVE_CHILD_INVALID", `${path}._$child[${index}] is not a hierarchy node.`);
-        validateHierarchyNode(child, childValue as Record<string, unknown>, resourceAssetIds, `${path}/${child.name ?? child.linkage}`, false);
+        validateHierarchyNode(child, childValue as Record<string, unknown>, resourceAssetIds, `${path}/${child.name ?? child.instanceId ?? child.linkage}`, false);
     });
 }
 
@@ -364,9 +364,19 @@ function decorateAuthoredRuntime(
     value: Record<string, unknown>,
     documentId: string,
     rootFrameLabels?: Readonly<Record<string, number>>,
+    variableOwner?: Record<string, unknown>,
 ): void {
-    if (source.variable === true)
+    if (source.variable === true) {
         value._$var = true;
+        if (variableOwner !== undefined) {
+            const ownerId = variableOwner._$id;
+            // IDE-authored hierarchies carry stable node IDs. Minimal in-memory
+            // fixtures may omit them; retain Laya's legacy top-owner behavior
+            // there rather than inventing an unauthenticated reference.
+            if (typeof ownerId === "string" && ownerId.length > 0)
+                value._$varOwner = ownerId;
+        }
+    }
     if (source.filters !== undefined)
         value.authoredFilters = source.filters.map(filter => ({ _$type: "any", value: filter }));
     if (source.scale9Grid !== undefined)
@@ -432,7 +442,7 @@ function decorateAuthoredRuntime(
     source.children.forEach((child, index) => {
         const target = children[index];
         if (target && typeof target === "object" && !Array.isArray(target))
-            decorateAuthoredRuntime(child, target as Record<string, unknown>, documentId);
+            decorateAuthoredRuntime(child, target as Record<string, unknown>, documentId, undefined, value);
     });
 }
 
@@ -500,7 +510,7 @@ function normalizeNestedTimelinePublications(
 ): ReadonlyArray<NativeNestedTimelinePublication> {
     const expected: string[] = [];
     const visit = (node: NeutralAuthoredNode, parent: ReadonlyArray<string>) => {
-        const semanticPath = [...parent, node.linkage];
+        const semanticPath = [...parent, node.instanceId ?? node.linkage];
         if (node.timeline !== undefined)
             expected.push(semanticPath.join("/"));
         node.children.forEach(child => visit(child, semanticPath));

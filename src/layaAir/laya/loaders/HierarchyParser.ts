@@ -415,7 +415,15 @@ export class HierarchyParser {
 
                 if (hasRuntime && nodeData._$var && node.name) {
                     try {
-                        (<any>topNode)[node.name] = node;
+                        let variableOwner = topNode;
+                        if (nodeData._$varOwner != null) {
+                            if (typeof nodeData._$varOwner !== "string" || !nodeMap[nodeData._$varOwner]) {
+                                errors.push(new Error(`invalid variable owner '${nodeData._$varOwner}' (in ${nodeData.name || 'noname'})`));
+                                continue;
+                            }
+                            variableOwner = nodeMap[nodeData._$varOwner];
+                        }
+                        (<any>variableOwner)[node.name] = node;
                     }
                     catch (err: any) {
                         errors.push(err);

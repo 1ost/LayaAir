@@ -38,9 +38,16 @@ export interface NeutralScale9Grid {
 }
 
 export interface NeutralAuthoredNode {
+    /** Reusable authored definition identity (for example a Flash character/linkage). */
     readonly linkage: string;
+    /**
+     * Deterministic placement identity within its parent semantic path. A
+     * definition may be placed repeatedly, but sibling placement IDs remain
+     * unique. Legacy adapters default this to linkage.
+     */
+    readonly instanceId?: string;
     readonly kind: NeutralNodeKind;
-    /** Native node name and generated-accessor name; defaults to linkage. */
+    /** Native node name and generated-accessor name; defaults to instanceId. */
     readonly name?: string;
     /** Authored display-list depth. Siblings are emitted in ascending depth order. */
     readonly depth?: number;
@@ -210,6 +217,18 @@ export interface NeutralAuthoredContentIR {
     readonly root: NeutralAuthoredNode;
     readonly timeline: NeutralTimeline;
     readonly stage?: NeutralAuthoredStage;
+    /** Auditable source coordinates for ignored non-morph PlaceObject ratios. */
+    readonly inertPlacementRatios?: ReadonlyArray<NeutralInertPlacementRatio>;
+}
+
+export interface NeutralInertPlacementRatio {
+    readonly timelineSymbolId: number;
+    readonly frameIndex: number;
+    readonly operationIndex: number;
+    readonly depth: number;
+    readonly characterId: number;
+    readonly characterKind: "button" | "image" | "input-text" | "shape" | "sprite" | "text";
+    readonly ratio: number;
 }
 
 const NODE_KINDS: ReadonlySet<string> = new Set(["button", "button-state", "container", "dynamic-text", "image", "text"]);
@@ -223,7 +242,7 @@ const SCALED_TRACK_PROPERTIES: ReadonlySet<string> = new Set(["x", "y"]);
 /** Validates untrusted adapter output and returns a deterministic normalized IR. */
 export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): NeutralAuthoredContentIR {
     const source = record(input, "document");
-    allowedKeys(source, ["schema", "documentId", "resources", "root", "timeline", "stage", "controller"], "document");
+    allowedKeys(source, ["schema", "documentId", "resources", "root", "timeline", "stage", "controller", "inertPlacementRatios"], "document");
     if ("controller" in source)
         fail("AUTHORED_CONTENT_CONTROLLER_CAPTURE_REQUIRED", "Animation-controller capture is not implemented.");
     if (source.schema !== NEUTRAL_AUTHORED_CONTENT_SCHEMA)
@@ -240,6 +259,9 @@ export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): Neut
     const nodePaths = collectNodePaths(root);
     const timeline = normalizeTimeline(source.timeline, scale, nodePaths);
     const stage = source.stage === undefined ? undefined : normalizeStage(source.stage, scale);
+    const inertPlacementRatios = source.inertPlacementRatios === undefined
+        ? undefined
+        : normalizeInertPlacementRatios(source.inertPlacementRatios);
     if (stage !== undefined) {
         if (root.width !== stage.width || root.height !== stage.height)
             fail("AUTHORED_CONTENT_STAGE_BOUNDS_MISMATCH", "Stage dimensions must match the emitted document root.");
@@ -255,7 +277,50 @@ export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): Neut
         root,
         timeline,
         ...(stage === undefined ? {} : { stage }),
+        ...(inertPlacementRatios === undefined ? {} : { inertPlacementRatios }),
     };
+}
+
+function normalizeInertPlacementRatios(value: unknown): ReadonlyArray<NeutralInertPlacementRatio> {
+    const admittedKinds = new Set(["button", "image", "input-text", "shape", "sprite", "text"]);
+    const normalized = array(value, "inertPlacementRatios").map((entry, index) => {
+        const path = `inertPlacementRatios[${index}]`;
+        const source = record(entry, path);
+        allowedKeys(source, [
+            "timelineSymbolId", "frameIndex", "operationIndex", "depth", "characterId", "characterKind", "ratio"
+        ], path);
+        const timelineSymbolId = positiveSafeInteger(source.timelineSymbolId, `${path}.timelineSymbolId`);
+        const frameIndex = positiveSafeInteger(source.frameIndex, `${path}.frameIndex`);
+        const operationIndex = nonNegativeSafeInteger(source.operationIndex, `${path}.operationIndex`);
+        const depth = positiveSafeInteger(source.depth, `${path}.depth`);
+        const characterId = positiveSafeInteger(source.characterId, `${path}.characterId`);
+        const characterKind = requiredString(source.characterKind, `${path}.characterKind`);
+        if (!admittedKinds.has(characterKind))
+            fail("AUTHORED_CONTENT_INERT_RATIO_KIND_INVALID", `${path}.characterKind is not an admitted non-morph kind.`);
+        const ratio = requiredFiniteNumber(source.ratio, `${path}.ratio`);
+        if (!Number.isInteger(ratio) || ratio < 1 || ratio > 0xffff)
+            fail("AUTHORED_CONTENT_INERT_RATIO_RANGE", `${path}.ratio must be an integer from 1 through 65535.`);
+        return {
+            timelineSymbolId, frameIndex, operationIndex, depth, characterId,
+            characterKind: characterKind as NeutralInertPlacementRatio["characterKind"], ratio,
+        };
+    });
+    normalized.sort((left, right) =>
+        left.timelineSymbolId - right.timelineSymbolId
+        || left.frameIndex - right.frameIndex
+        || left.operationIndex - right.operationIndex
+        || left.depth - right.depth
+        || left.characterId - right.characterId
+        || left.ratio - right.ratio
+        || left.characterKind.localeCompare(right.characterKind));
+    const coordinates = new Set<string>();
+    for (const entry of normalized) {
+        const coordinate = `${entry.timelineSymbolId}/${entry.frameIndex}/${entry.operationIndex}`;
+        if (coordinates.has(coordinate))
+            fail("AUTHORED_CONTENT_INERT_RATIO_DUPLICATE", `Duplicate inert placement ratio evidence at ${coordinate}.`);
+        coordinates.add(coordinate);
+    }
+    return normalized;
 }
 
 function normalizeStage(value: unknown, scale: number): NeutralAuthoredStage {
@@ -287,7 +352,7 @@ function normalizeNode(
 ): NeutralAuthoredNode {
     const source = record(value, path);
     allowedKeys(source, [
-        "linkage", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
+        "linkage", "instanceId", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
         "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
@@ -299,6 +364,9 @@ function normalizeNode(
 
     const node: NeutralAuthoredNode = {
         linkage,
+        instanceId: canonicalLinkage(source.instanceId === undefined
+            ? rawLinkage
+            : requiredString(source.instanceId, `${path}.instanceId`)),
         kind: kind as NeutralNodeKind,
         name: source.name === undefined
             ? undefined
@@ -348,7 +416,7 @@ function normalizeNode(
     if (node.scale9Grid !== undefined && node.kind !== "container")
         fail("AUTHORED_CONTENT_SCALE9_GRID_TARGET_UNSUPPORTED", `${path}.scale9Grid requires a container node.`);
     if (node.scale9Grid !== undefined) {
-        const targets = node.children.filter(child => (child.name ?? child.linkage) === node.scale9Grid!.target);
+        const targets = node.children.filter(child => (child.name ?? child.instanceId ?? child.linkage) === node.scale9Grid!.target);
         if (targets.length !== 1 || targets[0].kind !== "image")
             fail("AUTHORED_CONTENT_SCALE9_GRID_RASTER_TARGET_INVALID", `${path}.scale9Grid must identify one direct image child.`);
     }
@@ -646,31 +714,34 @@ function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: 
     const explicitDepthCount = values.filter(value => record(value, path).depth !== undefined).length;
     if (explicitDepthCount !== 0 && explicitDepthCount !== values.length)
         fail("AUTHORED_CONTENT_MIXED_DEPTH_AUTHORITY", `${path} must either declare every sibling depth or preserve source order for every sibling.`);
-    const linkageOwners = new Map<string, string>();
     const instanceOwners = new Map<string, string>();
+    const nativeNameOwners = new Map<string, string>();
     const depthOwners = new Map<number, string>();
     const nodes = values.map((value, index) => {
         const source = record(value, `${path}[${index}]`);
         const rawLinkage = requiredString(source.linkage, `${path}[${index}].linkage`);
-        const collisionKey = canonicalLinkage(rawLinkage).toLocaleLowerCase("en-US");
-        const previous = linkageOwners.get(collisionKey);
-        if (previous !== undefined)
-            fail("AUTHORED_CONTENT_LINKAGE_COLLISION", `'${rawLinkage}' duplicates or normalizes to the same sibling semantic ID as '${previous}'.`);
-        linkageOwners.set(collisionKey, rawLinkage);
-        const rawInstanceName = source.name === undefined
+        const rawInstanceId = source.instanceId === undefined
             ? rawLinkage
-            : requiredString(source.name, `${path}[${index}].name`);
-        const instanceKey = canonicalLinkage(rawInstanceName).toLocaleLowerCase("en-US");
+            : requiredString(source.instanceId, `${path}[${index}].instanceId`);
+        const instanceKey = canonicalLinkage(rawInstanceId).toLocaleLowerCase("en-US");
         const previousInstance = instanceOwners.get(instanceKey);
         if (previousInstance !== undefined)
-            fail("AUTHORED_CONTENT_INSTANCE_NAME_COLLISION", `'${rawInstanceName}' duplicates or normalizes to the same sibling native name as '${previousInstance}'.`);
-        instanceOwners.set(instanceKey, rawInstanceName);
+            fail("AUTHORED_CONTENT_INSTANCE_ID_COLLISION", `'${rawInstanceId}' duplicates or normalizes to the same sibling placement ID as '${previousInstance}'.`);
+        instanceOwners.set(instanceKey, rawInstanceId);
+        const rawInstanceName = source.name === undefined
+            ? rawInstanceId
+            : requiredString(source.name, `${path}[${index}].name`);
+        const nativeNameKey = canonicalLinkage(rawInstanceName).toLocaleLowerCase("en-US");
+        const previousNativeName = nativeNameOwners.get(nativeNameKey);
+        if (previousNativeName !== undefined)
+            fail("AUTHORED_CONTENT_INSTANCE_NAME_COLLISION", `'${rawInstanceName}' duplicates or normalizes to the same sibling native name as '${previousNativeName}'.`);
+        nativeNameOwners.set(nativeNameKey, rawInstanceName);
         const node = normalizeNode(value, `${path}[${index}]`, scale);
         const depth = node.depth ?? index + 1;
         const previousDepth = depthOwners.get(depth);
         if (previousDepth !== undefined)
-            fail("AUTHORED_CONTENT_DEPTH_COLLISION", `${path} depth ${depth} is shared by '${previousDepth}' and '${rawInstanceName}'.`);
-        depthOwners.set(depth, rawInstanceName);
+            fail("AUTHORED_CONTENT_DEPTH_COLLISION", `${path} depth ${depth} is shared by '${previousDepth}' and '${rawInstanceId}'.`);
+        depthOwners.set(depth, rawInstanceId);
         return { ...node, depth };
     });
     return nodes.sort((left, right) => left.depth! - right.depth!);
@@ -820,7 +891,7 @@ function normalizeFrameLabels(value: unknown, totalFrames: number): Readonly<Rec
 function collectNodePaths(root: NeutralAuthoredNode): ReadonlySet<string> {
     const paths = new Set<string>();
     const visit = (node: NeutralAuthoredNode, parent: ReadonlyArray<string>) => {
-        const path = [...parent, node.linkage];
+        const path = [...parent, node.instanceId ?? node.linkage];
         paths.add(path.join("/"));
         node.children.forEach(child => visit(child, path));
     };
@@ -928,6 +999,20 @@ function requiredFiniteNumber(value: unknown, path: string): number {
     if (typeof value !== "number" || !Number.isFinite(value))
         fail("AUTHORED_CONTENT_NUMBER_REQUIRED", `${path} must be a finite number.`);
     return value;
+}
+
+function positiveSafeInteger(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (!Number.isSafeInteger(result) || result < 1)
+        fail("AUTHORED_CONTENT_POSITIVE_INTEGER_REQUIRED", `${path} must be a positive safe integer.`);
+    return result;
+}
+
+function nonNegativeSafeInteger(value: unknown, path: string): number {
+    const result = requiredFiniteNumber(value, path);
+    if (!Number.isSafeInteger(result) || result < 0)
+        fail("AUTHORED_CONTENT_NON_NEGATIVE_INTEGER_REQUIRED", `${path} must be a non-negative safe integer.`);
+    return result;
 }
 
 function sha256(value: unknown, path: string): string {

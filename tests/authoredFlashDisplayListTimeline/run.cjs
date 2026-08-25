@@ -88,14 +88,26 @@ function staticTimeline(symbolId) {
     };
 }
 
-function track(content, linkage, property) {
-    return content.timeline.tracks.find(value => value.targetPath.at(-1) === linkage && value.property === property);
+function child(content, linkage, occurrence = 0) {
+    return content.root.children.filter(value => value.linkage === linkage)[occurrence];
+}
+
+function track(content, linkage, property, occurrence = 0) {
+    const instanceId = child(content, linkage, occurrence).instanceId;
+    return content.timeline.tracks.find(value => value.targetPath.at(-1) === instanceId && value.property === property);
 }
 
 const adapter = new FlashLibrarySymbolAdapter();
 const content = adapter.parse(fixture());
 assert.equal(content.stage.frameCount, 3);
-assert.deepEqual(content.root.children.map(value => [value.linkage, value.depth]), [["character_3", 1], ["character_4", 2]]);
+assert.deepEqual(content.inertPlacementRatios, [
+    { timelineSymbolId: 10, frameIndex: 1, operationIndex: 0, depth: 1, characterId: 3, characterKind: "sprite", ratio: 1 },
+    { timelineSymbolId: 10, frameIndex: 2, operationIndex: 1, depth: 3, characterId: 4, characterKind: "sprite", ratio: 2 },
+]);
+assert.deepEqual(content.root.children.map(value => [value.linkage, value.instanceId, value.depth]), [
+    ["character_3", "character_3$d1$f1$i1", 1],
+    ["character_4", "character_4$d3$f2$i2", 2],
+]);
 assert.deepEqual(track(content, "character_3", "visible").keyframes.map(value => value.value), [true, true, false]);
 assert.deepEqual(track(content, "character_3", "alpha").keyframes.map(value => value.value), [0.5, 1, 1]);
 assert.deepEqual(track(content, "character_4", "visible").keyframes.map(value => value.value), [false, true, true]);
@@ -118,14 +130,39 @@ assert.deepEqual(
     "retained replacement matrix drifted",
 );
 
+const repeatedAnimated = fixture();
+repeatedAnimated.timelines.get(10).frames[1].operations[1].characterId = 3;
+const repeatedAnimatedContent = adapter.parse(repeatedAnimated);
+const repeatedAnimatedNodes = repeatedAnimatedContent.root.children.filter(value => value.linkage === "character_3");
+assert.equal(repeatedAnimatedNodes.length, 2, "repeated animated definition was not retained twice");
+assert.deepEqual(repeatedAnimatedNodes.map(value => value.instanceId), [
+    "character_3$d1$f1$i1", "character_3$d3$f2$i2",
+]);
+assert.deepEqual(track(repeatedAnimatedContent, "character_3", "visible", 0).keyframes.map(value => value.value), [true, true, false]);
+assert.deepEqual(track(repeatedAnimatedContent, "character_3", "visible", 1).keyframes.map(value => value.value), [false, true, true]);
+
+const zeroRatio = fixture();
+zeroRatio.timelines.get(10).frames[0].operations[0].ratio = 0;
+zeroRatio.timelines.get(10).frames[1].operations[1].ratio = 0;
+const zeroRatioContent = adapter.parse(zeroRatio);
+const withoutRatioEvidence = value => {
+    const clone = structuredClone(value);
+    delete clone.inertPlacementRatios;
+    return clone;
+};
+assert.deepEqual(withoutRatioEvidence(content), withoutRatioEvidence(zeroRatioContent),
+    "inert ratios changed native hierarchy or timeline semantics");
+
 for (const [label, mutate, expected] of [
     ["move before place", value => value.timelines.get(10).frames[0].operations[0].move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
     ["RGB color transform", value => value.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
     ["skew matrix", value => value.timelines.get(10).frames[1].operations[1].matrix.b = 0.1, /FLASH_LIBRARY_ANIMATED_MATRIX_UNSUPPORTED/],
-    ["duplicate semantic linkage", value => value.timelines.get(10).frames[1].operations[1].characterId = 3, /FLASH_LIBRARY_ANIMATED_LINKAGE_COLLISION/],
     ["declared frame-count drift", value => value.timelines.get(10).frameCount = 4, /FLASH_LIBRARY_FRAME_CLOSURE/],
     ["nonconsecutive frame index", value => value.timelines.get(10).frames[1].index = 3, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
     ["non-unit frame duration", value => value.timelines.get(10).frames[1].durationTicks = 2, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
+    ["fractional ratio", value => value.timelines.get(10).frames[0].operations[0].ratio = 1.5, /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
+    ["out-of-range ratio", value => value.timelines.get(10).frames[0].operations[0].ratio = 0x10000, /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
+    ["real morph target", value => value.library.assets[3].kind = "morph", /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/],
 ]) {
     const value = fixture();
     mutate(value);

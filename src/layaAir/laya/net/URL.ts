@@ -247,6 +247,11 @@ export class URL {
      * @return 资源 URL。
      */
     static getResURLByUUID(url: string): string {
+        // Serialized resource references may already carry an explicit scheme.
+        // Some readable authored IDs happen to match the legacy positional
+        // UUID heuristic; never prefix an already-qualified URL a second time.
+        if (url.indexOf("://") > 0)
+            return url;
         if (Utils.isUUID(url))
             return "res://" + url;
         else

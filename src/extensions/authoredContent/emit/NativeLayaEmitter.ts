@@ -22,7 +22,7 @@ export class NativeLayaEmitter {
             throw new Error("AUTHORED_CONTENT_TIMELINE_ID_REQUIRED");
         this.assertResourceBindings(content, resourceAssetIds);
         this.assertNestedTimelineBindings(content.root, nestedTimelineBindings);
-        const root = this.createNode(content.root, resourceAssetIds, nestedTimelineBindings, [content.root.linkage]);
+        const root = this.createNode(content.root, resourceAssetIds, nestedTimelineBindings, [this.instanceId(content.root)]);
         clip._setCreateURL(`res://${timelineAssetId}`, timelineAssetId);
         const AnimatorComponent = Laya.AnimatorClip2D as unknown as new () => Laya.Component;
         const animator = root.addComponent(AnimatorComponent) as unknown as Laya.AnimatorClip2D;
@@ -38,7 +38,7 @@ export class NativeLayaEmitter {
     static createNestedTimelines(content: NeutralAuthoredContentIR): ReadonlyMap<string, Laya.AnimationClip2D> {
         const timelines = new Map<string, Laya.AnimationClip2D>();
         const visit = (node: NeutralAuthoredNode, parent: ReadonlyArray<string>) => {
-            const semanticPath = [...parent, node.linkage];
+            const semanticPath = [...parent, this.instanceId(node)];
             if (node.timeline !== undefined)
                 timelines.set(semanticPath.join("/"), this.createTimelineDefinition(node.timeline, node));
             node.children.forEach(child => visit(child, semanticPath));
@@ -84,6 +84,7 @@ export class NativeLayaEmitter {
             schema: "laya-authored-content-metadata@1",
             documentId: content.documentId,
             ...(content.stage === undefined ? {} : { stage: content.stage }),
+            ...(content.inertPlacementRatios === undefined ? {} : { inertPlacementRatios: content.inertPlacementRatios }),
             rootLinkageClass: content.root.linkage,
             timelineAssetId,
             frameLabels: content.timeline.frameLabels,
@@ -134,7 +135,7 @@ export class NativeLayaEmitter {
             : source.kind === "image"
                 ? new Laya.Image()
                 : new Laya.Sprite();
-        node.name = source.name ?? source.linkage;
+        node.name = source.name ?? this.instanceId(source);
         if (source.depth !== undefined) node.zOrder = source.depth;
         if (source.x !== undefined) node.x = source.x;
         if (source.y !== undefined) node.y = source.y;
@@ -163,7 +164,7 @@ export class NativeLayaEmitter {
             child,
             resourceAssetIds,
             nestedTimelineBindings,
-            [...semanticPath, child.linkage]
+            [...semanticPath, this.instanceId(child)]
         )));
         if (source.timeline !== undefined) {
             const binding = nestedTimelineBindings.get(semanticPath.join("/"))!;
@@ -182,7 +183,7 @@ export class NativeLayaEmitter {
     ): void {
         const expected = new Set<string>();
         const visit = (node: NeutralAuthoredNode, parent: ReadonlyArray<string>) => {
-            const semanticPath = [...parent, node.linkage];
+            const semanticPath = [...parent, this.instanceId(node)];
             if (node.timeline !== undefined)
                 expected.add(semanticPath.join("/"));
             node.children.forEach(child => visit(child, semanticPath));
@@ -215,11 +216,11 @@ export class NativeLayaEmitter {
 
     private static findNestedTimeline(root: NeutralAuthoredNode, semanticPath: string): NeutralTimeline {
         const segments = semanticPath.split("/");
-        if (segments[0] !== root.linkage)
+        if (segments[0] !== this.instanceId(root))
             throw new Error(`AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_PATH_INVALID: ${semanticPath}`);
         let node = root;
         for (const segment of segments.slice(1)) {
-            const child = node.children.find(candidate => candidate.linkage === segment);
+            const child = node.children.find(candidate => this.instanceId(candidate) === segment);
             if (!child)
                 throw new Error(`AUTHORED_CONTENT_NATIVE_NESTED_TIMELINE_PATH_INVALID: ${semanticPath}`);
             node = child;
@@ -295,8 +296,8 @@ export class NativeLayaEmitter {
             nativeParent: ReadonlyArray<string>,
             isRoot: boolean
         ) => {
-            const semanticPath = [...semanticParent, node.linkage];
-            const instanceName = node.name ?? node.linkage;
+            const semanticPath = [...semanticParent, this.instanceId(node)];
+            const instanceName = node.name ?? this.instanceId(node);
             const nativePath = [...nativeParent, instanceName];
             const animatorOwnerPath = isRoot ? [] : nativePath.slice(1);
             nodes.push({
@@ -304,6 +305,7 @@ export class NativeLayaEmitter {
                 nativePath,
                 animatorOwnerPath,
                 linkageClass: node.linkage,
+                instanceId: this.instanceId(node),
                 instanceName,
                 kind: node.kind,
                 depth: node.depth,
@@ -316,6 +318,10 @@ export class NativeLayaEmitter {
         visit(root, [], [], true);
         return { nodes, nativeOwnerPaths };
     }
+
+    private static instanceId(node: NeutralAuthoredNode): string {
+        return node.instanceId ?? node.linkage;
+    }
 }
 
 export interface NativeAuthoredContentNodeMetadata {
@@ -323,6 +329,7 @@ export interface NativeAuthoredContentNodeMetadata {
     readonly nativePath: ReadonlyArray<string>;
     readonly animatorOwnerPath: ReadonlyArray<string>;
     readonly linkageClass: string;
+    readonly instanceId: string;
     readonly instanceName: string;
     readonly kind: NeutralAuthoredNode["kind"];
     readonly depth?: number;
@@ -343,6 +350,7 @@ export interface NativeAuthoredContentMetadata {
     readonly schema: "laya-authored-content-metadata@1";
     readonly documentId: string;
     readonly stage?: NeutralAuthoredContentIR["stage"];
+    readonly inertPlacementRatios?: NeutralAuthoredContentIR["inertPlacementRatios"];
     readonly rootLinkageClass: string;
     readonly timelineAssetId: string;
     readonly frameLabels: Readonly<Record<string, number>>;

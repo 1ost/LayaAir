@@ -634,7 +634,7 @@ async function main(): Promise<void> {
             "authored GlowFilter placement drifted");
         const hierarchyNode = (node: any): Record<string, unknown> => ({
             "_$type": node.kind === "image" ? "Image" : node.kind === "static-text" ? "Text" : "Sprite",
-            name: node.name ?? node.linkage,
+            name: node.name ?? node.instanceId ?? node.linkage,
             x: node.x ?? 0,
             y: node.y ?? 0,
             width: node.width ?? 0,
@@ -1488,11 +1488,22 @@ async function main(): Promise<void> {
         }
     });
 
-    await test("normalization collisions are rejected", () => {
+    await test("definition reuse is separated from placement identity and true identity collisions are rejected", () => {
         const source = sourceDocument();
         const root = source.root as any;
-        root.children.push({ linkage: "Title", kind: "container", children: [] });
-        assertThrows(() => normalizeNeutralAuthoredContent(source), "AUTHORED_CONTENT_LINKAGE_COLLISION");
+        root.children[0].instanceId = "title-at-depth-1";
+        root.children.push({ linkage: "Title", instanceId: "title-at-depth-2", kind: "container", children: [] });
+        (source.timeline as any).tracks[0].targetPath = ["Root", "title-at-depth-1"];
+        const normalized = normalizeNeutralAuthoredContent(source);
+        assert(normalized.root.children[0].linkage === "Title" && normalized.root.children[1].linkage === "Title",
+            "reused definition linkage drifted");
+        const duplicateIdentity = structuredClone(source) as any;
+        duplicateIdentity.root.children[1].instanceId = "TITLE-AT-DEPTH-1";
+        assertThrows(() => normalizeNeutralAuthoredContent(duplicateIdentity), "AUTHORED_CONTENT_INSTANCE_ID_COLLISION");
+        const duplicateName = structuredClone(source) as any;
+        duplicateName.root.children[0].name = "sameName";
+        duplicateName.root.children[1].name = "sameName";
+        assertThrows(() => normalizeNeutralAuthoredContent(duplicateName), "AUTHORED_CONTENT_INSTANCE_NAME_COLLISION");
     });
 
     await test("the same child linkage is accepted under distinct parent branches", () => {
