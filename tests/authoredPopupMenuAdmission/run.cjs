@@ -136,6 +136,42 @@ assert.deepEqual(
 );
 assert.deepEqual(popupContent.resources.map(resource => resource.sourcePath), ["sprites/menu-1.png", "sprites/menu-2.png"]);
 
+const rasterizedMorph = fixture();
+rasterizedMorph.library.assets[3] = { characterId: 3, kind: "morph" };
+rasterizedMorph.timelines.get(2).frames[0].operations[0].ratio = 123;
+const rasterizedMorphContent = adapter.parse({
+    ...rasterizedMorph,
+    entrySymbolId: 10,
+    runtimeLinkage: "fixtures.RasterizedMorph",
+    rasterizedSprites: new Map([[2, [
+        rasterFrame("sprites/morph-1.png", -3, -4, 26, 17),
+        rasterFrame("sprites/morph-2.png", -3, -4, 26, 17),
+    ]]]),
+});
+assert.deepEqual(rasterizedMorphContent.inertPlacementRatios, [{
+    timelineSymbolId: 2,
+    frameIndex: 1,
+    operationIndex: 0,
+    depth: 1,
+    characterId: 3,
+    characterKind: "morph-rasterized",
+    ratio: 123,
+}]);
+for (const ratio of [1.5, 0x10000]) {
+    const invalid = fixture();
+    invalid.library.assets[3] = { characterId: 3, kind: "morph" };
+    invalid.timelines.get(2).frames[0].operations[0].ratio = ratio;
+    assert.throws(() => adapter.parse({
+        ...invalid,
+        entrySymbolId: 10,
+        runtimeLinkage: "fixtures.InvalidRasterizedMorphRatio",
+        rasterizedSprites: new Map([[2, [
+            rasterFrame("sprites/morph-1.png", -3, -4, 26, 17),
+            rasterFrame("sprites/morph-2.png", -3, -4, 26, 17),
+        ]]]),
+    }), /FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED/);
+}
+
 const nativeText = fixture();
 nativeText.timelines.set(2, timeline(2, 2, [
     frame(1, [{ op: "place", characterId: 5, depth: 2, move: false, ratio: 0, filters: [glow()], matrix: matrix() }]),
@@ -174,7 +210,7 @@ const textureContent = adapter.parse({
 assert.equal(textureContent.root.children[0].resourceId, "flash-character-3");
 assert.equal(textureContent.resources[0].sourcePath, "shapes/3.png");
 assert.deepEqual(textureContent.root.scale9Grid, {
-    x: 12, y: 12, width: 18, height: 12, sizeGrid: [12, 10, 12, 12, 0], target: "character_3",
+    x: 12, y: 12, width: 18, height: 12, sizeGrid: [12, 10, 12, 12, 0], target: "character_3$d1$f1$i1",
 });
 
 const missingBounds = fixture();

@@ -217,7 +217,7 @@ export interface NeutralAuthoredContentIR {
     readonly root: NeutralAuthoredNode;
     readonly timeline: NeutralTimeline;
     readonly stage?: NeutralAuthoredStage;
-    /** Auditable source coordinates for ignored non-morph PlaceObject ratios. */
+    /** Auditable source coordinates for PlaceObject ratios with no native runtime effect. */
     readonly inertPlacementRatios?: ReadonlyArray<NeutralInertPlacementRatio>;
 }
 
@@ -227,7 +227,7 @@ export interface NeutralInertPlacementRatio {
     readonly operationIndex: number;
     readonly depth: number;
     readonly characterId: number;
-    readonly characterKind: "button" | "image" | "input-text" | "shape" | "sprite" | "text";
+    readonly characterKind: "button" | "image" | "input-text" | "morph-rasterized" | "shape" | "sprite" | "text";
     readonly ratio: number;
 }
 
@@ -282,7 +282,7 @@ export function normalizeNeutralAuthoredContent(input: unknown, scale = 1): Neut
 }
 
 function normalizeInertPlacementRatios(value: unknown): ReadonlyArray<NeutralInertPlacementRatio> {
-    const admittedKinds = new Set(["button", "image", "input-text", "shape", "sprite", "text"]);
+    const admittedKinds = new Set(["button", "image", "input-text", "morph-rasterized", "shape", "sprite", "text"]);
     const normalized = array(value, "inertPlacementRatios").map((entry, index) => {
         const path = `inertPlacementRatios[${index}]`;
         const source = record(entry, path);
@@ -296,7 +296,7 @@ function normalizeInertPlacementRatios(value: unknown): ReadonlyArray<NeutralIne
         const characterId = positiveSafeInteger(source.characterId, `${path}.characterId`);
         const characterKind = requiredString(source.characterKind, `${path}.characterKind`);
         if (!admittedKinds.has(characterKind))
-            fail("AUTHORED_CONTENT_INERT_RATIO_KIND_INVALID", `${path}.characterKind is not an admitted non-morph kind.`);
+            fail("AUTHORED_CONTENT_INERT_RATIO_KIND_INVALID", `${path}.characterKind is not an admitted inert or raster-baked kind.`);
         const ratio = requiredFiniteNumber(source.ratio, `${path}.ratio`);
         if (!Number.isInteger(ratio) || ratio < 1 || ratio > 0xffff)
             fail("AUTHORED_CONTENT_INERT_RATIO_RANGE", `${path}.ratio must be an integer from 1 through 65535.`);

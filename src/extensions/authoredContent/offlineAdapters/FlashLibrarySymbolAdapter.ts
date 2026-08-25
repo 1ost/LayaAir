@@ -1284,13 +1284,18 @@ function displayAlpha(value: unknown): number {
     return alpha;
 }
 
-function validateTimelineRatio(operation: Record<string, any>, asset: Record<string, any>): number | undefined {
+function validateTimelineRatio(
+    operation: Record<string, any>,
+    asset: Record<string, any>,
+    allowRasterizedMorph = false,
+): number | undefined {
     if (operation.ratio === undefined) return undefined;
     const ratio = finite(operation.ratio, "place.ratio");
     if (!Number.isInteger(ratio) || ratio < 0 || ratio > 0xffff)
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Placement ratio must fit the unsigned Flash field.");
     if (ratio === 0) return undefined;
-    if (asset.kind !== "button" && asset.kind !== "input-text" && asset.kind !== "shape"
+    if (!(allowRasterizedMorph && asset.kind === "morph")
+        && asset.kind !== "button" && asset.kind !== "input-text" && asset.kind !== "shape"
         && asset.kind !== "sprite" && asset.kind !== "text")
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", `Non-zero placement ratios require a proven non-morph character; kind '${String(asset.kind)}' remains fail-closed.`);
     return ratio;
@@ -1318,12 +1323,16 @@ function recordInertPlacementRatio(
     characterId: number,
     context: PlacementEvidenceContext | undefined,
     evidence: Map<string, NeutralInertPlacementRatio>,
+    allowRasterizedMorph = false,
 ): void {
-    const ratio = validateTimelineRatio(operation, asset);
+    const ratio = validateTimelineRatio(operation, asset, allowRasterizedMorph);
     if (ratio === undefined) return;
     if (context === undefined)
         fail("FLASH_LIBRARY_RATIO_EVIDENCE_CONTEXT_MISSING", "A non-zero inert placement ratio has no source coordinate.");
-    const characterKind = string(asset.kind, `library.assets.${characterId}.kind`) as NeutralInertPlacementRatio["characterKind"];
+    const sourceKind = string(asset.kind, `library.assets.${characterId}.kind`);
+    const characterKind = sourceKind === "morph" && allowRasterizedMorph
+        ? "morph-rasterized"
+        : sourceKind as NeutralInertPlacementRatio["characterKind"];
     const value: NeutralInertPlacementRatio = {
         timelineSymbolId: positiveInteger(context.timelineSymbolId, "ratio.timelineSymbolId"),
         frameIndex: positiveInteger(context.frameIndex, "ratio.frameIndex"),
@@ -1372,6 +1381,7 @@ function recordRasterizedTimelineInertPlacementRatios(
                 characterId,
                 { timelineSymbolId: symbolId, frameIndex: frameIndex + 1, operationIndex },
                 evidence,
+                true,
             );
         });
     });
