@@ -30,6 +30,8 @@ import type { Stage } from "./Stage";
 class NativeDisplayObjectHost extends LayaSprite {
     override get transform(): any { return super.transform; }
     override set transform(value: any) { super.transform = value; }
+    override get mask(): any { return super.mask; }
+    override set mask(value: any) { super.mask = value; }
     override getBounds(out?: any): any { return super.getBounds(out); }
     override get stage(): any { return super.stage; }
 }
@@ -151,6 +153,35 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
     /** Flash facade backed by the Sprite's native Laya transform state. */
     override get transform(): Transform { return transformForDisplayObject(this); }
     override set transform(value: Transform) { applyTransformToDisplayObject(this, value); }
+
+    /** Source-shaped mask facade backed by Laya's native Sprite mask owner. */
+    override get mask(): DisplayObject | null {
+        const value: unknown = super.mask;
+        if (value === null || value === undefined) return null;
+        if (!isFlashDisplayObject(value))
+            throw new TypeError("DisplayObject.mask contains a non-canonical native mask");
+        return value;
+    }
+    override set mask(value: DisplayObject | null) {
+        if (value !== null && !isFlashDisplayObject(value))
+            throw new TypeError("DisplayObject.mask requires a canonical DisplayObject or null");
+        if (this.destroyed) throw new Error("Cannot set mask on a destroyed DisplayObject");
+        if (value?.destroyed) throw new Error("DisplayObject.mask cannot use a destroyed DisplayObject");
+        const nativeSelf = flashDisplayObjectNativeHost(this);
+        const nativeMask = value === null ? null : flashDisplayObjectNativeHost(value);
+        if (nativeMask === nativeSelf
+            || (nativeMask && super.mask === nativeMask && nativeMask._maskParent === nativeSelf))
+            return;
+        if (nativeMask && nativeMask.isAncestorOf(nativeSelf))
+            throw new Error("Mask cannot be ancestor of the masked object");
+
+        // Flash gives a mask one owner. Laya tracks the new owner on the mask,
+        // but leaves the previous owner's `_mask` slot intact unless we release it.
+        const previousOwner = nativeMask?._maskParent;
+        if (previousOwner && previousOwner !== nativeSelf && previousOwner.mask === nativeMask)
+            previousOwner.mask = null;
+        super.mask = nativeMask;
+    }
 
     /** Flash returns detached arrays containing detached filter values. */
     override get filters(): BitmapFilter[] { return getDisplayObjectFilters(this); }
@@ -289,6 +320,10 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
 
     override destroy(destroyChild = true): void {
         runAdmittedNodeMutation(this, "destroyFlashDisplayObject", () => {
+            const ownedMask: LayaSprite | null | undefined = super.mask;
+            if (ownedMask) super.mask = null;
+            const maskOwner = this._maskParent;
+            if (maskOwner?.mask === flashDisplayObjectNativeHost(this)) maskOwner.mask = null;
             this._accessibilityProperties = null;
             this._opaqueBackground = null;
             this._scale9Grid = null;

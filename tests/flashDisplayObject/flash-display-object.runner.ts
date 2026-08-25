@@ -3,8 +3,10 @@ import test from "node:test";
 
 import { ILaya } from "../../src/layaAir/ILaya";
 import { LayaGL } from "../../src/layaAir/laya/layagl/LayaGL";
+import { NodeFlags } from "../../src/layaAir/laya/Const";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
+import { SpriteConst } from "../../src/layaAir/laya/display/SpriteConst";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
 import {
@@ -17,6 +19,7 @@ import { Shape } from "../../src/layaAir/flash/display/Shape";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
 import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
+import { TextField } from "../../src/layaAir/flash/text/TextField";
 import "../../src/layaAir/laya/ModuleDef";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
@@ -24,7 +27,13 @@ LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
 ILaya.stage = {
     _graphicUpdateList: new Set(),
     _tranMatrixUpdateList: new Set(),
+    _subpassUpdateList: new Set(),
     _componentDriver: { _toDestroys: new Set() },
+} as any;
+ILaya.timer = { callLater: (): void => undefined } as any;
+ILaya.systemTimer = {
+    callLater: (): void => undefined,
+    runCallLater: (): void => undefined,
 } as any;
 
 test("BitmapData.setVector installs clipped ARGB pixels atomically", () => {
@@ -131,6 +140,146 @@ test("authenticated Flash display objects expose their exact native Laya host id
         () => flashDisplayObjectNativeHost(null),
         /requires a canonical flash\.display\.DisplayObject/,
     );
+});
+
+test("DisplayObject.mask preserves canonical Flash identity over native clipping ownership", () => {
+    const clipped = new Sprite();
+    const firstMask = new Shape();
+    const secondMask = new Shape();
+    firstMask.graphics.drawRect(0, 0, 20, 10);
+    secondMask.graphics.drawCircle(5, 5, 5, "#ffffff");
+
+    const sourceMask: DisplayObject | null = clipped.mask;
+    assert.equal(sourceMask, null);
+    if (false) {
+        // @ts-expect-error A native Laya Sprite is not a source flash.display.DisplayObject.
+        clipped.mask = new LayaSprite();
+    }
+
+    const subpassQueue = (ILaya.stage as unknown as { _subpassUpdateList: Set<LayaSprite> })._subpassUpdateList;
+    clipped._setBit(NodeFlags.DISPLAYED_INSTAGE, true);
+    subpassQueue.clear();
+    clipped.mask = firstMask;
+
+    const clippedHost = flashDisplayObjectNativeHost(clipped);
+    const firstHost = flashDisplayObjectNativeHost(firstMask);
+    assert.equal(clipped.mask, firstMask, "the source getter preserves exact canonical object identity");
+    assert.equal(clippedHost.mask, firstHost, "the source facade installs the authenticated native host");
+    assert.equal(firstHost._maskParent, clippedHost, "detached mask ownership remains native Laya ownership");
+    assert.equal(firstMask.parent, null, "a mask does not need display-list attachment");
+    assert.equal(firstHost.cacheAs, "bitmap");
+    assert.notEqual(clippedHost._renderType & SpriteConst.MASK, 0,
+        "the native clipping render path is enabled rather than simulated by the Flash facade");
+    assert.equal(subpassQueue.size, 2);
+    assert.equal(subpassQueue.has(firstHost), true, "native mask caching remains queued");
+    assert.equal(subpassQueue.has(clippedHost), true, "the native masked owner remains queued");
+
+    subpassQueue.clear();
+    clipped.mask = secondMask;
+    assert.deepEqual([clipped.mask, firstHost._maskParent, firstHost.cacheAs], [secondMask, null, "none"]);
+    assert.deepEqual([secondMask.parent, flashDisplayObjectNativeHost(secondMask)._maskParent], [null, clippedHost]);
+    assert.equal(subpassQueue.size, 3);
+    assert.equal(subpassQueue.has(firstHost), true, "replacement queues prior-mask cache clearing");
+    assert.equal(subpassQueue.has(flashDisplayObjectNativeHost(secondMask)), true,
+        "replacement queues successor-mask caching");
+    assert.equal(subpassQueue.has(clippedHost), true, "replacement queues the masked owner");
+
+    subpassQueue.clear();
+    clipped.mask = null;
+    assert.equal(clipped.mask, null);
+    assert.equal(flashDisplayObjectNativeHost(secondMask)._maskParent, null);
+    assert.equal(flashDisplayObjectNativeHost(secondMask).cacheAs, "none");
+    assert.equal(clippedHost._renderType & SpriteConst.MASK, 0);
+    assert.equal(subpassQueue.size, 2);
+    assert.equal(subpassQueue.has(flashDisplayObjectNativeHost(secondMask)), true,
+        "clearing queues prior-mask cache clearing");
+    assert.equal(subpassQueue.has(clippedHost), true, "clearing keeps native owner invalidation");
+});
+
+test("DisplayObject.mask accepts the canonical Flash display family and transfers one owner atomically", () => {
+    const firstOwner = new Sprite();
+    const secondOwner = new Sprite();
+    const candidates: DisplayObject[] = [new DisplayObject(), new Shape(), new Bitmap(), new TextField()];
+    for (const candidate of candidates) {
+        firstOwner.mask = candidate;
+        assert.equal(firstOwner.mask, candidate);
+        secondOwner.mask = candidate;
+        assert.equal(firstOwner.mask, null, "transfer clears the prior source owner");
+        assert.equal(secondOwner.mask, candidate, "transfer preserves exact source identity");
+        assert.equal(flashDisplayObjectNativeHost(candidate)._maskParent, flashDisplayObjectNativeHost(secondOwner));
+        secondOwner.mask = null;
+    }
+
+    const retainedAncestor = new Sprite();
+    retainedAncestor.addChild(secondOwner);
+    firstOwner.mask = retainedAncestor;
+    assert.throws(() => { secondOwner.mask = retainedAncestor; }, /Mask cannot be ancestor/);
+    assert.equal(firstOwner.mask, retainedAncestor, "failed transfer preserves the prior source owner");
+    assert.equal(flashDisplayObjectNativeHost(retainedAncestor)._maskParent,
+        flashDisplayObjectNativeHost(firstOwner), "failed transfer preserves native ownership atomically");
+    assert.equal(secondOwner.mask, null, "failed validation cannot publish partial ownership");
+});
+
+test("DisplayObject destruction releases both sides of native mask ownership", () => {
+    const owner = new Sprite();
+    const mask = new Shape();
+    owner.mask = mask;
+    owner.destroy(false);
+    assert.deepEqual([flashDisplayObjectNativeHost(mask)._maskParent, flashDisplayObjectNativeHost(mask).cacheAs],
+        [null, "none"], "destroying an owner releases its retained mask");
+
+    const survivingOwner = new Sprite();
+    const destroyedMask = new Shape();
+    survivingOwner.mask = destroyedMask;
+    destroyedMask.destroy(false);
+    assert.equal(survivingOwner.mask, null, "destroying a mask clears the surviving source owner");
+    assert.equal(flashDisplayObjectNativeHost(survivingOwner)._renderType & SpriteConst.MASK, 0);
+
+    const stableOwner = new Sprite();
+    const stableMask = new Shape();
+    const unavailableMask = new Shape();
+    stableOwner.mask = stableMask;
+    unavailableMask.destroy(false);
+    assert.throws(() => { stableOwner.mask = unavailableMask; }, /cannot use a destroyed DisplayObject/);
+    assert.equal(stableOwner.mask, stableMask, "destroyed-mask rejection is atomic");
+    assert.equal(flashDisplayObjectNativeHost(stableMask)._maskParent, flashDisplayObjectNativeHost(stableOwner));
+    stableOwner.destroy(false);
+    assert.throws(() => { stableOwner.mask = new Shape(); }, /Cannot set mask on a destroyed DisplayObject/);
+});
+
+test("DisplayObject.mask rejects unauthenticated values and preserves detach and ancestor policy", () => {
+    const clipped = new Sprite();
+    const maskContainer = new Sprite();
+    const mask = new Shape();
+    maskContainer.addChild(mask);
+    maskContainer.mask = mask;
+    assert.deepEqual([maskContainer.mask, mask.parent], [mask, maskContainer],
+        "the authored child-mask topology preserves both display-list and mask identity");
+    assert.deepEqual([maskContainer.width, maskContainer.height], [0, 0],
+        "the native mask owner excludes its mask child from ordinary content bounds");
+    clipped.mask = mask;
+    assert.equal(maskContainer.mask, null, "transferring a child mask releases its prior mask owner only");
+    assert.equal(mask.parent, maskContainer, "mask transfer does not rewrite authored display-list membership");
+    mask.removeSelf();
+    assert.deepEqual([clipped.mask, mask.parent], [mask, null],
+        "display-list detachment does not sever independent native mask ownership");
+
+    assert.throws(
+        () => Reflect.set(clipped, "mask", Object.create(Shape.prototype)),
+        /requires a canonical DisplayObject or null/,
+    );
+    assert.throws(
+        () => Reflect.set(clipped, "mask", new LayaSprite()),
+        /requires a canonical DisplayObject or null/,
+    );
+    assert.equal(clipped.mask, mask, "rejected values cannot partially replace the active mask");
+
+    const child = new Sprite();
+    clipped.addChild(child);
+    assert.throws(() => { child.mask = clipped; }, /Mask cannot be ancestor/);
+    assert.equal(child.mask, null, "native ancestor rejection cannot publish partial ownership");
+    clipped.mask = clipped;
+    assert.equal(clipped.mask, mask, "native self-mask assignment remains a no-op");
 });
 
 test("DisplayObject exposes retained Flash cache, geometry and collision behavior", () => {
