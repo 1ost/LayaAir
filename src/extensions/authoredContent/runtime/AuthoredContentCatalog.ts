@@ -4,6 +4,12 @@ import { URL } from "../../../layaAir/laya/net/URL";
 import { AssetDb } from "../../../layaAir/laya/resource/AssetDb";
 import { TextResource, TextResourceFormat } from "../../../layaAir/laya/resource/TextResource";
 import type { Prefab } from "../../../layaAir/laya/resource/HierarchyResource";
+import {
+    loadAndActivateAuthoredFontCatalog,
+    type AuthoredFontCatalogActivation,
+    type AuthoredFontCatalogLoadOptions,
+    type AuthoredFontCatalogResponse,
+} from "./AuthoredFontCatalog";
 import { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } from "../../../layaAir/flash";
 import { ApplicationDomain } from "../../../layaAir/flash/system/ApplicationDomain";
 import {
@@ -32,6 +38,8 @@ export interface AuthoredCatalogBundle {
     readonly linkage: string;
     readonly sourceType: AuthoredSourceType;
     readonly prefab: string;
+    /** Authenticated embedded fonts which must be active before prefab construction. */
+    readonly fontStartup?: string;
     readonly assets: readonly AuthoredCatalogAsset[];
 }
 
@@ -83,6 +91,7 @@ export interface AuthoredContentCatalogOptions {
     readonly loader: AuthoredCatalogLoader;
     readonly applicationDomain?: ApplicationDomain;
     readonly runtimeBindings?: readonly AuthoredCatalogRuntimeBinding<any>[];
+    readonly fontCatalogOptions?: Omit<AuthoredFontCatalogLoadOptions, "applicationDomain">;
 }
 
 export interface AuthoredContentCatalogLoadOptions
@@ -91,6 +100,7 @@ export interface AuthoredContentCatalogLoadOptions
 
 export interface AuthoredContentCatalogActivation {
     readonly manifest: AuthoredContentCatalogManifest;
+    readonly fontCatalogs: readonly AuthoredFontCatalogActivation[];
     create(bundleId: string): Node;
     definitionFor(linkage: string): AuthoredPrefabDefinition<Node>;
     prefabFor(bundleId: string): Prefab;
@@ -248,6 +258,7 @@ function activateNormalizedCatalog(
         bindings,
         localized?.assetUrls ?? new Map(),
         localized?.translations ?? new Map(),
+        options.fontCatalogOptions,
     );
     byKey.set(key, { fingerprint: localized?.fingerprint ?? catalog.fingerprint, bindings, promise });
     promise.catch(() => {
@@ -264,6 +275,7 @@ async function activate(
     bindings: ReadonlyMap<string, AuthoredCatalogRuntimeBinding<any>>,
     localizedAssetUrls: ReadonlyMap<string, string>,
     translations: ReadonlyMap<string, readonly AuthoredCatalogTranslation[]>,
+    fontCatalogOptions: Omit<AuthoredFontCatalogLoadOptions, "applicationDomain"> | undefined,
 ): Promise<AuthoredContentCatalogActivation> {
     const runtimeLinkages: AuthoredRuntimeLinkage[] = [];
     const assetClaims: Array<{ id: string; url: string; previous: string | undefined }> = [];
@@ -298,6 +310,17 @@ async function activate(
         if (missingAsset !== -1)
             throw new Error(`Authored content catalog asset failed to load: ${assetLabels[missingAsset]}`);
 
+        const fontStartupUrls = [...new Set(manifest.bundles
+            .map(bundle => bundle.fontStartup)
+            .filter((value): value is string => value !== undefined)
+            .map(value => URL.join(baseUrl, value)))];
+        const fontCatalogs = await Promise.all(fontStartupUrls.map(startupUrl =>
+            loadAndActivateAuthoredFontCatalog(startupUrl, {
+                ...fontCatalogOptions,
+                applicationDomain: domain,
+                fetch: fontCatalogOptions?.fetch ?? catalogFontFetch(loader),
+            })));
+
         const loaded = await Promise.all(manifest.bundles.map(async bundle => {
             const prefabUrl = URL.join(baseUrl, bundle.prefab);
             const prefab = await loader.load(prefabUrl, Loader.HIERARCHY) as Prefab | null;
@@ -331,6 +354,7 @@ async function activate(
 
         return Object.freeze({
             manifest,
+            fontCatalogs: Object.freeze(fontCatalogs),
             create(bundleId: string): Node {
                 const bundle = manifest.bundles.find(candidate => candidate.id === bundleId);
                 if (!bundle) throw new Error(`Unknown authored content bundle '${bundleId}'`);
@@ -376,6 +400,27 @@ function registerAssetUrls(
     }
 }
 
+/** Adapts the catalog's authenticated Laya loader to the font catalog fetch seam. */
+function catalogFontFetch(loader: AuthoredCatalogLoader): NonNullable<AuthoredFontCatalogLoadOptions["fetch"]> {
+    return async (input, init): Promise<AuthoredFontCatalogResponse> => {
+        if (init.signal?.aborted) throw init.signal.reason;
+        const loaded = await loader.load(input, Loader.BUFFER);
+        let buffer: ArrayBuffer | null = null;
+        if (loaded instanceof ArrayBuffer)
+            buffer = loaded.slice(0);
+        else if (ArrayBuffer.isView(loaded))
+            buffer = loaded.buffer.slice(loaded.byteOffset, loaded.byteOffset + loaded.byteLength) as ArrayBuffer;
+        return {
+            ok: buffer !== null,
+            status: buffer === null ? 404 : 200,
+            async arrayBuffer(): Promise<ArrayBuffer> {
+                if (buffer === null) throw new Error(`Authored font catalog failed to load: ${input}`);
+                return buffer.slice(0);
+            },
+        };
+    };
+}
+
 function normalizeCatalog(value: unknown): NormalizedCatalog {
     const source = requirePlainRecord(value, "catalog");
     requireExactKeys(source, ["schema", "id", "bundles"], "catalog");
@@ -391,13 +436,20 @@ function normalizeCatalog(value: unknown): NormalizedCatalog {
     const bundles = source.bundles.map((entry, index): AuthoredCatalogBundle => {
         const path = `catalog.bundles[${index}]`;
         const bundle = requirePlainRecord(entry, path);
-        requireExactKeys(bundle, ["id", "runtimeId", "linkage", "sourceType", "prefab", "assets"], path);
+        const hasFontStartup = Object.prototype.hasOwnProperty.call(bundle, "fontStartup");
+        requireExactKeys(bundle, [
+            "id", "runtimeId", "linkage", "sourceType", "prefab", "assets",
+            ...(hasFontStartup ? ["fontStartup"] : []),
+        ], path);
         const bundleId = requireUnique(bundle.id, `${path}.id`, bundleIds);
         const runtimeId = requireUniqueApplicationId(bundle.runtimeId, `${path}.runtimeId`, runtimeIds);
         const linkage = requireUniqueApplicationId(bundle.linkage, `${path}.linkage`, linkages);
         const sourceType = bundle.sourceType as AuthoredSourceType;
         if (!(sourceType in SOURCE_TYPES)) throw new TypeError(`${path}.sourceType is unsupported`);
         const prefab = requireRelativePath(bundle.prefab, `${path}.prefab`);
+        const fontStartup = hasFontStartup
+            ? requireRelativePath(bundle.fontStartup, `${path}.fontStartup`)
+            : undefined;
         if (!Array.isArray(bundle.assets)) throw new TypeError(`${path}.assets must be an array`);
         const assets = bundle.assets.map((assetValue, assetIndex): AuthoredCatalogAsset => {
             const assetPath = `${path}.assets[${assetIndex}]`;
@@ -409,7 +461,11 @@ function normalizeCatalog(value: unknown): NormalizedCatalog {
                 throw new TypeError(`${assetPath}.kind must be image or timeline`);
             return Object.freeze({ id: assetId, path: outputPath, kind: asset.kind });
         });
-        return Object.freeze({ id: bundleId, runtimeId, linkage, sourceType, prefab, assets: Object.freeze(assets) });
+        return Object.freeze({
+            id: bundleId, runtimeId, linkage, sourceType, prefab,
+            ...(fontStartup === undefined ? {} : { fontStartup }),
+            assets: Object.freeze(assets),
+        });
     });
     const manifest = Object.freeze({ schema: AUTHORED_CONTENT_CATALOG_SCHEMA, id, bundles: Object.freeze(bundles) });
     return { manifest, fingerprint: JSON.stringify(manifest) };

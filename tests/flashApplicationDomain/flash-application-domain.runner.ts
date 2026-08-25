@@ -226,6 +226,42 @@ test("authored catalogs own asset loading and ApplicationDomain publication", as
     assert.equal(calls.length, 3);
 });
 
+test("authored catalogs activate embedded-font startup before loading or constructing prefabs", async () => {
+    const domain = new ApplicationDomain();
+    const calls: Array<[string, string | undefined]> = [];
+    const manifest: AuthoredContentCatalogManifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.font-startup-order",
+        bundles: [{
+            id: "font-entry",
+            runtimeId: "fixtures.catalog.FontStartupOrder",
+            linkage: "MC_FontStartupOrder",
+            sourceType: "MovieClip",
+            prefab: "native/font-entry.lh",
+            fontStartup: "native/font-entry.font-startup.json",
+            assets: [],
+        }],
+    };
+    const invalidStartup = new TextEncoder().encode("{}\n").buffer;
+    await assert.rejects(activateAuthoredContentCatalog(manifest, {
+        baseUrl: "/fixtures/catalog/",
+        applicationDomain: domain,
+        loader: {
+            async load(url: string, type?: string): Promise<unknown> {
+                calls.push([url, type]);
+                if (url.endsWith(".font-startup.json") && type === Loader.BUFFER)
+                    return invalidStartup;
+                throw new Error(`prefab loaded before font startup: ${url}`);
+            },
+        },
+    }), /startup must contain exactly/);
+    assert.deepEqual(calls, [[
+        "/fixtures/catalog/native/font-entry.font-startup.json",
+        Loader.BUFFER,
+    ]]);
+    assert.equal(domain.hasDefinition("MC_FontStartupOrder"), false);
+});
+
 test("authored catalogs reject data drift, path escape and asset collisions", async () => {
     const domain = new ApplicationDomain();
     const loader = { load: async () => ({ create: () => createCatalogClip() }) };
