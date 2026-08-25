@@ -299,7 +299,7 @@ export class RigidBody extends ColliderBase {
         let rotateValue = factory.get_RigidBody_Angle(this._box2DBody);
         _tempP0.x = pos.x;
         _tempP0.y = pos.y;
-        let globalPos = this.owner.parent.localToGlobal(_tempP0);
+        let globalPos = (this.owner._$parent as Sprite).localToGlobal(_tempP0);
         // globalPos 已是 stage 设计坐标系（localToGlobal 在 stage 处停止，不含 stage.clientScale），即等同 box2D 物理空间，无需再 toPhysics 缩放
         factory.set_RigibBody_Transform(this._box2DBody, globalPos.x, globalPos.y, rotateValue);
         factory.set_rigidBody_Awake(this._box2DBody, true);
@@ -322,7 +322,7 @@ export class RigidBody extends ColliderBase {
         // box2D 物理空间坐标即 stage 设计坐标系（不含 clientScale），直接做 global->local，无需 toRender 缩放
         _tempP0.x = pos.x;
         _tempP0.y = pos.y;
-        let localPos = this.owner.parent.globalToLocal(_tempP0);
+        let localPos = (this.owner._$parent as Sprite).globalToLocal(_tempP0);
         _tempP0.x = localPos.x;
         _tempP0.y = localPos.y;
         return _tempP0;

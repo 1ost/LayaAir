@@ -1,4 +1,5 @@
 import { Node as LayaNode } from "../../laya/display/Node";
+import { registerSourceDisplayObjectContainerResolver } from "../../laya/display/SourceStageViewRegistry";
 import { DisplayObject } from "./DisplayObject";
 import { InteractiveObject } from "./InteractiveObject";
 
@@ -41,3 +42,6 @@ export class DisplayObjectContainer extends InteractiveObject {
         return super.removeChildByName(name, destroy) as DisplayObject;
     }
 }
+
+registerSourceDisplayObjectContainerResolver(value =>
+    isFlashDisplayObjectContainer(value) ? value : null);

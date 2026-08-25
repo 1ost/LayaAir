@@ -9,6 +9,7 @@ import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRen
 import { SpriteConst } from "../../src/layaAir/laya/display/SpriteConst";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
+import { Rectangle as LayaRectangle } from "../../src/layaAir/laya/maths/Rectangle";
 import {
     DisplayObject,
     flashDisplayObjectNativeHost,
@@ -17,6 +18,8 @@ import { Bitmap } from "../../src/layaAir/flash/display/Bitmap";
 import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { Shape } from "../../src/layaAir/flash/display/Shape";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
+import { DisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer";
+import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
 import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
 import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
@@ -118,6 +121,80 @@ test("Flash display parent normalizes unattached nodes to null without changing 
     display.removeSelf();
     assert.equal(display.parent, null);
     assert.equal(root.numChildren, 0);
+});
+
+test("Flash display parent is source-typed for direct container identity and reordering", () => {
+    const firstParent = new MovieClip();
+    const secondParent = new MovieClip();
+    const first = new Bitmap();
+    const second = new Bitmap();
+    firstParent.addChild(first);
+    firstParent.addChild(second);
+
+    const typedParent: DisplayObjectContainer | null = first.parent;
+    assert.equal(typedParent, firstParent);
+    if (first.parent === firstParent) firstParent.setChildIndex(first, 1);
+    assert.deepEqual([firstParent.getChildAt(0), firstParent.getChildAt(1)], [second, first]);
+
+    secondParent.addChild(first);
+    assert.equal(first.parent, secondParent, "reparenting publishes the exact second source container");
+    secondParent.removeChild(first);
+    assert.equal(first.parent, null);
+
+    firstParent.addChild(first);
+    first.destroy();
+    assert.equal(first.parent, null, "destroy clears source parent identity");
+
+    const rawParent = new LayaSprite();
+    const hosted = new Bitmap();
+    rawParent.addChild(hosted);
+    assert.throws(() => hosted.parent, /canonical Flash container or live Stage/,
+        "an unrelated native parent never leaks through the source facade");
+    rawParent.removeChild(hosted);
+    assert.equal(hosted.parent, null);
+});
+
+test("DisplayObject.scrollRect bridges detached Flash values into native clipping lifecycle", () => {
+    const display = new Sprite();
+    const supplied = new Rectangle(3, 4, 20, 10);
+
+    assert.equal(display.scrollRect, null);
+    display.scrollRect = supplied;
+    supplied.x = 99;
+
+    const nativeClip = display._scrollRect;
+    assert.ok(nativeClip instanceof LayaRectangle, "the renderer receives its canonical native rectangle");
+    assert.deepEqual([nativeClip.x, nativeClip.y, nativeClip.width, nativeClip.height], [3, 4, 20, 10]);
+    assert.notEqual(display._renderType & SpriteConst.CLIP, 0, "native clipping is enabled");
+    const renderClip = (display._struct as unknown as { _clipRect: LayaRectangle | null })._clipRect;
+    assert.equal(renderClip, nativeClip, "the native render structure receives the converted clip");
+
+    const read = display.scrollRect!;
+    assert.ok(read instanceof Rectangle);
+    assert.deepEqual([read.x, read.y, read.width, read.height], [3, 4, 20, 10]);
+    read.y = 88;
+    assert.equal(display.scrollRect!.y, 4, "Flash reads are detached from renderer state");
+    display.scrollRect = read;
+    assert.deepEqual([display._scrollRect.x, display._scrollRect.y], [3, 88],
+        "reassigning the detached source value republishes native clipping");
+
+    display.scrollRect = new Rectangle(1, 2, -7, -9);
+    assert.deepEqual([display.scrollRect!.x, display.scrollRect!.y,
+        display.scrollRect!.width, display.scrollRect!.height], [1, 2, 0, 0],
+    "Flash scrollRect clamps negative dimensions at the native boundary");
+    display.scrollRect = new Rectangle(0, 0, -0, Number.NaN);
+    assert.equal(Object.is(display.scrollRect!.width, -0), true, "nonnegative signed zero is preserved");
+    assert.equal(Number.isNaN(display.scrollRect!.height), true, "NaN is preserved by Flash comparison coercion");
+
+    assert.throws(() => display.scrollRect = new LayaRectangle() as unknown as Rectangle,
+        /requires a Rectangle or null/);
+    assert.deepEqual([display._scrollRect.x, display._scrollRect.y], [0, 0],
+        "rejected values do not partially mutate native clipping");
+
+    display.scrollRect = null;
+    assert.equal(display._scrollRect, null);
+    assert.equal(display._renderType & SpriteConst.CLIP, 0, "clearing the Flash value disables native clipping");
+    assert.equal(display.scrollRect, null);
 });
 
 test("authenticated Flash display objects expose their exact native Laya host identity", () => {

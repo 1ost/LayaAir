@@ -23,8 +23,8 @@ export function setInputEventOwner(input: Input, owner: Node | null): void {
         INPUT_EVENT_OWNERS.delete(input);
         return;
     }
-    let ancestor = input.parent;
-    while (ancestor && ancestor !== owner) ancestor = ancestor.parent;
+    let ancestor = input._$parent;
+    while (ancestor && ancestor !== owner) ancestor = ancestor._$parent;
     if (ancestor !== owner) throw new TypeError("Input event owner must be an ancestor of the composed Input");
     INPUT_EVENT_OWNERS.set(input, owner);
 }
@@ -34,8 +34,8 @@ export function getInputEventOwner(value: unknown): Node | null {
     if (!isLayaInput(value)) return null;
     const owner = INPUT_EVENT_OWNERS.get(value);
     if (!owner) return null;
-    let ancestor = value.parent;
-    while (ancestor && ancestor !== owner) ancestor = ancestor.parent;
+    let ancestor = value._$parent;
+    while (ancestor && ancestor !== owner) ancestor = ancestor._$parent;
     if (ancestor === owner) return owner;
     INPUT_EVENT_OWNERS.delete(value);
     return null;

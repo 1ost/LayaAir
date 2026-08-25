@@ -281,7 +281,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38"
+          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
         }
       ],
       "evidence": [
@@ -293,8 +293,8 @@
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38"
+            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
           ]
         }
       ]
@@ -316,7 +316,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38"
+          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
         }
       ],
       "evidence": [
@@ -326,8 +326,8 @@
           "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
           "capability": "rendering.color-transform",
           "covers": [
+            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
           ]
         }
@@ -2625,7 +2625,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -4804,7 +4804,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -5387,7 +5387,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38",
+          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
           "heritage": [
             {
               "kind": "extends",
@@ -7023,7 +7023,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -7624,7 +7624,7 @@
             "new (): DisplayObjectContainer"
           ],
           "indexSignatures": [],
-          "sha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
+          "sha256": "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95",
           "heritage": [
             {
               "kind": "extends",
@@ -9256,7 +9256,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -11615,7 +11615,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -14002,7 +14002,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -16271,7 +16271,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -18486,7 +18486,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -19551,7 +19551,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
+          "sha256": "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f",
           "heritage": []
         },
         {
@@ -19587,28 +19587,28 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38"
+          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
           "export": "isFlashDisplayObjectContainer",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObjectContainer",
-          "sha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27"
+          "sha256": "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageBootstrap",
           "kind": "interface",
           "signature": "any",
-          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
+          "sha256": "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageBootstrapOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
+          "sha256": "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -20088,14 +20088,14 @@
           "export": "FlashStageViewport",
           "kind": "interface",
           "signature": "any",
-          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
+          "sha256": "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f"
         },
         {
           "module": "src/layaAir/flash/display/FlashStageBoundary.ts",
           "export": "FlashStageViewportOwner",
           "kind": "interface",
           "signature": "any",
-          "sha256": "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394"
+          "sha256": "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f"
         },
         {
           "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
@@ -20115,7 +20115,7 @@
           ],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "0c183c816d8f0584029bc83e9bbe1e3c0c478881d621f99c000a15f8441d16ea",
+          "sha256": "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
           "heritage": []
         },
         {
@@ -20123,14 +20123,14 @@
           "export": "FlashDisplayRootLease",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c183c816d8f0584029bc83e9bbe1e3c0c478881d621f99c000a15f8441d16ea"
+          "sha256": "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a"
         },
         {
           "module": "src/layaAir/flash/display/FlashDisplayRootBoundary.ts",
           "export": "FlashDisplayRootOptions",
           "kind": "interface",
           "signature": "any",
-          "sha256": "0c183c816d8f0584029bc83e9bbe1e3c0c478881d621f99c000a15f8441d16ea"
+          "sha256": "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a"
         },
         {
           "module": "src/layaAir/flash/display/Loader.ts",
@@ -22062,7 +22062,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -23075,6 +23075,15 @@
             {
               "abstract": false,
               "kind": "method",
+              "name": "getChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(child: DisplayObject) => number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
               "name": "hasEventListener",
               "scope": "instance",
               "optional": false,
@@ -23089,6 +23098,33 @@
               "optional": false,
               "readonly": false,
               "signature": "FlashStageLoaderInfo"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get",
+              "name": "mouseY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "name",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
             },
             {
               "abstract": false,
@@ -23164,6 +23200,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "setChildIndex",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "<T extends DisplayObject>(child: T, index: number) => T"
+            },
+            {
+              "abstract": false,
               "kind": "get+set",
               "name": "showDefaultContextMenu",
               "scope": "instance",
@@ -23200,6 +23245,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "visible",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "willTrigger",
               "scope": "instance",
@@ -23230,7 +23284,7 @@
             "new (token: typeof STAGE_TOKEN, nativeStage: LayaStage): Stage"
           ],
           "indexSignatures": [],
-          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829",
+          "sha256": "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
           "heritage": []
         },
         {
@@ -23238,14 +23292,14 @@
           "export": "FlashStageLoaderInfo",
           "kind": "interface",
           "signature": "any",
-          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829"
+          "sha256": "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852"
         },
         {
           "module": "src/layaAir/flash/display/Stage.ts",
           "export": "isFlashStage",
           "kind": "function",
           "signature": "(value: unknown) => value is Stage",
-          "sha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829"
+          "sha256": "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
@@ -23284,26 +23338,26 @@
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
-            "0c183c816d8f0584029bc83e9bbe1e3c0c478881d621f99c000a15f8441d16ea",
+            "10635d4104a7faaa550504f520b85d6e9f67621611595c2eee70935947afa89f",
             "12114365a8e7c82af69662adf3e23511ca5a4a933c37add49f19143c9ef0726e",
             "2708bec5931d56f474e03eeb7dfe4ad61e327c8364f52a41c5aa65225ecde313",
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "32b6c87378aecd3dbe8367c9feefeeac93fe69482c49fbd1be9615b3f943a5a7",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
+            "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
+            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
-            "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38",
+            "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
             "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
-            "76c7d0bf314aaea0571225511820bda1bc00e1713edb1e7c0ca8b5c963187394",
+            "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
-            "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829",
-            "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27",
             "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
@@ -26616,7 +26670,7 @@
             "new (host: NativeEventHost, _eventTargetProjector?: (target: unknown) => unknown): FlashEventRouter"
           ],
           "indexSignatures": [],
-          "sha256": "cda3992175adde55f1acd491f85188e1732f40d5f44559af12e38b45f8b8364c",
+          "sha256": "5ca6d4168909f684cc8c580a26796c18dc7d0d861ca03a6f59c33c7685bbb345",
           "heritage": []
         },
         {
@@ -28583,14 +28637,14 @@
           "export": "FlashEventListener",
           "kind": "type",
           "signature": "any",
-          "sha256": "cda3992175adde55f1acd491f85188e1732f40d5f44559af12e38b45f8b8364c"
+          "sha256": "5ca6d4168909f684cc8c580a26796c18dc7d0d861ca03a6f59c33c7685bbb345"
         },
         {
           "module": "src/layaAir/flash/events/FlashEventRouter.ts",
           "export": "NativeEventHost",
           "kind": "interface",
           "signature": "any",
-          "sha256": "cda3992175adde55f1acd491f85188e1732f40d5f44559af12e38b45f8b8364c"
+          "sha256": "5ca6d4168909f684cc8c580a26796c18dc7d0d861ca03a6f59c33c7685bbb345"
         },
         {
           "module": "src/layaAir/flash/events/FocusEvent.ts",
@@ -30849,6 +30903,7 @@
             "30c524709774d16ea9d5d8460399fcbefaf7a4ebf293c25f675852376a64ad0b",
             "411354127815adf63731804018ece80b3c97a4a6fe8047933ca303517ecf6eb7",
             "4eb7e6334d55b763bca7f645bb0c316fcb1987ecd87f917e95414f0d6d8a4f4f",
+            "5ca6d4168909f684cc8c580a26796c18dc7d0d861ca03a6f59c33c7685bbb345",
             "6809afc12f2fbd6ea6a3bc2ddc5f9ff69294c27acda392da6c7149f9dcdf0d42",
             "7f195dd28fae4b0745346aee53c770231e3f21b0995cd176cab0b257fa9904bc",
             "80e1d7a3f3018530b0605569e5830ac818f2903200da8d44c3bd37ed6511784e",
@@ -30856,7 +30911,6 @@
             "a22a84626ec22d738545ca5dc2ffe8ddca6bfea852d3d3c30c6cb4502e9cc782",
             "b13628c2b7dc9b7a9f8d28eb755793136225ea530353d9d5e81be239ce401509",
             "c54db5f2cc0ab5ffc0c7b7b75b4964973bb9ffd8722f2bf02c0635eb187c14eb",
-            "cda3992175adde55f1acd491f85188e1732f40d5f44559af12e38b45f8b8364c",
             "dbc1e1e785a4d057f22ce03e0382498c842a7884a66d8ff3ebd72416f5c06f70",
             "f80b38a39323e39516e3bad22f42d2ddffc82715d7f35ebe695073f9a6a61542"
           ]
@@ -32815,7 +32869,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -35982,7 +36036,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "Sprite"
+              "signature": "DisplayObjectContainer"
             },
             {
               "abstract": false,
@@ -39101,7 +39155,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2169",
+              "name": "__@iterator@2176",
               "scope": "instance",
               "optional": false,
               "readonly": false,

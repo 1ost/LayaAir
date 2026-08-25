@@ -64,7 +64,7 @@ try {
     if (frames !== 1 || identities.length !== 3
         || identities.some(([target, currentTarget]) => target !== sourceStage || currentTarget !== sourceStage
             || target === stage || currentTarget === stage)
-        || root.parent !== stage || !lease.attached || !Object.isFrozen(lease)
+        || !Object.is(root.parent, sourceStage) || !lease.attached || !Object.isFrozen(lease)
         || JSON.stringify(Reflect.ownKeys(lease).map(String)) !== JSON.stringify(leaseKeys.map(String)))
         throw new Error("actual Laya producers did not preserve public Stage and frozen lease identity");
     let disposedEvents = 0;

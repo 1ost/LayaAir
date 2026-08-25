@@ -2,7 +2,11 @@ import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Point as LayaPoint } from "../../laya/maths/Point";
 import { Rectangle as LayaRectangle } from "../../laya/maths/Rectangle";
-import { sourceStageViewForDisplayObject } from "../../laya/display/SourceStageViewRegistry";
+import {
+    sourceDisplayObjectContainerForNativeParent,
+    sourceStageViewForDisplayObject,
+    sourceStageViewForNativeParent,
+} from "../../laya/display/SourceStageViewRegistry";
 import {
     AccessibilityProperties, isFlashAccessibilityProperties
 } from "../accessibility/AccessibilityProperties";
@@ -21,6 +25,7 @@ import {
     transformForDisplayObject,
 } from "../geom/Transform";
 import type { LoaderInfo } from "./Loader";
+import type { DisplayObjectContainer } from "./DisplayObjectContainer";
 import type { Stage } from "./Stage";
 
 /**
@@ -28,6 +33,9 @@ import type { Stage } from "./Stage";
  * Flash subclass exposes an unrelated source-shaped Transform facade.
  */
 class NativeDisplayObjectHost extends LayaSprite {
+    override get parent(): any { return super.parent; }
+    override get scrollRect(): any { return super.scrollRect; }
+    override set scrollRect(value: any) { super.scrollRect = value; }
     override get transform(): any { return super.transform; }
     override set transform(value: any) { super.transform = value; }
     override get mask(): any { return super.mask; }
@@ -90,6 +98,39 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
         // Flash requires an unattached DisplayObject to expose an explicit null parent.
         this._$parent = null;
         DISPLAY_OBJECT_VALUES.add(this);
+    }
+
+    /**
+     * Source-shaped identity over Laya's exact native parent. Native containers
+     * never leak through the Flash facade, while the one live Stage is projected
+     * to its stable source view.
+     */
+    override get parent(): DisplayObjectContainer | null {
+        const nativeParent = super.parent as object | null;
+        if (nativeParent == null) return null;
+        const container = sourceDisplayObjectContainerForNativeParent(nativeParent);
+        if (container !== null) return container as DisplayObjectContainer;
+        const stage = sourceStageViewForNativeParent(nativeParent);
+        // AIR declares parent as DisplayObjectContainer. This repository's Stage
+        // is a composed source view, so the authenticated provider projection is
+        // intentionally typed at the declaration seam without minting container identity.
+        if (stage !== null) return stage as DisplayObjectContainer;
+        throw new TypeError("DisplayObject.parent requires a canonical Flash container or live Stage");
+    }
+
+    /** Detached Flash rectangle view backed by Laya's native clipping state. */
+    override get scrollRect(): Rectangle | null {
+        const value = super.scrollRect as LayaRectangle | null;
+        return value == null ? null : new Rectangle(value.x, value.y, value.width, value.height);
+    }
+    override set scrollRect(value: Rectangle | null) {
+        if (value !== null && !isFlashRectangle(value))
+            throw new TypeError("DisplayObject.scrollRect requires a Rectangle or null");
+        super.scrollRect = value === null
+            ? null
+            : new LayaRectangle(value.x, value.y,
+                value.width < 0 ? 0 : value.width,
+                value.height < 0 ? 0 : value.height);
     }
 
     /** Flash reports transformed content bounds when no explicit size was assigned. */

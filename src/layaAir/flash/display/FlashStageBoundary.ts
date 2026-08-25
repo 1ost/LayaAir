@@ -171,7 +171,9 @@ export class FlashStageBoundary {
         let node: LayaNode | null = value;
         while (node) {
             if (node === stage) return stage;
-            node = node.parent;
+            // Public Flash parent projection may return a source Stage view;
+            // native ancestry remains authoritative for attachment discovery.
+            node = node._$parent;
         }
         return null;
     }

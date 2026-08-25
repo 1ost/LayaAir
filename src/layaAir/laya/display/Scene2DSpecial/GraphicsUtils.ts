@@ -497,7 +497,7 @@ export class SubStructRender {
 
       let logicMatrix = this._logicMatrix;
       let spriteGlobal = sprite.globalTrans.getMatrix();
-      let parent = sprite.parent ? sprite.parent : sprite._maskParent;
+      let parent = sprite._$parent ? sprite._$parent as Sprite : sprite._maskParent;
       let parentGlobal = parent.globalTrans.getMatrix();
       parentGlobal.copyTo(logicMatrix);
 

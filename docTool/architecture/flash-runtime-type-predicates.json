@@ -58,7 +58,7 @@
       "predicateExport": "isFlashDisplayObject",
       "predicateSignature": "(value: unknown) => value is DisplayObject",
       "heritageClosure": [],
-      "moduleSha256": "68ebffe7a21d04efa71c0560a0b008bf929d88732d2affb8ca674c32771f7a38"
+      "moduleSha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
     },
     {
       "sourceQName": "flash.display.DisplayObjectContainer",
@@ -75,7 +75,7 @@
         "flash.display.InteractiveObject",
         "flash.display.DisplayObject"
       ],
-      "moduleSha256": "d41a35cc829be5f0011c8dbd89fc3e108ee9176a61bff538eff4b640d8021d27"
+      "moduleSha256": "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95"
     },
     {
       "sourceQName": "flash.display.Graphics",
@@ -223,7 +223,7 @@
       "predicateExport": "isFlashStage",
       "predicateSignature": "(value: unknown) => value is Stage",
       "heritageClosure": [],
-      "moduleSha256": "b1055a901dde28af630ae73bef3c0648c38fa060fbcbb50f992ad509c384e829"
+      "moduleSha256": "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852"
     },
     {
       "sourceQName": "flash.events.ContextMenuEvent",

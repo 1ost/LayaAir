@@ -272,11 +272,14 @@ export class FlashEventRouter {
     private _route(event: Event, target: unknown, targetRouter = FlashEventRouter.forHost(target) ?? this): void {
         const path: FlashEventRouter[] = [targetRouter];
         if (event.bubbles && target instanceof LayaNode) {
-            let node = target.parent;
+            // Source DisplayObject.parent may project the composed Stage view;
+            // routing remains anchored to the exact native Laya ancestry whose
+            // routers project public currentTarget values at invocation time.
+            let node = target._$parent;
             while (node) {
                 const router = FlashEventRouter.forHost(node);
                 if (router) path.push(router);
-                node = node.parent;
+                node = node._$parent;
             }
         }
 

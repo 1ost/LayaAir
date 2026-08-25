@@ -105,6 +105,12 @@ export class Stage {
 
     get stageWidth(): number { return FlashStageBoundary.getWidth(requireView(this).stage); }
     get stageHeight(): number { return FlashStageBoundary.getHeight(requireView(this).stage); }
+    get name(): string { return requireView(this).stage.name; }
+    set name(value: string) { requireView(this).stage.name = String(value); }
+    get mouseX(): number { return requireView(this).stage.mouseX; }
+    get mouseY(): number { return requireView(this).stage.mouseY; }
+    get visible(): boolean { return requireView(this).stage.visible; }
+    set visible(value: boolean) { requireView(this).stage.visible = !!value; }
 
     get focus(): InteractiveObject | null { return FlashStageBoundary.getFocus(requireView(this).stage); }
     set focus(value: InteractiveObject | null) { FlashStageBoundary.setFocus(requireView(this).stage, value); }
@@ -141,6 +147,19 @@ export class Stage {
     getChildByName(name: string): DisplayObject | null {
         const child = requireView(this).stage.getChildByName<LayaNode>(name);
         return child == null ? null : requireChild(child);
+    }
+
+    getChildIndex(child: DisplayObject): number {
+        const { stage } = requireView(this);
+        requireChild(child);
+        return stage.getChildIndex(child);
+    }
+
+    setChildIndex<T extends DisplayObject>(child: T, index: number): T {
+        const { stage } = requireView(this);
+        requireChild(child);
+        stage.setChildIndex(child, index);
+        return child;
     }
 
     removeChild<T extends DisplayObject>(child: T): T {
@@ -187,4 +206,9 @@ export class Stage {
     }
 }
 
-registerSourceStageViewResolver(value => Stage.forDisplayObject(value as DisplayObject));
+registerSourceStageViewResolver(
+    value => Stage.forDisplayObject(value as DisplayObject),
+    value => value === ILaya.stage && isLayaStage(value) && !value.destroyed
+        ? Stage.fromNative(value)
+        : null,
+);

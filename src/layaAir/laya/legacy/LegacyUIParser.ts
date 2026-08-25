@@ -115,7 +115,7 @@ export class LegacyUIParser {
         //设置组件
         tInitTool.finish();
         //root._setBit(NodeFlags.NOT_READY, false);
-        if (root.parent && root.parent.activeInHierarchy && root.active)
+        if (root._$parent && root._$parent.activeInHierarchy && root.active)
             root._processActive(true);
         return root;
     }

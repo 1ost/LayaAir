@@ -40,18 +40,18 @@ export class Widget extends Component {
     }
 
     protected _onEnable(): void {
-        if (this.owner.parent) this._onAdded();
+        if (this.owner._$parent) this._onAdded();
         else this.owner.once(Event.ADDED, this, this._onAdded);
     }
 
     protected _onDisable(): void {
         this.owner.off(Event.ADDED, this, this._onAdded);
-        if (this.owner.parent) this.owner.parent.off(Event.RESIZE, this, this._onParentResize);
+        if (this.owner._$parent) this.owner._$parent.off(Event.RESIZE, this, this._onParentResize);
     }
 
     protected _onAdded(): void {
-        if (this.owner.parent)
-            this.owner.parent.on(Event.RESIZE, this, this._onParentResize);
+        if (this.owner._$parent)
+            this.owner._$parent.on(Event.RESIZE, this, this._onParentResize);
         this.resetLayoutX();
         this.resetLayoutY();
     }
@@ -72,7 +72,7 @@ export class Widget extends Component {
     resetLayoutX(): boolean {
         var owner: Sprite = this.owner;
         if (!owner) return false;
-        var parent: Sprite = owner.parent;
+        var parent: Sprite = owner._$parent as Sprite;
         if (parent) {
             if (this._centerX != null) {
                 owner.x = Math.round((parent.width - owner.displayWidth) * 0.5 + this._centerX + owner.pivotX * owner.scaleX);
@@ -101,7 +101,7 @@ export class Widget extends Component {
     resetLayoutY(): boolean {
         var owner: Sprite = this.owner;
         if (!owner) return false;
-        var parent: Sprite = owner.parent;
+        var parent: Sprite = owner._$parent as Sprite;
         if (parent) {
             if (this._centerY != null) {
                 owner.y = Math.round((parent.height - owner.displayHeight) * 0.5 + this._centerY + owner.pivotY * owner.scaleY);

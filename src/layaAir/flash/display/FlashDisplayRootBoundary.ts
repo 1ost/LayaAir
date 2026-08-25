@@ -78,7 +78,9 @@ function requireCurrentStage(stage: LayaStage): LayaStage {
 }
 
 function isPublished<TRoot extends LayaNode>(record: FlashDisplayRootRecord<TRoot>, root: TRoot): boolean {
-    return record.stage.children.includes(root) && root.parent === record.stage;
+    // Source Flash roots project their public parent to the stable Stage view;
+    // lifecycle ownership must inspect Laya's exact native parent slot.
+    return record.stage.children.includes(root) && root._$parent === record.stage;
 }
 
 function stageOwns<TRoot extends LayaNode>(record: FlashDisplayRootRecord<TRoot>, root: TRoot): boolean {

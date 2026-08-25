@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Config } from "../../src/layaAir/Config";
+import { Widget } from "../../src/layaAir/laya/components/Widget";
 import { ILaya } from "../../src/layaAir/ILaya";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
+import { DisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer";
 import { FlashDisplayRootBoundary } from "../../src/layaAir/flash/display/FlashDisplayRootBoundary";
 import { FlashStageBoundary } from "../../src/layaAir/flash/display/FlashStageBoundary";
 import { Stage, isFlashStage } from "../../src/layaAir/flash/display/Stage";
@@ -208,7 +210,34 @@ test("Stage child operations retain Laya attachment and Flash lifecycle semantic
         assert.equal(Stage.forDisplayObject(child), null);
         assert.equal(sourceStage.addChild(child), child);
         assert.deepEqual([child.parent, FlashStageBoundary.stageOf(child), Stage.forDisplayObject(child)],
-            [nativeStage, nativeStage, sourceStage]);
+            [sourceStage, nativeStage, sourceStage]);
+        const sourceParent: DisplayObjectContainer | null = child.parent;
+        assert.equal(sourceParent, sourceStage, "direct Stage children expose the stable source Stage identity");
+        assert.equal(sourceStage instanceof DisplayObjectContainer, false,
+            "the composed Stage view never counterfeits nominal container identity");
+        const widget = child.addComponent(Widget);
+        widget.left = 12;
+        widget.top = 13;
+        assert.deepEqual([child.x, child.y], [12, 13],
+            "native Widget layout resolves the direct native Stage parent");
+        const sibling = new Sprite();
+        sourceStage.addChild(sibling);
+        assert.deepEqual([sourceStage.getChildIndex(child), sourceStage.getChildIndex(sibling)], [0, 1]);
+        sourceStage.setChildIndex(child, 1);
+        assert.deepEqual([sourceStage.getChildAt(0), sourceStage.getChildAt(1)], [sibling, child]);
+        sourceStage.removeChild(sibling);
+        const route: string[] = [];
+        sourceStage.addEventListener("parentRoute", event => {
+            assert.equal(event.currentTarget, sourceStage);
+            route.push("stage-capture");
+        }, true);
+        child.addEventListener("parentRoute", () => route.push("child"));
+        sourceStage.addEventListener("parentRoute", event => {
+            assert.equal(event.currentTarget, sourceStage);
+            route.push("stage-bubble");
+        });
+        child.dispatchEvent(new Event("parentRoute", true));
+        assert.deepEqual(route, ["stage-capture", "child", "stage-bubble"]);
         assert.deepEqual([sourceStage.numChildren, sourceStage.getChildAt(0),
             sourceStage.getChildByName("document"), sourceStage.contains(child)], [1, child, child, true]);
         assert.deepEqual(lifecycle, ["added"]);
