@@ -197,7 +197,9 @@ export class FlashLibrarySymbolAdapter {
         const firstFrame = frame(sourceTimeline, 0);
         validateFrame(firstFrame, characterId);
         const initialOperations = displayOperations(firstFrame, characterId);
-        const bounds = spriteBounds(asset, characterId, operation, sourceTimeline, initialOperations);
+        const boundslessEmptyNamedAnchor = asset.bounds === undefined
+            && isBoundslessEmptyNamedAnchor(operation, sourceTimeline);
+        const bounds = spriteBounds(asset, characterId, boundslessEmptyNamedAnchor);
         // Text remains semantic authored content. A diagnostic full-frame
         // raster may authenticate visual evidence, but it must never replace
         // a reachable DefineText/DefineEditText node in production output.
@@ -205,7 +207,7 @@ export class FlashLibrarySymbolAdapter {
             ? undefined
             : rasterizedSprites.get(characterId);
         const animated = rasterFrames === undefined
-            ? sourceTimeline.frameCount === 1 ? undefined : this.createAnimatedDisplayList(
+            ? sourceTimeline.frameCount === 1 || boundslessEmptyNamedAnchor ? undefined : this.createAnimatedDisplayList(
                 sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
             )
             : this.createRasterizedSprite(
@@ -1021,17 +1023,26 @@ function authoredScale9Grid(
 function spriteBounds(
     asset: Record<string, any>,
     characterId: number,
-    operation: Record<string, any> | undefined,
-    sourceTimeline: Record<string, any>,
-    initialOperations: ReadonlyArray<unknown>,
+    boundslessEmptyNamedAnchor: boolean,
 ): Record<string, any> {
     if (asset.bounds !== undefined)
         return object(asset.bounds, `library.assets.${characterId}.bounds`);
-    const namedAnchor = operation !== undefined && typeof operation.name === "string";
-    const emptySingleFrame = sourceTimeline.frameCount === 1 && initialOperations.length === 0;
-    if (!namedAnchor || !emptySingleFrame)
+    if (!boundslessEmptyNamedAnchor)
         fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is an empty named anchor.`);
     return { x: 0, y: 0, width: 0, height: 0 };
+}
+
+function isBoundslessEmptyNamedAnchor(
+    operation: Record<string, any> | undefined,
+    sourceTimeline: Record<string, any>,
+): boolean {
+    if (operation === undefined || typeof operation.name !== "string")
+        return false;
+    return validatedTimelineFrames(sourceTimeline).every((value, index) => {
+        const current = object(value, `timeline ${sourceTimeline.symbolId} frame ${index + 1}`);
+        return current.label === undefined
+            && array(current.operations, `timeline ${sourceTimeline.symbolId}.operations`).length === 0;
+    });
 }
 
 function registerResource(
