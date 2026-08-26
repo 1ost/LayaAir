@@ -593,6 +593,12 @@ async function main(): Promise<void> {
             blurX: 3, blurY: 3, strength: 5, passes: 1, innerGlow: false,
             knockout: false, compositeSource: true,
         };
+        const gradientGlow = {
+            kind: "gradient-glow", sourceType: "GRADIENTGLOWFILTER", angleRadians: Math.PI / 2,
+            colors: [{ color: 0xffff00, alpha: 0 }, { color: 0xff9900, alpha: 1 }], ratios: [0, 255],
+            blurX: 5, blurY: 5, distance: 5, strength: 1.359375, passes: 3,
+            innerShadow: true, onTop: false, knockout: false, compositeSource: true, type: "inner",
+        };
         const library: any = {
             schema: "flash-library@1", frameLabels: [],
             stage: { width: 100, height: 80, frameRate: 30, frameCount: 1, backgroundColor: { alpha: 1, color: 0x666666 } },
@@ -614,7 +620,7 @@ async function main(): Promise<void> {
                 op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
                 matrix: { a: 2, b: 0.25, c: -0.5, d: 3, tx: 5, ty: 7 },
             }, {
-                op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [glow],
+                op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [gradientGlow, glow],
                 matrix: { a: 0.5, b: 0, c: 0, d: 2, tx: 11, ty: 12 },
             }], labels: [], sounds: [] }],
         }]]);
@@ -629,9 +635,10 @@ async function main(): Promise<void> {
         assert(image.matrix?.a === 2 && image.matrix.b === 0.25 && image.matrix.c === -0.5 && image.matrix.d === 3,
             "static affine matrix drifted");
         assert(image.x === 7.5 && image.y === 16.5, "affine image-bounds closure drifted");
-        assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "glow"
-            && field.textField.filters[0].strength === 5 && field.textField.filters[0].quality === 1,
-            "authored GlowFilter placement drifted");
+        assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "gradient-glow"
+            && field.textField.filters[0].strength === 1.359375 && field.textField.filters[0].quality === 3
+            && field.textField.filters[1].kind === "glow" && field.textField.filters[1].strength === 5,
+            "authored gradient-glow/GlowFilter placement drifted");
         const hierarchyNode = (node: any): Record<string, unknown> => ({
             "_$type": node.kind === "image" ? "Image" : node.kind === "static-text" ? "Text" : "Sprite",
             name: node.name ?? node.instanceId ?? node.linkage,
@@ -648,9 +655,14 @@ async function main(): Promise<void> {
         }, "role-affine.mc", new Map([["flash-character-2", "shape-2.png"]]));
         const serializedField = (hierarchy._$child as any[])[1];
         const serializedFilters = serializedField.authoredConfiguration.filters;
-        assert(Array.isArray(serializedFilters) && serializedFilters.length === 1,
-            "hierarchy writer lost the authored GlowFilter closure");
-        const serializedGlow = serializedFilters[0];
+        assert(Array.isArray(serializedFilters) && serializedFilters.length === 2,
+            "hierarchy writer lost the authored filter closure");
+        const serializedGradientGlow = serializedFilters[0];
+        assert(serializedGradientGlow.value.kind === "gradient-glow"
+            && serializedGradientGlow.value.type === "inner"
+            && serializedGradientGlow.value.colors[1] === 0xff9900,
+            "hierarchy writer drifted the authored GradientGlowFilter configuration");
+        const serializedGlow = serializedFilters[1];
         assert(serializedGlow._$type === "any" && Object.keys(serializedGlow).length === 2,
             "hierarchy writer did not seal the GlowFilter as inert decoder data");
         assert(serializedGlow.value.kind === "glow" && serializedGlow.value.color === 0
@@ -675,6 +687,55 @@ async function main(): Promise<void> {
         malformed.compositeSource = false;
         timelines.get(1).frames[0].operations[1].filters = [malformed];
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
+    });
+
+    await test("Flash static depth masks bind one deterministic local Laya reference", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 80, frameRate: 30, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "MaskedRoot", bounds: { x: 0, y: 0, width: 100, height: 80 } },
+                "2": { characterId: 2, kind: "shape", symbolName: "Mask", path: "assets/2.png", bounds: { x: 0, y: 0, width: 40, height: 30 } },
+                "3": { characterId: 3, kind: "shape", symbolName: "Content", path: "assets/3.png", bounds: { x: 0, y: 0, width: 60, height: 40 } },
+                "4": { characterId: 4, kind: "shape", symbolName: "Outside", path: "assets/4.png", bounds: { x: 0, y: 0, width: 10, height: 10 } },
+            },
+        };
+        const timeline = {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "MaskedRoot", frameRate: 30, frameCount: 1,
+            frames: [{ index: 1, operations: [
+                { op: "place", characterId: 2, depth: 1, clipDepth: 4, move: false, ratio: 0 },
+                { op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "mc_list" },
+                { op: "place", characterId: 4, depth: 5, move: false, ratio: 0, name: "outside" },
+            ], labels: [], sounds: [] }],
+        };
+        const resources = new Map([2, 3, 4].map(id => [`assets/${id}.png`, {
+            sourcePath: `assets/${id}.png`, mediaType: "image/png" as const,
+            byteLength: payload.byteLength, sha256: sha256(payload),
+        }]));
+        const request = {
+            library, timelines: new Map([[1, timeline]]), entrySymbolId: 1,
+            runtimeLinkage: "Game.MaskedRoot", resources,
+        };
+        const content = new FlashLibrarySymbolAdapter().parse(request);
+        assert(content.root.children[0].clipDepth === 4, "Flash clipDepth was not retained");
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1, "_$id": "root", "_$type": "Sprite", name: "MaskedRoot", width: 100, height: 80,
+            "_$child": [
+                { "_$id": "mask", "_$type": "Image", name: "Mask$d1$f1$i1", width: 40, height: 30, skin: "res://2.png" },
+                { "_$id": "content", "_$type": "Image", name: "mc_list", width: 60, height: 40, skin: "res://3.png" },
+                { "_$id": "outside", "_$type": "Image", name: "outside", width: 10, height: 10, skin: "res://4.png" },
+            ],
+        }, "masked-root.mc", new Map([
+            ["flash-character-2", "2.png"], ["flash-character-3", "3.png"], ["flash-character-4", "4.png"],
+        ]));
+        const children = hierarchy._$child as any[];
+        assert(children[1].mask._$ref === children[0]._$id,
+            "masked child did not reference the canonicalized local mask node");
+        assert(children[2].mask === undefined, "a sibling beyond clipDepth was incorrectly masked");
+
+        timeline.frames[0].operations[0].clipDepth = 1;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_MASK_RANGE_INVALID");
     });
 
     await test("Flash library retains multiple distinct labels authored on one frame", () => {

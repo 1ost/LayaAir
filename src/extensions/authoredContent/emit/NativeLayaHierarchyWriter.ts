@@ -209,6 +209,7 @@ export function prepareNativeLayaHierarchy(
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
     canonicalizeHierarchyIds(hierarchy);
+    bindAuthoredDepthMasks(content.root, hierarchy, "root");
     decorateAuthoredRuntime(content.root, hierarchy, content.documentId, content.timeline.frameLabels);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
     sealTimelineAssetReferences(hierarchy, timelineAssetId, nestedTimelineAssetIds);
@@ -230,6 +231,43 @@ export function prepareNativeLayaHierarchy(
         ...[...nestedTimelineAssetIds].map(() => "AnimationClip2D")
     ];
     return hierarchy;
+}
+
+/** Binds validated Flash depth-mask ranges to deterministic local Laya node references. */
+function bindAuthoredDepthMasks(
+    source: NeutralAuthoredNode,
+    value: Record<string, unknown>,
+    path: string,
+): void {
+    const childrenValue = value._$child;
+    const children = childrenValue === undefined ? [] : childrenValue;
+    if (!Array.isArray(children) || children.length !== source.children.length)
+        fail("AUTHORED_CONTENT_NATIVE_CHILD_CLOSURE_MISMATCH", `${path} child count/order closure drifted before mask binding.`);
+    const maskedDepths = new Set<number>();
+    source.children.forEach((maskSource, maskIndex) => {
+        if (maskSource.clipDepth === undefined) return;
+        const maskValue = children[maskIndex];
+        if (!maskValue || typeof maskValue !== "object" || Array.isArray(maskValue))
+            fail("AUTHORED_CONTENT_NATIVE_MASK_NODE_INVALID", `${path} mask depth ${maskSource.depth} is not a hierarchy node.`);
+        const maskId = (maskValue as Record<string, unknown>)._$id;
+        if (typeof maskId !== "string" || maskId.length === 0)
+            fail("AUTHORED_CONTENT_NATIVE_MASK_ID_REQUIRED", `${path} mask depth ${maskSource.depth} requires a local hierarchy ID.`);
+        source.children.forEach((targetSource, targetIndex) => {
+            if (targetSource.depth! <= maskSource.depth! || targetSource.depth! > maskSource.clipDepth!) return;
+            if (maskedDepths.has(targetSource.depth!))
+                fail("AUTHORED_CONTENT_NATIVE_MASK_RANGE_OVERLAP", `${path} depth ${targetSource.depth} has multiple masks.`);
+            const targetValue = children[targetIndex];
+            if (!targetValue || typeof targetValue !== "object" || Array.isArray(targetValue))
+                fail("AUTHORED_CONTENT_NATIVE_MASK_TARGET_INVALID", `${path} mask target depth ${targetSource.depth} is not a hierarchy node.`);
+            (targetValue as Record<string, unknown>).mask = { _$ref: maskId };
+            maskedDepths.add(targetSource.depth!);
+        });
+    });
+    source.children.forEach((childSource, index) => {
+        const childValue = children[index];
+        if (childValue && typeof childValue === "object" && !Array.isArray(childValue))
+            bindAuthoredDepthMasks(childSource, childValue as Record<string, unknown>, `${path}/${childSource.name ?? childSource.instanceId ?? childSource.linkage}`);
+    });
 }
 
 /**

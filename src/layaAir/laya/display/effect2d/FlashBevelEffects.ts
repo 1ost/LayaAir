@@ -20,6 +20,8 @@ import { flashBoxKernelMargins, registerFlashBoxBlurShader } from "./FlashFilter
 export type FlashBevelPlacement = "inner" | "outer" | "full";
 
 export interface FlashGradientBevelEffectOptions {
+    /** Gradient-glow uses one displaced alpha field; bevel uses opposing fields. */
+    readonly mode?: "bevel" | "gradient-glow";
     readonly distance: number;
     readonly angleRadians: number;
     readonly colors: readonly number[] | null;
@@ -60,6 +62,7 @@ interface FlashBevelGradient {
 }
 
 interface NormalizedFlashBevelEffectOptions extends Omit<FlashGradientBevelEffectOptions, "colors" | "alphas" | "ratios"> {
+    readonly mode: "bevel" | "gradient-glow";
     readonly gradient: FlashBevelGradient;
 }
 
@@ -113,6 +116,13 @@ void main() {
   float center = sourceAlpha(v_Texcoord0);
   float positive = sourceAlpha(v_Texcoord0 - u_Offset);
   float negative = sourceAlpha(v_Texcoord0 + u_Offset);
+
+  if (u_Mode == 1) {
+    float inner = clamp((1.0 - positive) * u_PreStrength, 0.0, 1.0) * center;
+    float outer = clamp(positive * u_PreStrength, 0.0, 1.0) * (1.0 - center);
+    gl_FragColor = vec4(inner + outer * (1.0 - inner), 0.0, 0.0, 1.0);
+    return;
+  }
 
   // FFDec applies strength to each temporary drop-shadow field, composes the
   // opposing fields, blurs them, then applies strength again for ramp lookup.
@@ -173,6 +183,7 @@ function registerCommonShaders(): void {
         u_MainTex: ShaderDataType.Texture2D,
         u_Offset: ShaderDataType.Vector2,
         u_PreStrength: ShaderDataType.Float,
+        u_Mode: ShaderDataType.Int,
     });
     seed.addSubShader(seedSub);
     configurePass(seedSub.addShaderPass(FILTER_VERTEX, SEED_FRAGMENT));
@@ -204,7 +215,8 @@ void main() {
   vec4 field = FLASH_BEVEL_TEXTURE_2D(u_FieldTex, v_Texcoord0);
   float signedLevel = clamp((field.r - field.b) * u_Strength, -1.0, 1.0);
   // FFDec indexes a 512-entry ramp with 255 + the signed byte field.
-  float position = (255.0 + signedLevel * 255.0) / 511.0;
+  float position = u_Mode == 1 ? clamp(field.r * u_Strength, 0.0, 1.0)
+    : (255.0 + signedLevel * 255.0) / 511.0;
   vec4 straightBevel = gradient(position);
   vec4 bevel = vec4(straightBevel.rgb * straightBevel.a, straightBevel.a);
   vec4 result = bevel;
@@ -227,6 +239,7 @@ void main() {
         u_Type: ShaderDataType.Int,
         u_Knockout: ShaderDataType.Int,
         u_CompositeSource: ShaderDataType.Int,
+        u_Mode: ShaderDataType.Int,
     };
     for (let index = 0; index < stops; index++) {
         uniforms[`u_Color${index}`] = ShaderDataType.Vector4;
@@ -290,6 +303,7 @@ export class FlashBevelEffect2D extends PostProcess2DEffect {
     constructor(options: Readonly<FlashGradientBevelEffectOptions>) {
         super();
         this.options = Object.freeze({
+            mode: options.mode === "gradient-glow" ? "gradient-glow" : "bevel",
             distance: finite(Number(options.distance)),
             angleRadians: finite(Number(options.angleRadians)),
             blurX: effectiveBlur(Number(options.blurX)),
@@ -316,6 +330,7 @@ export class FlashBevelEffect2D extends PostProcess2DEffect {
         this.seedMaterial.setShaderName("FlashBevelSeed2D");
         this.seedMaterial.setVector2("u_centerScale", new Vector2(1, 1));
         this.seedMaterial.setFloat("u_PreStrength", this.options.strength);
+        this.seedMaterial.setInt("u_Mode", this.options.mode === "gradient-glow" ? 1 : 0);
         this.seedMaterial.lock = true;
         this.seedElement = renderElement(this.seedMaterial);
 
@@ -338,6 +353,7 @@ export class FlashBevelEffect2D extends PostProcess2DEffect {
         this.composeMaterial.setInt("u_Type", this.options.type === "inner" ? 1 : this.options.type === "outer" ? 2 : 3);
         this.composeMaterial.setInt("u_Knockout", this.options.knockout ? 1 : 0);
         this.composeMaterial.setInt("u_CompositeSource", this.options.compositeSource ? 1 : 0);
+        this.composeMaterial.setInt("u_Mode", this.options.mode === "gradient-glow" ? 1 : 0);
         for (let index = 0; index < this.options.gradient.colors.length; index++) {
             const color = this.options.gradient.colors[index];
             this.composeMaterial.setVector4(`u_Color${index}`, new Vector4(

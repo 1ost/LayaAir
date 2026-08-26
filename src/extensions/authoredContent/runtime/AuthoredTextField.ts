@@ -2,6 +2,8 @@ import {
     AntiAliasType, BitmapFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
+import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
+import { PostProcess2DEffect } from "../../../layaAir/laya/display/PostProcess2DEffect";
 import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
 
 export interface AuthoredGlowFilterConfiguration {
@@ -32,7 +34,26 @@ export interface AuthoredGradientBevelFilterConfiguration {
     readonly compositeSource: true;
 }
 
-export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration | AuthoredGradientBevelFilterConfiguration;
+export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGradientBevelFilterConfiguration, "kind"> {
+    readonly kind: "gradient-glow";
+}
+
+export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration
+    | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration;
+
+class AuthoredGradientGlowFilter extends BitmapFilter {
+    constructor(private readonly configuration: AuthoredGradientGlowFilterConfiguration) { super(); }
+    clone(): BitmapFilter { return new AuthoredGradientGlowFilter(this.configuration); }
+    getEffect(): PostProcess2DEffect {
+        const filter = this.configuration;
+        return new FlashBevelEffect2D({
+            mode: "gradient-glow", distance: filter.distance, angleRadians: filter.angleRadians,
+            colors: filter.colors, alphas: filter.alphas, ratios: filter.ratios,
+            blurX: filter.blurX, blurY: filter.blurY, strength: filter.strength, quality: filter.quality,
+            type: filter.type, knockout: filter.knockout, compositeSource: filter.compositeSource,
+        });
+    }
+}
 
 export interface AuthoredTextFormatConfiguration {
     readonly fontMode: "device" | "embedded";
@@ -235,9 +256,11 @@ export function createAuthoredFilters(value: unknown): BitmapFilter[] {
         filter.kind === "glow"
             ? new GlowFilter(filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
                 filter.quality, filter.inner, filter.knockout)
-            : new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
+            : filter.kind === "gradient-bevel"
+            ? new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
                 filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
-                filter.strength, filter.quality, filter.type, filter.knockout));
+                filter.strength, filter.quality, filter.type, filter.knockout)
+            : new AuthoredGradientGlowFilter(filter));
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
@@ -485,17 +508,22 @@ function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterCo
 }
 
 function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterConfiguration {
-    if (value !== null && typeof value === "object" && Reflect.get(value, "kind") === "gradient-bevel")
-        return validateGradientBevelFilter(value, label);
+    const kind = value !== null && typeof value === "object" ? Reflect.get(value, "kind") : undefined;
+    if (kind === "gradient-bevel" || kind === "gradient-glow")
+        return validateGradientFilter(value, label, kind);
     return validateGlowFilter(value, label);
 }
 
-function validateGradientBevelFilter(value: unknown, label: string): AuthoredGradientBevelFilterConfiguration {
+function validateGradientFilter(
+    value: unknown,
+    label: string,
+    kind: "gradient-bevel" | "gradient-glow",
+): AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration {
     const record = exactDataObject(value, [
         "alphas", "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "kind",
         "knockout", "quality", "ratios", "strength", "type",
     ], label);
-    equal(record.kind, "gradient-bevel", `${label}.kind`);
+    equal(record.kind, kind, `${label}.kind`);
     const colors = numberArray(record.colors, `${label}.colors`, 0, 0xffffff, true);
     const alphas = numberArray(record.alphas, `${label}.alphas`, 0, 1, false);
     const ratios = numberArray(record.ratios, `${label}.ratios`, 0, 255, true);
@@ -513,7 +541,7 @@ function validateGradientBevelFilter(value: unknown, label: string): AuthoredGra
     boolean(record.knockout, `${label}.knockout`);
     equal(record.compositeSource, true, `${label}.compositeSource`);
     return Object.freeze({
-        kind: "gradient-bevel",
+        kind,
         distance: record.distance,
         angleRadians: record.angleRadians,
         colors: Object.freeze(colors),

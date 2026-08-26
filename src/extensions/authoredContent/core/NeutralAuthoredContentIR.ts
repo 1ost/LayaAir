@@ -45,7 +45,11 @@ export interface NeutralGradientBevelFilter {
     readonly compositeSource: true;
 }
 
-export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralGradientBevelFilter;
+export interface NeutralGradientGlowFilter extends Omit<NeutralGradientBevelFilter, "kind"> {
+    readonly kind: "gradient-glow";
+}
+
+export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralGradientBevelFilter | NeutralGradientGlowFilter;
 
 export interface NeutralScale9Grid {
     readonly x: number;
@@ -72,6 +76,8 @@ export interface NeutralAuthoredNode {
     readonly name?: string;
     /** Authored display-list depth. Siblings are emitted in ascending depth order. */
     readonly depth?: number;
+    /** Flash mask range end; this node masks following siblings through this inclusive depth. */
+    readonly clipDepth?: number;
     readonly x?: number;
     readonly y?: number;
     readonly width?: number;
@@ -376,7 +382,7 @@ function normalizeNode(
 ): NeutralAuthoredNode {
     const source = record(value, path);
     allowedKeys(source, [
-        "linkage", "instanceId", "kind", "name", "depth", "x", "y", "width", "height", "alpha", "visible", "matrix",
+        "linkage", "instanceId", "kind", "name", "depth", "clipDepth", "x", "y", "width", "height", "alpha", "visible", "matrix",
         "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
@@ -396,6 +402,7 @@ function normalizeNode(
             ? undefined
             : canonicalLinkage(requiredString(source.name, `${path}.name`)),
         depth: optionalDepth(source.depth, `${path}.depth`),
+        clipDepth: optionalDepth(source.clipDepth, `${path}.clipDepth`),
         x: optionalNumber(source.x, `${path}.x`, scale),
         y: optionalNumber(source.y, `${path}.y`, scale),
         width: optionalNumber(source.width, `${path}.width`, scale),
@@ -733,7 +740,12 @@ function normalizeGlowFilter(value: unknown, path: string, scale: number): Neutr
     };
 }
 
-function normalizeGradientBevelFilter(value: unknown, path: string, scale: number): NeutralGradientBevelFilter {
+function normalizeGradientFilter(
+    value: unknown,
+    path: string,
+    scale: number,
+    kind: "gradient-bevel" | "gradient-glow",
+): NeutralGradientBevelFilter | NeutralGradientGlowFilter {
     const source = record(value, path);
     allowedKeys(source, [
         "alphas", "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "kind",
@@ -773,7 +785,7 @@ function normalizeGradientBevelFilter(value: unknown, path: string, scale: numbe
     if (type !== "inner" && type !== "outer" && type !== "full")
         fail("AUTHORED_CONTENT_GRADIENT_BEVEL_TYPE_INVALID", `${path}.type is unsupported.`);
     return {
-        kind: exactLiteral(source.kind, "gradient-bevel", `${path}.kind`),
+        kind: exactLiteral(source.kind, kind, `${path}.kind`),
         distance: requiredFiniteNumber(source.distance, `${path}.distance`) * scale,
         angleRadians: requiredFiniteNumber(source.angleRadians, `${path}.angleRadians`),
         colors, alphas, ratios,
@@ -785,8 +797,8 @@ function normalizeGradientBevelFilter(value: unknown, path: string, scale: numbe
 
 function normalizeAuthoredFilter(value: unknown, path: string, scale: number): NeutralAuthoredFilter {
     const source = record(value, path);
-    return source.kind === "gradient-bevel"
-        ? normalizeGradientBevelFilter(value, path, scale)
+    return source.kind === "gradient-bevel" || source.kind === "gradient-glow"
+        ? normalizeGradientFilter(value, path, scale, source.kind)
         : normalizeGlowFilter(value, path, scale);
 }
 
@@ -817,7 +829,24 @@ function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: 
         depthOwners.set(depth, rawInstanceId);
         return { ...node, depth };
     });
-    return nodes.sort((left, right) => left.depth! - right.depth!);
+    const sorted = nodes.sort((left, right) => left.depth! - right.depth!);
+    const maskOwners = new Map<number, number>();
+    sorted.forEach(node => {
+        if (node.clipDepth === undefined) return;
+        const maskDepth = node.depth!;
+        if (node.clipDepth <= maskDepth)
+            fail("AUTHORED_CONTENT_MASK_RANGE_INVALID", `${path} mask depth ${maskDepth} must end after its own depth.`);
+        const targets = sorted.filter(candidate => candidate.depth! > maskDepth && candidate.depth! <= node.clipDepth!);
+        if (targets.length === 0)
+            fail("AUTHORED_CONTENT_MASK_RANGE_EMPTY", `${path} mask depth ${maskDepth} reaches no sibling.`);
+        targets.forEach(target => {
+            const owner = maskOwners.get(target.depth!);
+            if (owner !== undefined)
+                fail("AUTHORED_CONTENT_MASK_RANGE_OVERLAP", `${path} depth ${target.depth} is masked by depths ${owner} and ${maskDepth}.`);
+            maskOwners.set(target.depth!, maskDepth);
+        });
+    });
+    return sorted;
 }
 
 function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResource> {

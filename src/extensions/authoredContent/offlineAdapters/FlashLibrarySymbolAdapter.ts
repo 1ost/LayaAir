@@ -39,12 +39,12 @@ type PlacementEvidenceContext = {
     readonly operationIndex: number;
 };
 
-const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
+const PLACEMENT_FIELDS = new Set(["characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
 const FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
 ]);
-const GRADIENT_BEVEL_FILTER_FIELDS = new Set([
+const GRADIENT_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
     "knockout", "onTop", "passes", "ratios", "sourceType", "strength", "type",
 ]);
@@ -297,8 +297,9 @@ export class FlashLibrarySymbolAdapter {
         recordInertPlacementRatio(operation, asset, characterId, evidenceContext, inertPlacementRatios);
         if (asset.kind !== "input-text" && asset.kind !== "text" && asset.kind !== "sprite" && operation.filters !== undefined)
             fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
+        let node: NeutralAuthoredNode;
         if (asset.kind === "sprite") {
-            return this.createSprite(
+            node = this.createSprite(
                 characterId,
                 operation,
                 operation.name,
@@ -312,8 +313,8 @@ export class FlashLibrarySymbolAdapter {
                 inertPlacementRatios,
             );
         }
-        if (asset.kind === "button") {
-            return this.createButton(
+        else if (asset.kind === "button") {
+            node = this.createButton(
                 asset,
                 operation,
                 instanceId,
@@ -326,13 +327,17 @@ export class FlashLibrarySymbolAdapter {
                 inertPlacementRatios,
             );
         }
-        if (asset.kind === "shape")
-            return this.createImage(asset, operation, instanceId, assets, resourceAuthorities, rasterizedShapes, resources);
-        if (asset.kind === "input-text")
-            return this.createDynamicText(asset, operation, instanceId, assets, resourceAuthorities, resources);
-        if (asset.kind === "text")
-            return this.createStaticTextField(asset, operation, instanceId, assets);
-        fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
+        else if (asset.kind === "shape")
+            node = this.createImage(asset, operation, instanceId, assets, resourceAuthorities, rasterizedShapes, resources);
+        else if (asset.kind === "input-text")
+            node = this.createDynamicText(asset, operation, instanceId, assets, resourceAuthorities, resources);
+        else if (asset.kind === "text")
+            node = this.createStaticTextField(asset, operation, instanceId, assets);
+        else
+            fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
+        return operation.clipDepth === undefined
+            ? node
+            : { ...node, clipDepth: positiveInteger(operation.clipDepth, "place.clipDepth") };
     }
 
     private createButton(
@@ -1553,7 +1558,9 @@ function exactPlace(operation: Record<string, any>, mode: "static" | "replacemen
     if (operation.op !== "place")
         fail("FLASH_LIBRARY_DISPLAY_OPERATION_UNSUPPORTED", `Display operation '${String(operation.op)}' is unsupported.`);
     positiveInteger(operation.characterId, "place.characterId");
-    positiveInteger(operation.depth, "place.depth");
+    const depth = positiveInteger(operation.depth, "place.depth");
+    if (operation.clipDepth !== undefined && positiveInteger(operation.clipDepth, "place.clipDepth") <= depth)
+        fail("FLASH_LIBRARY_MASK_RANGE_INVALID", "place.clipDepth must end after place.depth.");
     const move = operation.move === undefined ? false : boolean(operation.move, "place.move");
     if (operation.name !== undefined)
         string(operation.name, "place.name");
@@ -1605,8 +1612,8 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
     return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
         const label = `place ${characterId}.filters[${index}]`;
         const filter = object(filterValue, label);
-        if (filter.kind === "gradient-bevel")
-            return authoredGradientBevelFilter(filter, label);
+        if (filter.kind === "gradient-bevel" || filter.kind === "gradient-glow")
+            return authoredGradientFilter(filter, label);
         exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
         exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
         exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
@@ -1654,9 +1661,11 @@ function animatedPlacementInstanceId(
     return `${base}$d${depth}$f${firstFrame}$i${ordinal}`;
 }
 
-function authoredGradientBevelFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
-    exactKeys(filter, GRADIENT_BEVEL_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
-    exactValue(filter.sourceType, "GRADIENTBEVELFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+function authoredGradientFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
+    exactKeys(filter, GRADIENT_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+    const kind = filter.kind === "gradient-glow" ? "gradient-glow" : "gradient-bevel";
+    exactValue(filter.sourceType, kind === "gradient-glow" ? "GRADIENTGLOWFILTER" : "GRADIENTBEVELFILTER",
+        "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
     exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
     const colors = array(filter.colors, `${label}.colors`).map((value, index) => {
         const stop = object(value, `${label}.colors[${index}]`);
@@ -1682,7 +1691,7 @@ function authoredGradientBevelFilter(filter: Record<string, any>, label: string)
     const type = onTop && !innerShadow ? "full" : innerShadow ? "inner" : "outer";
     exactValue(filter.type, type, "FLASH_LIBRARY_FILTER_TYPE_MISMATCH", `${label}.type disagrees with its serialized flags.`);
     return {
-        kind: "gradient-bevel",
+        kind,
         distance: finite(filter.distance, `${label}.distance`),
         angleRadians: finite(filter.angleRadians, `${label}.angleRadians`),
         colors: colors.map(stop => stop.color), alphas: colors.map(stop => stop.alpha), ratios,
