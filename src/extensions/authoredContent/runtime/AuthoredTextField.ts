@@ -44,6 +44,22 @@ export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration
 class AuthoredGradientGlowFilter extends BitmapFilter {
     constructor(private readonly configuration: AuthoredGradientGlowFilterConfiguration) { super(); }
     clone(): BitmapFilter { return new AuthoredGradientGlowFilter(this.configuration); }
+    equals(other: BitmapFilter | null): boolean {
+        if (!(other instanceof AuthoredGradientGlowFilter)) return false;
+        const left = this.configuration;
+        const right = other.configuration;
+        return left.distance === right.distance && left.angleRadians === right.angleRadians
+            && left.blurX === right.blurX && left.blurY === right.blurY
+            && left.strength === right.strength && left.quality === right.quality
+            && left.type === right.type && left.knockout === right.knockout
+            && left.compositeSource === right.compositeSource
+            && left.colors.length === right.colors.length
+            && left.colors.every((value, index) => value === right.colors[index])
+            && left.alphas.length === right.alphas.length
+            && left.alphas.every((value, index) => value === right.alphas[index])
+            && left.ratios.length === right.ratios.length
+            && left.ratios.every((value, index) => value === right.ratios[index]);
+    }
     getEffect(): PostProcess2DEffect {
         const filter = this.configuration;
         return new FlashBevelEffect2D({
