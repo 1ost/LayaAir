@@ -44907,14 +44907,14 @@
           "export": "RestrictedFlashHtmlTextLayout",
           "kind": "interface",
           "signature": "any",
-          "sha256": "60788d3be01bc346670cebe5e220c6f7fa9263e0e79ecc02518657fb1a5eb620"
+          "sha256": "fbac7a319f8d6e8aa2c309c7b0716f600e79d777bac71a53b85b7dcb2f27981a"
         },
         {
           "module": "src/extensions/authoredContent/core/RestrictedFlashHtmlText.ts",
           "export": "parseRestrictedFlashHtmlText",
           "kind": "function",
           "signature": "(markup: string) => RestrictedFlashHtmlTextLayout",
-          "sha256": "60788d3be01bc346670cebe5e220c6f7fa9263e0e79ecc02518657fb1a5eb620"
+          "sha256": "fbac7a319f8d6e8aa2c309c7b0716f600e79d777bac71a53b85b7dcb2f27981a"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
@@ -44938,8 +44938,8 @@
           "sha256": "da9e5d67b77e1fdb65908f0fea7f78f0ffe5dd36c044b9681aeeca8edf84d573",
           "capability": "text.authored-restricted-html-field",
           "covers": [
-            "60788d3be01bc346670cebe5e220c6f7fa9263e0e79ecc02518657fb1a5eb620",
-            "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
+            "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae",
+            "fbac7a319f8d6e8aa2c309c7b0716f600e79d777bac71a53b85b7dcb2f27981a"
           ]
         }
       ]

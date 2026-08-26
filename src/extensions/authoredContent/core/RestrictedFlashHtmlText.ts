@@ -25,6 +25,17 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
 export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtmlTextLayout {
     if (typeof markup !== "string")
         throw new TypeError("AUTHORED_CONTENT_HTML_TEXT_REQUIRED: markup must be a string.");
+    const paragraphRuns = markup.split(/(?=<p )/);
+    if (paragraphRuns.length > 1) {
+        const layouts = paragraphRuns.map(parseRestrictedFlashHtmlText);
+        const first = layouts[0];
+        if (!layouts.every(layout => layout.align === first.align && layout.font === first.font
+            && layout.size === first.size && layout.color === first.color
+            && layout.letterSpacing === first.letterSpacing && layout.kerning === first.kerning
+            && layout.bold === first.bold))
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_PARAGRAPH_RUN_UNSUPPORTED: paragraph runs must share one exact format.");
+        return Object.freeze({ ...first, markup, plainText: layouts.map(layout => layout.plainText).join("\r") });
+    }
     const match = OUTER.exec(markup);
     if (!match)
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_SUBSET_UNSUPPORTED: expected one exact p/font run.");
@@ -33,8 +44,7 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
     const align = paragraph.align;
     if (align !== "left" && align !== "center" && align !== "right" && align !== "justify")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_ALIGN_UNSUPPORTED: paragraph alignment is unsupported.");
-    if (!font.face || /[<>\u0000-\u001f\u007f]/.test(font.face))
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FACE_INVALID: font face must be stable text.");
+    validFontFace(font.face);
     const size = finiteNumber(font.size, "size");
     if (size <= 0) throw new Error("AUTHORED_CONTENT_HTML_TEXT_SIZE_INVALID: font size must be positive.");
     if (!/^#[0-9a-fA-F]{6}$/.test(font.color))
@@ -42,7 +52,7 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
     const letterSpacing = finiteNumber(font.letterSpacing, "letterSpacing");
     if (font.kerning !== "0" && font.kerning !== "1")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_KERNING_INVALID: kerning must be 0 or 1.");
-    const content = decodeContent(match[3], font.face);
+    const content = decodeContent(match[3]);
     return Object.freeze({
         markup,
         plainText: content.plainText,
@@ -77,7 +87,7 @@ function attributes(source: string, allowed: ReadonlySet<string>, label: string)
     return result;
 }
 
-function decodeContent(source: string, fontFace: string): { readonly plainText: string; readonly bold: boolean } {
+function decodeContent(source: string): { readonly plainText: string; readonly bold: boolean } {
     let cursor = 0;
     let boldDepth = 0;
     let fontDepth = 0;
@@ -94,8 +104,7 @@ function decodeContent(source: string, fontFace: string): { readonly plainText: 
         }
         const fontMatch = /^<font face="([^"]*)">/.exec(source.slice(cursor));
         if (fontMatch) {
-            if (fontMatch[1] !== fontFace)
-                throw new Error("AUTHORED_CONTENT_HTML_TEXT_FONT_RUN_UNSUPPORTED: nested font face must match the enclosing run.");
+            validFontFace(fontMatch[1]);
             fontDepth++;
             tagStack.push("font");
             cursor += fontMatch[0].length;
@@ -111,7 +120,7 @@ function decodeContent(source: string, fontFace: string): { readonly plainText: 
         const breakMatch = /^<(?:br|sbr)\s*\/?>/.exec(source.slice(cursor));
         if (breakMatch) { plainText += "\r"; cursor += breakMatch[0].length; continue; }
         if (source[cursor] === "<")
-            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and redundant same-face font runs are allowed in font content.");
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and nested face-only font runs are allowed in font content.");
         let character: string;
         if (source[cursor] === "&") {
             const end = source.indexOf(";", cursor + 1);
@@ -138,6 +147,11 @@ function decodeContent(source: string, fontFace: string): { readonly plainText: 
     if (sawBoldText && sawPlainText)
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_BOLD_RUN_UNSUPPORTED: mixed bold and regular runs require a richer publication contract.");
     return { plainText, bold: sawBoldText };
+}
+
+function validFontFace(value: string): void {
+    if (!value || /[<>\u0000-\u001f\u007f]/.test(value))
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FACE_INVALID: font face must be stable text.");
 }
 
 function decodeEntity(value: string): string {
