@@ -103,6 +103,19 @@ test("restricted Flash HTML preserves adjacent same-format paragraph runs", () =
         align: "center", font: "Arial", size: 10, color: 0xffffff,
         letterSpacing: 0, kerning: false, bold: false,
     });
+    const multiParagraphConfiguration = configuration(MULTI_PARAGRAPH_MARKUP);
+    const field = createAuthoredTextField({
+        ...multiParagraphConfiguration,
+        multiline: true,
+        format: {
+            ...multiParagraphConfiguration.format,
+            font: "Arial", color: 0xffffff, bold: false, kerning: false,
+        },
+    });
+    try {
+        assert.equal(field.htmlText, MULTI_PARAGRAPH_MARKUP);
+        assert.equal(field.text.replace(/\n/g, "\r"), "Do not start fighting \rThen kicked captain");
+    } finally { field.destroy(true); }
 });
 
 test("restricted Flash HTML preserves authenticated empty trailing paragraphs", () => {
