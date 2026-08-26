@@ -1303,7 +1303,7 @@
             "new (): Graphics"
           ],
           "indexSignatures": [],
-          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
+          "sha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206",
           "heritage": [
             {
               "kind": "extends",
@@ -19905,7 +19905,7 @@
           "export": "isFlashGraphics",
           "kind": "function",
           "signature": "(value: unknown) => value is Graphics",
-          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+          "sha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206"
         },
         {
           "module": "src/layaAir/flash/display/IBitmapDrawable.ts",
@@ -23596,21 +23596,21 @@
           "export": "FlashGraphicsRasterCommand",
           "kind": "interface",
           "signature": "any",
-          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+          "sha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
           "export": "flashGraphicsRasterCommands",
           "kind": "function",
           "signature": "(value: Graphics) => readonly FlashGraphicsRasterCommand[]",
-          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+          "sha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206"
         },
         {
           "module": "src/layaAir/flash/display/Graphics.ts",
           "export": "sampleFlashGraphicsFill",
           "kind": "function",
           "signature": "(fill: Paint, x: number, y: number) => number",
-          "sha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+          "sha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -23634,11 +23634,11 @@
             "2d0764310d0b2bd08724209d88ebfcdb2a107d1b07e9ed388ef6bc11c4d49e21",
             "33f1417c5a4b3c73ec88184edb6116a3abdbf5de2edb403b2c51d148a3fd7ba2",
             "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95",
+            "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
             "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
-            "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98",
             "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
             "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
             "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",

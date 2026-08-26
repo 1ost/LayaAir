@@ -89,7 +89,7 @@
       "predicateExport": "isFlashGraphics",
       "predicateSignature": "(value: unknown) => value is Graphics",
       "heritageClosure": [],
-      "moduleSha256": "52b71678e268fc33772037d8e0d95b59c2493222b6f71f15379709a06cb56c98"
+      "moduleSha256": "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206"
     },
     {
       "sourceQName": "flash.display.InteractiveObject",
