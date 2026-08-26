@@ -1007,9 +1007,14 @@ export class FlashLibrarySymbolAdapter {
         const staticMatrix = object(staticText.matrix, `library.assets.${characterId}.staticText.matrix`);
         exactKeys(staticMatrix, MATRIX_FIELDS, `library.assets.${characterId}.staticText.matrix`, "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED");
         for (const field of ["a", "d"] as const) exactValue(staticMatrix[field], 1,
-            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
-        for (const field of ["b", "c", "tx", "ty"] as const) exactValue(staticMatrix[field], 0,
-            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
+            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a scaled text matrix.`);
+        for (const field of ["b", "c"] as const) exactValue(staticMatrix[field], 0,
+            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a skewed text matrix.`);
+        // DefineText bounds already contain the text-matrix translation. Keep
+        // accepting only unit-scale, unskewed text, but authenticate finite
+        // translation channels instead of rejecting valid positioned glyphs.
+        finite(staticMatrix.tx, `library.assets.${characterId}.staticText.matrix.tx`);
+        finite(staticMatrix.ty, `library.assets.${characterId}.staticText.matrix.ty`);
         if (runs.length !== 1)
             fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain exactly one translatable run.`);
         const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);

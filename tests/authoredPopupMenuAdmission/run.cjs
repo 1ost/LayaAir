@@ -173,6 +173,10 @@ for (const ratio of [1.5, 0x10000]) {
 }
 
 const nativeText = fixture();
+nativeText.library.assets[5].staticText.matrix = {
+    a: 1, b: 0, c: 0, d: 1, tx: 51.15, ty: -3,
+};
+nativeText.library.assets[5].bounds = { x: 56.15, y: -3, width: 42, height: 12 };
 nativeText.timelines.set(2, timeline(2, 2, [
     frame(1, [{ op: "place", characterId: 5, depth: 2, move: false, ratio: 0, filters: [glow()], matrix: matrix() }]),
     frame(2, [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: matrix() }]),
@@ -191,6 +195,7 @@ const staticButton = nativeTextContent.root.children[0];
 assert.deepEqual(staticButton.children.map(child => child.kind), ["image", "dynamic-text"]);
 assert.equal(staticButton.children[1].textField.initialText, "World");
 assert.equal(staticButton.children[1].textField.filters[0].kind, "glow");
+assert.deepEqual([staticButton.children[1].x, staticButton.children[1].y], [56.15, -3]);
 assert.equal(nativeTextContent.root.children[1].textField.initialText,
     '<p align="center"><font face="Arial" size="12" color="#ffd59a" letterSpacing="2.000000" kerning="1">Guild</font></p>');
 assert.equal(nativeTextContent.root.children[1].textField.html, true);
@@ -242,6 +247,17 @@ assert.throws(() => adapter.parse({
     ]]]),
 }), /FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED/);
 
+const scaledStaticText = fixture();
+scaledStaticText.library.assets[5].staticText.matrix.a = 2;
+scaledStaticText.timelines.set(40, timeline(40, 1, [
+    frame(1, [{ op: "place", characterId: 5, depth: 1, move: false, ratio: 0, matrix: matrix() }]),
+]));
+assert.throws(() => adapter.parse({
+    ...scaledStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.ScaledStaticText",
+}), /FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED/);
+
 const invalidScalingGrid = fixture();
 invalidScalingGrid.library.stage.width = 40;
 invalidScalingGrid.library.stage.height = 36;
@@ -253,4 +269,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 8/8 passed\n");
+process.stdout.write("authored popup-menu admission: 10/10 passed\n");
