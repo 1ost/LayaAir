@@ -19,10 +19,11 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
 
 /**
  * Validates the frozen authored Flash HTML slice. This is deliberately not a
- * browser HTML parser: only consecutive p/font runs plus balanced b/br/sbr
- * content are accepted, and every formatting attribute is authenticated before
- * the markup reaches TextField.htmlText. Empty paragraphs retain Flash's
- * authored line breaks but cannot introduce formatting of their own.
+ * browser HTML parser: only consecutive p/font runs plus balanced b/br/sbr and
+ * color- or face-only nested font content are accepted. Every formatting
+ * attribute is authenticated before the markup reaches TextField.htmlText.
+ * Empty paragraphs retain Flash's authored line breaks but cannot introduce
+ * formatting of their own.
  */
 export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtmlTextLayout {
     if (typeof markup !== "string")
@@ -101,7 +102,6 @@ function attributes(source: string, allowed: ReadonlySet<string>, label: string)
 function decodeContent(source: string): { readonly plainText: string; readonly bold: boolean } {
     let cursor = 0;
     let boldDepth = 0;
-    let fontDepth = 0;
     const tagStack: ("b" | "font")[] = [];
     let sawBoldText = false;
     let sawPlainText = false;
@@ -110,28 +110,36 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
         if (source.startsWith("<b>", cursor)) { boldDepth++; tagStack.push("b"); cursor += 3; continue; }
         if (source.startsWith("</b>", cursor)) {
             if (boldDepth === 0 || tagStack.pop() !== "b")
-                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched </b>.");
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched or crossed </b>.");
             boldDepth--; cursor += 4; continue;
         }
-        const fontMatch = /^<font face="([^"]*)">/.exec(source.slice(cursor));
-        if (fontMatch) {
-            validFontFace(fontMatch[1]);
-            fontDepth++;
+        const nestedFontMatch = /^<font ([^<>]+)>/.exec(source.slice(cursor));
+        if (nestedFontMatch) {
+            const nestedFontSource = nestedFontMatch[1];
+            if (nestedFontSource.startsWith('color="')) {
+                const nestedFont = attributes(nestedFontSource, new Set(["color"]), "nested font");
+                if (!/^#[0-9a-fA-F]{6}$/.test(nestedFont.color))
+                    throw new Error("AUTHORED_CONTENT_HTML_TEXT_COLOR_INVALID: nested font color must be six-digit RGB.");
+            } else if (nestedFontSource.startsWith('face="')) {
+                const nestedFont = attributes(nestedFontSource, new Set(["face"]), "nested font");
+                validFontFace(nestedFont.face);
+            } else {
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_ATTRIBUTE_UNSUPPORTED: nested font admits one color or face attribute.");
+            }
             tagStack.push("font");
-            cursor += fontMatch[0].length;
+            cursor += nestedFontMatch[0].length;
             continue;
         }
         if (source.startsWith("</font>", cursor)) {
-            if (fontDepth === 0 || tagStack.pop() !== "font")
-                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched </font>.");
-            fontDepth--;
+            if (tagStack.pop() !== "font")
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched or crossed </font>.");
             cursor += 7;
             continue;
         }
         const breakMatch = /^<(?:br|sbr)\s*\/?>/.exec(source.slice(cursor));
         if (breakMatch) { plainText += "\r"; cursor += breakMatch[0].length; continue; }
         if (source[cursor] === "<")
-            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and nested face-only font runs are allowed in font content.");
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and color- or face-only font runs are allowed in font content.");
         let character: string;
         if (source[cursor] === "&") {
             const end = source.indexOf(";", cursor + 1);
@@ -151,13 +159,9 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
             else sawPlainText = true;
         }
     }
-    if (boldDepth !== 0)
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unclosed <b>.");
-    if (fontDepth !== 0)
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unclosed <font>.");
-    if (sawBoldText && sawPlainText)
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_BOLD_RUN_UNSUPPORTED: mixed bold and regular runs require a richer publication contract.");
-    return { plainText, bold: sawBoldText };
+    if (tagStack.length !== 0 || boldDepth !== 0)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unclosed nested formatting tag.");
+    return { plainText, bold: sawBoldText && !sawPlainText };
 }
 
 function validFontFace(value: string): void {

@@ -126,10 +126,25 @@ test("restricted Flash HTML preserves authenticated empty trailing paragraphs", 
     });
 });
 
+test("restricted Flash HTML preserves authenticated nested face and mixed bold runs", () => {
+    const markup = '<p align="left"><font face="MS PGothic" size="12" color="#00dedb" letterSpacing="0.000000" kerning="0">『<font face="Arial"><b>Event Explanation</b></font>』</font></p>';
+    assert.deepEqual(parseRestrictedFlashHtmlText(markup), {
+        markup, plainText: "『Event Explanation』", align: "left", font: "MS PGothic", size: 12,
+        color: 0x00dedb, letterSpacing: 0, kerning: false, bold: false,
+    });
+    assert.equal(createAuthoredTextField({
+        ...configuration(markup),
+        format: { ...configuration(markup).format, font: "MS PGothic", size: 12, color: 0x00dedb, bold: false, align: "left", kerning: false },
+    }).htmlText, markup);
+});
+
 test("restricted Flash HTML fails closed before TextField publication", () => {
     for (const markup of [
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><i>bad</i></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><b>bad</font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font color="#fff">bad</font></font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="Other" color="#ffffff">bad</font></font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><b><font face="Other">bad</b></font></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">&bogus;</font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="Bad\u0001Face">bad</font></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans" color="#ffffff">bad</font></font></p>',
