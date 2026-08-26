@@ -38,6 +38,15 @@ type PlacementEvidenceContext = {
     readonly frameIndex: number;
     readonly operationIndex: number;
 };
+type FlashLibraryShapeProjection = {
+    readonly bitmapId: number;
+    readonly sourcePath: string;
+    readonly styleIndex: number;
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+};
 
 const PLACEMENT_FIELDS = new Set(["characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
@@ -658,31 +667,73 @@ export class FlashLibrarySymbolAdapter {
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "shape.characterId");
         const rasterAuthority = rasterizedShapes.get(characterId);
-        const sourcePath = rasterAuthority?.sourcePath
-            ?? resolveFlashLibraryShapeResourcePath(asset, assets, resourceAuthorities);
-        const authority = rasterAuthority ?? resourceAuthorities.get(sourcePath);
-        if (!authority || authority.sourcePath !== sourcePath)
-            fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
-        const resourceId = `flash-character-${characterId}`;
-        registerResource(resources, resourceId, authority);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
         const placement = placementTransform(operation);
         const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
         const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
-        return {
-            linkage: flashLibraryAssetName(asset, characterId),
+        const boundsWidth = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
+        const boundsHeight = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
+        const linkage = flashLibraryAssetName(asset, characterId);
+        const common = {
+            linkage,
             instanceId,
             ...(operation.name === undefined ? {} : { name: operation.name }),
-            kind: "image",
             depth: positiveInteger(operation.depth, "place.depth"),
             x: placement.x + placement.a * boundsX + placement.c * boundsY,
             y: placement.y + placement.b * boundsX + placement.d * boundsY,
             matrix: placement.matrix,
-            width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
-            height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
-            resourceId,
+            width: boundsWidth,
+            height: boundsHeight,
             variable: typeof operation.name === "string",
-            children: [],
+        };
+        if (rasterAuthority !== undefined) {
+            const resourceId = `flash-character-${characterId}`;
+            registerResource(resources, resourceId, rasterAuthority);
+            return { ...common, kind: "image", resourceId, children: [] };
+        }
+
+        if (asset.path !== undefined) {
+            const sourcePath = string(asset.path, `library.assets.${characterId}.path`);
+            const authority = resourceAuthorities.get(sourcePath);
+            if (!authority || authority.sourcePath !== sourcePath)
+                fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
+            const resourceId = `flash-character-${characterId}`;
+            registerResource(resources, resourceId, authority);
+            return { ...common, kind: "image", resourceId, children: [] };
+        }
+
+        const projections = resolveFlashLibraryShapeProjections(asset, assets, resourceAuthorities);
+        if (projections.length === 1) {
+            const projection = projections[0];
+            const authority = resourceAuthorities.get(projection.sourcePath);
+            if (!authority || authority.sourcePath !== projection.sourcePath)
+                fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
+            const resourceId = registerBitmapResource(resources, projection.bitmapId, authority);
+            return { ...common, kind: "image", resourceId, children: [] };
+        }
+
+        const children = projections.map((projection, index): NeutralAuthoredNode => {
+            const authority = resourceAuthorities.get(projection.sourcePath);
+            if (!authority || authority.sourcePath !== projection.sourcePath)
+                fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
+            const resourceId = registerBitmapResource(resources, projection.bitmapId, authority);
+            return {
+                linkage: `${linkage}_fill_${projection.styleIndex}`,
+                instanceId: `fill_${projection.styleIndex}`,
+                kind: "image",
+                depth: index + 1,
+                x: projection.x - boundsX,
+                y: projection.y - boundsY,
+                width: projection.width,
+                height: projection.height,
+                resourceId,
+                children: [],
+            };
+        });
+        return {
+            ...common,
+            kind: "container",
+            children,
         };
     }
 
@@ -1168,64 +1219,177 @@ function registerResource(
     resources.set(resourceId, resource);
 }
 
-/**
- * Resolves the authenticated bitmap authority for a Flash shape which is an
- * exact axis-aligned bitmap projection. The FFDec XML exporter may retain its
- * sentinel bitmap fill (character 65535) alongside the real fill; the sentinel
- * carries no pixels and is ignored only after the remaining geometry proves a
- * complete rectangular projection. Bitmap fills may reference either lossless
- * PNG authorities or authored JPEG authorities retained by the extractor.
- */
+function registerBitmapResource(
+    resources: Map<string, NeutralResourceInput>,
+    fallbackBitmapId: number,
+    authority: FlashLibraryResourceAuthority,
+): string {
+    const existing = [...resources.values()].find(resource => resource.sourcePath === authority.sourcePath);
+    if (existing !== undefined) {
+        registerResource(resources, existing.id, authority);
+        return existing.id;
+    }
+    const normalized = authority.sourcePath.replace(/\\/g, "/");
+    const match = /(?:^|\/)([1-9][0-9]*)\.(?:jpe?g|png)$/i.exec(normalized);
+    const bitmapId = match === null ? fallbackBitmapId : Number(match[1]);
+    const resourceId = `flash-bitmap-${bitmapId}`;
+    registerResource(resources, resourceId, authority);
+    return resourceId;
+}
+
+/** Resolves the sole bitmap authority for a one-piece rectangular projection. */
 export function resolveFlashLibraryShapeResourcePath(
     assetValue: unknown,
     assetsValue: unknown,
     resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
 ): string {
+    const projections = resolveFlashLibraryShapeProjections(assetValue, assetsValue, resourceAuthorities);
+    if (projections.length !== 1)
+        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", "The shape is an authenticated bitmap mosaic, not a sole bitmap projection.");
+    return projections[0].sourcePath;
+}
+
+/**
+ * Resolves an exact axis-aligned Flash bitmap projection. FFDec may introduce
+ * new local fill tables within one shape; after conversion those tables have
+ * global indices. Every real bitmap fill must own one rectangular tile, and
+ * the tile union must have the exact authored outer bounds. Transparent gaps
+ * and authored overlap remain meaningful Flash geometry. This
+ * retains the original bitmap authorities without flattening the shape to a
+ * diagnostic preview raster.
+ */
+function resolveFlashLibraryShapeProjections(
+    assetValue: unknown,
+    assetsValue: unknown,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+): ReadonlyArray<FlashLibraryShapeProjection> {
     const asset = object(assetValue, "shape asset");
     const assets = object(assetsValue, "library.assets");
     const characterId = positiveInteger(asset.characterId, "shape.characterId");
-    if (asset.path !== undefined)
-        return string(asset.path, `library.assets.${characterId}.path`);
+    if (asset.path !== undefined) {
+        const sourcePath = string(asset.path, `library.assets.${characterId}.path`);
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        return [{
+            bitmapId: characterId,
+            sourcePath,
+            styleIndex: 1,
+            x: finite(bounds.x, `library.assets.${characterId}.bounds.x`),
+            y: finite(bounds.y, `library.assets.${characterId}.bounds.y`),
+            width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
+            height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
+        }];
+    }
 
     const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
     const shape = object(asset.shape, `library.assets.${characterId}.shape`);
     const fillStyles = array(shape.fillStyles, `library.assets.${characterId}.shape.fillStyles`)
         .map((value, index) => ({ value: object(value, `shape ${characterId} fill ${index}`), styleIndex: index + 1 }))
-        .filter(value => value.value.bitmapId !== 65535);
-    if (fillStyles.length !== 1)
-        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} must contain exactly one non-sentinel bitmap fill.`);
-    const { value: fill, styleIndex } = fillStyles[0];
-    if (fill.kind !== "bitmap" || fill.repeat !== false || fill.smooth !== false)
-        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} bitmap fill mode is unsupported.`);
-    const matrix = object(fill.startMatrix, `shape ${characterId} bitmap matrix`);
-    exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
-    if (matrix.a !== 20 || matrix.b !== 0 || matrix.c !== 0 || matrix.d !== 20
-        || matrix.tx !== bounds.x || matrix.ty !== bounds.y)
-        fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix is not a one-pixel-per-pixel bounds projection.`);
-    if (array(shape.lineStyles, `shape ${characterId}.lineStyles`).length !== 0
-        || shape.usesFillWindingRule !== false
-        || !isBoundsRectangle(array(shape.segments, `shape ${characterId}.segments`), bounds, styleIndex))
-        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not the exact bounds rectangle.`);
+        .filter(value => !(value.value.kind === "bitmap" && value.value.bitmapId === 65535));
+    if (fillStyles.length === 0)
+        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} must contain at least one non-sentinel bitmap fill.`);
+    if (array(shape.lineStyles, `shape ${characterId}.lineStyles`).length !== 0 || shape.usesFillWindingRule !== false)
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not an axis-aligned bitmap projection.`);
+    const segments = array(shape.segments, `shape ${characterId}.segments`);
+    const realStyleIndices = new Set(fillStyles.map(value => value.styleIndex));
+    for (const value of segments) {
+        const segment = object(value, `shape ${characterId} segment`);
+        if (segment.kind !== "line" || segment.fillStyle0 !== 0 || segment.lineStyle !== 0
+            || !realStyleIndices.has(segment.fillStyle1))
+            fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} contains geometry outside its authenticated bitmap fills.`);
+    }
 
-    const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
-    const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
-    if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId)
-        fail("FLASH_LIBRARY_BITMAP_FILL_IMAGE_REQUIRED", `Shape ${characterId} bitmap ${bitmapId} does not identify an image asset.`);
-    const sourcePath = string(bitmapAsset.path, `library.assets.${bitmapId}.path`);
-    const authority = resourceAuthorities.get(sourcePath);
-    const lower = sourcePath.replace(/\\/g, "/").toLowerCase();
-    const mediaMatches = authority !== undefined && authority.sourcePath === sourcePath
-        && ((lower.endsWith(".png") && authority.mediaType === "image/png")
-            || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
-    if (!mediaMatches)
-        fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
-    return sourcePath;
+    const projections = fillStyles.map(({ value: fill, styleIndex }): FlashLibraryShapeProjection => {
+        if (fill.kind !== "bitmap" || fill.repeat !== false || fill.smooth !== false)
+            fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} bitmap fill mode is unsupported.`);
+        const tile = rectangleForFill(segments, styleIndex, characterId);
+        const matrix = object(fill.startMatrix, `shape ${characterId} bitmap matrix`);
+        exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
+        const scaleX = finite(matrix.a, `shape ${characterId} bitmap matrix.a`);
+        const scaleY = finite(matrix.d, `shape ${characterId} bitmap matrix.d`);
+        if (scaleX <= 0 || scaleY <= 0 || matrix.b !== 0 || matrix.c !== 0
+            || matrix.tx !== tile.x || matrix.ty !== tile.y)
+            fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix is not an axis-aligned tile projection.`);
+
+        const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
+        const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
+        if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId)
+            fail("FLASH_LIBRARY_BITMAP_FILL_IMAGE_REQUIRED", `Shape ${characterId} bitmap ${bitmapId} does not identify an image asset.`);
+        if (scaleX !== 20 || scaleY !== 20) {
+            if (bitmapAsset.bitmap === undefined)
+                fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} scaled bitmap lacks authenticated dimensions.`);
+            const bitmap = object(bitmapAsset.bitmap, `library.assets.${bitmapId}.bitmap`);
+            const bitmapWidth = positive(bitmap.width, `library.assets.${bitmapId}.bitmap.width`);
+            const bitmapHeight = positive(bitmap.height, `library.assets.${bitmapId}.bitmap.height`);
+            if (Math.abs(bitmapWidth * scaleX / 20 - tile.width) > 0.05
+                || Math.abs(bitmapHeight * scaleY / 20 - tile.height) > 0.05)
+                fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix does not project the full authenticated bitmap into its tile.`);
+        }
+        const sourcePath = string(bitmapAsset.path, `library.assets.${bitmapId}.path`);
+        const authority = resourceAuthorities.get(sourcePath);
+        const lower = sourcePath.replace(/\\/g, "/").toLowerCase();
+        const mediaMatches = authority !== undefined && authority.sourcePath === sourcePath
+            && ((lower.endsWith(".png") && authority.mediaType === "image/png")
+                || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
+        if (!mediaMatches)
+            fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
+        return { bitmapId, sourcePath, styleIndex, ...tile };
+    });
+    if (!rectanglesTileBounds(projections, bounds))
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
+    return projections;
 }
 
 function flashLibraryAssetName(asset: Record<string, any>, characterId: number): string {
     return asset.symbolName === undefined
         ? `character_${characterId}`
         : string(asset.symbolName, `library.assets.${characterId}.symbolName`);
+}
+
+function rectangleForFill(
+    segmentsValue: ReadonlyArray<unknown>,
+    styleIndex: number,
+    characterId: number,
+): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+    const segments = segmentsValue.filter(value => object(value, `shape ${characterId} segment`).fillStyle1 === styleIndex);
+    const points = segments.flatMap(value => {
+        const edge = object(object(value, `shape ${characterId} segment`).end, `shape ${characterId} segment.end`);
+        return [array(edge.from, `shape ${characterId} segment.end.from`), array(edge.to, `shape ${characterId} segment.end.to`)]
+            .map(point => {
+                if (point.length !== 2) fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} has an incomplete tile edge.`);
+                return [finite(point[0], `shape ${characterId} tile x`), finite(point[1], `shape ${characterId} tile y`)] as const;
+            });
+    });
+    if (points.length === 0)
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap fill ${styleIndex} has no geometry.`);
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const rectangle = { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+    if (!isBoundsRectangle(segments, rectangle, styleIndex))
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap fill ${styleIndex} is not one exact rectangle.`);
+    return rectangle;
+}
+
+function rectanglesTileBounds(
+    projections: ReadonlyArray<FlashLibraryShapeProjection>,
+    bounds: Record<string, any>,
+): boolean {
+    const x = finite(bounds.x, "shape.bounds.x");
+    const y = finite(bounds.y, "shape.bounds.y");
+    const width = finite(bounds.width, "shape.bounds.width");
+    const height = finite(bounds.height, "shape.bounds.height");
+    if (width <= 0 || height <= 0) return false;
+    for (const current of projections) {
+        if (current.width <= 0 || current.height <= 0
+            || current.x < x || current.y < y
+            || current.x + current.width > x + width
+            || current.y + current.height > y + height) return false;
+    }
+    return Math.min(...projections.map(projection => projection.x)) === x
+        && Math.min(...projections.map(projection => projection.y)) === y
+        && Math.max(...projections.map(projection => projection.x + projection.width)) === x + width
+        && Math.max(...projections.map(projection => projection.y + projection.height)) === y + height;
 }
 
 function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record<string, any>, styleIndex: number): boolean {

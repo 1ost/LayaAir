@@ -216,6 +216,12 @@ async function main() {
     assert.equal(text.textField.format.embeddedFont.kerning.length, 909,
         "the full unsorted source kerning table is retained after deterministic normalization");
 
+    const pixelFixture = fixture();
+    pixelFixture.library.assets[203].textRendering.gridFit = 1;
+    pixelFixture.library.assets[203].textRendering.gridFitMode = "pixel";
+    const pixelText = adapter.parse(pixelFixture).root.children[0];
+    assert.equal(pixelText.textField.rasterization.gridFitType, "pixel");
+
     const noOutlineFixture = fixture();
     noOutlineFixture.library.assets[18].font.kerning = realShapedKerning(908);
     noOutlineFixture.library.assets[203].textField.useOutlines = false;

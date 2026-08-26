@@ -29,6 +29,18 @@ const rectangle = [
     start: { from, to }, end: { from, to },
 }));
 
+function tileEdges(x, y, width, height, fillStyle1) {
+    return [
+        [[x + width, y + height], [x, y + height]],
+        [[x, y + height], [x, y]],
+        [[x, y], [x + width, y]],
+        [[x + width, y], [x + width, y + height]],
+    ].map(([from, to]) => ({
+        kind: "line", fillStyle0: 0, fillStyle1, lineStyle: 0,
+        start: { from, to }, end: { from, to },
+    }));
+}
+
 function fixture(resourcePath = "assets/1.png", mediaType = "image/png") {
     return {
         library: {
@@ -70,6 +82,31 @@ function fixture(resourcePath = "assets/1.png", mediaType = "image/png") {
     };
 }
 
+function mosaicFixture() {
+    const value = fixture();
+    const mosaicBounds = { x: 0, y: 0, width: 100, height: 60 };
+    value.library.assets["3"].bounds = mosaicBounds;
+    value.library.assets["2"].bounds = mosaicBounds;
+    value.library.assets["2"].shape.fillStyles = [
+        { kind: "bitmap", bitmapId: 1, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 } },
+        { kind: "bitmap", bitmapId: 65535, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 } },
+        { kind: "bitmap", bitmapId: 5, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 10 } },
+        { kind: "bitmap", bitmapId: 65535, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 } },
+        { kind: "bitmap", bitmapId: 6, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 15, ty: 10 } },
+    ];
+    value.library.assets["2"].shape.segments = [
+        ...tileEdges(0, 0, 100, 10, 1),
+        ...tileEdges(0, 10, 20, 50, 3),
+        ...tileEdges(15, 10, 85, 50, 5),
+    ];
+    value.library.assets["5"] = { characterId: 5, kind: "image", path: "assets/5.png" };
+    value.library.assets["6"] = { characterId: 6, kind: "image", path: "assets/6.jpg" };
+    value.resources.set("assets/5.png", { sourcePath: "assets/5.png", mediaType: "image/png", byteLength: 40, sha256: "5".repeat(64) });
+    value.resources.set("assets/6.jpg", { sourcePath: "assets/6.jpg", mediaType: "image/jpeg", byteLength: 50, sha256: "6".repeat(64) });
+    value.timelines.get(3).frames[0].operations.splice(1);
+    return value;
+}
+
 const adapter = new FlashLibrarySymbolAdapter();
 const content = adapter.parse(fixture());
 assert.equal(content.root.linkage, "BootShadow");
@@ -77,7 +114,7 @@ assert.equal(content.root.runtimeLinkage, "Bleach.Authored.BootShadow");
 assert.deepEqual([content.root.width, content.root.height], [103, 64]);
 assert.deepEqual([content.stage.width, content.stage.height], [103, 64]);
 assert.equal(content.resources[0].sourcePath, "assets/1.png");
-assert.equal(content.root.children[0].resourceId, "flash-character-2");
+assert.equal(content.root.children[0].resourceId, "flash-bitmap-1");
 assert.deepEqual([content.root.children[0].x, content.root.children[0].y], [-50.95, -32]);
 assert.equal(content.root.children[1].linkage, "character_4");
 assert.equal(content.root.children[1].name, "mc_hp");
@@ -86,11 +123,39 @@ assert.equal(content.timeline.tracks.length, 0);
 const jpegContent = adapter.parse(fixture("assets/1.jpg", "image/jpeg"));
 assert.equal(jpegContent.resources[0].sourcePath, "assets/1.jpg");
 assert.equal(jpegContent.resources[0].mediaType, "image/jpeg");
-assert.equal(jpegContent.resources[0].outputPath, "resources/flash-character-2.jpg");
+assert.equal(jpegContent.resources[0].outputPath, "resources/flash-bitmap-1.jpg");
 
 const jpegExtensionContent = adapter.parse(fixture("assets/1.jpeg", "image/jpeg"));
 assert.equal(jpegExtensionContent.resources[0].sourcePath, "assets/1.jpeg");
-assert.equal(jpegExtensionContent.resources[0].outputPath, "resources/flash-character-2.jpg");
+assert.equal(jpegExtensionContent.resources[0].outputPath, "resources/flash-bitmap-1.jpg");
+
+const mosaicContent = adapter.parse(mosaicFixture());
+const mosaic = mosaicContent.root.children[0];
+assert.equal(mosaic.kind, "container");
+assert.deepEqual(mosaic.children.map(child => [child.x, child.y, child.width, child.height]), [
+    [0, 0, 100, 10], [0, 10, 20, 50], [15, 10, 85, 50],
+]);
+assert.deepEqual(mosaic.children.map(child => child.resourceId), [
+    "flash-bitmap-1", "flash-bitmap-5", "flash-bitmap-6",
+]);
+
+const incompleteMosaic = mosaicFixture();
+incompleteMosaic.library.assets["2"].shape.segments.splice(0, 4, ...tileEdges(0, 0, 99, 10, 1));
+incompleteMosaic.library.assets["2"].shape.segments.splice(-4, 4, ...tileEdges(15, 10, 84, 50, 5));
+assert.throws(() => adapter.parse(incompleteMosaic), /FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED/);
+
+const scaledFixture = fixture();
+scaledFixture.library.assets["1"].bitmap = { width: 125, height: 17 };
+scaledFixture.library.assets["2"].bounds = { x: 0, y: 0, width: 80, height: 17 };
+scaledFixture.library.assets["3"].bounds = { x: 0, y: 0, width: 80, height: 17 };
+scaledFixture.library.assets["2"].shape.fillStyles[1].startMatrix = { a: 12.8, b: 0, c: 0, d: 20, tx: 0, ty: 0 };
+scaledFixture.library.assets["2"].shape.segments = tileEdges(0, 0, 80, 17, 2);
+const scaled = adapter.parse(scaledFixture).root.children[0];
+assert.deepEqual([scaled.width, scaled.height], [80, 17]);
+
+const dimensionDrift = structuredClone(scaledFixture);
+dimensionDrift.library.assets["1"].bitmap.width = 124;
+assert.throws(() => adapter.parse(dimensionDrift), /FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED/);
 
 for (const [label, mutate, expected] of [
     ["scaled bitmap", value => value.library.assets["2"].shape.fillStyles[1].startMatrix.a = 19, /FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED/],
@@ -98,11 +163,11 @@ for (const [label, mutate, expected] of [
     ["missing bitmap authority", value => value.resources.clear(), /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
     ["bitmap media mismatch", value => value.resources.get("assets/1.png").mediaType = "image/jpeg", /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
     ["same-stem authority cannot replace exact image asset", value => { value.library.assets["1"].path = "nested/1.png"; }, /FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED/],
-    ["second real fill", value => value.library.assets["2"].shape.fillStyles.push({ ...value.library.assets["2"].shape.fillStyles[1], bitmapId: 4 }), /FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED/],
+    ["second real fill without geometry", value => value.library.assets["2"].shape.fillStyles.push({ ...value.library.assets["2"].shape.fillStyles[1], bitmapId: 4 }), /FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED/],
 ]) {
     const value = fixture();
     mutate(value);
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored projected bitmap fill: 9/9 passed\n");
+process.stdout.write("authored projected bitmap fill: 13/13 passed\n");
