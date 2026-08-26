@@ -157,12 +157,17 @@ async function main() {
     assert.deepEqual(text.textField.rasterization, {
         antiAliasType: "advanced", gridFitType: "subpixel", sharpness: 0, thickness: 0,
     });
-    const pixelFixture = fixture();
-    pixelFixture.library.assets[203].textRendering.gridFit = 1;
-    pixelFixture.library.assets[203].textRendering.gridFitMode = "pixel";
-    assert.deepEqual(adapter.parse(pixelFixture).root.children[0].textField.rasterization, {
-        antiAliasType: "advanced", gridFitType: "pixel", sharpness: 0, thickness: 0,
-    });
+    for (const [gridFit, gridFitMode] of [[0, "none"], [1, "pixel"]]) {
+        const gridFixture = fixture();
+        gridFixture.library.assets[203].textRendering.gridFit = gridFit;
+        gridFixture.library.assets[203].textRendering.gridFitMode = gridFitMode;
+        assert.equal(adapter.parse(gridFixture).root.children[0].textField.rasterization.gridFitType, gridFitMode,
+            `authenticated CSM grid-fit code ${gridFit} retains its exact Flash mode`);
+    }
+    const mismatchedGridFixture = fixture();
+    mismatchedGridFixture.library.assets[203].textRendering.gridFit = 1;
+    assert.throws(() => adapter.parse(mismatchedGridFixture), /FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED/,
+        "CSM grid-fit code and named mode must agree");
     assert.deepEqual(adapter.parse(gradientFixture()).root.children[0].textField.filters[0], {
         kind: "gradient-bevel", distance: 10, angleRadians: Math.PI / 2, colors: [0xff3300, 0xffcc33, 0xffff33],
         alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,

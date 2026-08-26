@@ -129,7 +129,7 @@ export interface AuthoredFontAlignZonesConfiguration {
 
 export interface AuthoredAdvancedTextRasterizationConfiguration {
     readonly antiAliasType: "advanced";
-    readonly gridFitType: "pixel" | "subpixel";
+    readonly gridFitType: "none" | "pixel" | "subpixel";
     readonly sharpness: number;
     readonly thickness: number;
 }
@@ -489,7 +489,7 @@ function validateRasterization(value: unknown): AuthoredAdvancedTextRasterizatio
     equal(record.antiAliasType, AntiAliasType.ADVANCED, "rasterization.antiAliasType");
     const gridFitType = oneOfValue(
         record.gridFitType,
-        [GridFitType.PIXEL, GridFitType.SUBPIXEL] as const,
+        [GridFitType.NONE, GridFitType.PIXEL, GridFitType.SUBPIXEL] as const,
         "rasterization.gridFitType",
     );
     range(record.sharpness, -400, 400, "rasterization.sharpness");

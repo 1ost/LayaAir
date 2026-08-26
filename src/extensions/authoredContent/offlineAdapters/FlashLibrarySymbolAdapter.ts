@@ -1064,12 +1064,13 @@ function authoredAdvancedTextRasterization(asset: Record<string, any>, character
     exactValue(rendering.textId, characterId, "FLASH_LIBRARY_TEXT_RENDERING_ID_MISMATCH", `Text ${characterId} rendering authority identifies another field.`);
     exactValue(rendering.renderer, "advanced", "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} renderer is unsupported.`);
     exactValue(rendering.useFlashType, 1, "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} does not use FlashType.`);
-    const gridFit = rendering.gridFit;
-    const gridFitMode = rendering.gridFitMode;
-    const gridFitType = gridFit === 1 && gridFitMode === "pixel" ? "pixel"
-        : gridFit === 2 && gridFitMode === "subpixel" ? "subpixel" : null;
-    if (gridFitType === null)
-        fail("FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit code and mode are unsupported.`);
+    const gridFit = finite(rendering.gridFit, `library.assets.${characterId}.textRendering.gridFit`);
+    let gridFitType: "none" | "pixel" | "subpixel";
+    if (gridFit === 0) gridFitType = "none";
+    else if (gridFit === 1) gridFitType = "pixel";
+    else if (gridFit === 2) gridFitType = "subpixel";
+    else fail("FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit code is unsupported.`);
+    exactValue(rendering.gridFitMode, gridFitType, "FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit mode is unsupported.`);
     const sharpness = finite(rendering.sharpness, `library.assets.${characterId}.textRendering.sharpness`);
     const thickness = finite(rendering.thickness, `library.assets.${characterId}.textRendering.thickness`);
     if (sharpness < -400 || sharpness > 400 || thickness < -200 || thickness > 200)

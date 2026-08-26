@@ -189,7 +189,7 @@ export interface NeutralEmbeddedFont {
 
 export interface NeutralAdvancedTextRasterization {
     readonly antiAliasType: "advanced";
-    readonly gridFitType: "pixel" | "subpixel";
+    readonly gridFitType: "none" | "pixel" | "subpixel";
     readonly sharpness: number;
     readonly thickness: number;
 }
@@ -691,12 +691,9 @@ function normalizeAdvancedTextRasterization(value: unknown, path: string): Neutr
         fail("AUTHORED_CONTENT_TEXT_SHARPNESS_RANGE", `${path}.sharpness must be from -400 through 400.`);
     if (thickness < -200 || thickness > 200)
         fail("AUTHORED_CONTENT_TEXT_THICKNESS_RANGE", `${path}.thickness must be from -200 through 200.`);
-    const gridFitType = requiredString(source.gridFitType, `${path}.gridFitType`);
-    if (gridFitType !== "pixel" && gridFitType !== "subpixel")
-        fail("AUTHORED_CONTENT_TEXT_GRID_FIT", `${path}.gridFitType must be pixel or subpixel.`);
     return {
         antiAliasType: exactLiteral(source.antiAliasType, "advanced", `${path}.antiAliasType`),
-        gridFitType,
+        gridFitType: requiredGridFitType(source.gridFitType, `${path}.gridFitType`),
         sharpness,
         thickness,
     };
@@ -1089,6 +1086,12 @@ function exactLiteral<T extends string | number | boolean>(value: unknown, expec
     if (value !== expected)
         fail("AUTHORED_CONTENT_LITERAL_REQUIRED", `${path} must be ${String(expected)}.`);
     return expected;
+}
+
+function requiredGridFitType(value: unknown, path: string): "none" | "pixel" | "subpixel" {
+    if (value !== "none" && value !== "pixel" && value !== "subpixel")
+        fail("AUTHORED_CONTENT_LITERAL_REQUIRED", `${path} must be none, pixel, or subpixel.`);
+    return value;
 }
 
 function optionalString(value: unknown, path: string): string | undefined {
