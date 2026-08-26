@@ -42,7 +42,7 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
     const letterSpacing = finiteNumber(font.letterSpacing, "letterSpacing");
     if (font.kerning !== "0" && font.kerning !== "1")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_KERNING_INVALID: kerning must be 0 or 1.");
-    const content = decodeContent(match[3]);
+    const content = decodeContent(match[3], font.face);
     return Object.freeze({
         markup,
         plainText: content.plainText,
@@ -77,22 +77,41 @@ function attributes(source: string, allowed: ReadonlySet<string>, label: string)
     return result;
 }
 
-function decodeContent(source: string): { readonly plainText: string; readonly bold: boolean } {
+function decodeContent(source: string, fontFace: string): { readonly plainText: string; readonly bold: boolean } {
     let cursor = 0;
     let boldDepth = 0;
+    let fontDepth = 0;
+    const tagStack: ("b" | "font")[] = [];
     let sawBoldText = false;
     let sawPlainText = false;
     let plainText = "";
     while (cursor < source.length) {
-        if (source.startsWith("<b>", cursor)) { boldDepth++; cursor += 3; continue; }
+        if (source.startsWith("<b>", cursor)) { boldDepth++; tagStack.push("b"); cursor += 3; continue; }
         if (source.startsWith("</b>", cursor)) {
-            if (boldDepth === 0) throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched </b>.");
+            if (boldDepth === 0 || tagStack.pop() !== "b")
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched </b>.");
             boldDepth--; cursor += 4; continue;
+        }
+        const fontMatch = /^<font face="([^"]*)">/.exec(source.slice(cursor));
+        if (fontMatch) {
+            if (fontMatch[1] !== fontFace)
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_FONT_RUN_UNSUPPORTED: nested font face must match the enclosing run.");
+            fontDepth++;
+            tagStack.push("font");
+            cursor += fontMatch[0].length;
+            continue;
+        }
+        if (source.startsWith("</font>", cursor)) {
+            if (fontDepth === 0 || tagStack.pop() !== "font")
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unmatched </font>.");
+            fontDepth--;
+            cursor += 7;
+            continue;
         }
         const breakMatch = /^<(?:br|sbr)\s*\/?>/.exec(source.slice(cursor));
         if (breakMatch) { plainText += "\r"; cursor += breakMatch[0].length; continue; }
         if (source[cursor] === "<")
-            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, and sbr are allowed in font content.");
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and redundant same-face font runs are allowed in font content.");
         let character: string;
         if (source[cursor] === "&") {
             const end = source.indexOf(";", cursor + 1);
@@ -114,6 +133,8 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
     }
     if (boldDepth !== 0)
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unclosed <b>.");
+    if (fontDepth !== 0)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_NESTING_INVALID: unclosed <font>.");
     if (sawBoldText && sawPlainText)
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_BOLD_RUN_UNSUPPORTED: mixed bold and regular runs require a richer publication contract.");
     return { plainText, bold: sawBoldText };

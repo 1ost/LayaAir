@@ -29,6 +29,7 @@ ILaya.systemTimer = { callLater: (): void => undefined, runCallLater: (): void =
 (PAL as any).browser ??= { on: (): void => undefined };
 
 const MARKUP = '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><b>……</b></font></p>';
+const REDUNDANT_FONT_MARKUP = '<p align="right"><font face="Arial" size="12" color="#ffffff" letterSpacing="0.000000" kerning="0">Current Level<font face="Arial">ï¼š</font></font></p>';
 
 function configuration(markup = MARKUP): AuthoredTextFieldConfiguration {
     return {
@@ -66,11 +67,22 @@ test("restricted Flash HTML preserves nested bold markup and later mutation sema
     } finally { field.destroy(true); }
 });
 
+test("restricted Flash HTML preserves redundant same-face font runs", () => {
+    assert.deepEqual(parseRestrictedFlashHtmlText(REDUNDANT_FONT_MARKUP), {
+        markup: REDUNDANT_FONT_MARKUP, plainText: "Current Levelï¼š", align: "right", font: "Arial", size: 12,
+        color: 0xffffff, letterSpacing: 0, kerning: false, bold: false,
+    });
+});
+
 test("restricted Flash HTML fails closed before TextField publication", () => {
     for (const markup of [
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><i>bad</i></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><b>bad</font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">&bogus;</font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="Other">bad</font></font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans" color="#ffffff">bad</font></font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans"><b>bad</font></b></font></p>',
+        '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans">bad</font></font></font></p>',
         '<p align="center" onclick="x"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">bad</font></p>',
     ]) assert.throws(() => parseRestrictedFlashHtmlText(markup), /AUTHORED_CONTENT_HTML_TEXT/);
     assert.throws(() => createAuthoredTextField({ ...configuration(), format: { ...configuration().format, color: 0xffffff } }), /must match its exact format/);
