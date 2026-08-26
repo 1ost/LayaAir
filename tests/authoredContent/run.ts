@@ -701,6 +701,52 @@ async function main(): Promise<void> {
         }
     });
 
+    await test("Flash library duplicate sibling names retain native lookup names and deterministic placement IDs", () => {
+        const textField = {
+            align: "left", autoSize: false, border: false, color: { alpha: 1, color: 0 },
+            fieldType: "dynamic", fontId: 3, fontSize: 12, html: false, indent: 0,
+            initialText: "Caption", leading: 0, leftMargin: 0, multiline: false,
+            password: false, rightMargin: 0, selectable: false, useOutlines: false,
+            variableName: "", wordWrap: false,
+        };
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 80, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 100, height: 80 } },
+                "2": { characterId: 2, kind: "input-text", symbolName: "symbol2", initialText: "Caption",
+                    bounds: { x: 0, y: 0, width: 40, height: 16 }, textField },
+                "3": { characterId: 3, kind: "font", font: { family: "Arial", bold: false, italic: false } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [
+                { op: "place", characterId: 2, depth: 1, move: false, ratio: 0, name: "TF_Caption",
+                    matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 } },
+                { op: "place", characterId: 2, depth: 2, move: false, ratio: 0, name: "TF_Caption",
+                    matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 20 } },
+            ], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.DuplicateNames", resources: new Map(),
+        });
+        assert(content.root.children.map(child => child.name).join(",") === "TF_Caption,TF_Caption",
+            "duplicate authored instance names drifted");
+        assert(content.root.children.map(child => child.instanceId).join(",")
+            === "symbol2$d1$f1$i1,symbol2$d2$f1$i2",
+            "duplicate authored instance names did not receive deterministic placement IDs");
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1, "_$type": "Sprite", name: "Root", width: 100, height: 80,
+            "_$child": [
+                { "_$type": "Text", name: "TF_Caption", x: 0, y: 0, width: 40, height: 16 },
+                { "_$type": "Text", name: "TF_Caption", x: 0, y: 20, width: 40, height: 16 },
+            ],
+        }, "duplicate-names.mc", new Map());
+        assert((hierarchy._$child as any[]).map(child => child.name).join(",") === "TF_Caption,TF_Caption",
+            "native hierarchy did not retain duplicate authored lookup names");
+    });
+
     await test("nested MovieClip emits an independent 16-frame four-pose native timeline", () => {
         const content = normalizeNeutralAuthoredContent(nestedHappyBearDocument());
         const timelines = NativeLayaEmitter.createNestedTimelines(content);
@@ -1488,7 +1534,7 @@ async function main(): Promise<void> {
         }
     });
 
-    await test("definition reuse is separated from placement identity and true identity collisions are rejected", () => {
+    await test("definition reuse and duplicate native names remain separate from placement identity", () => {
         const source = sourceDocument();
         const root = source.root as any;
         root.children[0].instanceId = "title-at-depth-1";
@@ -1503,7 +1549,11 @@ async function main(): Promise<void> {
         const duplicateName = structuredClone(source) as any;
         duplicateName.root.children[0].name = "sameName";
         duplicateName.root.children[1].name = "sameName";
-        assertThrows(() => normalizeNeutralAuthoredContent(duplicateName), "AUTHORED_CONTENT_INSTANCE_NAME_COLLISION");
+        const duplicateNameNormalized = normalizeNeutralAuthoredContent(duplicateName);
+        assert(duplicateNameNormalized.root.children.every(child => child.name === "sameName"),
+            "duplicate authored native names were not retained");
+        assert(new Set(duplicateNameNormalized.root.children.map(child => child.instanceId)).size === 2,
+            "duplicate authored native names collapsed distinct placement identities");
     });
 
     await test("the same child linkage is accepted under distinct parent branches", () => {

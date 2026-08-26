@@ -1316,7 +1316,7 @@ function placementInstanceId(
     ordinal: number,
 ): string {
     if (operation.name !== undefined)
-        return string(operation.name, "place.name");
+        string(operation.name, "place.name");
     const characterId = positiveInteger(asset.characterId, "asset.characterId");
     const depth = positiveInteger(operation.depth, "place.depth");
     if (!Number.isSafeInteger(firstFrame) || firstFrame < 1

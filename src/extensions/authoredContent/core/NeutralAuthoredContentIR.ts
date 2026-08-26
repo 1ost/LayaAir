@@ -771,7 +771,6 @@ function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: 
     if (explicitDepthCount !== 0 && explicitDepthCount !== values.length)
         fail("AUTHORED_CONTENT_MIXED_DEPTH_AUTHORITY", `${path} must either declare every sibling depth or preserve source order for every sibling.`);
     const instanceOwners = new Map<string, string>();
-    const nativeNameOwners = new Map<string, string>();
     const depthOwners = new Map<number, string>();
     const nodes = values.map((value, index) => {
         const source = record(value, `${path}[${index}]`);
@@ -784,14 +783,8 @@ function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: 
         if (previousInstance !== undefined)
             fail("AUTHORED_CONTENT_INSTANCE_ID_COLLISION", `'${rawInstanceId}' duplicates or normalizes to the same sibling placement ID as '${previousInstance}'.`);
         instanceOwners.set(instanceKey, rawInstanceId);
-        const rawInstanceName = source.name === undefined
-            ? rawInstanceId
-            : requiredString(source.name, `${path}[${index}].name`);
-        const nativeNameKey = canonicalLinkage(rawInstanceName).toLocaleLowerCase("en-US");
-        const previousNativeName = nativeNameOwners.get(nativeNameKey);
-        if (previousNativeName !== undefined)
-            fail("AUTHORED_CONTENT_INSTANCE_NAME_COLLISION", `'${rawInstanceName}' duplicates or normalizes to the same sibling native name as '${previousNativeName}'.`);
-        nativeNameOwners.set(nativeNameKey, rawInstanceName);
+        if (source.name !== undefined)
+            requiredString(source.name, `${path}[${index}].name`);
         const node = normalizeNode(value, `${path}[${index}]`, scale);
         const depth = node.depth ?? index + 1;
         const previousDepth = depthOwners.get(depth);
