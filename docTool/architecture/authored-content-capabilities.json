@@ -42352,21 +42352,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         }
       ],
       "evidence": [
@@ -42376,7 +42376,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+            "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
           ]
         }
       ]
@@ -44739,28 +44739,28 @@
           "export": "AuthoredEmbeddedFontConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredFontAlignZonesConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredAdvancedTextRasterizationConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
@@ -44891,7 +44891,7 @@
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
             "558aa0284771f91bf81556fde8a85ee2888d35ded502afcc830a6f727fac87a1",
-            "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952",
+            "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee",
             "dbf91ff4cac9f9ee97ee12277c1e0f0ba522d7f22146167346c5343048a07ace"
           ]
@@ -44921,14 +44921,14 @@
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+          "sha256": "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
         }
       ],
       "evidence": [
@@ -44939,7 +44939,7 @@
           "capability": "text.authored-restricted-html-field",
           "covers": [
             "60788d3be01bc346670cebe5e220c6f7fa9263e0e79ecc02518657fb1a5eb620",
-            "996b82d7757af88354e24463260378d41ffc535075068643e3e9383bb0a36952"
+            "baafe3a35e5f57be5fc37dbd009a0e20979443d6856b97f9a1330cf1da2536ae"
           ]
         }
       ]
