@@ -113,8 +113,8 @@ export interface AuthoredEmbeddedFontConfiguration {
 }
 
 export interface AuthoredFontAlignZonesConfiguration {
-    readonly tableHint: 1;
-    readonly tableHintName: "medium";
+    readonly tableHint: 0 | 1 | 2;
+    readonly tableHintName: "thin" | "medium" | "thick";
     readonly zones: ReadonlyArray<{
         readonly data: ReadonlyArray<{
             readonly alignmentCoordinate: number;
@@ -456,8 +456,7 @@ function validateEmbeddedFont(value: unknown): AuthoredEmbeddedFontConfiguration
 
 function validateFontAlignZones(value: unknown, glyphCount: number): AuthoredFontAlignZonesConfiguration {
     const record = exactDataObject(value, ["tableHint", "tableHintName", "zones"], "embeddedFont.alignZones");
-    equal(record.tableHint, 1, "embeddedFont.alignZones.tableHint");
-    equal(record.tableHintName, "medium", "embeddedFont.alignZones.tableHintName");
+    const table = validateFontAlignZoneTableHint(record.tableHint, record.tableHintName);
     if (!Array.isArray(record.zones) || record.zones.length !== glyphCount)
         throw new TypeError("embeddedFont.alignZones.zones must match the glyph count");
     const zones = record.zones.map((value2, index) => {
@@ -481,7 +480,16 @@ function validateFontAlignZones(value: unknown, glyphCount: number): AuthoredFon
         boolean(zone.maskY, `embeddedFont.alignZones.zones[${index}].maskY`);
         return Object.freeze({ data: Object.freeze(data), maskX: zone.maskX, maskY: zone.maskY });
     });
-    return Object.freeze({ tableHint: 1, tableHintName: "medium", zones: Object.freeze(zones) });
+    return Object.freeze({ ...table, zones: Object.freeze(zones) });
+}
+
+function validateFontAlignZoneTableHint(
+    value: unknown, name: unknown,
+): Pick<AuthoredFontAlignZonesConfiguration, "tableHint" | "tableHintName"> {
+    if (value === 0 && name === "thin") return { tableHint: 0, tableHintName: "thin" };
+    if (value === 1 && name === "medium") return { tableHint: 1, tableHintName: "medium" };
+    if (value === 2 && name === "thick") return { tableHint: 2, tableHintName: "thick" };
+    throw new TypeError("embeddedFont.alignZones must retain a matching thin, medium, or thick table hint");
 }
 
 function validateRasterization(value: unknown): AuthoredAdvancedTextRasterizationConfiguration {

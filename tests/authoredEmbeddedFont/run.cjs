@@ -168,6 +168,19 @@ async function main() {
     mismatchedGridFixture.library.assets[203].textRendering.gridFit = 1;
     assert.throws(() => adapter.parse(mismatchedGridFixture), /FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED/,
         "CSM grid-fit code and named mode must agree");
+    for (const [tableHint, tableHintName] of [[0, "thin"], [2, "thick"]]) {
+        const tableFixture = fixture();
+        tableFixture.library.assets[18].fontAlignZones.tableHint = tableHint;
+        tableFixture.library.assets[18].fontAlignZones.tableHintName = tableHintName;
+        assert.deepEqual(adapter.parse(tableFixture).root.children[0].textField.format.embeddedFont.alignZones, {
+            tableHint, tableHintName, zones: tableFixture.library.assets[18].fontAlignZones.zones,
+        },
+            `${tableHintName} alignment zones retain their exact table hint`);
+    }
+    const mismatchedTableFixture = fixture();
+    mismatchedTableFixture.library.assets[18].fontAlignZones.tableHint = 0;
+    assert.throws(() => adapter.parse(mismatchedTableFixture),
+        /unsupported or mismatched table hint/);
     assert.deepEqual(adapter.parse(gradientFixture()).root.children[0].textField.filters[0], {
         kind: "gradient-bevel", distance: 10, angleRadians: Math.PI / 2, colors: [0xff3300, 0xffcc33, 0xffff33],
         alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,

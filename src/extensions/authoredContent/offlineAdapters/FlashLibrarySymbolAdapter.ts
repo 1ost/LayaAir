@@ -3,6 +3,8 @@ import {
     NeutralAuthoredFilter,
     NeutralInertPlacementRatio,
     NeutralAuthoredNode,
+    NeutralFontAlignZoneData,
+    NeutralFontAlignZones,
     NeutralTimeline,
     normalizeNeutralAuthoredContent,
 } from "../core/NeutralAuthoredContentIR";
@@ -1071,19 +1073,17 @@ function authoredEmbeddedFont(
     };
 }
 
-function authoredFontAlignZones(value: unknown, fontId: number, glyphCount: number) {
+function authoredFontAlignZones(value: unknown, fontId: number, glyphCount: number): NeutralFontAlignZones {
     const source = object(value, `library.assets.${fontId}.fontAlignZones`);
     exactKeys(source, FONT_ALIGN_ZONES_FIELDS, `library.assets.${fontId}.fontAlignZones`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_FIELD_UNSUPPORTED");
     exactValue(source.fontId, fontId, "FLASH_LIBRARY_FONT_ALIGN_ZONE_ID_MISMATCH", `Font ${fontId} align zones identify another font.`);
     exactValue(source.sourceTag, "DefineFontAlignZonesTag", "FLASH_LIBRARY_FONT_ALIGN_ZONE_FORMAT_UNSUPPORTED", `Font ${fontId} align zones lack DefineFontAlignZones authority.`);
-    exactValue(source.tableHint, 1, "FLASH_LIBRARY_FONT_ALIGN_ZONE_TABLE_UNSUPPORTED", `Font ${fontId} align zones use an unsupported table hint.`);
-    exactValue(source.tableHintName, "medium", "FLASH_LIBRARY_FONT_ALIGN_ZONE_TABLE_UNSUPPORTED", `Font ${fontId} align zones use an unsupported table hint name.`);
+    const table = authoredFontAlignZoneTableHint(source.tableHint, source.tableHintName, fontId);
     const zones = array(source.zones, `library.assets.${fontId}.fontAlignZones.zones`);
     if (zones.length !== glyphCount)
         fail("FLASH_LIBRARY_FONT_ALIGN_ZONE_COUNT_MISMATCH", `Font ${fontId} align-zone count does not match its glyph count.`);
     return {
-        tableHint: 1 as const,
-        tableHintName: "medium" as const,
+        ...table,
         zones: zones.map((candidate, zoneIndex) => {
             const zone = object(candidate, `font ${fontId} align zone ${zoneIndex}`);
             exactKeys(zone, FONT_ALIGN_ZONE_FIELDS, `font ${fontId} align zone ${zoneIndex}`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_FIELD_UNSUPPORTED");
@@ -1091,21 +1091,38 @@ function authoredFontAlignZones(value: unknown, fontId: number, glyphCount: numb
             if (data.length !== 2)
                 fail("FLASH_LIBRARY_FONT_ALIGN_ZONE_DATA_COUNT", `Font ${fontId} align zone ${zoneIndex} must retain X and Y records.`);
             return {
-                data: data.map((datumValue, dataIndex) => {
-                    const datum = object(datumValue, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`);
-                    exactKeys(datum, FONT_ALIGN_ZONE_DATA_FIELDS, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_DATA_FIELD_UNSUPPORTED");
-                    return {
-                        alignmentCoordinate: nonnegativeFinite(datum.alignmentCoordinate, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinate`),
-                        alignmentCoordinateBits: uint16(datum.alignmentCoordinateBits, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinateBits`),
-                        range: nonnegativeFinite(datum.range, `font ${fontId} align zone ${zoneIndex}.range`),
-                        rangeBits: uint16(datum.rangeBits, `font ${fontId} align zone ${zoneIndex}.rangeBits`),
-                    };
-                }),
+                data: [
+                    authoredFontAlignZoneData(data[0], fontId, zoneIndex, 0),
+                    authoredFontAlignZoneData(data[1], fontId, zoneIndex, 1),
+                ],
                 maskX: boolean(zone.maskX, `font ${fontId} align zone ${zoneIndex}.maskX`),
                 maskY: boolean(zone.maskY, `font ${fontId} align zone ${zoneIndex}.maskY`),
             };
         }),
     };
+}
+
+function authoredFontAlignZoneData(value: unknown, fontId: number, zoneIndex: number, dataIndex: number): NeutralFontAlignZoneData {
+    const datum = object(value, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`);
+    exactKeys(datum, FONT_ALIGN_ZONE_DATA_FIELDS, `font ${fontId} align zone ${zoneIndex}.data[${dataIndex}]`, "FLASH_LIBRARY_FONT_ALIGN_ZONE_DATA_FIELD_UNSUPPORTED");
+    return {
+        alignmentCoordinate: nonnegativeFinite(datum.alignmentCoordinate, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinate`),
+        alignmentCoordinateBits: uint16(datum.alignmentCoordinateBits, `font ${fontId} align zone ${zoneIndex}.alignmentCoordinateBits`),
+        range: nonnegativeFinite(datum.range, `font ${fontId} align zone ${zoneIndex}.range`),
+        rangeBits: uint16(datum.rangeBits, `font ${fontId} align zone ${zoneIndex}.rangeBits`),
+    };
+}
+
+function authoredFontAlignZoneTableHint(
+    value: unknown,
+    name: unknown,
+    fontId: number,
+): Pick<NeutralFontAlignZones, "tableHint" | "tableHintName"> {
+    if (value === 0 && name === "thin") return { tableHint: 0, tableHintName: "thin" };
+    if (value === 1 && name === "medium") return { tableHint: 1, tableHintName: "medium" };
+    if (value === 2 && name === "thick") return { tableHint: 2, tableHintName: "thick" };
+    fail("FLASH_LIBRARY_FONT_ALIGN_ZONE_TABLE_UNSUPPORTED",
+        `Font ${fontId} align zones use an unsupported or mismatched table hint.`);
 }
 
 function authoredAdvancedTextRasterization(asset: Record<string, any>, characterId: number) {

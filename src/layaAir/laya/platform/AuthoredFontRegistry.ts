@@ -59,8 +59,8 @@ export interface AuthoredKerningMetric {
 }
 
 export interface AuthoredFontAlignZones {
-    readonly tableHint: 1;
-    readonly tableHintName: "medium";
+    readonly tableHint: 0 | 1 | 2;
+    readonly tableHintName: "thin" | "medium" | "thick";
     readonly zones: ReadonlyArray<{
         readonly data: ReadonlyArray<{ readonly alignmentCoordinate: number; readonly alignmentCoordinateBits: number; readonly range: number; readonly rangeBits: number }>;
         readonly maskX: boolean;
@@ -829,8 +829,7 @@ function normalizeEntry(value: unknown, index: number): FrozenEntry {
 
 function normalizeFontAlignZones(value: unknown, glyphCount: number, label: string): AuthoredFontAlignZones {
     const record = exactDataObject(value, ["tableHint", "tableHintName", "zones"], label);
-    if (record.tableHint !== 1 || record.tableHintName !== "medium")
-        throw new TypeError(`${label} must retain the admitted medium table hint`);
+    const table = normalizeFontAlignZoneTableHint(record.tableHint, record.tableHintName, label);
     if (!Array.isArray(record.zones) || record.zones.length !== glyphCount)
         throw new TypeError(`${label}.zones must match the glyph count`);
     const zones = Object.freeze(record.zones.map((candidate, index) => {
@@ -849,7 +848,16 @@ function normalizeFontAlignZones(value: unknown, glyphCount: number, label: stri
             throw new TypeError(`${label}.zones[${index}] masks must be boolean`);
         return Object.freeze({ data, maskX: zone.maskX, maskY: zone.maskY });
     }));
-    return Object.freeze({ tableHint: 1, tableHintName: "medium", zones });
+    return Object.freeze({ ...table, zones });
+}
+
+function normalizeFontAlignZoneTableHint(
+    value: unknown, name: unknown, label: string,
+): Pick<AuthoredFontAlignZones, "tableHint" | "tableHintName"> {
+    if (value === 0 && name === "thin") return { tableHint: 0, tableHintName: "thin" };
+    if (value === 1 && name === "medium") return { tableHint: 1, tableHintName: "medium" };
+    if (value === 2 && name === "thick") return { tableHint: 2, tableHintName: "thick" };
+    throw new TypeError(`${label} must retain a matching thin, medium, or thick table hint`);
 }
 
 function normalizeKey(value: Record<string, unknown>, label = "Authored font key"): AuthoredFontKey {

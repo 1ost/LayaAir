@@ -167,8 +167,8 @@ export interface NeutralFontAlignZone {
 }
 
 export interface NeutralFontAlignZones {
-    readonly tableHint: 1;
-    readonly tableHintName: "medium";
+    readonly tableHint: 0 | 1 | 2;
+    readonly tableHintName: "thin" | "medium" | "thick";
     readonly zones: ReadonlyArray<NeutralFontAlignZone>;
 }
 
@@ -675,11 +675,21 @@ function normalizeFontAlignZones(value: unknown, path: string, glyphCount: numbe
     });
     if (zones.length !== glyphCount)
         fail("AUTHORED_CONTENT_FONT_ALIGN_ZONE_COUNT", `${path}.zones must match the glyph count.`);
+    const table = normalizeFontAlignZoneTableHint(source.tableHint, source.tableHintName, path);
     return {
-        tableHint: exactLiteral(source.tableHint, 1, `${path}.tableHint`),
-        tableHintName: exactLiteral(source.tableHintName, "medium", `${path}.tableHintName`),
+        ...table,
         zones,
     };
+}
+
+function normalizeFontAlignZoneTableHint(
+    value: unknown, name: unknown, path: string,
+): Pick<NeutralFontAlignZones, "tableHint" | "tableHintName"> {
+    if (value === 0 && name === "thin") return { tableHint: 0, tableHintName: "thin" };
+    if (value === 1 && name === "medium") return { tableHint: 1, tableHintName: "medium" };
+    if (value === 2 && name === "thick") return { tableHint: 2, tableHintName: "thick" };
+    fail("AUTHORED_CONTENT_FONT_ALIGN_ZONE_TABLE_HINT",
+        `${path} must retain a matching thin, medium, or thick table hint.`);
 }
 
 function normalizeAdvancedTextRasterization(value: unknown, path: string): NeutralAdvancedTextRasterization {
