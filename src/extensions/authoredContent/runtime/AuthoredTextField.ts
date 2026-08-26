@@ -448,11 +448,15 @@ function validateFontAlignZones(value: unknown, glyphCount: number): AuthoredFon
 function validateRasterization(value: unknown): AuthoredAdvancedTextRasterizationConfiguration {
     const record = exactDataObject(value, RASTERIZATION_KEYS, "Authored advanced rasterization");
     equal(record.antiAliasType, AntiAliasType.ADVANCED, "rasterization.antiAliasType");
-    oneOf(record.gridFitType, [GridFitType.PIXEL, GridFitType.SUBPIXEL], "rasterization.gridFitType");
+    const gridFitType = oneOfValue(
+        record.gridFitType,
+        [GridFitType.PIXEL, GridFitType.SUBPIXEL] as const,
+        "rasterization.gridFitType",
+    );
     range(record.sharpness, -400, 400, "rasterization.sharpness");
     range(record.thickness, -200, 200, "rasterization.thickness");
     return Object.freeze({
-        antiAliasType: "advanced", gridFitType: record.gridFitType,
+        antiAliasType: "advanced", gridFitType,
         sharpness: record.sharpness, thickness: record.thickness,
     });
 }
