@@ -41,6 +41,9 @@ const { createAuthoredFilters } = require(
 const { isGradientBevelFilter } = require(
     "../../src/layaAir/flash/filters/GradientBevelFilter.ts"
 );
+const { isColorMatrixFilter } = require(
+    "../../src/layaAir/flash/filters/ColorMatrixFilter.ts"
+);
 
 const TTF = Uint8Array.from([
     0, 1, 0, 0, 0, 1, 0, 16, 0, 0, 0, 0,
@@ -149,6 +152,21 @@ function gradientFixture() {
     return value;
 }
 
+const COLOR_MATRIX = Object.freeze([
+    1, 0, 0, 0, 30,
+    0, 1, 0, 0, 30,
+    0, 0, 1, 0, 30,
+    0, 0, 0, 1, 0,
+]);
+
+function colorMatrixFixture() {
+    const value = fixture();
+    value.timelines.get(385).frames[0].operations[0].filters = [{
+        kind: "color-matrix", matrix: [...COLOR_MATRIX], sourceType: "COLORMATRIXFILTER",
+    }];
+    return value;
+}
+
 async function main() {
     const adapter = new FlashLibrarySymbolAdapter();
     const content = adapter.parse(fixture());
@@ -186,6 +204,17 @@ async function main() {
         alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,
         strength: 2, quality: 3, type: "inner", knockout: false, compositeSource: true,
     });
+    assert.deepEqual(adapter.parse(colorMatrixFixture()).root.children[0].textField.filters[0], {
+        kind: "color-matrix", matrix: [...COLOR_MATRIX],
+    });
+    const nativeColorMatrix = createAuthoredFilters([{
+        kind: "color-matrix", matrix: [...COLOR_MATRIX],
+    }])[0];
+    assert.equal(isColorMatrixFilter(nativeColorMatrix), true);
+    assert.deepEqual(nativeColorMatrix.matrix, [...COLOR_MATRIX]);
+    assert.throws(() => createAuthoredFilters([{
+        kind: "color-matrix", matrix: COLOR_MATRIX.slice(0, 19),
+    }]), /exactly 20 values/);
     const nativeGradient = createAuthoredFilters([{
         kind: "gradient-bevel", distance: 10, angleRadians: Math.PI / 2,
         colors: [0xff3300, 0xffcc33, 0xffff33], alphas: [1, 0, 1], ratios: [29, 128, 255],

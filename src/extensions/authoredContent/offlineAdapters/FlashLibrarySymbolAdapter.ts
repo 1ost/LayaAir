@@ -65,6 +65,7 @@ const GRADIENT_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
     "knockout", "onTop", "passes", "ratios", "sourceType", "strength", "type",
 ]);
+const COLOR_MATRIX_FILTER_FIELDS = new Set(["kind", "matrix", "sourceType"]);
 const FILTER_COLOR_FIELDS = new Set(["alpha", "color"]);
 const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
 const COLOR_TRANSFORM_FIELDS = new Set([
@@ -1997,6 +1998,15 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
             return authoredGradientFilter(filter, label);
         if (filter.kind === "drop-shadow")
             return authoredDropShadowFilter(filter, label);
+        if (filter.kind === "color-matrix") {
+            exactKeys(filter, COLOR_MATRIX_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+            exactValue(filter.sourceType, "COLORMATRIXFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+            const matrix = array(filter.matrix, `${label}.matrix`).map((candidate, matrixIndex) =>
+                finite(candidate, `${label}.matrix[${matrixIndex}]`));
+            if (matrix.length !== 20)
+                fail("FLASH_LIBRARY_COLOR_MATRIX_LENGTH_INVALID", `${label}.matrix must contain exactly 20 values.`);
+            return { kind: "color-matrix", matrix };
+        }
         exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
         exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
         exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);

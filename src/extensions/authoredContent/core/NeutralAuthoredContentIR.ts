@@ -64,8 +64,13 @@ export interface NeutralGradientGlowFilter extends Omit<NeutralGradientBevelFilt
     readonly kind: "gradient-glow";
 }
 
+export interface NeutralColorMatrixFilter {
+    readonly kind: "color-matrix";
+    readonly matrix: ReadonlyArray<number>;
+}
+
 export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralDropShadowFilter
-    | NeutralGradientBevelFilter | NeutralGradientGlowFilter;
+    | NeutralGradientBevelFilter | NeutralGradientGlowFilter | NeutralColorMatrixFilter;
 
 export interface NeutralScale9Grid {
     readonly x: number;
@@ -858,6 +863,14 @@ function normalizeGradientFilter(
 
 function normalizeAuthoredFilter(value: unknown, path: string, scale: number): NeutralAuthoredFilter {
     const source = record(value, path);
+    if (source.kind === "color-matrix") {
+        allowedKeys(source, ["kind", "matrix"], path);
+        const matrix = array(source.matrix, `${path}.matrix`).map((candidate, index) =>
+            requiredFiniteNumber(candidate, `${path}.matrix[${index}]`));
+        if (matrix.length !== 20)
+            fail("AUTHORED_CONTENT_COLOR_MATRIX_LENGTH", `${path}.matrix must contain exactly 20 values.`);
+        return { kind: "color-matrix", matrix };
+    }
     return source.kind === "gradient-bevel" || source.kind === "gradient-glow"
         ? normalizeGradientFilter(value, path, scale, source.kind)
         : source.kind === "drop-shadow"

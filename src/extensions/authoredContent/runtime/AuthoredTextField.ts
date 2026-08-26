@@ -1,5 +1,5 @@
 import {
-    AntiAliasType, BitmapFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+    AntiAliasType, BitmapFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
@@ -54,7 +54,8 @@ export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGr
 }
 
 export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
-    | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration;
+    | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration
+    | AuthoredColorMatrixFilterConfiguration;
 
 class AuthoredGradientGlowFilter extends BitmapFilter {
     constructor(private readonly configuration: AuthoredGradientGlowFilterConfiguration) { super(); }
@@ -85,6 +86,12 @@ class AuthoredGradientGlowFilter extends BitmapFilter {
         });
     }
 }
+
+export interface AuthoredColorMatrixFilterConfiguration {
+    readonly kind: "color-matrix";
+    readonly matrix: ReadonlyArray<number>;
+}
+
 
 export interface AuthoredTextFormatConfiguration {
     readonly fontMode: "device" | "embedded";
@@ -197,6 +204,7 @@ const DROP_SHADOW_FILTER_KEYS = Object.freeze([
     "alpha", "angleRadians", "blurX", "blurY", "color", "distance", "hideObject", "inner",
     "kind", "knockout", "quality", "strength",
 ]);
+const COLOR_MATRIX_FILTER_KEYS = Object.freeze(["kind", "matrix"]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredFontBinding>();
 
 /**
@@ -288,7 +296,9 @@ export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
 export function createAuthoredFilters(value: unknown): BitmapFilter[] {
     if (!Array.isArray(value)) throw new TypeError("Authored filters must be an array");
     return value.map((candidate, index) => validateAuthoredFilter(candidate, `filters[${index}]`)).map(filter =>
-        filter.kind === "glow"
+        filter.kind === "color-matrix"
+            ? new ColorMatrixFilter(filter.matrix)
+            : filter.kind === "glow"
             ? new GlowFilter(filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
                 filter.quality, filter.inner, filter.knockout)
             : filter.kind === "drop-shadow"
@@ -556,6 +566,8 @@ function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterCo
 
 function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterConfiguration {
     const kind = value !== null && typeof value === "object" ? Reflect.get(value, "kind") : undefined;
+    if (kind === "color-matrix")
+        return validateColorMatrixFilter(value, label);
     if (kind === "gradient-bevel" || kind === "gradient-glow")
         return validateGradientFilter(value, label, kind);
     if (kind === "drop-shadow") return validateDropShadowFilter(value, label);
@@ -584,6 +596,17 @@ function validateDropShadowFilter(value: unknown, label: string): AuthoredDropSh
     });
 }
 
+function validateColorMatrixFilter(value: unknown, label: string): AuthoredColorMatrixFilterConfiguration {
+    const record = exactDataObject(value, COLOR_MATRIX_FILTER_KEYS, label);
+    equal(record.kind, "color-matrix", `${label}.kind`);
+    if (!Array.isArray(record.matrix) || record.matrix.length !== 20)
+        throw new TypeError(`${label}.matrix must contain exactly 20 values`);
+    const matrix = record.matrix.map((candidate, index) => {
+        finite(candidate, `${label}.matrix[${index}]`);
+        return candidate;
+    });
+    return Object.freeze({ kind: "color-matrix", matrix: Object.freeze(matrix) });
+}
 function validateGradientFilter(
     value: unknown,
     label: string,
