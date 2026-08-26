@@ -26,6 +26,23 @@ export interface NeutralGlowFilter {
     readonly knockout: boolean;
 }
 
+export interface NeutralGradientBevelFilter {
+    readonly kind: "gradient-bevel";
+    readonly distance: number;
+    readonly angle: number;
+    readonly colors: ReadonlyArray<number>;
+    readonly alphas: ReadonlyArray<number>;
+    readonly ratios: ReadonlyArray<number>;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly quality: number;
+    readonly type: "inner" | "outer" | "full";
+    readonly knockout: boolean;
+}
+
+export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralGradientBevelFilter;
+
 export interface NeutralScale9Grid {
     readonly x: number;
     readonly y: number;
@@ -59,7 +76,7 @@ export interface NeutralAuthoredNode {
     readonly visible?: boolean;
     readonly matrix?: NeutralAuthoredMatrix;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
-    readonly filters?: ReadonlyArray<NeutralGlowFilter>;
+    readonly filters?: ReadonlyArray<NeutralAuthoredFilter>;
     /** Closed nine-slice projection for a single raster-backed authored sprite. */
     readonly scale9Grid?: NeutralScale9Grid;
     readonly text?: string;
@@ -87,7 +104,7 @@ export interface NeutralDynamicTextField {
     readonly html: boolean;
     /** Omitted by native bundles emitted before source useOutlines retention. */
     readonly useOutlines?: boolean;
-    readonly filters: ReadonlyArray<NeutralGlowFilter>;
+    readonly filters: ReadonlyArray<NeutralAuthoredFilter>;
     readonly gutter: 2;
     readonly overflow: "hidden";
     readonly initialText: string;
@@ -162,7 +179,7 @@ export interface NeutralEmbeddedFont {
 
 export interface NeutralAdvancedTextRasterization {
     readonly antiAliasType: "advanced";
-    readonly gridFitType: "subpixel";
+    readonly gridFitType: "pixel" | "subpixel";
     readonly sharpness: number;
     readonly thickness: number;
 }
@@ -380,7 +397,7 @@ function normalizeNode(
         visible: optionalBoolean(source.visible, `${path}.visible`),
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
         filters: source.filters === undefined ? undefined : array(source.filters, `${path}.filters`).map((filter, index) =>
-            normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
+            normalizeAuthoredFilter(filter, `${path}.filters[${index}]`, scale)),
         scale9Grid: source.scale9Grid === undefined
             ? undefined
             : normalizeScale9Grid(source.scale9Grid, `${path}.scale9Grid`, scale),
@@ -522,7 +539,7 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
         html: requiredBoolean(source.html, `${path}.html`),
         useOutlines,
         filters: array(source.filters, `${path}.filters`).map((filter, index) =>
-            normalizeGlowFilter(filter, `${path}.filters[${index}]`, scale)),
+            normalizeAuthoredFilter(filter, `${path}.filters[${index}]`, scale)),
         gutter: exactLiteral(source.gutter, 2, `${path}.gutter`),
         overflow: exactLiteral(source.overflow, "hidden", `${path}.overflow`),
         initialText: requiredText(source.initialText, `${path}.initialText`),
@@ -664,9 +681,12 @@ function normalizeAdvancedTextRasterization(value: unknown, path: string): Neutr
         fail("AUTHORED_CONTENT_TEXT_SHARPNESS_RANGE", `${path}.sharpness must be from -400 through 400.`);
     if (thickness < -200 || thickness > 200)
         fail("AUTHORED_CONTENT_TEXT_THICKNESS_RANGE", `${path}.thickness must be from -200 through 200.`);
+    const gridFitType = requiredString(source.gridFitType, `${path}.gridFitType`);
+    if (gridFitType !== "pixel" && gridFitType !== "subpixel")
+        fail("AUTHORED_CONTENT_TEXT_GRID_FIT", `${path}.gridFitType must be pixel or subpixel.`);
     return {
         antiAliasType: exactLiteral(source.antiAliasType, "advanced", `${path}.antiAliasType`),
-        gridFitType: exactLiteral(source.gridFitType, "subpixel", `${path}.gridFitType`),
+        gridFitType,
         sharpness,
         thickness,
     };
@@ -683,8 +703,9 @@ function normalizeMatrix(value: unknown, path: string): NeutralAuthoredMatrix {
     };
 }
 
-function normalizeGlowFilter(value: unknown, path: string, scale: number): NeutralGlowFilter {
+function normalizeAuthoredFilter(value: unknown, path: string, scale: number): NeutralAuthoredFilter {
     const source = record(value, path);
+    if (source.kind === "gradient-bevel") return normalizeGradientBevelFilter(source, path, scale);
     allowedKeys(source, ["alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength"], path);
     const color = requiredFiniteNumber(source.color, `${path}.color`);
     if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
@@ -708,6 +729,41 @@ function normalizeGlowFilter(value: unknown, path: string, scale: number): Neutr
         inner: requiredBoolean(source.inner, `${path}.inner`),
         knockout: requiredBoolean(source.knockout, `${path}.knockout`),
     };
+}
+
+function normalizeGradientBevelFilter(source: Record<string, any>, path: string, scale: number): NeutralGradientBevelFilter {
+    allowedKeys(source, ["alphas", "angle", "blurX", "blurY", "colors", "distance", "kind", "knockout", "quality", "ratios", "strength", "type"], path);
+    const colors = numericArray(source.colors, `${path}.colors`, 0, 0xffffff, true);
+    const alphas = numericArray(source.alphas, `${path}.alphas`, 0, 1, false);
+    const ratios = numericArray(source.ratios, `${path}.ratios`, 0, 255, true);
+    if (colors.length < 2 || colors.length !== alphas.length || colors.length !== ratios.length)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STOPS", `${path} gradient arrays must have the same length of at least two.`);
+    const blurX = requiredFiniteNumber(source.blurX, `${path}.blurX`);
+    const blurY = requiredFiniteNumber(source.blurY, `${path}.blurY`);
+    const strength = requiredFiniteNumber(source.strength, `${path}.strength`);
+    const quality = requiredFiniteNumber(source.quality, `${path}.quality`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255 || strength < 0 || strength > 255)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_RANGE", `${path} blur and strength values exceed Flash ranges.`);
+    if (!Number.isInteger(quality) || quality < 1 || quality > 15)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_QUALITY", `${path}.quality must be an integer from one through 15.`);
+    const type = requiredString(source.type, `${path}.type`);
+    if (type !== "inner" && type !== "outer" && type !== "full")
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_TYPE", `${path}.type must be inner, outer, or full.`);
+    return {
+        kind: "gradient-bevel", distance: requiredFiniteNumber(source.distance, `${path}.distance`) * scale,
+        angle: requiredFiniteNumber(source.angle, `${path}.angle`), colors, alphas, ratios,
+        blurX: blurX * scale, blurY: blurY * scale, strength, quality, type,
+        knockout: requiredBoolean(source.knockout, `${path}.knockout`),
+    };
+}
+
+function numericArray(value: unknown, path: string, minimum: number, maximum: number, integer: boolean): ReadonlyArray<number> {
+    return array(value, path).map((candidate, index) => {
+        const result = requiredFiniteNumber(candidate, `${path}[${index}]`);
+        if (result < minimum || result > maximum || (integer && !Number.isInteger(result)))
+            fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STOP", `${path}[${index}] is outside its Flash range.`);
+        return result;
+    });
 }
 
 function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: number): ReadonlyArray<NeutralAuthoredNode> {

@@ -2,7 +2,7 @@ import {
     NeutralAuthoredContentIR,
     NeutralInertPlacementRatio,
     NeutralAuthoredNode,
-    NeutralGlowFilter,
+    NeutralAuthoredFilter,
     NeutralTimeline,
     normalizeNeutralAuthoredContent,
 } from "../core/NeutralAuthoredContentIR";
@@ -41,8 +41,12 @@ type PlacementEvidenceContext = {
 
 const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
-const FILTER_FIELDS = new Set([
+const GLOW_FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
+]);
+const GRADIENT_BEVEL_FILTER_FIELDS = new Set([
+    "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
+    "knockout", "onTop", "passes", "ratios", "sourceType", "strength", "type",
 ]);
 const FILTER_COLOR_FIELDS = new Set(["alpha", "color"]);
 const MATRIX_FIELDS = new Set(["a", "b", "c", "d", "tx", "ty"]);
@@ -1027,13 +1031,17 @@ function authoredAdvancedTextRasterization(asset: Record<string, any>, character
     exactValue(rendering.textId, characterId, "FLASH_LIBRARY_TEXT_RENDERING_ID_MISMATCH", `Text ${characterId} rendering authority identifies another field.`);
     exactValue(rendering.renderer, "advanced", "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} renderer is unsupported.`);
     exactValue(rendering.useFlashType, 1, "FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED", `Text ${characterId} does not use FlashType.`);
-    exactValue(rendering.gridFit, 2, "FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit code is unsupported.`);
-    exactValue(rendering.gridFitMode, "subpixel", "FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit mode is unsupported.`);
+    const gridFit = rendering.gridFit;
+    const gridFitMode = rendering.gridFitMode;
+    const gridFitType = gridFit === 1 && gridFitMode === "pixel" ? "pixel"
+        : gridFit === 2 && gridFitMode === "subpixel" ? "subpixel" : null;
+    if (gridFitType === null)
+        fail("FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED", `Text ${characterId} grid-fit code and mode are unsupported.`);
     const sharpness = finite(rendering.sharpness, `library.assets.${characterId}.textRendering.sharpness`);
     const thickness = finite(rendering.thickness, `library.assets.${characterId}.textRendering.thickness`);
     if (sharpness < -400 || sharpness > 400 || thickness < -200 || thickness > 200)
         fail("FLASH_LIBRARY_TEXT_RASTERIZATION_RANGE", `Text ${characterId} rasterization settings exceed Flash ranges.`);
-    return { antiAliasType: "advanced" as const, gridFitType: "subpixel" as const, sharpness, thickness };
+    return { antiAliasType: "advanced" as const, gridFitType, sharpness, thickness };
 }
 
 function authoredScale9Grid(
@@ -1554,12 +1562,13 @@ function placementTransform(operation: Record<string, any>): PlacementTransform 
     return { a, b, c, d, x, y, ...(a === 1 && b === 0 && c === 0 && d === 1 ? {} : { matrix: { a, b, c, d } }) };
 }
 
-function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<NeutralGlowFilter> {
+function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<NeutralAuthoredFilter> {
     if (value === undefined) return [];
     return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
         const label = `place ${characterId}.filters[${index}]`;
         const filter = object(filterValue, label);
-        exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+        if (filter.kind === "gradient-bevel") return authoredGradientBevelFilter(filter, label);
+        exactKeys(filter, GLOW_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
         exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
         exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
         exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
@@ -1587,6 +1596,47 @@ function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray
             knockout: boolean(filter.knockout, `${label}.knockout`),
         };
     });
+}
+
+function authoredGradientBevelFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
+    exactKeys(filter, GRADIENT_BEVEL_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+    exactValue(filter.sourceType, "GRADIENTBEVELFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+    exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
+    const type = filter.type;
+    if (type !== "inner" && type !== "outer" && type !== "full")
+        fail("FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.type is unsupported.`);
+    exactValue(filter.innerShadow, type === "inner", "FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.innerShadow disagrees with type.`);
+    exactValue(filter.onTop, type === "full", "FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.onTop disagrees with type.`);
+    const colorStops = array(filter.colors, `${label}.colors`).map((candidate, index) => {
+        const stop = object(candidate, `${label}.colors[${index}]`);
+        exactKeys(stop, FILTER_COLOR_FIELDS, `${label}.colors[${index}]`, "FLASH_LIBRARY_FILTER_COLOR_FIELD_UNSUPPORTED");
+        const color = finite(stop.color, `${label}.colors[${index}].color`);
+        const alpha = finite(stop.alpha, `${label}.colors[${index}].alpha`);
+        if (!Number.isInteger(color) || color < 0 || color > 0xffffff || alpha < 0 || alpha > 1)
+            fail("FLASH_LIBRARY_FILTER_COLOR_INVALID", `${label}.colors[${index}] is outside the Flash range.`);
+        return { color, alpha };
+    });
+    const ratios = array(filter.ratios, `${label}.ratios`).map((candidate, index) => {
+        const ratio = finite(candidate, `${label}.ratios[${index}]`);
+        if (!Number.isInteger(ratio) || ratio < 0 || ratio > 255)
+            fail("FLASH_LIBRARY_FILTER_RATIO_INVALID", `${label}.ratios[${index}] is outside the Flash range.`);
+        return ratio;
+    });
+    if (colorStops.length < 2 || colorStops.length !== ratios.length)
+        fail("FLASH_LIBRARY_FILTER_GRADIENT_INVALID", `${label} gradient stops are incomplete.`);
+    const blurX = finite(filter.blurX, `${label}.blurX`);
+    const blurY = finite(filter.blurY, `${label}.blurY`);
+    const strength = finite(filter.strength, `${label}.strength`);
+    const quality = positiveInteger(filter.passes, `${label}.passes`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255 || strength < 0 || strength > 255 || quality > 15)
+        fail("FLASH_LIBRARY_FILTER_RANGE_INVALID", `${label} exceeds the Flash filter range.`);
+    return {
+        kind: "gradient-bevel", distance: finite(filter.distance, `${label}.distance`),
+        angle: finite(filter.angleRadians, `${label}.angleRadians`) * 180 / Math.PI,
+        colors: colorStops.map(stop => stop.color), alphas: colorStops.map(stop => stop.alpha), ratios,
+        blurX, blurY, strength, quality, type,
+        knockout: boolean(filter.knockout, `${label}.knockout`),
+    };
 }
 
 function exactSchema(value: Record<string, any>, expected: string, label: string): void {

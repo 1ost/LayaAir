@@ -5,6 +5,9 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const ts = require("typescript");
 
+globalThis.window = globalThis.window ?? globalThis;
+globalThis.document = globalThis.document ?? {};
+
 require.extensions[".ts"] = (module, filename) => {
     const source = fs.readFileSync(filename, "utf8");
     const output = ts.transpileModule(source, {
@@ -17,6 +20,11 @@ require.extensions[".ts"] = (module, filename) => {
     });
     module._compile(output.outputText, filename);
 };
+for (const extension of [".glsl", ".vs", ".fs"]) {
+    require.extensions[extension] = (module, filename) => {
+        module.exports = fs.readFileSync(filename, "utf8");
+    };
+}
 
 const { FlashLibrarySymbolAdapter } = require(
     "../../src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts"
@@ -26,6 +34,12 @@ const { describeNativeAuthoredFontCatalog } = require(
 );
 const { prepareNativeLayaAuthoredContentBundle } = require(
     "../../src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts"
+);
+const { createAuthoredGlowFilters } = require(
+    "../../src/extensions/authoredContent/runtime/AuthoredTextField.ts"
+);
+const { isGradientBevelFilter } = require(
+    "../../src/layaAir/flash/filters/GradientBevelFilter.ts"
 );
 
 const TTF = Uint8Array.from([
@@ -119,6 +133,22 @@ function fixture() {
     };
 }
 
+function gradientBevelEvidence() {
+    return {
+        angleRadians: Math.PI / 2, blurX: 10, blurY: 10,
+        colors: [{ alpha: 1, color: 0xff3300 }, { alpha: 0, color: 0xffcc33 }, { alpha: 1, color: 0xffff33 }],
+        compositeSource: true, distance: 10, innerShadow: true, kind: "gradient-bevel", knockout: false,
+        onTop: false, passes: 3, ratios: [29, 128, 255], sourceType: "GRADIENTBEVELFILTER",
+        strength: 2, type: "inner",
+    };
+}
+
+function gradientFixture() {
+    const value = fixture();
+    value.timelines.get(385).frames[0].operations[0].filters = [gradientBevelEvidence()];
+    return value;
+}
+
 async function main() {
     const adapter = new FlashLibrarySymbolAdapter();
     const content = adapter.parse(fixture());
@@ -126,6 +156,33 @@ async function main() {
     assert.equal(text.textField.format.fontMode, "embedded");
     assert.deepEqual(text.textField.rasterization, {
         antiAliasType: "advanced", gridFitType: "subpixel", sharpness: 0, thickness: 0,
+    });
+    const pixelFixture = fixture();
+    pixelFixture.library.assets[203].textRendering.gridFit = 1;
+    pixelFixture.library.assets[203].textRendering.gridFitMode = "pixel";
+    assert.deepEqual(adapter.parse(pixelFixture).root.children[0].textField.rasterization, {
+        antiAliasType: "advanced", gridFitType: "pixel", sharpness: 0, thickness: 0,
+    });
+    assert.deepEqual(adapter.parse(gradientFixture()).root.children[0].textField.filters[0], {
+        kind: "gradient-bevel", distance: 10, angle: 90, colors: [0xff3300, 0xffcc33, 0xffff33],
+        alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,
+        strength: 2, quality: 3, type: "inner", knockout: false,
+    });
+    const nativeGradient = createAuthoredGlowFilters([{
+        kind: "gradient-bevel", distance: 10, angle: 90,
+        colors: [0xff3300, 0xffcc33, 0xffff33], alphas: [1, 0, 1], ratios: [29, 128, 255],
+        blurX: 10, blurY: 10, strength: 2, quality: 3, type: "inner", knockout: false,
+    }])[0];
+    assert.equal(isGradientBevelFilter(nativeGradient), true);
+    assert.deepEqual({
+        distance: nativeGradient.distance, angle: nativeGradient.angle,
+        colors: nativeGradient.colors, alphas: nativeGradient.alphas, ratios: nativeGradient.ratios,
+        blurX: nativeGradient.blurX, blurY: nativeGradient.blurY, strength: nativeGradient.strength,
+        quality: nativeGradient.quality, type: nativeGradient.type, knockout: nativeGradient.knockout,
+    }, {
+        distance: 10, angle: 90, colors: [0xff3300, 0xffcc33, 0xffff33],
+        alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,
+        strength: 2, quality: 3, type: "inner", knockout: false,
     });
     assert.deepEqual(text.textField.format.embeddedFont, {
         resourceId: "flash-font-18", sourceSha256: FONT_SHA, fontId: 18, fontType: "embedded", fontStyle: "bold",
@@ -227,8 +284,26 @@ async function main() {
         ["glyph order drift", value => value.library.assets[18].font.glyphs[1].codePoint = 31, /FLASH_LIBRARY_FONT_GLYPH_ORDER_UNSUPPORTED/],
         ["duplicate kerning pair", value => value.library.assets[18].font.kerning[1] = { ...value.library.assets[18].font.kerning[0] }, /FLASH_LIBRARY_FONT_KERNING_DUPLICATE/],
         ["unsupported rasterizer", value => value.library.assets[203].textRendering.renderer = "normal", /FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED/],
+        ["mismatched pixel grid fit", value => {
+            value.library.assets[203].textRendering.gridFit = 1;
+            value.library.assets[203].textRendering.gridFitMode = "subpixel";
+        }, /FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED/],
+        ["unknown grid fit", value => {
+            value.library.assets[203].textRendering.gridFit = 3;
+            value.library.assets[203].textRendering.gridFitMode = "none";
+        }, /FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED/],
     ]) {
         const value = fixture();
+        mutate(value);
+        assert.throws(() => adapter.parse(value), expected, label);
+    }
+    for (const [label, mutate, expected] of [
+        ["gradient stop length", value => value.timelines.get(385).frames[0].operations[0].filters[0].ratios.pop(), /FLASH_LIBRARY_FILTER_GRADIENT_INVALID/],
+        ["gradient stop range", value => value.timelines.get(385).frames[0].operations[0].filters[0].colors[0].alpha = 2, /FLASH_LIBRARY_FILTER_COLOR_INVALID/],
+        ["gradient type", value => value.timelines.get(385).frames[0].operations[0].filters[0].type = "sideways", /FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED/],
+        ["gradient quality", value => value.timelines.get(385).frames[0].operations[0].filters[0].passes = 16, /FLASH_LIBRARY_FILTER_RANGE_INVALID/],
+    ]) {
+        const value = gradientFixture();
         mutate(value);
         assert.throws(() => adapter.parse(value), expected, label);
     }
@@ -240,7 +315,7 @@ async function main() {
         }),
         /AUTHORED_CONTENT_FONT_RESOURCE_FORMAT_MISMATCH/,
     );
-    process.stdout.write("authored embedded font: 27/27 passed\n");
+    process.stdout.write("authored embedded font: 35/35 passed\n");
 }
 
 function sha(bytes) {
