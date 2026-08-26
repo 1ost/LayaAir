@@ -32,6 +32,7 @@ const MARKUP = '<p align="center"><font face="TestSans" size="10" color="#fff7c5
 const REDUNDANT_FONT_MARKUP = '<p align="right"><font face="Arial" size="12" color="#ffffff" letterSpacing="0.000000" kerning="0">Current Level<font face="Arial">ï¼š</font></font></p>';
 const FALLBACK_FONT_MARKUP = '<p align="left"><font face="Arial" size="12" color="#ffc867" letterSpacing="0.000000" kerning="0">Today&apos;s remaining reward chances<font face="MS PGothic">ï¼š</font></font></p>';
 const MULTI_PARAGRAPH_MARKUP = '<p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Do not start fighting </font></p><p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Then kicked captain</font></p>';
+const EMPTY_TRAILING_PARAGRAPH_MARKUP = '<p align="right"><font face="Arial" size="10" color="#dea05d" letterSpacing="0.000000" kerning="0">Consumes Basic <sbr />Gikogan</font></p><p align="right"></p>';
 
 function configuration(markup = MARKUP): AuthoredTextFieldConfiguration {
     return {
@@ -104,6 +105,14 @@ test("restricted Flash HTML preserves adjacent same-format paragraph runs", () =
     });
 });
 
+test("restricted Flash HTML preserves authenticated empty trailing paragraphs", () => {
+    assert.deepEqual(parseRestrictedFlashHtmlText(EMPTY_TRAILING_PARAGRAPH_MARKUP), {
+        markup: EMPTY_TRAILING_PARAGRAPH_MARKUP, plainText: "Consumes Basic \rGikogan\r",
+        align: "right", font: "Arial", size: 10, color: 0xdea05d,
+        letterSpacing: 0, kerning: false, bold: false,
+    });
+});
+
 test("restricted Flash HTML fails closed before TextField publication", () => {
     for (const markup of [
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><i>bad</i></font></p>',
@@ -114,6 +123,8 @@ test("restricted Flash HTML fails closed before TextField publication", () => {
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans"><b>bad</font></b></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans">bad</font></font></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">one</font></p><p align="left"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">two</font></p>',
+        EMPTY_TRAILING_PARAGRAPH_MARKUP.replace('<p align="right"></p>', '<p align="left"></p>'),
+        EMPTY_TRAILING_PARAGRAPH_MARKUP.replace('<p align="right"></p>', '<p align="right" onclick="x"></p>'),
         '<p align="center" onclick="x"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">bad</font></p>',
     ]) assert.throws(() => parseRestrictedFlashHtmlText(markup), /AUTHORED_CONTENT_HTML_TEXT/);
     assert.throws(() => createAuthoredTextField({ ...configuration(), format: { ...configuration().format, color: 0xffffff } }), /must match its exact format/);

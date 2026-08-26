@@ -10,7 +10,8 @@ export interface RestrictedFlashHtmlTextLayout {
     readonly bold: boolean;
 }
 
-const OUTER = /^<p ([^<>]+)><font ([^<>]+)>([\s\S]*)<\/font><\/p>$/;
+const FORMATTED_PARAGRAPH = /^<p ([^<>]+)><font ([^<>]+)>([\s\S]*)<\/font><\/p>$/;
+const EMPTY_PARAGRAPH = /^<p ([^<>]+)><\/p>$/;
 const ATTRIBUTE = /([A-Za-z][A-Za-z0-9]*)="([^"]*)"/gy;
 const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
     amp: "&", apos: "'", gt: ">", lt: "<", nbsp: "\u00a0", quot: "\"",
@@ -18,32 +19,42 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
 
 /**
  * Validates the frozen authored Flash HTML slice. This is deliberately not a
- * browser HTML parser: only p/font plus balanced b/br/sbr content is accepted,
- * and every formatting attribute is authenticated before the markup reaches
- * TextField.htmlText.
+ * browser HTML parser: only consecutive p/font runs plus balanced b/br/sbr
+ * content are accepted, and every formatting attribute is authenticated before
+ * the markup reaches TextField.htmlText. Empty paragraphs retain Flash's
+ * authored line breaks but cannot introduce formatting of their own.
  */
 export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtmlTextLayout {
     if (typeof markup !== "string")
         throw new TypeError("AUTHORED_CONTENT_HTML_TEXT_REQUIRED: markup must be a string.");
     const paragraphRuns = markup.split(/(?=<p )/);
-    if (paragraphRuns.length > 1) {
-        const layouts = paragraphRuns.map(parseRestrictedFlashHtmlText);
-        const first = layouts[0];
-        if (!layouts.every(layout => layout.align === first.align && layout.font === first.font
-            && layout.size === first.size && layout.color === first.color
-            && layout.letterSpacing === first.letterSpacing && layout.kerning === first.kerning
-            && layout.bold === first.bold))
-            throw new Error("AUTHORED_CONTENT_HTML_TEXT_PARAGRAPH_RUN_UNSUPPORTED: paragraph runs must share one exact format.");
-        return Object.freeze({ ...first, markup, plainText: layouts.map(layout => layout.plainText).join("\r") });
-    }
-    const match = OUTER.exec(markup);
-    if (!match)
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_SUBSET_UNSUPPORTED: expected one exact p/font run.");
-    const paragraph = attributes(match[1], new Set(["align"]), "paragraph");
-    const font = attributes(match[2], new Set(["color", "face", "kerning", "letterSpacing", "size"]), "font");
-    const align = paragraph.align;
+    const paragraphs = paragraphRuns.map(run => {
+        const formatted = FORMATTED_PARAGRAPH.exec(run);
+        if (formatted) return {
+            align: attributes(formatted[1], new Set(["align"]), "paragraph").align,
+            font: attributes(formatted[2], new Set(["color", "face", "kerning", "letterSpacing", "size"]), "font"),
+            content: formatted[3],
+        };
+        const empty = EMPTY_PARAGRAPH.exec(run);
+        if (empty) return {
+            align: attributes(empty[1], new Set(["align"]), "paragraph").align,
+            font: undefined,
+            content: "",
+        };
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_SUBSET_UNSUPPORTED: expected exact consecutive p/font runs.");
+    });
+    const formatted = paragraphs.filter(paragraph => paragraph.font !== undefined);
+    if (formatted.length === 0)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_MISSING: at least one paragraph must carry exact font authority.");
+    const font = formatted[0].font!;
+    const align = paragraphs[0].align;
     if (align !== "left" && align !== "center" && align !== "right" && align !== "justify")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_ALIGN_UNSUPPORTED: paragraph alignment is unsupported.");
+    if (paragraphs.some(paragraph => paragraph.align !== align))
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_DRIFT: paragraph runs must share one alignment.");
+    const fontFields = ["color", "face", "kerning", "letterSpacing", "size"] as const;
+    if (formatted.some(paragraph => fontFields.some(field => paragraph.font![field] !== font[field])))
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_DRIFT: paragraph runs must share one exact font format.");
     validFontFace(font.face);
     const size = finiteNumber(font.size, "size");
     if (size <= 0) throw new Error("AUTHORED_CONTENT_HTML_TEXT_SIZE_INVALID: font size must be positive.");
@@ -52,7 +63,7 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
     const letterSpacing = finiteNumber(font.letterSpacing, "letterSpacing");
     if (font.kerning !== "0" && font.kerning !== "1")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_KERNING_INVALID: kerning must be 0 or 1.");
-    const content = decodeContent(match[3]);
+    const content = decodeContent(paragraphs.map(paragraph => paragraph.content).join("<br/>"));
     return Object.freeze({
         markup,
         plainText: content.plainText,
