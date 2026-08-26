@@ -930,7 +930,73 @@ test("Flash Graphics owns state while preserving native command storage", () => 
     graphics.drawRoundRect(0, 0, 18, 18, 4, 4);
     assert.equal(graphics.cmds.length, 2, "equal Flash ellipse diameters map to native corner radii");
     assert.throws(() => graphics.drawRoundRect(0, 0, 18, 18, 4, 6), UnsupportedFlashFeatureError);
-    assert.throws(() => graphics.drawTriangles([0, 0, 1, 1], [0, 1, 2]), UnsupportedFlashFeatureError);
+    graphics.clear();
+    graphics.beginFill(0x80f4ab00);
+    const knifeVertices = [
+        0, 0,
+        10, 0,
+        10, 10,
+        0, 10,
+        -4, 5,
+    ];
+    const knifeIndices = [0, 1, 2, 0, 2, 3, 0, 3, 4];
+    graphics.drawTriangles(knifeVertices, knifeIndices);
+    graphics.endFill();
+    assert.equal(graphics.cmds.length, 3, "indexed Flash triangles retain authored draw order");
+    const knifeCommands = graphics.cmds as unknown as Array<{ points: number[]; fillColor: string }>;
+    assert.deepEqual(knifeCommands.map(command => command.points), [
+        [0, 0, 10, 0, 10, 10],
+        [0, 0, 10, 10, 0, 10],
+        [0, 0, 0, 10, -4, 5],
+    ]);
+    assert.deepEqual(knifeCommands.map(command => command.fillColor), [
+        "rgba(244,171,0,1)", "rgba(244,171,0,1)", "rgba(244,171,0,1)",
+    ]);
+    knifeVertices[0] = 99;
+    knifeIndices[0] = 4;
+    assert.deepEqual(knifeCommands[0].points, [0, 0, 10, 0, 10, 10],
+        "native commands snapshot source vectors");
+
+    graphics.clear();
+    graphics.beginFill(0x112233, 0.5);
+    graphics.drawTriangles(
+        new Float32Array([0, 0, 3, 0, 0, 4]),
+        new Uint16Array([0, 1, 2]),
+    );
+    assert.equal(graphics.cmds.length, 1, "typed vectors use the same solid-fill path");
+    const typedCommand = graphics.cmds[0] as unknown as { points: number[]; fillColor: string };
+    assert.deepEqual(typedCommand.points, [0, 0, 3, 0, 0, 4]);
+    assert.equal(typedCommand.fillColor, "rgba(17,34,51,0.5)");
+
+    graphics.clear();
+    graphics.beginFill(0xffffff);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1], [0, 1, 2]), /vertices must contain x\/y pairs/);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 0, 0, 1], [0, 1]),
+        /indices must contain complete triangles/);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 0, 0, 1], [0, 1.5, 2]),
+        /indices\[1\] must be an integer/);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 0, 0, 1], [0, 1, 3]),
+        /indices\[2\] is out of range/);
+    assert.throws(() => graphics.drawTriangles([0, 0, Number.NaN, 0, 0, 1], [0, 1, 2]),
+        /vertices\[2\] must be finite/);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 0, 0, 1], [0, 1, 2], []),
+        UnsupportedFlashFeatureError);
+    assert.throws(() => graphics.drawTriangles([0, 0, 1, 0, 0, 1], [0, 1, 2], null, "positive"),
+        UnsupportedFlashFeatureError);
+    assert.equal(graphics.cmds.length, 0, "malformed and unsupported inputs fail before triangle emission");
+
+    graphics.clear();
+    const nativeTexture = new Texture();
+    const nativeCommand = graphics.drawTriangles(
+        nativeTexture,
+        2,
+        3,
+        new Float32Array([0, 0, 1, 0, 0, 1]),
+        new Float32Array([0, 0, 1, 0, 0, 1]),
+        new Uint16Array([0, 1, 2]),
+    );
+    assert.ok(nativeCommand.texture === nativeTexture, "texture-first native Laya signature is preserved");
+    assert.ok(graphics.cmds[0] === nativeCommand);
     graphics.clear();
     graphics.lineStyle(1, 0, 1, true);
     graphics.beginFill(0xffffff);

@@ -123,6 +123,36 @@ function argbCss(value: number): string {
     return `rgba(${value >>> 16 & 0xff},${value >>> 8 & 0xff},${value & 0xff},${(value >>> 24) / 255})`;
 }
 
+function numericVector(value: unknown, label: string): number[] {
+    let values: ArrayLike<number>;
+    if (Array.isArray(value)) values = value;
+    else if (ArrayBuffer.isView(value) && !(value instanceof DataView))
+        values = value as unknown as ArrayLike<number>;
+    else throw new TypeError(`${label} must be an Array or typed array`);
+    return Array.from(values, (entry, index) => finite(entry, `${label}[${index}]`));
+}
+
+function flashTriangleGeometry(verticesValue: unknown, indicesValue: unknown): {
+    vertices: number[];
+    indices: number[];
+} {
+    const vertices = numericVector(verticesValue, "Graphics.drawTriangles.vertices");
+    if (vertices.length % 2 !== 0)
+        throw new RangeError("Graphics.drawTriangles.vertices must contain x/y pairs");
+    const indices = numericVector(indicesValue, "Graphics.drawTriangles.indices");
+    if (indices.length % 3 !== 0)
+        throw new RangeError("Graphics.drawTriangles.indices must contain complete triangles");
+    const vertexCount = vertices.length / 2;
+    for (let index = 0; index < indices.length; index++) {
+        const vertexIndex = indices[index];
+        if (!Number.isInteger(vertexIndex))
+            throw new RangeError(`Graphics.drawTriangles.indices[${index}] must be an integer`);
+        if (vertexIndex < 0 || vertexIndex >= vertexCount)
+            throw new RangeError(`Graphics.drawTriangles.indices[${index}] is out of range`);
+    }
+    return { vertices, indices };
+}
+
 /**
  * Flash's stateful vector API projected onto Laya's native command stream.
  * Native five-argument drawRect calls remain available for engine consumers;
@@ -285,14 +315,43 @@ export class Graphics extends LayaGraphics {
             fillColor, this._stroke?.color ?? null, this._stroke?.thickness ?? 1);
     }
 
-    /** Preserve Laya's textured-triangle path and reject Flash vector triangles visibly. */
+    /**
+     * Project source-shaped solid-fill triangles into Laya polygon commands.
+     * Texture-first native Laya calls retain their original command path.
+     */
     override drawTriangles(...args: unknown[]): ReturnType<LayaGraphics["drawTriangles"]> {
         this._flushPath();
-        if (Array.isArray(args[0]) || ArrayBuffer.isView(args[0]))
-            throw new UnsupportedFlashFeatureError(
-                "flash.display.Graphics.drawTriangles",
-                "Flash solid/UV triangle projection requires the vector triangle workpack"
-            );
+        if (Array.isArray(args[0]) || ArrayBuffer.isView(args[0])) {
+            const geometry = flashTriangleGeometry(args[0], args[1]);
+            const uvtData = args[2];
+            const culling = args.length < 4 || args[3] === undefined ? "none" : args[3];
+            if (uvtData !== undefined && uvtData !== null)
+                throw new UnsupportedFlashFeatureError(
+                    "flash.display.Graphics.drawTriangles.uvtData",
+                    "Flash UV and perspective-correct triangle projection is not admitted"
+                );
+            if (culling !== "none" || args.length > 4)
+                throw new UnsupportedFlashFeatureError(
+                    "flash.display.Graphics.drawTriangles.culling",
+                    "Flash triangle face culling is not admitted"
+                );
+            if (this._fill === null)
+                return undefined as unknown as ReturnType<LayaGraphics["drawTriangles"]>;
+            if (this._fill.kind !== "solid")
+                throw new UnsupportedFlashFeatureError(
+                    "flash.display.Graphics.drawTriangles.fill",
+                    "the admitted retained triangle bridge supports solid fills"
+                );
+            for (let index = 0; index < geometry.indices.length; index += 3) {
+                const triangle: number[] = [];
+                for (let corner = 0; corner < 3; corner++) {
+                    const vertexOffset = geometry.indices[index + corner] * 2;
+                    triangle.push(geometry.vertices[vertexOffset], geometry.vertices[vertexOffset + 1]);
+                }
+                super.drawPoly(0, 0, triangle, this._fill.color, null, 0);
+            }
+            return undefined as unknown as ReturnType<LayaGraphics["drawTriangles"]>;
+        }
         return super.drawTriangles(...args as Parameters<LayaGraphics["drawTriangles"]>);
     }
 
