@@ -677,6 +677,29 @@ async function main(): Promise<void> {
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
     });
 
+    await test("Flash library retains multiple distinct labels authored on one frame", () => {
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 20, height: 10, frameRate: 30, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Checkbox", bounds: { x: 0, y: 0, width: 20, height: 10 } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Checkbox", frameRate: 30, frameCount: 1,
+            frames: [{ index: 1, label: "Btn_CheckBoxTrue", operations: [
+                { op: "label", name: "cancle" },
+                { op: "label", name: "Btn_CheckBoxTrue" },
+            ], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Checkbox", resources: new Map(),
+        });
+        assert(JSON.stringify(content.timeline.frameLabels)
+            === JSON.stringify({ Btn_CheckBoxTrue: 1, cancle: 1 }),
+            "co-located Flash frame labels were not retained deterministically");
+    });
+
     await test("neutral IR admits exact flat and dotted application linkages and rejects reserved or invalid IDs", () => {
         const flat = dynamicTextDocument() as any;
         flat.root.runtimeLinkage = "MC_PetHouse";

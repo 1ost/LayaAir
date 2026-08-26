@@ -1489,15 +1489,13 @@ function validateFrame(value: Record<string, any>, symbolId: number): void {
     const labelOperations = array(value.operations, `timeline ${symbolId}.operations`)
         .map((operation, index) => object(operation, `timeline ${symbolId}.operations[${index}]`))
         .filter(operation => operation.op === "label");
-    if (labelOperations.length > 1)
-        fail("FLASH_LIBRARY_FRAME_LABEL_OPERATION_DUPLICATE", `Timeline ${symbolId} contains multiple label operations on one frame.`);
-    if (labelOperations.length === 1) {
-        const operation = labelOperations[0];
+    const operationLabels = labelOperations.map(operation => {
         exactKeys(operation, FRAME_LABEL_OPERATION_FIELDS, "label", "FLASH_LIBRARY_FRAME_LABEL_OPERATION_FIELD_UNSUPPORTED");
-        const operationLabel = validFrameLabel(operation.name, `timeline ${symbolId} label operation`);
-        if (frameLabel === undefined || operationLabel !== frameLabel)
-            fail("FLASH_LIBRARY_FRAME_LABEL_OPERATION_MISMATCH", `Timeline ${symbolId} label operation does not match frame.label.`);
-    }
+        return validFrameLabel(operation.name, `timeline ${symbolId} label operation`);
+    });
+    if (operationLabels.length !== 0
+        && (frameLabel === undefined || !operationLabels.includes(frameLabel)))
+        fail("FLASH_LIBRARY_FRAME_LABEL_OPERATION_MISMATCH", `Timeline ${symbolId} label operations do not include frame.label.`);
 }
 
 function displayOperations(value: Record<string, any>, symbolId: number): any[] {
@@ -1522,11 +1520,23 @@ function extractFrameLabels(sourceTimeline: Record<string, any>): Readonly<Recor
     array(sourceTimeline.frames, `timeline ${symbolId}.frames`).forEach((value, index) => {
         const current = object(value, `timeline ${symbolId} frame ${index + 1}`);
         validateFrame(current, symbolId);
-        if (current.label === undefined) return;
-        const label = validFrameLabel(current.label, `timeline ${symbolId} frame ${index + 1}.label`);
-        if (Object.prototype.hasOwnProperty.call(labels, label))
-            fail("FLASH_LIBRARY_FRAME_LABEL_DUPLICATE", `Timeline ${symbolId} repeats frame label '${label}'.`);
-        Object.defineProperty(labels, label, { value: index + 1, enumerable: true });
+        const operations = array(current.operations, `timeline ${symbolId}.operations`)
+            .map((operation, operationIndex) => object(
+                operation,
+                `timeline ${symbolId}.operations[${operationIndex}]`,
+            ))
+            .filter(operation => operation.op === "label");
+        const frameLabels = operations.length === 0 && current.label !== undefined
+            ? [validFrameLabel(current.label, `timeline ${symbolId} frame ${index + 1}.label`)]
+            : operations.map(operation => validFrameLabel(
+                operation.name,
+                `timeline ${symbolId} label operation`,
+            ));
+        for (const label of frameLabels) {
+            if (Object.prototype.hasOwnProperty.call(labels, label))
+                fail("FLASH_LIBRARY_FRAME_LABEL_DUPLICATE", `Timeline ${symbolId} repeats frame label '${label}'.`);
+            Object.defineProperty(labels, label, { value: index + 1, enumerable: true });
+        }
     });
     return Object.freeze(labels);
 }
