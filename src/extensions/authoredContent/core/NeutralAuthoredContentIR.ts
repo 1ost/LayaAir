@@ -32,7 +32,7 @@ export interface NeutralGlowFilter {
 export interface NeutralGradientBevelFilter {
     readonly kind: "gradient-bevel";
     readonly distance: number;
-    readonly angle: number;
+    readonly angleRadians: number;
     readonly colors: ReadonlyArray<number>;
     readonly alphas: ReadonlyArray<number>;
     readonly ratios: ReadonlyArray<number>;
@@ -42,6 +42,7 @@ export interface NeutralGradientBevelFilter {
     readonly quality: number;
     readonly type: "inner" | "outer" | "full";
     readonly knockout: boolean;
+    readonly compositeSource: true;
 }
 
 export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralGradientBevelFilter;
@@ -705,9 +706,8 @@ function normalizeMatrix(value: unknown, path: string): NeutralAuthoredMatrix {
     };
 }
 
-function normalizeAuthoredFilter(value: unknown, path: string, scale: number): NeutralAuthoredFilter {
+function normalizeGlowFilter(value: unknown, path: string, scale: number): NeutralGlowFilter {
     const source = record(value, path);
-    if (source.kind === "gradient-bevel") return normalizeGradientBevelFilter(source, path, scale);
     allowedKeys(source, ["alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength"], path);
     const color = requiredFiniteNumber(source.color, `${path}.color`);
     if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
@@ -733,39 +733,61 @@ function normalizeAuthoredFilter(value: unknown, path: string, scale: number): N
     };
 }
 
-function normalizeGradientBevelFilter(source: Record<string, any>, path: string, scale: number): NeutralGradientBevelFilter {
-    allowedKeys(source, ["alphas", "angle", "blurX", "blurY", "colors", "distance", "kind", "knockout", "quality", "ratios", "strength", "type"], path);
-    const colors = numericArray(source.colors, `${path}.colors`, 0, 0xffffff, true);
-    const alphas = numericArray(source.alphas, `${path}.alphas`, 0, 1, false);
-    const ratios = numericArray(source.ratios, `${path}.ratios`, 0, 255, true);
+function normalizeGradientBevelFilter(value: unknown, path: string, scale: number): NeutralGradientBevelFilter {
+    const source = record(value, path);
+    allowedKeys(source, [
+        "alphas", "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "kind",
+        "knockout", "quality", "ratios", "strength", "type",
+    ], path);
+    const colors = array(source.colors, `${path}.colors`).map((value, index) => {
+        const color = requiredFiniteNumber(value, `${path}.colors[${index}]`);
+        if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+            fail("AUTHORED_CONTENT_GRADIENT_BEVEL_COLOR_INVALID", `${path}.colors[${index}] must be an RGB integer.`);
+        return color;
+    });
+    const alphas = array(source.alphas, `${path}.alphas`).map((value, index) => {
+        const alpha = requiredFiniteNumber(value, `${path}.alphas[${index}]`);
+        if (alpha < 0 || alpha > 1)
+            fail("AUTHORED_CONTENT_GRADIENT_BEVEL_ALPHA_INVALID", `${path}.alphas[${index}] must be between zero and one.`);
+        return alpha;
+    });
+    const ratios = array(source.ratios, `${path}.ratios`).map((value, index) => {
+        const ratio = requiredFiniteNumber(value, `${path}.ratios[${index}]`);
+        if (!Number.isInteger(ratio) || ratio < 0 || ratio > 255)
+            fail("AUTHORED_CONTENT_GRADIENT_BEVEL_RATIO_INVALID", `${path}.ratios[${index}] must be an integer from zero through 255.`);
+        return ratio;
+    });
     if (colors.length < 2 || colors.length !== alphas.length || colors.length !== ratios.length)
-        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STOPS", `${path} gradient arrays must have the same length of at least two.`);
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STOPS_INVALID", `${path} requires matching color, alpha, and ratio arrays with at least two stops.`);
     const blurX = requiredFiniteNumber(source.blurX, `${path}.blurX`);
     const blurY = requiredFiniteNumber(source.blurY, `${path}.blurY`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_BLUR_INVALID", `${path} blur dimensions must be between zero and 255.`);
     const strength = requiredFiniteNumber(source.strength, `${path}.strength`);
+    if (strength < 0 || strength > 255.99609375)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STRENGTH_INVALID", `${path}.strength is outside the serialized range.`);
     const quality = requiredFiniteNumber(source.quality, `${path}.quality`);
-    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255 || strength < 0 || strength > 255)
-        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_RANGE", `${path} blur and strength values exceed Flash ranges.`);
-    if (!Number.isInteger(quality) || quality < 1 || quality > 15)
-        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_QUALITY", `${path}.quality must be an integer from one through 15.`);
+    if (!Number.isInteger(quality) || quality < 0 || quality > 15)
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_QUALITY_INVALID", `${path}.quality must be an integer from zero through 15.`);
     const type = requiredString(source.type, `${path}.type`);
     if (type !== "inner" && type !== "outer" && type !== "full")
-        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_TYPE", `${path}.type must be inner, outer, or full.`);
+        fail("AUTHORED_CONTENT_GRADIENT_BEVEL_TYPE_INVALID", `${path}.type is unsupported.`);
     return {
-        kind: "gradient-bevel", distance: requiredFiniteNumber(source.distance, `${path}.distance`) * scale,
-        angle: requiredFiniteNumber(source.angle, `${path}.angle`), colors, alphas, ratios,
+        kind: exactLiteral(source.kind, "gradient-bevel", `${path}.kind`),
+        distance: requiredFiniteNumber(source.distance, `${path}.distance`) * scale,
+        angleRadians: requiredFiniteNumber(source.angleRadians, `${path}.angleRadians`),
+        colors, alphas, ratios,
         blurX: blurX * scale, blurY: blurY * scale, strength, quality, type,
         knockout: requiredBoolean(source.knockout, `${path}.knockout`),
+        compositeSource: exactLiteral(source.compositeSource, true, `${path}.compositeSource`),
     };
 }
 
-function numericArray(value: unknown, path: string, minimum: number, maximum: number, integer: boolean): ReadonlyArray<number> {
-    return array(value, path).map((candidate, index) => {
-        const result = requiredFiniteNumber(candidate, `${path}[${index}]`);
-        if (result < minimum || result > maximum || (integer && !Number.isInteger(result)))
-            fail("AUTHORED_CONTENT_GRADIENT_BEVEL_STOP", `${path}[${index}] is outside its Flash range.`);
-        return result;
-    });
+function normalizeAuthoredFilter(value: unknown, path: string, scale: number): NeutralAuthoredFilter {
+    const source = record(value, path);
+    return source.kind === "gradient-bevel"
+        ? normalizeGradientBevelFilter(value, path, scale)
+        : normalizeGlowFilter(value, path, scale);
 }
 
 function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: number): ReadonlyArray<NeutralAuthoredNode> {

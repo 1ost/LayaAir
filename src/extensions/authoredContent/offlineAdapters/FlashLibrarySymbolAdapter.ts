@@ -1,8 +1,8 @@
 import {
     NeutralAuthoredContentIR,
+    NeutralAuthoredFilter,
     NeutralInertPlacementRatio,
     NeutralAuthoredNode,
-    NeutralAuthoredFilter,
     NeutralTimeline,
     normalizeNeutralAuthoredContent,
 } from "../core/NeutralAuthoredContentIR";
@@ -41,7 +41,7 @@ type PlacementEvidenceContext = {
 
 const PLACEMENT_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
-const GLOW_FILTER_FIELDS = new Set([
+const FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
 ]);
 const GRADIENT_BEVEL_FILTER_FIELDS = new Set([
@@ -261,7 +261,7 @@ export class FlashLibrarySymbolAdapter {
             x: placement.x,
             y: placement.y,
             matrix: placement.matrix,
-            ...(operation?.filters === undefined ? {} : { filters: authoredGlowFilters(operation.filters, characterId) }),
+            ...(operation?.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation?.name === "string",
@@ -525,17 +525,21 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_ANIMATED_DISPLAY_LIST_EMPTY", `Timeline ${sourceTimeline.symbolId} contains no display objects.`);
         const ordered = [...instances].sort((left, right) =>
             left.authoredDepth - right.authoredDepth || left.firstFrame - right.firstFrame || left.instanceId - right.instanceId);
+        const claimedVariableNames = new Set<string>();
         const children = ordered.map((instance, index) => {
+            const sourceName = typeof instance.operation.name === "string" ? instance.operation.name : undefined;
+            const retainsVariableName = sourceName !== undefined && !claimedVariableNames.has(sourceName);
+            if (retainsVariableName) claimedVariableNames.add(sourceName!);
             const operation = {
                 op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
-                ...(instance.operation.name === undefined ? {} : { name: instance.operation.name }),
+                ...(retainsVariableName ? { name: sourceName } : {}),
                 ...(instance.operation.filters === undefined ? {} : { filters: instance.operation.filters }),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
             const placedAsset = object(assets[String(instance.characterId)], `library.assets.${instance.characterId}`);
             const child = this.createPlacedNode(
                 operation,
-                placementInstanceId(placedAsset, instance.operation, instance.firstFrame, instance.instanceId),
+                animatedPlacementInstanceId(placedAsset, instance.operation, instance.firstFrame, instance.instanceId),
                 assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
                 inertPlacementRatios,
             );
@@ -752,7 +756,7 @@ export class FlashLibrarySymbolAdapter {
                 autoSize: "none",
                 html,
                 useOutlines,
-                filters: authoredGlowFilters(operation.filters, characterId),
+                filters: authoredFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,
@@ -789,9 +793,22 @@ export class FlashLibrarySymbolAdapter {
         const staticText = object(asset.staticText, `library.assets.${characterId}.staticText`);
         exactKeys(staticText, new Set(["exactGlyphs", "issues", "matrix", "runs"]),
             `library.assets.${characterId}.staticText`, "FLASH_LIBRARY_STATIC_TEXT_UNSUPPORTED");
+        const initialText = text(asset.initialText, `library.assets.${characterId}.initialText`);
+        const issues = array(staticText.issues, `library.assets.${characterId}.staticText.issues`);
+        const runs = array(staticText.runs, `library.assets.${characterId}.staticText.runs`);
+        if (initialText === "" && staticText.exactGlyphs === false && runs.length === 0
+            && issues.length === 1 && issues[0] === "SWF text records are missing") {
+            const placement = placementTransform(operation);
+            return {
+                linkage: flashLibraryAssetName(asset, characterId), instanceId,
+                kind: "container", depth: positiveInteger(operation.depth, "place.depth"),
+                x: placement.x, y: placement.y, matrix: placement.matrix,
+                width: 0, height: 0, children: [],
+            };
+        }
         exactValue(staticText.exactGlyphs, true, "FLASH_LIBRARY_STATIC_TEXT_GLYPHS_REQUIRED",
             `Text ${characterId} lacks exact glyph evidence.`);
-        if (array(staticText.issues, `library.assets.${characterId}.staticText.issues`).length !== 0)
+        if (issues.length !== 0)
             fail("FLASH_LIBRARY_STATIC_TEXT_ISSUES", `Text ${characterId} contains unresolved extraction issues.`);
         const staticMatrix = object(staticText.matrix, `library.assets.${characterId}.staticText.matrix`);
         exactKeys(staticMatrix, MATRIX_FIELDS, `library.assets.${characterId}.staticText.matrix`, "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED");
@@ -799,13 +816,11 @@ export class FlashLibrarySymbolAdapter {
             "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
         for (const field of ["b", "c", "tx", "ty"] as const) exactValue(staticMatrix[field], 0,
             "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a non-identity text matrix.`);
-        const runs = array(staticText.runs, `library.assets.${characterId}.staticText.runs`);
         if (runs.length !== 1)
             fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain exactly one translatable run.`);
         const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);
         exactKeys(run, new Set(["color", "fontId", "fontSize", "glyphs", "text", "width", "x", "y"]),
             `library.assets.${characterId}.staticText.runs[0]`, "FLASH_LIBRARY_STATIC_TEXT_RUN_UNSUPPORTED");
-        const initialText = text(asset.initialText, `library.assets.${characterId}.initialText`);
         if (text(run.text, `library.assets.${characterId}.staticText.runs[0].text`) !== initialText)
             fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
         const glyphs = array(run.glyphs, `library.assets.${characterId}.staticText.runs[0].glyphs`);
@@ -848,7 +863,7 @@ export class FlashLibrarySymbolAdapter {
                 autoSize: "none",
                 html: false,
                 useOutlines: false,
-                filters: authoredGlowFilters(operation.filters, characterId),
+                filters: authoredFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,
@@ -1575,13 +1590,14 @@ function placementTransform(operation: Record<string, any>): PlacementTransform 
     return { a, b, c, d, x, y, ...(a === 1 && b === 0 && c === 0 && d === 1 ? {} : { matrix: { a, b, c, d } }) };
 }
 
-function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray<NeutralAuthoredFilter> {
+function authoredFilters(value: unknown, characterId: number): ReadonlyArray<NeutralAuthoredFilter> {
     if (value === undefined) return [];
     return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
         const label = `place ${characterId}.filters[${index}]`;
         const filter = object(filterValue, label);
-        if (filter.kind === "gradient-bevel") return authoredGradientBevelFilter(filter, label);
-        exactKeys(filter, GLOW_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+        if (filter.kind === "gradient-bevel")
+            return authoredGradientBevelFilter(filter, label);
+        exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
         exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
         exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
         exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
@@ -1611,44 +1627,58 @@ function authoredGlowFilters(value: unknown, characterId: number): ReadonlyArray
     });
 }
 
+function animatedPlacementInstanceId(
+    asset: Record<string, any>,
+    operation: Record<string, any>,
+    firstFrame: number,
+    ordinal: number,
+): string {
+    const characterId = positiveInteger(asset.characterId, "asset.characterId");
+    const depth = positiveInteger(operation.depth, "place.depth");
+    if (!Number.isSafeInteger(firstFrame) || firstFrame < 1
+        || !Number.isSafeInteger(ordinal) || ordinal < 1)
+        fail("FLASH_LIBRARY_INSTANCE_ID_AUTHORITY_INVALID", "Placement frame and ordinal must be positive safe integers.");
+    const base = operation.name === undefined
+        ? flashLibraryAssetName(asset, characterId)
+        : string(operation.name, "place.name");
+    return `${base}$d${depth}$f${firstFrame}$i${ordinal}`;
+}
+
 function authoredGradientBevelFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
     exactKeys(filter, GRADIENT_BEVEL_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
     exactValue(filter.sourceType, "GRADIENTBEVELFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
     exactValue(filter.compositeSource, true, "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED", `${label}.compositeSource is unsupported.`);
-    const type = filter.type;
-    if (type !== "inner" && type !== "outer" && type !== "full")
-        fail("FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.type is unsupported.`);
-    exactValue(filter.innerShadow, type === "inner", "FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.innerShadow disagrees with type.`);
-    exactValue(filter.onTop, type === "full", "FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED", `${label}.onTop disagrees with type.`);
-    const colorStops = array(filter.colors, `${label}.colors`).map((candidate, index) => {
-        const stop = object(candidate, `${label}.colors[${index}]`);
+    const colors = array(filter.colors, `${label}.colors`).map((value, index) => {
+        const stop = object(value, `${label}.colors[${index}]`);
         exactKeys(stop, FILTER_COLOR_FIELDS, `${label}.colors[${index}]`, "FLASH_LIBRARY_FILTER_COLOR_FIELD_UNSUPPORTED");
         const color = finite(stop.color, `${label}.colors[${index}].color`);
         const alpha = finite(stop.alpha, `${label}.colors[${index}].alpha`);
-        if (!Number.isInteger(color) || color < 0 || color > 0xffffff || alpha < 0 || alpha > 1)
-            fail("FLASH_LIBRARY_FILTER_COLOR_INVALID", `${label}.colors[${index}] is outside the Flash range.`);
+        if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+            fail("FLASH_LIBRARY_FILTER_COLOR_INVALID", `${label}.colors[${index}].color must be an RGB integer.`);
+        if (alpha < 0 || alpha > 1)
+            fail("FLASH_LIBRARY_FILTER_ALPHA_INVALID", `${label}.colors[${index}].alpha must be between zero and one.`);
         return { color, alpha };
     });
-    const ratios = array(filter.ratios, `${label}.ratios`).map((candidate, index) => {
-        const ratio = finite(candidate, `${label}.ratios[${index}]`);
+    const ratios = array(filter.ratios, `${label}.ratios`).map((value, index) => {
+        const ratio = finite(value, `${label}.ratios[${index}]`);
         if (!Number.isInteger(ratio) || ratio < 0 || ratio > 255)
-            fail("FLASH_LIBRARY_FILTER_RATIO_INVALID", `${label}.ratios[${index}] is outside the Flash range.`);
+            fail("FLASH_LIBRARY_FILTER_RATIO_INVALID", `${label}.ratios[${index}] must be an integer from zero through 255.`);
         return ratio;
     });
-    if (colorStops.length < 2 || colorStops.length !== ratios.length)
-        fail("FLASH_LIBRARY_FILTER_GRADIENT_INVALID", `${label} gradient stops are incomplete.`);
-    const blurX = finite(filter.blurX, `${label}.blurX`);
-    const blurY = finite(filter.blurY, `${label}.blurY`);
-    const strength = finite(filter.strength, `${label}.strength`);
-    const quality = positiveInteger(filter.passes, `${label}.passes`);
-    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255 || strength < 0 || strength > 255 || quality > 15)
-        fail("FLASH_LIBRARY_FILTER_RANGE_INVALID", `${label} exceeds the Flash filter range.`);
+    if (colors.length < 2 || colors.length !== ratios.length)
+        fail("FLASH_LIBRARY_FILTER_STOPS_INVALID", `${label} requires matching gradient stops and ratios.`);
+    const innerShadow = boolean(filter.innerShadow, `${label}.innerShadow`);
+    const onTop = boolean(filter.onTop, `${label}.onTop`);
+    const type = onTop && !innerShadow ? "full" : innerShadow ? "inner" : "outer";
+    exactValue(filter.type, type, "FLASH_LIBRARY_FILTER_TYPE_MISMATCH", `${label}.type disagrees with its serialized flags.`);
     return {
-        kind: "gradient-bevel", distance: finite(filter.distance, `${label}.distance`),
-        angle: finite(filter.angleRadians, `${label}.angleRadians`) * 180 / Math.PI,
-        colors: colorStops.map(stop => stop.color), alphas: colorStops.map(stop => stop.alpha), ratios,
-        blurX, blurY, strength, quality, type,
-        knockout: boolean(filter.knockout, `${label}.knockout`),
+        kind: "gradient-bevel",
+        distance: finite(filter.distance, `${label}.distance`),
+        angleRadians: finite(filter.angleRadians, `${label}.angleRadians`),
+        colors: colors.map(stop => stop.color), alphas: colors.map(stop => stop.alpha), ratios,
+        blurX: finite(filter.blurX, `${label}.blurX`), blurY: finite(filter.blurY, `${label}.blurY`),
+        strength: finite(filter.strength, `${label}.strength`), quality: positiveInteger(filter.passes, `${label}.passes`),
+        type, knockout: boolean(filter.knockout, `${label}.knockout`), compositeSource: true,
     };
 }
 

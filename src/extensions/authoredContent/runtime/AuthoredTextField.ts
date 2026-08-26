@@ -1,5 +1,5 @@
 import {
-    AntiAliasType, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+    AntiAliasType, BitmapFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
@@ -19,7 +19,7 @@ export interface AuthoredGlowFilterConfiguration {
 export interface AuthoredGradientBevelFilterConfiguration {
     readonly kind: "gradient-bevel";
     readonly distance: number;
-    readonly angle: number;
+    readonly angleRadians: number;
     readonly colors: ReadonlyArray<number>;
     readonly alphas: ReadonlyArray<number>;
     readonly ratios: ReadonlyArray<number>;
@@ -29,6 +29,7 @@ export interface AuthoredGradientBevelFilterConfiguration {
     readonly quality: number;
     readonly type: "inner" | "outer" | "full";
     readonly knockout: boolean;
+    readonly compositeSource: true;
 }
 
 export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration | AuthoredGradientBevelFilterConfiguration;
@@ -140,9 +141,6 @@ const RASTERIZATION_KEYS = Object.freeze(["antiAliasType", "gridFitType", "sharp
 const GLOW_FILTER_KEYS = Object.freeze([
     "alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength",
 ]);
-const GRADIENT_BEVEL_FILTER_KEYS = Object.freeze([
-    "alphas", "angle", "blurX", "blurY", "colors", "distance", "kind", "knockout", "quality", "ratios", "strength", "type",
-]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredFontBinding>();
 
 /**
@@ -212,7 +210,7 @@ export function configureAuthoredTextField(
     textFormat.letterSpacing = value.format.letterSpacing ?? 0;
     textFormat.kerning = value.format.kerning ?? false;
     field.defaultTextFormat = textFormat;
-    field.filters = createAuthoredGlowFilters(value.filters ?? []);
+    field.filters = createAuthoredFilters(value.filters ?? []);
     if (value.html) field.htmlText = value.initialText;
     else field.text = value.initialText;
     return field;
@@ -223,14 +221,23 @@ export function releaseAuthoredTextFieldFontBinding(field: TextField): void {
     authoredFontBindings.delete(field);
 }
 
-export function createAuthoredGlowFilters(value: unknown): Array<GlowFilter | GradientBevelFilter> {
+export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
     if (!Array.isArray(value)) throw new TypeError("Authored glow filters must be an array");
+    return value.map((candidate, index) => validateGlowFilter(candidate, `filters[${index}]`)).map(filter => new GlowFilter(
+        filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
+        filter.quality, filter.inner, filter.knockout,
+    ));
+}
+
+export function createAuthoredFilters(value: unknown): BitmapFilter[] {
+    if (!Array.isArray(value)) throw new TypeError("Authored filters must be an array");
     return value.map((candidate, index) => validateAuthoredFilter(candidate, `filters[${index}]`)).map(filter =>
         filter.kind === "glow"
             ? new GlowFilter(filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
                 filter.quality, filter.inner, filter.knockout)
-            : new GradientBevelFilter(filter.distance, filter.angle, filter.colors, filter.alphas, filter.ratios,
-                filter.blurX, filter.blurY, filter.strength, filter.quality, filter.type, filter.knockout));
+            : new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
+                filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
+                filter.strength, filter.quality, filter.type, filter.knockout));
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
@@ -474,40 +481,56 @@ function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterCo
 }
 
 function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterConfiguration {
-    const descriptor = typeof value === "object" && value !== null && !Array.isArray(value)
-        ? Object.getOwnPropertyDescriptor(value, "kind") : undefined;
-    return descriptor && "value" in descriptor && descriptor.value === "gradient-bevel"
-        ? validateGradientBevelFilter(value, label) : validateGlowFilter(value, label);
+    if (value !== null && typeof value === "object" && Reflect.get(value, "kind") === "gradient-bevel")
+        return validateGradientBevelFilter(value, label);
+    return validateGlowFilter(value, label);
 }
 
 function validateGradientBevelFilter(value: unknown, label: string): AuthoredGradientBevelFilterConfiguration {
-    const record = exactDataObject(value, GRADIENT_BEVEL_FILTER_KEYS, label);
-    const colors = numericFilterArray(record.colors, `${label}.colors`, 0, 0xffffff, true);
-    const alphas = numericFilterArray(record.alphas, `${label}.alphas`, 0, 1, false);
-    const ratios = numericFilterArray(record.ratios, `${label}.ratios`, 0, 255, true);
+    const record = exactDataObject(value, [
+        "alphas", "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "kind",
+        "knockout", "quality", "ratios", "strength", "type",
+    ], label);
+    equal(record.kind, "gradient-bevel", `${label}.kind`);
+    const colors = numberArray(record.colors, `${label}.colors`, 0, 0xffffff, true);
+    const alphas = numberArray(record.alphas, `${label}.alphas`, 0, 1, false);
+    const ratios = numberArray(record.ratios, `${label}.ratios`, 0, 255, true);
     if (colors.length < 2 || colors.length !== alphas.length || colors.length !== ratios.length)
-        throw new TypeError(`${label} gradient arrays must have the same length of at least two`);
+        throw new TypeError(`${label} requires matching color, alpha, and ratio arrays with at least two stops`);
     finite(record.distance, `${label}.distance`);
-    finite(record.angle, `${label}.angle`);
+    finite(record.angleRadians, `${label}.angleRadians`);
     range(record.blurX, 0, 255, `${label}.blurX`);
     range(record.blurY, 0, 255, `${label}.blurY`);
-    range(record.strength, 0, 255, `${label}.strength`);
-    integerRange(record.quality, 1, 15, `${label}.quality`);
-    oneOf(record.type, ["inner", "outer", "full"], `${label}.type`);
+    range(record.strength, 0, 255.99609375, `${label}.strength`);
+    integerRange(record.quality, 0, 15, `${label}.quality`);
+    const type = record.type;
+    if (type !== "inner" && type !== "outer" && type !== "full")
+        throw new TypeError(`${label}.type has an unsupported value`);
     boolean(record.knockout, `${label}.knockout`);
+    equal(record.compositeSource, true, `${label}.compositeSource`);
     return Object.freeze({
-        kind: "gradient-bevel", distance: record.distance, angle: record.angle,
-        colors: Object.freeze(colors), alphas: Object.freeze(alphas), ratios: Object.freeze(ratios),
-        blurX: record.blurX, blurY: record.blurY, strength: record.strength, quality: record.quality,
-        type: oneOfValue(record.type, ["inner", "outer", "full"] as const, `${label}.type`), knockout: record.knockout,
+        kind: "gradient-bevel",
+        distance: record.distance,
+        angleRadians: record.angleRadians,
+        colors: Object.freeze(colors),
+        alphas: Object.freeze(alphas),
+        ratios: Object.freeze(ratios),
+        blurX: record.blurX,
+        blurY: record.blurY,
+        strength: record.strength,
+        quality: record.quality,
+        type,
+        knockout: record.knockout,
+        compositeSource: true,
     });
 }
 
-function numericFilterArray(value: unknown, label: string, minimum: number, maximum: number, integer: boolean): number[] {
+function numberArray(value: unknown, label: string, minimum: number, maximum: number, integer: boolean): number[] {
     if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
     return value.map((candidate, index) => {
-        range(candidate, minimum, maximum, `${label}[${index}]`);
-        if (integer && !Number.isInteger(candidate)) throw new TypeError(`${label}[${index}] must be an integer`);
+        finite(candidate, `${label}[${index}]`);
+        if (candidate < minimum || candidate > maximum || integer && !Number.isInteger(candidate))
+            throw new RangeError(`${label}[${index}] is outside its serialized range`);
         return candidate;
     });
 }

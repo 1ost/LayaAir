@@ -35,7 +35,7 @@ const { describeNativeAuthoredFontCatalog } = require(
 const { prepareNativeLayaAuthoredContentBundle } = require(
     "../../src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts"
 );
-const { createAuthoredGlowFilters } = require(
+const { createAuthoredFilters } = require(
     "../../src/extensions/authoredContent/runtime/AuthoredTextField.ts"
 );
 const { isGradientBevelFilter } = require(
@@ -164,14 +164,14 @@ async function main() {
         antiAliasType: "advanced", gridFitType: "pixel", sharpness: 0, thickness: 0,
     });
     assert.deepEqual(adapter.parse(gradientFixture()).root.children[0].textField.filters[0], {
-        kind: "gradient-bevel", distance: 10, angle: 90, colors: [0xff3300, 0xffcc33, 0xffff33],
+        kind: "gradient-bevel", distance: 10, angleRadians: Math.PI / 2, colors: [0xff3300, 0xffcc33, 0xffff33],
         alphas: [1, 0, 1], ratios: [29, 128, 255], blurX: 10, blurY: 10,
-        strength: 2, quality: 3, type: "inner", knockout: false,
+        strength: 2, quality: 3, type: "inner", knockout: false, compositeSource: true,
     });
-    const nativeGradient = createAuthoredGlowFilters([{
-        kind: "gradient-bevel", distance: 10, angle: 90,
+    const nativeGradient = createAuthoredFilters([{
+        kind: "gradient-bevel", distance: 10, angleRadians: Math.PI / 2,
         colors: [0xff3300, 0xffcc33, 0xffff33], alphas: [1, 0, 1], ratios: [29, 128, 255],
-        blurX: 10, blurY: 10, strength: 2, quality: 3, type: "inner", knockout: false,
+        blurX: 10, blurY: 10, strength: 2, quality: 3, type: "inner", knockout: false, compositeSource: true,
     }])[0];
     assert.equal(isGradientBevelFilter(nativeGradient), true);
     assert.deepEqual({
@@ -315,10 +315,10 @@ async function main() {
         assert.throws(() => adapter.parse(value), expected, label);
     }
     for (const [label, mutate, expected] of [
-        ["gradient stop length", value => value.timelines.get(385).frames[0].operations[0].filters[0].ratios.pop(), /FLASH_LIBRARY_FILTER_GRADIENT_INVALID/],
-        ["gradient stop range", value => value.timelines.get(385).frames[0].operations[0].filters[0].colors[0].alpha = 2, /FLASH_LIBRARY_FILTER_COLOR_INVALID/],
-        ["gradient type", value => value.timelines.get(385).frames[0].operations[0].filters[0].type = "sideways", /FLASH_LIBRARY_FILTER_TYPE_UNSUPPORTED/],
-        ["gradient quality", value => value.timelines.get(385).frames[0].operations[0].filters[0].passes = 16, /FLASH_LIBRARY_FILTER_RANGE_INVALID/],
+        ["gradient stop length", value => value.timelines.get(385).frames[0].operations[0].filters[0].ratios.pop(), /FLASH_LIBRARY_FILTER_STOPS_INVALID/],
+        ["gradient stop range", value => value.timelines.get(385).frames[0].operations[0].filters[0].colors[0].alpha = 2, /FLASH_LIBRARY_FILTER_ALPHA_INVALID/],
+        ["gradient type", value => value.timelines.get(385).frames[0].operations[0].filters[0].type = "sideways", /FLASH_LIBRARY_FILTER_TYPE_MISMATCH/],
+        ["gradient quality", value => value.timelines.get(385).frames[0].operations[0].filters[0].passes = 16, /AUTHORED_CONTENT_GRADIENT_BEVEL_QUALITY_INVALID/],
     ]) {
         const value = gradientFixture();
         mutate(value);

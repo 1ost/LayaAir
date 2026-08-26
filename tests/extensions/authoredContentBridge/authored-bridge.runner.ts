@@ -23,6 +23,7 @@ import { isFlashShape } from "../../../src/layaAir/flash/display/Shape";
 import { isFlashBitmap } from "../../../src/layaAir/flash/display/Bitmap";
 import { isFlashBitmapData, observeBitmapData } from "../../../src/layaAir/flash/display/BitmapData";
 import { isGlowFilter } from "../../../src/layaAir/flash/filters/GlowFilter";
+import { isGradientBevelFilter } from "../../../src/layaAir/flash/filters/GradientBevelFilter";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
@@ -72,7 +73,7 @@ import {
     UnsupportedFlashFeatureError, URLRequest, navigateToURL, isFlashCSMSettings, isFlashTextFormat
 } from "../../../src/layaAir/flash";
 import {
-    createAuthoredStaticText, createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
+    createAuthoredFilters, createAuthoredStaticText, createAuthoredTextField, LayaAuthoredBindingHost, mapLayaAuthoredEventData,
     createAuthoredPrefabDefinition, normalizeAuthoredCodeBindingContract, registerAuthoredContentRuntime,
     type AuthoredStaticTextConfiguration, type AuthoredTextFieldConfiguration,
 } from "../../../src/extensions/authoredContent/runtime";
@@ -2304,6 +2305,27 @@ test("authored TextField validation fails before publication and preserves prior
         /filters\[0\] must be a plain data object/,
     );
     published.destroy(true);
+});
+
+test("authored gradient-bevel filters retain exact stops and create the native Flash filter", () => {
+    const filters = createAuthoredFilters([{
+        kind: "gradient-bevel", distance: 3, angleRadians: Math.PI / 2,
+        colors: [0xff3300, 0xffcc33, 0xffff33], alphas: [1, 0, 1], ratios: [0, 128, 255],
+        blurX: 10, blurY: 10, strength: 4, quality: 2, type: "inner", knockout: false,
+        compositeSource: true,
+    }]);
+    assert.equal(filters.length, 1);
+    assert.equal(isGradientBevelFilter(filters[0]), true);
+    if (!isGradientBevelFilter(filters[0])) throw new Error("gradient-bevel identity was not retained");
+    assert.deepEqual([
+        filters[0].distance, filters[0].angle, filters[0].colors, filters[0].alphas,
+        filters[0].ratios, filters[0].quality, filters[0].type,
+    ], [3, 90, [0xff3300, 0xffcc33, 0xffff33], [1, 0, 1], [0, 128, 255], 2, "inner"]);
+    assert.throws(() => createAuthoredFilters([{
+        kind: "gradient-bevel", distance: 3, angleRadians: 0,
+        colors: [0, 1], alphas: [1], ratios: [0, 255], blurX: 1, blurY: 1,
+        strength: 1, quality: 1, type: "inner", knockout: false, compositeSource: true,
+    }]), /matching color, alpha, and ratio arrays/);
 });
 
 test("canonical hierarchy deserializes a Laya-owned authored dynamic TextField primitive", () => {

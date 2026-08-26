@@ -6,21 +6,21 @@ import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 import {
     AuthoredTextFieldConfiguration,
     configureAuthoredTextField,
-    createAuthoredGlowFilters,
+    createAuthoredFilters,
     releaseAuthoredTextFieldFontBinding,
 } from "./AuthoredTextField";
 
 export { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 
 export class AuthoredMovieClip extends MovieClip {
-    private _authoredFilters: ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration> = [];
+    private _authoredFilters: ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration> = [];
     private _authoredScale9Grid: AuthoredScale9GridConfiguration | null = null;
 
-    get authoredFilters(): ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration> {
+    get authoredFilters(): ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration> {
         return this._authoredFilters;
     }
 
-    set authoredFilters(value: ReadonlyArray<import("./AuthoredTextField").AuthoredGlowFilterConfiguration>) {
+    set authoredFilters(value: ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration>) {
         this._authoredFilters = value;
     }
 
@@ -46,7 +46,7 @@ export class AuthoredMovieClip extends MovieClip {
 
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
-        this.filters = createAuthoredGlowFilters(this._authoredFilters);
+        this.filters = createAuthoredFilters(this._authoredFilters);
         this._configureAuthoredScale9Grid();
     }
 
