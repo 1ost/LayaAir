@@ -269,8 +269,9 @@ Object.assign(authoredEmbeddedFontCapability, {
 delete authoredEmbeddedFontCapability.blockingReason;
 
 for (const [id, blockingReason] of [
-    ["text.dynamic", "Authenticated source-shaped device, embedded TrueType and restricted-HTML dynamic-field subsets are admitted; input fields, broader HTML, font synthesis and other dynamic text semantics remain unresolved."],
-    ["text.advanced-rasterization", "Exact advanced/subpixel CSM settings for authenticated embedded TrueType dynamic fields are admitted; other renderers, grid-fit modes, outline conversion and broader rasterization semantics remain unresolved."],
+    ["text.dynamic", "Authenticated source-shaped device, embedded TrueType and restricted-HTML dynamic-field subsets are admitted; broader HTML, font synthesis and other dynamic text semantics remain unresolved."],
+    ["text.input", "Authenticated source-shaped non-HTML embedded TrueType input fields are admitted; broader device-font, HTML, focus, selection and editing semantics remain unresolved."],
+    ["text.advanced-rasterization", "Exact advanced/subpixel CSM settings and absent-CSM Flash defaults for authenticated embedded TrueType fields are admitted; other renderers, grid-fit modes, outline conversion and broader rasterization semantics remain unresolved."],
 ]) {
     const capability = ledger.capabilities.find(item => item.id === id);
     if (!capability || capability.status !== "blocking")

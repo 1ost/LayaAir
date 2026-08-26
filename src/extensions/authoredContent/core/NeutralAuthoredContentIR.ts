@@ -518,10 +518,6 @@ function normalizeDynamicTextField(value: unknown, path: string, scale: number):
         fail("AUTHORED_CONTENT_DEVICE_TEXT_EMBEDDED_CONFIGURATION", `${path} device text cannot declare embedded-font state.`);
     if (fontMode === "embedded" && embeddedFont === undefined)
         fail("AUTHORED_CONTENT_EMBEDDED_TEXT_CONFIGURATION_MISSING", `${path} embedded text requires exact font authority.`);
-    if (fontMode === "embedded" && useOutlines && rasterization === undefined)
-        fail("AUTHORED_CONTENT_OUTLINED_TEXT_RASTERIZATION_MISSING", `${path} outlined text requires exact rasterization authority.`);
-    if (fontMode === "embedded" && type !== "dynamic")
-        fail("AUTHORED_CONTENT_EMBEDDED_INPUT_UNSUPPORTED", `${path} embedded input text is outside the admitted subset.`);
     const align = requiredString(format.align, `${path}.format.align`);
     if (!new Set(["left", "center", "right", "justify"]).has(align))
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_ALIGN_UNSUPPORTED", `${path}.format.align '${align}' is unsupported.`);

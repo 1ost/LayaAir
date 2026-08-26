@@ -223,6 +223,24 @@ async function main() {
     assert.equal(noOutlineText.format.embeddedFont.kerning.length, 908,
         "the second real-sized unsorted source kerning table is retained");
 
+    const defaultOutlineFixture = fixture();
+    delete defaultOutlineFixture.library.assets[203].textRendering;
+    const defaultOutlineText = adapter.parse(defaultOutlineFixture).root.children[0].textField;
+    assert.equal(defaultOutlineText.useOutlines, true);
+    assert.equal(defaultOutlineText.rasterization, undefined,
+        "an outlined embedded field without a CSMSettings tag must retain Flash's normal/pixel defaults");
+    assert.equal(defaultOutlineText.format.fontMode, "embedded");
+
+    const inputFixture = fixture();
+    inputFixture.library.assets[203].textField.fieldType = "input";
+    delete inputFixture.library.assets[203].textRendering;
+    const inputText = adapter.parse(inputFixture).root.children[0].textField;
+    assert.equal(inputText.type, "input");
+    assert.equal(inputText.useOutlines, true);
+    assert.equal(inputText.rasterization, undefined);
+    assert.equal(inputText.format.fontMode, "embedded",
+        "authenticated non-HTML input text must retain its embedded TrueType authority");
+
     const description = describeNativeAuthoredFontCatalog(content, "nested/pet-house.lh");
     assert.equal(description.manifest.fonts[0].sourceUrl, "../resources/flash-font-18.ttf");
     assert.equal(description.definitions[0].className, "MC_PetHouse.__authoredFont_18_bold");
@@ -278,7 +296,6 @@ async function main() {
     assert.equal(startup.manifest.sha256, sha(first.files.find(file => file.kind === "font-manifest").bytes));
 
     for (const [label, mutate, expected] of [
-        ["missing rasterization", value => delete value.library.assets[203].textRendering, /FLASH_LIBRARY_TEXT_RENDERING_REQUIRED/],
         ["device authority substitution", value => value.resources.get("assets\/18.ttf").mediaType = "image/png", /FLASH_LIBRARY_FONT_RESOURCE_AUTHORITY_MISSING/],
         ["nonembedded outlined font", value => value.library.assets[18].font.embedded = false, /FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED/],
         ["glyph order drift", value => value.library.assets[18].font.glyphs[1].codePoint = 31, /FLASH_LIBRARY_FONT_GLYPH_ORDER_UNSUPPORTED/],

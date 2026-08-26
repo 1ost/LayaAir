@@ -702,8 +702,10 @@ export class FlashLibrarySymbolAdapter {
         const embeddedFont = isEmbedded
             ? authoredEmbeddedFont(fontAsset, font, fontId, resourceAuthorities, resources)
             : undefined;
-        if (useOutlines && asset.textRendering === undefined)
-            fail("FLASH_LIBRARY_TEXT_RENDERING_REQUIRED", `Text ${characterId} uses outlines but lacks exact CSM settings.`);
+        // DefineEditText.useOutlines selects the embedded font independently
+        // of the optional CSMSettings tag. When that tag is absent Flash uses
+        // the TextField defaults (normal anti-aliasing and pixel grid fit), so
+        // omitting rasterization retains the exact authored state.
         const rasterization = asset.textRendering === undefined
             ? undefined
             : authoredAdvancedTextRasterization(asset, characterId);

@@ -292,10 +292,6 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         throw new TypeError("device text cannot declare embedded font or rasterization state");
     if (format.fontMode === "embedded" && embeddedFont === undefined)
         throw new TypeError("embedded text requires exact font state");
-    if (format.fontMode === "embedded" && useOutlines && rasterization === undefined)
-        throw new TypeError("outlined embedded text requires exact rasterization state");
-    if (format.fontMode === "embedded" && record.type !== TextFieldType.DYNAMIC)
-        throw new TypeError("embedded input text is outside the admitted subset");
     const expectedStyle = format.bold && format.italic ? "boldItalic" : format.bold ? "bold" : format.italic ? "italic" : "regular";
     if (embeddedFont !== undefined && embeddedFont.fontStyle !== expectedStyle)
         throw new TypeError("embedded font style does not match authored bold/italic state");
