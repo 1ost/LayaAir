@@ -377,7 +377,17 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     if (record.html) {
         if (record.type !== TextFieldType.DYNAMIC)
             throw new TypeError("authored HTML is admitted only for dynamic fields");
-        const layout = parseRestrictedFlashHtmlText(record.initialText);
+        const layout = parseRestrictedFlashHtmlText(record.initialText, {
+            align: oneOfValue(format.align,
+                [TextFormatAlign.LEFT, TextFormatAlign.CENTER, TextFormatAlign.RIGHT, TextFormatAlign.JUSTIFY] as const,
+                "format.align"),
+            font: format.font,
+            size: format.size,
+            color: format.color,
+            letterSpacing: hasLetterSpacing ? format.letterSpacing as number : 0,
+            kerning: hasKerning ? format.kerning as boolean : false,
+            bold: format.bold,
+        });
         if (layout.font !== format.font || layout.size !== format.size || layout.color !== format.color
             || layout.align !== format.align
             || layout.letterSpacing !== (hasLetterSpacing ? format.letterSpacing : 0)

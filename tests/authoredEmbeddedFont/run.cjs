@@ -320,6 +320,18 @@ async function main() {
     assert.deepEqual(noLayoutContent.resources, [],
         "a no-layout embedded outline is authenticated but not mispublished as a measurable native font");
 
+    const emptyHtmlFixture = fixture();
+    const emptyHtmlTextAsset = emptyHtmlFixture.library.assets[203];
+    emptyHtmlTextAsset.initialText = '<p align="center"></p>';
+    emptyHtmlTextAsset.textField.html = true;
+    emptyHtmlTextAsset.textField.initialText = emptyHtmlTextAsset.initialText;
+    const emptyHtmlContent = adapter.parse(emptyHtmlFixture);
+    const emptyHtmlText = emptyHtmlContent.root.children[0].textField;
+    assert.equal(emptyHtmlText.initialText, '<p align="center"></p>');
+    assert.equal(emptyHtmlText.format.font, "Arial",
+        "an empty HTML paragraph must inherit exact DefineEditText font authority");
+    assert.equal(emptyHtmlText.format.align, "center");
+
     const description = describeNativeAuthoredFontCatalog(content, "nested/pet-house.lh");
     assert.equal(description.manifest.fonts[0].sourceUrl, "../resources/flash-font-18.ttf");
     assert.equal(description.definitions[0].className, "MC_PetHouse.__authoredFont_18_bold");

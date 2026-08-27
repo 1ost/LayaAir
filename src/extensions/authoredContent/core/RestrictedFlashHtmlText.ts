@@ -10,6 +10,16 @@ export interface RestrictedFlashHtmlTextLayout {
     readonly bold: boolean;
 }
 
+export interface RestrictedFlashHtmlTextFormatAuthority {
+    readonly align: "left" | "center" | "right" | "justify";
+    readonly font: string;
+    readonly size: number;
+    readonly color: number;
+    readonly letterSpacing: number;
+    readonly kerning: boolean;
+    readonly bold: boolean;
+}
+
 const FORMATTED_PARAGRAPH = /^<p ([^<>]+)><font ([^<>]+)>([\s\S]*)<\/font><\/p>$/;
 const EMPTY_PARAGRAPH = /^<p ([^<>]+)><\/p>$/;
 const ATTRIBUTE = /([A-Za-z][A-Za-z0-9]*)="([^"]*)"/gy;
@@ -25,7 +35,10 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
  * Empty paragraphs retain Flash's authored line breaks but cannot introduce
  * formatting of their own.
  */
-export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtmlTextLayout {
+export function parseRestrictedFlashHtmlText(
+    markup: string,
+    emptyFormatAuthority?: RestrictedFlashHtmlTextFormatAuthority,
+): RestrictedFlashHtmlTextLayout {
     if (typeof markup !== "string")
         throw new TypeError("AUTHORED_CONTENT_HTML_TEXT_REQUIRED: markup must be a string.");
     const paragraphRuns = markup.split(/(?=<p )/);
@@ -44,15 +57,29 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
         };
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_SUBSET_UNSUPPORTED: expected exact consecutive p/font runs.");
     });
-    const formatted = paragraphs.filter(paragraph => paragraph.font !== undefined);
-    if (formatted.length === 0)
-        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_MISSING: at least one paragraph must carry exact font authority.");
-    const font = formatted[0].font!;
     const align = paragraphs[0].align;
     if (align !== "left" && align !== "center" && align !== "right" && align !== "justify")
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_ALIGN_UNSUPPORTED: paragraph alignment is unsupported.");
     if (paragraphs.some(paragraph => paragraph.align !== align))
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_DRIFT: paragraph runs must share one alignment.");
+    const formatted = paragraphs.filter(paragraph => paragraph.font !== undefined);
+    if (formatted.length === 0) {
+        if (emptyFormatAuthority === undefined)
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_MISSING: at least one paragraph must carry exact font authority.");
+        validateEmptyFormatAuthority(emptyFormatAuthority, align);
+        return Object.freeze({
+            markup,
+            plainText: "\r".repeat(Math.max(0, paragraphs.length - 1)),
+            align,
+            font: emptyFormatAuthority.font,
+            size: emptyFormatAuthority.size,
+            color: emptyFormatAuthority.color,
+            letterSpacing: emptyFormatAuthority.letterSpacing,
+            kerning: emptyFormatAuthority.kerning,
+            bold: emptyFormatAuthority.bold,
+        });
+    }
+    const font = formatted[0].font!;
     const fontFields = ["color", "face", "kerning", "letterSpacing", "size"] as const;
     if (formatted.some(paragraph => fontFields.some(field => paragraph.font![field] !== font[field])))
         throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_DRIFT: paragraph runs must share one exact font format.");
@@ -76,6 +103,23 @@ export function parseRestrictedFlashHtmlText(markup: string): RestrictedFlashHtm
         kerning: font.kerning === "1",
         bold: content.bold,
     });
+}
+
+function validateEmptyFormatAuthority(
+    authority: RestrictedFlashHtmlTextFormatAuthority,
+    align: RestrictedFlashHtmlTextLayout["align"],
+): void {
+    if (authority.align !== align)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_DRIFT: empty paragraph alignment disagrees with field authority.");
+    validFontFace(authority.font);
+    if (!Number.isFinite(authority.size) || authority.size <= 0)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_SIZE_INVALID: field font size must be positive.");
+    if (!Number.isInteger(authority.color) || authority.color < 0 || authority.color > 0xffffff)
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_COLOR_INVALID: field color must be an RGB integer.");
+    if (!Number.isFinite(authority.letterSpacing))
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_LETTER_SPACING_INVALID: field letter spacing must be finite.");
+    if (typeof authority.kerning !== "boolean" || typeof authority.bold !== "boolean")
+        throw new Error("AUTHORED_CONTENT_HTML_TEXT_FORMAT_INVALID: field kerning and bold authority must be boolean.");
 }
 
 function attributes(source: string, allowed: ReadonlySet<string>, label: string): Record<string, string> {

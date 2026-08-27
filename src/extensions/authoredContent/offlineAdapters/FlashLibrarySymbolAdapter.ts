@@ -1107,7 +1107,17 @@ function parseAuthoredFlashHtml(
     allowDeviceFaceOverride = false,
 ): ReturnType<typeof parseRestrictedFlashHtmlText> {
     let layout: ReturnType<typeof parseRestrictedFlashHtmlText>;
-    try { layout = parseRestrictedFlashHtmlText(value); }
+    try {
+        layout = parseRestrictedFlashHtmlText(value, {
+            align: oneOf(textField.align, ["left", "center", "right", "justify"], `Text ${characterId} align`),
+            font: string(font.family, `Text ${characterId} font family`),
+            size: finite(textField.fontSize, `Text ${characterId} font size`),
+            color: finite(color.color, `Text ${characterId} color`),
+            letterSpacing: 0,
+            kerning: false,
+            bold: boolean(font.bold, `Text ${characterId} font bold`),
+        });
+    }
     catch (error) {
         fail("FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId}: ${error instanceof Error ? error.message : String(error)}`);
     }
