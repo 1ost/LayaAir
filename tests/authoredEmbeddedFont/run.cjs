@@ -332,6 +332,12 @@ async function main() {
         "an empty HTML paragraph must inherit exact DefineEditText font authority");
     assert.equal(emptyHtmlText.format.align, "center");
 
+    const hiddenPlacementFixture = fixture();
+    hiddenPlacementFixture.timelines.get(385).frames[0].operations[0].visible = false;
+    const hiddenPlacementContent = adapter.parse(hiddenPlacementFixture);
+    assert.equal(hiddenPlacementContent.root.children[0].visible, false,
+        "a retained PlaceObject visibility flag must project onto the native node");
+
     const description = describeNativeAuthoredFontCatalog(content, "nested/pet-house.lh");
     assert.equal(description.manifest.fonts[0].sourceUrl, "../resources/flash-font-18.ttf");
     assert.equal(description.definitions[0].className, "MC_PetHouse.__authoredFont_18_bold");

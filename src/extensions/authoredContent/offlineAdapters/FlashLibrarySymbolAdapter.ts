@@ -34,6 +34,7 @@ type FlashDisplayState = {
     readonly operation: Record<string, any>;
     matrix: DisplayMatrix;
     alpha: number;
+    visible: boolean;
 };
 type PlacementEvidenceContext = {
     readonly timelineSymbolId: number;
@@ -52,7 +53,7 @@ type FlashLibraryShapeProjection = {
     readonly flipY: boolean;
 };
 
-const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
+const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio", "visible"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
 const FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
@@ -364,6 +365,8 @@ export class FlashLibrarySymbolAdapter {
         const blendMode = authoredBlendMode(operation);
         if (blendMode !== undefined)
             node = { ...node, blendMode };
+        if (operation.visible !== undefined)
+            node = { ...node, visible: boolean(operation.visible, "place.visible") };
         return operation.clipDepth === undefined
             ? node
             : { ...node, clipDepth: positiveInteger(operation.clipDepth, "place.clipDepth") };
@@ -533,7 +536,7 @@ export class FlashLibrarySymbolAdapter {
                         if (prior !== undefined)
                             fail("FLASH_LIBRARY_DISPLAY_DEPTH_INVALID", `Depth ${depth} is placed twice without removal or move=true.`);
                         const state = createDisplayState(
-                            operation, frameIndex + 1, instances.length + 1, assets, 1,
+                            operation, frameIndex + 1, instances.length + 1, assets, 1, true,
                             { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
                             inertPlacementRatios,
                         );
@@ -553,7 +556,7 @@ export class FlashLibrarySymbolAdapter {
                                 characterId: replacementId,
                                 matrix: operation.matrix ?? prior.matrix,
                             },
-                            frameIndex + 1, instances.length + 1, assets, prior.alpha,
+                            frameIndex + 1, instances.length + 1, assets, prior.alpha, prior.visible,
                             { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
                             inertPlacementRatios,
                         );
@@ -565,6 +568,8 @@ export class FlashLibrarySymbolAdapter {
                         prior.matrix = displayMatrix(operation.matrix);
                     if (operation.colorTransform !== undefined)
                         prior.alpha = displayAlpha(operation.colorTransform);
+                    if (operation.visible !== undefined)
+                        prior.visible = boolean(operation.visible, "place.visible");
                     recordInertPlacementRatio(
                         operation,
                         object(assets[String(replacementId)], `library.assets.${replacementId}`),
@@ -620,7 +625,7 @@ export class FlashLibrarySymbolAdapter {
                     matrixC: state.matrix.c,
                     matrixD: state.matrix.d,
                     alpha: state.alpha,
-                    visible: true,
+                    visible: state.visible,
                 };
             });
             const usesAffineMatrix = values.some(state => state !== undefined
@@ -1650,6 +1655,7 @@ function createDisplayState(
     instanceId: number,
     assets: Record<string, any>,
     inheritedAlpha = 1,
+    inheritedVisible = true,
     evidenceContext?: PlacementEvidenceContext,
     inertPlacementRatios?: Map<string, NeutralInertPlacementRatio>,
 ): FlashDisplayState {
@@ -1673,6 +1679,9 @@ function createDisplayState(
         alpha: operation.colorTransform === undefined
             ? inheritedAlpha
             : displayAlpha(operation.colorTransform),
+        visible: operation.visible === undefined
+            ? inheritedVisible
+            : boolean(operation.visible, "place.visible"),
     };
 }
 
@@ -1729,6 +1738,8 @@ function placementInstanceId(
 ): string {
     if (operation.name !== undefined)
         string(operation.name, "place.name");
+    if (operation.visible !== undefined)
+        boolean(operation.visible, "place.visible");
     const characterId = positiveInteger(asset.characterId, "asset.characterId");
     const depth = positiveInteger(operation.depth, "place.depth");
     if (!Number.isSafeInteger(firstFrame) || firstFrame < 1
