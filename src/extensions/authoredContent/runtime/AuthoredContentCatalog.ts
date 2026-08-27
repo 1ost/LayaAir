@@ -23,6 +23,7 @@ import {
 export const AUTHORED_CONTENT_CATALOG_SCHEMA = "laya-authored-content-catalog@1" as const;
 export const AUTHORED_CONTENT_LOCALE_SCHEMA = "laya-authored-content-locale@1" as const;
 export const AUTHORED_CONTENT_CATALOG_SUFFIX = ".runtime-catalog.json" as const;
+export const AUTHORED_CONTENT_BASE_LOCALE = "en_Eu" as const;
 
 export type AuthoredCatalogAssetKind = "image" | "timeline";
 
@@ -134,8 +135,9 @@ const installedCatalogs = new WeakMap<ApplicationDomain, Map<string, InstalledCa
 
 /**
  * Maps the logical Flash resource requested by the game to its native Laya
- * catalog sidecar without changing the resource namespace, locale, CDN root,
- * cache query or fragment.
+ * catalog sidecar. Locale-specific Resources URLs share the en_Eu native
+ * catalog: non-base locales select an adjacent locale map without requiring a
+ * duplicate locale asset tree. CDN root, query, and fragment are preserved.
  */
 export function authoredContentCatalogUrlForResource(resourceUrlValue: string): string {
     const resourceUrl = requireNonemptyString(resourceUrlValue, "resourceUrl");
@@ -148,6 +150,12 @@ export function authoredContentCatalogUrlForResource(resourceUrlValue: string): 
     const transportSuffix = suffixIndex === -1 ? "" : resourceUrl.slice(suffixIndex);
     if (!address.toLowerCase().endsWith(".swf"))
         throw new TypeError("resourceUrl must identify a .swf resource");
+    const resourceLocale = /(^|\/)Resources\/([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+)\//.exec(address);
+    if (resourceLocale && resourceLocale[2] !== AUTHORED_CONTENT_BASE_LOCALE) {
+        const prefix = address.slice(0, resourceLocale.index);
+        const localizedSuffix = address.slice(resourceLocale.index + resourceLocale[0].length, -4);
+        return `${prefix}${resourceLocale[1]}Resources/${AUTHORED_CONTENT_BASE_LOCALE}/${localizedSuffix}.${resourceLocale[2]}.locale.json${transportSuffix}`;
+    }
     return `${address.slice(0, -4)}${AUTHORED_CONTENT_CATALOG_SUFFIX}${transportSuffix}`;
 }
 

@@ -340,14 +340,14 @@ test("authored catalog URL loading derives one manifest-relative asset root", as
     ]);
 });
 
-test("logical SWF resources resolve to native catalog sidecars in the same namespace", async () => {
+test("logical SWF resources resolve localized requests to adjacent maps beside the en_Eu native catalog", async () => {
     assert.equal(
         authoredContentCatalogUrlForResource("Resources/en_Eu/Swf/Lobby/GirlGame.swf"),
         "Resources/en_Eu/Swf/Lobby/GirlGame.runtime-catalog.json",
     );
     assert.equal(
         authoredContentCatalogUrlForResource("https://cdn.invalid/Resources/de_DE/Swf/Common/Common.SWF?v=4#entry"),
-        "https://cdn.invalid/Resources/de_DE/Swf/Common/Common.runtime-catalog.json?v=4#entry",
+        "https://cdn.invalid/Resources/en_Eu/Swf/Common/Common.de_DE.locale.json?v=4#entry",
     );
     assert.throws(() => authoredContentCatalogUrlForResource("Resources/en_Eu/Textures/Lobby/1.png"), /\.swf/);
 
@@ -363,6 +363,14 @@ test("logical SWF resources resolve to native catalog sidecars in the same names
             assets: [],
         }],
     } as const;
+    const overlay = {
+        schema: "laya-authored-content-locale@1",
+        id: "fixtures.resource-sidecar-fr",
+        locale: "fr_FR",
+        baseCatalog: "GirlGame.runtime-catalog.json",
+        assetOverrides: [],
+        translations: [],
+    } as const;
     const calls: Array<[string, string | undefined]> = [];
     const activation = await loadAndActivateAuthoredContentResource(
         "Resources/fr_FR/Swf/Lobby/GirlGame.swf?release=7",
@@ -370,6 +378,7 @@ test("logical SWF resources resolve to native catalog sidecars in the same names
             loader: {
                 async load(url: string, type?: string): Promise<unknown> {
                     calls.push([url, type]);
+                    if (url.endsWith("GirlGame.fr_FR.locale.json?release=7")) return overlay;
                     return type === Loader.JSON ? manifest : { create: () => createCatalogClip() };
                 },
             },
@@ -379,8 +388,9 @@ test("logical SWF resources resolve to native catalog sidecars in the same names
     );
     assert.ok(activation.create("entry") instanceof CatalogClip);
     assert.deepEqual(calls, [
-        ["Resources/fr_FR/Swf/Lobby/GirlGame.runtime-catalog.json?release=7", Loader.JSON],
-        ["Resources/fr_FR/Swf/Lobby/GirlGame.native/entry.lh", Loader.HIERARCHY],
+        ["Resources/en_Eu/Swf/Lobby/GirlGame.fr_FR.locale.json?release=7", Loader.JSON],
+        ["Resources/en_Eu/Swf/Lobby/GirlGame.runtime-catalog.json", Loader.JSON],
+        ["Resources/en_Eu/Swf/Lobby/GirlGame.native/entry.lh", Loader.HIERARCHY],
     ]);
 });
 
@@ -417,7 +427,7 @@ test("locale overlays share native structure while replacing editable text and b
         schema: "laya-authored-content-locale@1",
         id: "fixtures.localized-de",
         locale: "de_DE",
-        baseCatalog: "/Resources/Swf/Lobby/Foo.runtime-catalog.json",
+        baseCatalog: "Foo.runtime-catalog.json",
         assetOverrides: [{ id: "localized/images/title", path: "Foo.locale/title-de.png" }],
         translations: [{ bundle: "entry", target: "TF_Title", text: "Deutsch" }],
     } as const;
@@ -425,8 +435,8 @@ test("locale overlays share native structure while replacing editable text and b
     const loader = {
         async load(url: string, type?: string): Promise<unknown> {
             calls.push([url, type]);
-            if (url.includes("/de_DE/") && type === Loader.JSON) return overlay;
-            if (url === "/Resources/Swf/Lobby/Foo.runtime-catalog.json" && type === Loader.JSON) return base;
+            if (url.endsWith("Foo.de_DE.locale.json") && type === Loader.JSON) return overlay;
+            if (url === "/Resources/en_Eu/Swf/Lobby/Foo.runtime-catalog.json" && type === Loader.JSON) return base;
             if (type === Loader.HIERARCHY) return prefab;
             return { url };
         },
@@ -441,19 +451,19 @@ test("locale overlays share native structure while replacing editable text and b
     );
 
     assert.deepEqual(calls, [
-        ["/Resources/de_DE/Swf/Lobby/Foo.runtime-catalog.json", Loader.JSON],
-        ["/Resources/Swf/Lobby/Foo.runtime-catalog.json", Loader.JSON],
-        ["/Resources/de_DE/Swf/Lobby/Foo.locale/title-de.png", Loader.IMAGE],
-        ["/Resources/Swf/Lobby/Foo.native/root.mc", undefined],
-        ["/Resources/Swf/Lobby/Foo.native/entry.lh", Loader.HIERARCHY],
+        ["/Resources/en_Eu/Swf/Lobby/Foo.de_DE.locale.json", Loader.JSON],
+        ["/Resources/en_Eu/Swf/Lobby/Foo.runtime-catalog.json", Loader.JSON],
+        ["/Resources/en_Eu/Swf/Lobby/Foo.locale/title-de.png", Loader.IMAGE],
+        ["/Resources/en_Eu/Swf/Lobby/Foo.native/root.mc", undefined],
+        ["/Resources/en_Eu/Swf/Lobby/Foo.native/entry.lh", Loader.HIERARCHY],
     ]);
     assert.equal(
         AssetDb.inst.uuidMap["localized/images/title"],
-        "/Resources/de_DE/Swf/Lobby/Foo.locale/title-de.png",
+        "/Resources/en_Eu/Swf/Lobby/Foo.locale/title-de.png",
     );
     assert.equal(
         AssetDb.inst.uuidMap["localized/timelines/root"],
-        "/Resources/Swf/Lobby/Foo.native/root.mc",
+        "/Resources/en_Eu/Swf/Lobby/Foo.native/root.mc",
     );
     const reflected = new (domain.getDefinition("MC_LocalizedCatalog") as new () => CatalogClip)();
     assert.equal(title.text, "Deutsch");
@@ -480,7 +490,7 @@ test("locale overlays fail closed on timeline replacement and unknown text targe
     const load = async (overlay: object, domain: ApplicationDomain): Promise<void> => {
         const loader = {
             async load(url: string, type?: string): Promise<unknown> {
-                if (url.includes("de_DE") && type === Loader.JSON) return overlay;
+                if (url.endsWith(".de_DE.locale.json") && type === Loader.JSON) return overlay;
                 if (type === Loader.JSON) return base;
                 return { create: () => {
                     const root = createCatalogClip();
@@ -502,7 +512,7 @@ test("locale overlays fail closed on timeline replacement and unknown text targe
         schema: "laya-authored-content-locale@1",
         id: "fixtures.timeline-reject",
         locale: "de_DE",
-        baseCatalog: "/Resources/Swf/Reject.runtime-catalog.json",
+        baseCatalog: "Reject.runtime-catalog.json",
         assetOverrides: [{ id: "localized/reject/root", path: "root-de.mc" }],
         translations: [],
     }, new ApplicationDomain()), /structural timelines require a full catalog/);
@@ -511,7 +521,7 @@ test("locale overlays fail closed on timeline replacement and unknown text targe
         schema: "laya-authored-content-locale@1",
         id: "fixtures-target-reject",
         locale: "de_DE",
-        baseCatalog: "/Resources/Swf/Reject.runtime-catalog.json",
+        baseCatalog: "Reject.runtime-catalog.json",
         assetOverrides: [],
         translations: [{ bundle: "entry", target: "TF_Missing", text: "Fehlt" }],
     }, unknownTargetDomain), /text target 'TF_Missing' is missing/);
