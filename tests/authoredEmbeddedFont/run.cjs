@@ -175,6 +175,21 @@ async function main() {
     assert.deepEqual(text.textField.rasterization, {
         antiAliasType: "advanced", gridFitType: "subpixel", sharpness: 0, thickness: 0,
     });
+    const fontAuthorityPlacementFixture = fixture();
+    fontAuthorityPlacementFixture.timelines.get(385).frames[0].operations.unshift({
+        op: "place", characterId: 18, depth: 0, move: false, ratio: 0,
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+    });
+    assert.deepEqual(adapter.parse(fontAuthorityPlacementFixture).root.children.map(child => child.textField?.sourceId), [203],
+        "an inert font definition reference at reserved depth zero is not projected as display content");
+    const transformedFontAuthorityFixture = fixture();
+    transformedFontAuthorityFixture.timelines.get(385).frames[0].operations.unshift({
+        op: "place", characterId: 18, depth: 0, move: false, ratio: 0,
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: 1, ty: 0 },
+    });
+    assert.throws(() => adapter.parse(transformedFontAuthorityFixture),
+        /FLASH_LIBRARY_NONVISUAL_FONT_PLACEMENT_UNSUPPORTED/,
+        "a depth-zero font reference with display state remains fail-closed");
     for (const [gridFit, gridFitMode] of [[0, "none"], [1, "pixel"]]) {
         const gridFixture = fixture();
         gridFixture.library.assets[203].textRendering.gridFit = gridFit;

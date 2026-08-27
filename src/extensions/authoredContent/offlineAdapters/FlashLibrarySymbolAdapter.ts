@@ -255,7 +255,8 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_TIMELINE_ID_MISMATCH", `Timeline ${characterId} identifies another symbol.`);
         const firstFrame = frame(sourceTimeline, 0);
         validateFrame(firstFrame, characterId);
-        const initialPlacements = indexedDisplayOperations(firstFrame, characterId);
+        const initialPlacements = indexedDisplayOperations(firstFrame, characterId)
+            .filter(({ operation: placed }) => !admitNonvisualFontAuthorityPlacement(placed, assets));
         const boundslessNonvisualSprite = asset.bounds === undefined
             && (isBoundslessEmptyPlaceholder(operation, sourceTimeline)
                 || isBoundslessNamedAnchorTree(operation, sourceTimeline, assets, timelines, new Set([characterId])));
@@ -2279,6 +2280,31 @@ function placementInstanceId(
         || !Number.isSafeInteger(ordinal) || ordinal < 1)
         fail("FLASH_LIBRARY_INSTANCE_ID_AUTHORITY_INVALID", "Placement frame and ordinal must be positive safe integers.");
     return `${flashLibraryAssetName(asset, characterId)}$d${depth}$f${firstFrame}$i${ordinal}`;
+}
+
+function admitNonvisualFontAuthorityPlacement(
+    operation: Record<string, any>,
+    assets: Record<string, any>,
+): boolean {
+    if (operation.op !== "place" || operation.depth !== 0
+        || !Number.isSafeInteger(operation.characterId) || operation.characterId < 1)
+        return false;
+    const characterId = operation.characterId as number;
+    const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
+    if (asset.kind !== "font") return false;
+    exactKeys(operation, PLACEMENT_FIELDS, "nonvisual font placement", "FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED");
+    const placement = placementTransform(operation);
+    const displayState = operation.name !== undefined || operation.clipDepth !== undefined
+        || operation.colorTransform !== undefined || operation.filters !== undefined
+        || operation.blendMode !== undefined || operation.blendModeCode !== undefined
+        || operation.visible !== undefined;
+    if (displayState || (operation.move !== undefined && operation.move !== false)
+        || (operation.ratio !== undefined && operation.ratio !== 0)
+        || placement.a !== 1 || placement.b !== 0 || placement.c !== 0 || placement.d !== 1
+        || placement.x !== 0 || placement.y !== 0)
+        fail("FLASH_LIBRARY_NONVISUAL_FONT_PLACEMENT_UNSUPPORTED",
+            `Font ${characterId} at reserved depth zero must be an inert identity authority reference.`);
+    return true;
 }
 
 function recordInertPlacementRatio(
