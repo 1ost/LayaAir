@@ -87,11 +87,27 @@ try {
         bounds: { x: 0, y: 0, width: 10, height: 10 },
         shape: { fillStyles: [], lineStyles: [], segments: [], usesFillWindingRule: false }
     };
+    textMapLibrary.assets[43] = {
+        characterId: 43,
+        kind: "text",
+        initialText: "  Localized text\n",
+        bounds: { x: 1, y: 2, width: 100, height: 20 },
+        staticText: {
+            exactGlyphs: true,
+            issues: [],
+            matrix: { a: 2, b: 0, c: 0, d: 2, tx: 0, ty: 0 },
+            runs: []
+        }
+    };
     fs.writeFileSync(path.join(textMapEvidence, "library.json"), JSON.stringify(textMapLibrary));
     const textMapTimeline = JSON.parse(fs.readFileSync(path.join(textMapEvidence, "timelines/8.json")));
     textMapTimeline.frames[0].operations.push({
         op: "place", characterId: 42, depth: 1, move: false, ratio: 0,
         matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }
+    });
+    textMapTimeline.frames[0].operations.push({
+        op: "place", characterId: 43, depth: 2, move: false, ratio: 0,
+        name: "title", matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }
     });
     fs.writeFileSync(path.join(textMapEvidence, "timelines/8.json"), JSON.stringify(textMapTimeline));
     const textMapOutput = path.join(temporary, "neutral", "text-map.neutral.json");
@@ -103,9 +119,11 @@ try {
     assert.equal(textMapWritten.status, 0, textMapWritten.stderr);
     const textMapContent = JSON.parse(fs.readFileSync(textMapOutput));
     assert.equal(textMapContent.root.children[0].kind, "container");
+    assert.equal(textMapContent.root.children[1].name, "title");
+    assert.equal(textMapContent.root.children[1].textField.initialText, "  Localized text\n");
     assert.deepEqual(textMapContent.resources, []);
 
-    process.stdout.write("authored Flash-library neutral IR emitter: 24/24 passed\n");
+    process.stdout.write("authored Flash-library neutral IR emitter: 26/26 passed\n");
 }
 finally {
     fs.rmSync(temporary, { recursive: true, force: true });

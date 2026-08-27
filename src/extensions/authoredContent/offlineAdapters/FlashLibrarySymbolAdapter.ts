@@ -789,6 +789,8 @@ export class FlashLibrarySymbolAdapter {
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
+        if (this.textMapOnly)
+            return this.createTextMapNode(asset, operation, instanceId, characterId, true);
         const textField = object(asset.textField, `library.assets.${characterId}.textField`);
         exactKeys(textField, TEXT_FIELD_FIELDS, `library.assets.${characterId}.textField`, "FLASH_LIBRARY_TEXT_FIELD_UNSUPPORTED");
         // Both embedded-outline and device-font Flash fields become native,
@@ -896,6 +898,8 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
+        if (this.textMapOnly)
+            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         const staticText = object(asset.staticText, `library.assets.${characterId}.staticText`);
         exactKeys(staticText, new Set(["exactGlyphs", "issues", "matrix", "runs"]),
             `library.assets.${characterId}.staticText`, "FLASH_LIBRARY_STATIC_TEXT_UNSUPPORTED");
@@ -988,6 +992,69 @@ export class FlashLibrarySymbolAdapter {
                     leading: 0,
                     letterSpacing: 0,
                     kerning: true,
+                },
+            },
+            children: [],
+        };
+    }
+
+    private createTextMapNode(
+        asset: Record<string, any>,
+        operation: Record<string, any>,
+        instanceId: string,
+        characterId: number,
+        dynamic: boolean,
+    ): NeutralAuthoredNode {
+        const source = dynamic
+            ? object(asset.textField, `library.assets.${characterId}.textField`)
+            : asset;
+        const initialText = text(source.initialText, `library.assets.${characterId}.initialText`);
+        const html = dynamic && source.html === true;
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const placement = placementTransform(operation);
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+        return {
+            linkage: flashLibraryAssetName(asset, characterId),
+            instanceId,
+            ...(operation.name === undefined ? {} : { name: operation.name }),
+            kind: "dynamic-text",
+            depth: positiveInteger(operation.depth, "place.depth"),
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
+            matrix: placement.matrix,
+            width: Math.max(0, finite(bounds.width, `library.assets.${characterId}.bounds.width`)),
+            height: Math.max(0, finite(bounds.height, `library.assets.${characterId}.bounds.height`)),
+            variable: typeof operation.name === "string",
+            textField: {
+                sourceId: characterId,
+                type: dynamic && source.fieldType === "input" ? "input" : "dynamic",
+                multiline: false,
+                wordWrap: false,
+                selectable: false,
+                displayAsPassword: false,
+                autoSize: "none",
+                html,
+                useOutlines: false,
+                filters: [],
+                gutter: 2,
+                overflow: "hidden",
+                initialText,
+                format: {
+                    fontMode: "device",
+                    font: "Arial",
+                    size: 12,
+                    color: 0,
+                    bold: false,
+                    italic: false,
+                    underline: false,
+                    align: "left",
+                    leftMargin: 0,
+                    rightMargin: 0,
+                    indent: 0,
+                    leading: 0,
+                    letterSpacing: 0,
+                    kerning: false,
                 },
             },
             children: [],
