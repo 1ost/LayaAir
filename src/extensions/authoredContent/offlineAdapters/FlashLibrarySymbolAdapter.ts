@@ -900,9 +900,10 @@ export class FlashLibrarySymbolAdapter {
         const hasLayout = isEmbedded
             ? boolean(font.hasLayout, `library.assets.${fontId}.font.hasLayout`)
             : false;
-        if (useOutlines && !isEmbedded)
-            fail("FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED", `Text ${characterId} uses outlines without an embedded font.`);
-        if (useOutlines && !hasLayout)
+        const usesZeroGlyphDeviceFace = useOutlines && !isEmbedded;
+        if (usesZeroGlyphDeviceFace)
+            admitZeroGlyphOutlineFontAsDevice(fontAsset, font, fontId);
+        if (useOutlines && isEmbedded && !hasLayout)
             fail("FLASH_LIBRARY_FONT_LAYOUT_REQUIRED", `Text ${characterId} uses outlines from font ${fontId}, which does not retain layout metrics.`);
         if (isEmbedded && !hasLayout)
             admitEmbeddedFontAsDevice(fontAsset, font, fontId, resourceAuthorities);
@@ -913,7 +914,7 @@ export class FlashLibrarySymbolAdapter {
         // of the optional CSMSettings tag. When that tag is absent Flash uses
         // the TextField defaults (normal anti-aliasing and pixel grid fit), so
         // omitting rasterization retains the exact authored state.
-        const rasterization = asset.textRendering === undefined
+        const rasterization = asset.textRendering === undefined || usesZeroGlyphDeviceFace
             ? undefined
             : authoredAdvancedTextRasterization(asset, characterId);
         const color = object(textField.color, `library.assets.${characterId}.textField.color`);
@@ -947,7 +948,7 @@ export class FlashLibrarySymbolAdapter {
                 displayAsPassword: boolean(textField.password, "text.password"),
                 autoSize: "none",
                 html,
-                useOutlines,
+                useOutlines: useOutlines && !usesZeroGlyphDeviceFace,
                 filters: this.textMapOnly ? [] : authoredFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
@@ -1249,6 +1250,41 @@ function admitEmbeddedFontAsDevice(
     exactValue(array(font.kerning, `library.assets.${fontId}.font.kerning`).length, 0,
         "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} has kerning without layout authority.`);
     authoredFontAlignZones(fontAsset.fontAlignZones, fontId, glyphCount);
+}
+
+function admitZeroGlyphOutlineFontAsDevice(
+    fontAsset: Record<string, any>,
+    font: Record<string, any>,
+    fontId: number,
+): void {
+    // Some authored SWFs retain a DefineFont3 selector for an installed device
+    // face while embedding no glyphs at all. Flash still records useOutlines on
+    // the TextField in that case, but there are no outlines to consume. Admit
+    // only that exact zero-glyph signature and keep every partial/mixed font
+    // representation fail-closed.
+    exactValue(fontAsset.sourceTag, "DefineFont3Tag", "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} is not a zero-glyph DefineFont3 device-face selector.`);
+    exactValue(font.embedded, false, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} unexpectedly claims embedded outlines.`);
+    exactValue(font.hasLayout, false, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} unexpectedly retains outline layout metrics.`);
+    exactValue(font.glyphCount, 0, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} retains glyph outlines and cannot use device-font fallback.`);
+    exactValue(array(font.glyphs, `library.assets.${fontId}.font.glyphs`).length, 0,
+        "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED", `Font ${fontId} retains undeclared glyph outlines.`);
+    exactValue(array(font.kerning, `library.assets.${fontId}.font.kerning`).length, 0,
+        "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED", `Font ${fontId} retains kerning without layout authority.`);
+    exactValue(font.ascent, 0, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} retains ascent without layout authority.`);
+    exactValue(font.descent, 0, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} retains descent without layout authority.`);
+    exactValue(font.leading, 0, "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED",
+        `Font ${fontId} retains leading without layout authority.`);
+    positive(font.unitsPerEm, `library.assets.${fontId}.font.unitsPerEm`);
+    boolean(font.bold, `library.assets.${fontId}.font.bold`);
+    boolean(font.italic, `library.assets.${fontId}.font.italic`);
+    string(font.family, `library.assets.${fontId}.font.family`);
+    authoredFontAlignZones(fontAsset.fontAlignZones, fontId, 0);
 }
 
 function authoredEmbeddedFont(

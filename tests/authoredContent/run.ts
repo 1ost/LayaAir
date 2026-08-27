@@ -586,6 +586,50 @@ async function main(): Promise<void> {
         assert(field.authoredConfiguration.format.bold === true, "dynamic TextField font style was lost");
     });
 
+    await test("Flash zero-glyph DefineFont3 outline selectors use the authenticated device face and reject partial fonts", () => {
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 40, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 100, height: 40 } },
+                "2": { characterId: 2, kind: "input-text", initialText: "", bounds: { x: 0, y: 0, width: 100, height: 30 },
+                    textField: {
+                        align: "center", autoSize: false, border: false, color: { alpha: 1, color: 0xffffff },
+                        fieldType: "dynamic", fontId: 3, fontSize: 20, html: false, indent: 0, initialText: "",
+                        leading: 0, leftMargin: 0, multiline: false, password: false, rightMargin: 0,
+                        selectable: false, useOutlines: true, variableName: "", wordWrap: false,
+                    } },
+                "3": { characterId: 3, kind: "font", sourceTag: "DefineFont3Tag", font: {
+                    ascent: 0, bold: true, descent: 0, embedded: false, family: "Microsoft YaHei Bold",
+                    glyphCount: 0, glyphs: [], hasLayout: false, italic: false, kerning: [], leading: 0,
+                    unitsPerEm: 20480,
+                }, fontAlignZones: {
+                    fontId: 3, sourceTag: "DefineFontAlignZonesTag", tableHint: 1, tableHintName: "medium", zones: [],
+                } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0, name: "TF_Value",
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const request = { library, timelines, entrySymbolId: 1, runtimeLinkage: "Root", resources: new Map() };
+        const content = new FlashLibrarySymbolAdapter().parse(request);
+        assert(content.root.children[0].textField?.format.fontMode === "device",
+            "zero-glyph DefineFont3 selector did not retain device-font rendering");
+        assert(content.root.children[0].textField?.format.font === "Microsoft YaHei Bold",
+            "zero-glyph DefineFont3 selector lost its authenticated family");
+        assert(content.root.children[0].textField?.useOutlines === false,
+            "zero-glyph DefineFont3 selector retained a nonexistent embedded-outline requirement");
+
+        const partial = JSON.parse(JSON.stringify(library));
+        partial.assets["3"].font.glyphCount = 1;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse({ ...request, library: partial }),
+            "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED");
+    });
+
     await test("Flash library static affine placements and GlowFilter emit through authenticated native seams", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const glow = {
