@@ -10,6 +10,7 @@
     "id": { "$ref": "#/$defs/stableString" },
     "locale": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$" },
     "baseCatalog": { "$ref": "#/$defs/catalogReference" },
+    "mode": { "enum": ["strict", "text-map-only"] },
     "bundles": {
       "type": "array",
       "minItems": 1,

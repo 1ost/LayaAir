@@ -118,3 +118,21 @@ test("derive-locale rejects unrelated CLI options", async () => {
     }
     finally { await rm(value.root, { recursive: true, force: true }); }
 });
+
+test("derive-locale passes the strict text-map-only request policy to the API", async () => {
+    const value = await fixture();
+    try {
+        const base = document("Ready");
+        const localized = document("Pret");
+        base.root.children[0].name = "character_82";
+        localized.root.children[0].name = "character_81";
+        localized.timeline.duration = 7;
+        await writeFile(path.join(value.root, "ir/base.json"), JSON.stringify(base));
+        await writeFile(path.join(value.root, "ir/fr.json"), JSON.stringify(localized));
+        await writeFile(value.requestPath, JSON.stringify({ ...value.request, mode: "text-map-only" }));
+        const result = invoke("derive-locale", "--request", value.requestPath, "--output", value.outputPath);
+        assert.equal(result.status, 0, result.stderr);
+        assert.deepEqual(JSON.parse(result.stdout).overlay.translations, [{ bundle: "lobby", target: "character_82", text: "Pret" }]);
+    }
+    finally { await rm(value.root, { recursive: true, force: true }); }
+});

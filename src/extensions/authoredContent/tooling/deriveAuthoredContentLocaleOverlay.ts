@@ -27,6 +27,8 @@ export interface DeriveAuthoredContentLocaleOverlayRequest {
     readonly id: string;
     readonly locale: string;
     readonly baseCatalog: string;
+    /** Strict structural comparison by default; text-map-only authenticates only TextField target correspondence. */
+    readonly mode?: "strict" | "text-map-only";
     readonly bundles: readonly AuthoredContentLocaleBundleComparison[];
 }
 
@@ -61,10 +63,11 @@ export function deriveAuthoredContentLocaleOverlay(
     request: DeriveAuthoredContentLocaleOverlayRequest,
 ): DerivedAuthoredContentLocaleOverlay {
     const source = plainRecord(request, "request");
-    exactKeys(source, ["id", "locale", "baseCatalog", "bundles"], "request");
+    exactKeys(source, ["id", "locale", "baseCatalog", "mode", "bundles"], "request", ["mode"]);
     const id = stableText(source.id, "request.id");
     const locale = localeSegment(source.locale, "request.locale");
     const baseCatalog = catalogReference(source.baseCatalog, "request.baseCatalog");
+    const mode = derivationMode(source.mode, "request.mode");
     if (!Array.isArray(source.bundles)) fail("AUTHORED_CONTENT_LOCALE_BUNDLES", "request.bundles must be an array.");
 
     const translations: AuthoredContentLocaleTranslation[] = [];
@@ -82,9 +85,16 @@ export function deriveAuthoredContentLocaleOverlay(
         const localized = neutralDocument(comparison.localized, `${path}.localized`);
         const imageBindings = normalizeImageBindings(comparison.imageBindings, `${path}.imageBindings`);
 
-        compareTopLevel(base, localized, path);
-        compareResources(base.resources, localized.resources, imageBindings, path, assetOverrides, assetIds);
-        compareNode(base.root, localized.root, bundle, "$", path, translations, translationIds);
+        if (mode === "text-map-only") {
+            if (imageBindings.size !== 0)
+                fail("AUTHORED_CONTENT_LOCALE_MAP_ONLY_IMAGE_BINDINGS", `${path}.imageBindings is not admitted by text-map-only derivation.`);
+            compareTextMapOnly(base.root, localized.root, bundle, path, translations, translationIds);
+        }
+        else {
+            compareTopLevel(base, localized, path);
+            compareResources(base.resources, localized.resources, imageBindings, path, assetOverrides, assetIds);
+            compareNode(base.root, localized.root, bundle, "$", path, translations, translationIds);
+        }
         for (const resourceId of imageBindings.keys()) {
             if (!imageBindings.get(resourceId)!.consumed)
                 fail("AUTHORED_CONTENT_LOCALE_IMAGE_BINDING_UNUSED", `${path}.imageBindings contains unchanged or unknown resource '${resourceId}'.`);
@@ -101,6 +111,84 @@ export function deriveAuthoredContentLocaleOverlay(
         assetOverrides: Object.freeze(assetOverrides.map(value => Object.freeze(value))),
         translations: Object.freeze(translations.map(value => Object.freeze(value))),
     });
+}
+
+interface LocaleTextTarget {
+    readonly target: string;
+    readonly text: string;
+}
+
+/**
+ * Derives a text-only map against the locale-neutral runtime tree. Localized
+ * media, font, stage, timeline, and non-text node deltas are deliberately out
+ * of scope. Generated Flash character ids are not stable across localized SWF
+ * exports, so only `character_<digits>` path segments are normalized; every
+ * resulting TextField target must still have an unambiguous one-to-one match.
+ */
+function compareTextMapOnly(
+    baseRoot: JsonRecord,
+    localizedRoot: JsonRecord,
+    bundle: string,
+    path: string,
+    translations: AuthoredContentLocaleTranslation[],
+    translationIds: Set<string>,
+): void {
+    const base = collectLocaleTextTargets(baseRoot, `${path}.base.root`);
+    const localized = collectLocaleTextTargets(localizedRoot, `${path}.localized.root`);
+    const baseKeys = [...base.keys()].sort(compareText);
+    const localizedKeys = [...localized.keys()].sort(compareText);
+    const missing = baseKeys.filter(key => !localized.has(key));
+    const extra = localizedKeys.filter(key => !base.has(key));
+    if (missing.length || extra.length)
+        fail("AUTHORED_CONTENT_LOCALE_TEXT_TARGET_SET_DIFFERENCE", `${path} text targets do not correspond (missing localized: ${missing.join(", ") || "none"}; extra localized: ${extra.join(", ") || "none"}).`);
+    for (const key of baseKeys) {
+        const baseTarget = base.get(key)!;
+        const localizedTarget = localized.get(key)!;
+        if (baseTarget.text === localizedTarget.text) continue;
+        const identity = `${bundle}\n${baseTarget.target}`;
+        if (translationIds.has(identity))
+            fail("AUTHORED_CONTENT_LOCALE_TRANSLATION_DUPLICATE", `Translation target '${bundle}/${baseTarget.target}' is ambiguous.`);
+        translationIds.add(identity);
+        translations.push({ bundle, target: baseTarget.target, text: localizedTarget.text });
+    }
+}
+
+function collectLocaleTextTargets(root: JsonRecord, path: string): Map<string, LocaleTextTarget> {
+    const result = new Map<string, LocaleTextTarget>();
+    visitLocaleTextTargets(root, "$", "$", path, result);
+    return result;
+}
+
+function visitLocaleTextTargets(
+    node: JsonRecord,
+    target: string,
+    canonicalTarget: string,
+    path: string,
+    result: Map<string, LocaleTextTarget>,
+): void {
+    if (node.textField !== undefined) {
+        const textField = plainRecord(node.textField, `${path}.textField`);
+        if (typeof textField.initialText !== "string")
+            fail("AUTHORED_CONTENT_LOCALE_INITIAL_TEXT", `${path}.textField.initialText must be a string.`);
+        if (result.has(canonicalTarget))
+            fail("AUTHORED_CONTENT_LOCALE_TEXT_TARGET_AMBIGUOUS", `${path} duplicates canonical text target '${canonicalTarget}'.`);
+        result.set(canonicalTarget, { target, text: textField.initialText });
+    }
+    if (!Array.isArray(node.children))
+        fail("AUTHORED_CONTENT_LOCALE_NODE_CHILDREN", `${path}.children must be an array.`);
+    for (const [index, value] of node.children.entries()) {
+        const childPath = `${path}.children[${index}]`;
+        const child = plainRecord(value, childPath);
+        const segment = nodeSegment(child, childPath);
+        const canonicalSegment = /^character_\d+$/.test(segment) ? "character_*" : segment;
+        visitLocaleTextTargets(
+            child,
+            target === "$" ? segment : `${target}/${segment}`,
+            canonicalTarget === "$" ? canonicalSegment : `${canonicalTarget}/${canonicalSegment}`,
+            childPath,
+            result,
+        );
+    }
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -306,6 +394,12 @@ function localeSegment(value: unknown, path: string): string {
     if (!/^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+$/.test(locale))
         fail("AUTHORED_CONTENT_LOCALE_SEGMENT", `${path} must be one normalized locale segment.`);
     return locale;
+}
+
+function derivationMode(value: unknown, path: string): "strict" | "text-map-only" {
+    if (value === undefined || value === "strict") return "strict";
+    if (value === "text-map-only") return value;
+    fail("AUTHORED_CONTENT_LOCALE_MODE", `${path} must equal 'strict' or 'text-map-only'.`);
 }
 
 function catalogReference(value: unknown, path: string): string {

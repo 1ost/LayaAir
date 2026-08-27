@@ -38,6 +38,7 @@ interface LocaleDiffDocument {
     readonly id: string;
     readonly locale: string;
     readonly baseCatalog: string;
+    readonly mode?: "strict" | "text-map-only";
     readonly bundles: readonly LocaleDiffBundleDocument[];
 }
 
@@ -74,6 +75,7 @@ export async function deriveAuthoredContentLocaleOverlayFiles(
         id: document.id,
         locale: document.locale,
         baseCatalog: document.baseCatalog,
+        ...(document.mode === undefined ? {} : { mode: document.mode }),
         bundles: comparisons,
     });
     const bytes = Buffer.from(canonicalJson(overlay), "utf8");
@@ -91,7 +93,7 @@ export async function deriveAuthoredContentLocaleOverlayFiles(
 
 function validateLocaleDiffDocument(value: unknown): LocaleDiffDocument {
     const source = plainRecord(value, "locale diff request");
-    exactKeys(source, ["schema", "id", "locale", "baseCatalog", "bundles"], "locale diff request");
+    exactKeys(source, ["schema", "id", "locale", "baseCatalog", "mode", "bundles"], "locale diff request", ["mode"]);
     if (source.schema !== AUTHORED_CONTENT_LOCALE_DIFF_REQUEST_SCHEMA)
         fail("AUTHORED_CONTENT_LOCALE_DIFF_SCHEMA", `locale diff request.schema must equal '${AUTHORED_CONTENT_LOCALE_DIFF_REQUEST_SCHEMA}'.`);
     if (!Array.isArray(source.bundles) || source.bundles.length === 0)
@@ -116,8 +118,14 @@ function validateLocaleDiffDocument(value: unknown): LocaleDiffDocument {
         id: requiredString(source.id, "locale diff request.id"),
         locale: requiredString(source.locale, "locale diff request.locale"),
         baseCatalog: requiredString(source.baseCatalog, "locale diff request.baseCatalog"),
+        ...(source.mode === undefined ? {} : { mode: derivationMode(source.mode, "locale diff request.mode") }),
         bundles,
     };
+}
+
+function derivationMode(value: unknown, label: string): "strict" | "text-map-only" {
+    if (value === "strict" || value === "text-map-only") return value;
+    fail("AUTHORED_CONTENT_LOCALE_MODE", `${label} must equal 'strict' or 'text-map-only'.`);
 }
 
 async function resolveInput(root: string, relative: string, label: string): Promise<string> {
