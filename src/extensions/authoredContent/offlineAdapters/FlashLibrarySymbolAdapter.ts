@@ -48,6 +48,8 @@ type FlashLibraryShapeProjection = {
     readonly y: number;
     readonly width: number;
     readonly height: number;
+    readonly flipX: boolean;
+    readonly flipY: boolean;
 };
 
 const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
@@ -746,7 +748,7 @@ export class FlashLibrarySymbolAdapter {
         }
 
         const projections = resolveFlashLibraryShapeProjections(asset, assets, resourceAuthorities);
-        if (projections.length === 1) {
+        if (projections.length === 1 && !projections[0].flipX && !projections[0].flipY) {
             const projection = projections[0];
             const authority = resourceAuthorities.get(projection.sourcePath);
             if (!authority || authority.sourcePath !== projection.sourcePath)
@@ -765,8 +767,16 @@ export class FlashLibrarySymbolAdapter {
                 instanceId: `fill_${projection.styleIndex}`,
                 kind: "image",
                 depth: index + 1,
-                x: projection.x - boundsX,
-                y: projection.y - boundsY,
+                x: projection.x - boundsX + (projection.flipX ? projection.width : 0),
+                y: projection.y - boundsY + (projection.flipY ? projection.height : 0),
+                ...(projection.flipX || projection.flipY ? {
+                    matrix: {
+                        a: projection.flipX ? -1 : 1,
+                        b: 0,
+                        c: 0,
+                        d: projection.flipY ? -1 : 1,
+                    },
+                } : {}),
                 width: projection.width,
                 height: projection.height,
                 resourceId,
@@ -1425,7 +1435,7 @@ export function resolveFlashLibraryShapeResourcePath(
 }
 
 /**
- * Resolves an exact axis-aligned Flash bitmap projection. FFDec may introduce
+ * Resolves an exact signed axis-aligned Flash bitmap projection. FFDec may introduce
  * new local fill tables within one shape; after conversion those tables have
  * global indices. Every real bitmap fill must own one rectangular tile, and
  * the tile union must have the exact authored outer bounds. Transparent gaps
@@ -1452,6 +1462,8 @@ function resolveFlashLibraryShapeProjections(
             y: finite(bounds.y, `library.assets.${characterId}.bounds.y`),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
+            flipX: false,
+            flipY: false,
         }];
     }
 
@@ -1468,8 +1480,12 @@ function resolveFlashLibraryShapeProjections(
     const realStyleIndices = new Set(fillStyles.map(value => value.styleIndex));
     for (const value of segments) {
         const segment = object(value, `shape ${characterId} segment`);
-        if (segment.kind !== "line" || segment.fillStyle0 !== 0 || segment.lineStyle !== 0
-            || !realStyleIndices.has(segment.fillStyle1))
+        const fillStyle0 = nonnegativeInteger(segment.fillStyle0, `shape ${characterId} segment.fillStyle0`);
+        const fillStyle1 = nonnegativeInteger(segment.fillStyle1, `shape ${characterId} segment.fillStyle1`);
+        if (segment.kind !== "line" || segment.lineStyle !== 0 || fillStyle0 === fillStyle1
+            || (fillStyle0 !== 0 && !realStyleIndices.has(fillStyle0))
+            || (fillStyle1 !== 0 && !realStyleIndices.has(fillStyle1))
+            || (fillStyle0 === 0 && fillStyle1 === 0))
             fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} contains geometry outside its authenticated bitmap fills.`);
     }
 
@@ -1481,22 +1497,29 @@ function resolveFlashLibraryShapeProjections(
         exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
         const scaleX = finite(matrix.a, `shape ${characterId} bitmap matrix.a`);
         const scaleY = finite(matrix.d, `shape ${characterId} bitmap matrix.d`);
-        if (scaleX <= 0 || scaleY <= 0 || matrix.b !== 0 || matrix.c !== 0
-            || matrix.tx !== tile.x || matrix.ty !== tile.y)
-            fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix is not an axis-aligned tile projection.`);
+        if (scaleX === 0 || scaleY === 0 || matrix.b !== 0 || matrix.c !== 0)
+            fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix is not a signed axis-aligned tile projection.`);
 
         const bitmapId = positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`);
         const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
         if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId)
             fail("FLASH_LIBRARY_BITMAP_FILL_IMAGE_REQUIRED", `Shape ${characterId} bitmap ${bitmapId} does not identify an image asset.`);
-        if (scaleX !== 20 || scaleY !== 20) {
+        const isLegacyUnitProjection = scaleX === 20 && scaleY === 20
+            && matrix.tx === tile.x && matrix.ty === tile.y;
+        if (!isLegacyUnitProjection) {
             if (bitmapAsset.bitmap === undefined)
-                fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} scaled bitmap lacks authenticated dimensions.`);
+                fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap projection lacks authenticated dimensions.`);
             const bitmap = object(bitmapAsset.bitmap, `library.assets.${bitmapId}.bitmap`);
             const bitmapWidth = positive(bitmap.width, `library.assets.${bitmapId}.bitmap.width`);
             const bitmapHeight = positive(bitmap.height, `library.assets.${bitmapId}.bitmap.height`);
-            if (Math.abs(bitmapWidth * scaleX / 20 - tile.width) > 0.05
-                || Math.abs(bitmapHeight * scaleY / 20 - tile.height) > 0.05)
+            const projectedX0 = finite(matrix.tx, `shape ${characterId} bitmap matrix.tx`);
+            const projectedY0 = finite(matrix.ty, `shape ${characterId} bitmap matrix.ty`);
+            const projectedX1 = projectedX0 + bitmapWidth * scaleX / 20;
+            const projectedY1 = projectedY0 + bitmapHeight * scaleY / 20;
+            if (Math.abs(Math.min(projectedX0, projectedX1) - tile.x) > 0.05
+                || Math.abs(Math.max(projectedX0, projectedX1) - (tile.x + tile.width)) > 0.05
+                || Math.abs(Math.min(projectedY0, projectedY1) - tile.y) > 0.05
+                || Math.abs(Math.max(projectedY0, projectedY1) - (tile.y + tile.height)) > 0.05)
                 fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} bitmap matrix does not project the full authenticated bitmap into its tile.`);
         }
         const sourcePath = string(bitmapAsset.path, `library.assets.${bitmapId}.path`);
@@ -1507,7 +1530,7 @@ function resolveFlashLibraryShapeProjections(
                 || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
         if (!mediaMatches)
             fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
-        return { bitmapId, sourcePath, styleIndex, ...tile };
+        return { bitmapId, sourcePath, styleIndex, ...tile, flipX: scaleX < 0, flipY: scaleY < 0 };
     });
     if (!rectanglesTileBounds(projections, bounds))
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
@@ -1525,7 +1548,10 @@ function rectangleForFill(
     styleIndex: number,
     characterId: number,
 ): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
-    const segments = segmentsValue.filter(value => object(value, `shape ${characterId} segment`).fillStyle1 === styleIndex);
+    const segments = segmentsValue.filter(value => {
+        const segment = object(value, `shape ${characterId} segment`);
+        return segment.fillStyle0 === styleIndex || segment.fillStyle1 === styleIndex;
+    });
     const points = segments.flatMap(value => {
         const edge = object(object(value, `shape ${characterId} segment`).end, `shape ${characterId} segment.end`);
         return [array(edge.from, `shape ${characterId} segment.end.from`), array(edge.to, `shape ${characterId} segment.end.to`)]
@@ -1584,7 +1610,9 @@ function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record
     const observedEdges = new Set<string>();
     for (const value of segmentsValue) {
         const segment = object(value, "shape segment");
-        if (segment.kind !== "line" || segment.fillStyle1 !== styleIndex || segment.fillStyle0 !== 0 || segment.lineStyle !== 0)
+        if (segment.kind !== "line"
+            || (segment.fillStyle0 !== styleIndex && segment.fillStyle1 !== styleIndex)
+            || segment.lineStyle !== 0)
             return false;
         const edge = object(segment.end, "shape segment.end");
         const from = array(edge.from, "shape segment.end.from");

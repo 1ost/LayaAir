@@ -694,6 +694,90 @@ async function main(): Promise<void> {
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
     });
 
+    await test("Flash library signed axis-aligned bitmap fills preserve exact authored mirroring", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const line = (from: [number, number], to: [number, number]) => ({
+            kind: "line", fillStyle0: 0, fillStyle1: 1, lineStyle: 0,
+            start: { from, to }, end: { from, to },
+        });
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 40, height: 60, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "MirroredRoot", bounds: { x: 0, y: 0, width: 40, height: 60 } },
+                "2": { characterId: 2, kind: "shape", symbolName: "MirroredBitmap", bounds: { x: 2, y: 1, width: 36, height: 57 },
+                    shape: {
+                        fillStyles: [{
+                            kind: "bitmap", bitmapId: 3, repeat: false, smooth: false,
+                            startMatrix: { a: -20, b: 0, c: 0, d: -20, tx: 38, ty: 58 },
+                        }],
+                        lineStyles: [], usesFillWindingRule: false,
+                        segments: [
+                            line([38, 1], [38, 58]), line([38, 58], [2, 58]),
+                            line([2, 58], [2, 1]), line([2, 1], [38, 1]),
+                        ],
+                    } },
+                "3": { characterId: 3, kind: "image", path: "assets/3.png",
+                    bitmap: { width: 36, height: 57 } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "MirroredRoot", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.MirroredRoot",
+            resources: new Map([["assets/3.png", {
+                sourcePath: "assets/3.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        });
+        const shape = content.root.children[0];
+        const projection = shape.children[0];
+        assert(shape.kind === "container" && shape.x === 2 && shape.y === 1,
+            "mirrored bitmap projection did not retain its authored shape bounds");
+        assert(projection.x === 36 && projection.y === 57 && projection.width === 36 && projection.height === 57,
+            "mirrored bitmap projection did not anchor at the authored bottom-right corner");
+        assert(projection.matrix?.a === -1 && projection.matrix.b === 0
+            && projection.matrix.c === 0 && projection.matrix.d === -1,
+            "mirrored bitmap projection did not emit an exact native Laya flip matrix");
+        const clip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(content, "mirrored-root.mc", clip,
+            new Map([["flash-bitmap-3", "mirrored-bitmap.png"]]));
+        try {
+            const nativeProjection = root.getChildAt(0).getChildAt(0) as any;
+            const matrix = nativeProjection.transform as Matrix;
+            assert(nativeProjection.x === 36 && nativeProjection.y === 57
+                && matrix.a === -1 && matrix.d === -1,
+            "signed bitmap projection did not survive native Laya node emission");
+        }
+        finally {
+            root.destroy();
+            clip.destroy();
+        }
+
+        const reverseWoundLibrary = structuredClone(library);
+        const reverseWoundShape = reverseWoundLibrary.assets["2"].shape;
+        reverseWoundShape.fillStyles[0].startMatrix = { a: 20, b: 0, c: 0, d: -20, tx: 2, ty: 58 };
+        for (const segment of reverseWoundShape.segments) {
+            segment.fillStyle0 = 1;
+            segment.fillStyle1 = 0;
+        }
+        const reverseWound = new FlashLibrarySymbolAdapter().parse({
+            library: reverseWoundLibrary, timelines, entrySymbolId: 1, runtimeLinkage: "Game.MirroredRoot",
+            resources: new Map([["assets/3.png", {
+                sourcePath: "assets/3.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        }).root.children[0].children[0];
+        assert(reverseWound.x === 0 && reverseWound.y === 57
+            && reverseWound.matrix?.a === 1 && reverseWound.matrix.d === -1,
+        "reverse-wound Flash fillStyle0 geometry did not preserve its exact vertical mirroring");
+    });
+
     await test("Flash static depth masks bind one deterministic local Laya reference", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const library: any = {
