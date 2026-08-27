@@ -160,6 +160,8 @@ export class NativeLayaEmitter {
             // authenticated. Preserve its native Image skin identity without
             // starting a speculative loader request during conversion.
             (node as any)._skin = `res://${resourceAssetIds.get(source.resourceId!)}`;
+            if (node instanceof Laya.Image && source.smoothing !== undefined)
+                (node as any).smoothing = source.smoothing;
         }
         source.children.forEach(child => node.addChild(this.createNode(
             child,

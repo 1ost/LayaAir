@@ -137,6 +137,8 @@ export interface NeutralAuthoredNode {
     readonly color?: string;
     /** Required only for image nodes and resolved through the authenticated resource closure. */
     readonly resourceId?: string;
+    /** Flash bitmap-fill sampling mode retained by authenticated image projections. */
+    readonly smoothing?: boolean;
     /** Application-owned root/linkage class; primitive children use Laya-owned runtime IDs. */
     readonly runtimeLinkage?: string;
     readonly variable?: boolean;
@@ -426,7 +428,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "instanceId", "kind", "name", "depth", "clipDepth", "x", "y", "width", "height", "alpha", "visible", "blendMode", "matrix",
-        "colorTransform", "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
+        "colorTransform", "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "smoothing", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -470,6 +472,7 @@ function normalizeNode(
         resourceId: source.resourceId === undefined
             ? undefined
             : canonicalResourceId(requiredString(source.resourceId, `${path}.resourceId`)),
+        smoothing: optionalBoolean(source.smoothing, `${path}.smoothing`),
         runtimeLinkage: source.runtimeLinkage === undefined
             ? undefined
             : canonicalRuntimeLinkage(requiredString(source.runtimeLinkage, `${path}.runtimeLinkage`)),
@@ -485,6 +488,8 @@ function normalizeNode(
         fail("AUTHORED_CONTENT_IMAGE_RESOURCE_MISSING", `${path}.resourceId is required for an image node.`);
     if (node.kind !== "image" && node.resourceId !== undefined)
         fail("AUTHORED_CONTENT_RESOURCE_ON_NON_IMAGE", `${path}.resourceId is only valid on an image node.`);
+    if (node.kind !== "image" && node.smoothing !== undefined)
+        fail("AUTHORED_CONTENT_SMOOTHING_ON_NON_IMAGE", `${path}.smoothing is only valid on an image node.`);
     if (node.kind !== "text" && (node.text !== undefined || node.fontSize !== undefined || node.color !== undefined))
         fail("AUTHORED_CONTENT_TEXT_PROPERTY_ON_NON_TEXT", `${path} contains text-only properties.`);
     if (node.kind === "dynamic-text" && node.textField === undefined)
@@ -989,7 +994,7 @@ function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: 
 
 function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResource> {
     const ids = new Set<string>();
-    const paths = new Set<string>();
+    const paths = new Map<string, string>();
     return array(value, "resources").map((entry, index) => {
         const path = `resources[${index}]`;
         const source = record(entry, path);
@@ -1000,9 +1005,6 @@ function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResour
         ids.add(id);
         const sourcePath = canonicalRelativePath(requiredString(source.sourcePath, `${path}.sourcePath`), `${path}.sourcePath`);
         const foldedPath = sourcePath.toLocaleLowerCase("en-US");
-        if (paths.has(foldedPath))
-            fail("AUTHORED_CONTENT_RESOURCE_PATH_COLLISION", `Resource source path '${sourcePath}' is duplicated.`);
-        paths.add(foldedPath);
         const mediaType = requiredString(source.mediaType, `${path}.mediaType`);
         if (!RESOURCE_MEDIA_TYPES.has(mediaType))
             fail("AUTHORED_CONTENT_RESOURCE_MEDIA_UNSUPPORTED", `${path}.mediaType '${mediaType}' is unsupported.`);
@@ -1016,6 +1018,11 @@ function normalizeResources(value: unknown): ReadonlyArray<NeutralAuthoredResour
         const sha256 = requiredString(source.sha256, `${path}.sha256`);
         if (!/^[0-9a-f]{64}$/.test(sha256))
             fail("AUTHORED_CONTENT_RESOURCE_HASH_INVALID", `${path}.sha256 must be a lowercase SHA-256 digest.`);
+        const pathAuthority = `${mediaType}:${byteLength}:${sha256}`;
+        const existingAuthority = paths.get(foldedPath);
+        if (existingAuthority !== undefined && existingAuthority !== pathAuthority)
+            fail("AUTHORED_CONTENT_RESOURCE_PATH_COLLISION", `Resource source path '${sourcePath}' has conflicting authority.`);
+        paths.set(foldedPath, pathAuthority);
         return {
             id,
             sourcePath,

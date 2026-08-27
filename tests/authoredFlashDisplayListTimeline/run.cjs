@@ -215,6 +215,10 @@ labeledTimeline.frames.push({
 });
 const labeledContent = adapter.parse(labeled);
 assert.deepEqual({ ...labeledContent.timeline.frameLabels }, { up: 1, over: 2, down: 3, disabled: 4 });
+const rankedLabel = structuredClone(labeled);
+rankedLabel.timelines.get(10).frames[0].label = "S+";
+rankedLabel.timelines.get(10).frames[0].operations[0].name = "S+";
+assert.equal(adapter.parse(rankedLabel).timeline.frameLabels["S+"], 1);
 const anchor = labeledContent.root.children.find(value => value.name === "SP_MountPoint");
 assert.ok(anchor, "empty named anchor was not retained");
 assert.deepEqual(
@@ -229,8 +233,8 @@ for (const [label, mutate, expected] of [
         value.timelines.get(10).frames[1].operations[0].name = "up";
     }, /FLASH_LIBRARY_FRAME_LABEL_DUPLICATE/],
     ["invalid frame label", value => {
-        value.timelines.get(10).frames[0].label = "up state";
-        value.timelines.get(10).frames[0].operations[0].name = "up state";
+        value.timelines.get(10).frames[0].label = "up\nstate";
+        value.timelines.get(10).frames[0].operations[0].name = "up\nstate";
     }, /FLASH_LIBRARY_FRAME_LABEL_INVALID/],
     ["mismatched frame label operation", value => {
         value.timelines.get(10).frames[1].operations[0].name = "down";

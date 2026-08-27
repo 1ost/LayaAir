@@ -56,6 +56,7 @@ type FlashLibraryShapeProjection = {
     readonly bitmapId: number;
     readonly sourcePath: string;
     readonly styleIndex: number;
+    readonly smoothing: boolean;
     readonly x: number;
     readonly y: number;
     readonly width: number;
@@ -794,15 +795,25 @@ export class FlashLibrarySymbolAdapter {
             const authority = resourceAuthorities.get(projection.sourcePath);
             if (!authority || authority.sourcePath !== projection.sourcePath)
                 fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
-            const resourceId = registerBitmapResource(resources, projection.bitmapId, authority);
-            return { ...common, kind: "image", resourceId, children: [] };
+            const resourceId = registerBitmapResource(
+                resources, projection.bitmapId, authority, projection.smoothing,
+            );
+            return {
+                ...common,
+                kind: "image",
+                resourceId,
+                smoothing: projection.smoothing,
+                children: [],
+            };
         }
 
         const children = projections.map((projection, index): NeutralAuthoredNode => {
             const authority = resourceAuthorities.get(projection.sourcePath);
             if (!authority || authority.sourcePath !== projection.sourcePath)
                 fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
-            const resourceId = registerBitmapResource(resources, projection.bitmapId, authority);
+            const resourceId = registerBitmapResource(
+                resources, projection.bitmapId, authority, projection.smoothing,
+            );
             return {
                 linkage: `${linkage}_fill_${projection.styleIndex}`,
                 instanceId: `fill_${projection.styleIndex}`,
@@ -821,6 +832,7 @@ export class FlashLibrarySymbolAdapter {
                 width: projection.width,
                 height: projection.height,
                 resourceId,
+                smoothing: projection.smoothing,
                 children: [],
             };
         });
@@ -1459,16 +1471,13 @@ function registerBitmapResource(
     resources: Map<string, NeutralResourceInput>,
     fallbackBitmapId: number,
     authority: FlashLibraryResourceAuthority,
+    smoothing: boolean,
 ): string {
-    const existing = [...resources.values()].find(resource => resource.sourcePath === authority.sourcePath);
-    if (existing !== undefined) {
-        registerResource(resources, existing.id, authority);
-        return existing.id;
-    }
+    const suffix = smoothing ? "-smooth" : "";
     const normalized = authority.sourcePath.replace(/\\/g, "/");
     const match = /(?:^|\/)([1-9][0-9]*)\.(?:jpe?g|png)$/i.exec(normalized);
     const bitmapId = match === null ? fallbackBitmapId : Number(match[1]);
-    const resourceId = `flash-bitmap-${bitmapId}`;
+    const resourceId = `flash-bitmap-${bitmapId}${suffix}`;
     registerResource(resources, resourceId, authority);
     return resourceId;
 }
@@ -1509,6 +1518,7 @@ function resolveFlashLibraryShapeProjections(
             bitmapId: characterId,
             sourcePath,
             styleIndex: 1,
+            smoothing: true,
             x: finite(bounds.x, `library.assets.${characterId}.bounds.x`),
             y: finite(bounds.y, `library.assets.${characterId}.bounds.y`),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
@@ -1541,7 +1551,7 @@ function resolveFlashLibraryShapeProjections(
     }
 
     const projections = fillStyles.map(({ value: fill, styleIndex }): FlashLibraryShapeProjection => {
-        if (fill.kind !== "bitmap" || fill.repeat !== false || fill.smooth !== false)
+        if (fill.kind !== "bitmap" || fill.repeat !== false || typeof fill.smooth !== "boolean")
             fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} bitmap fill mode is unsupported.`);
         const tile = rectangleForFill(segments, styleIndex, characterId);
         const matrix = object(fill.startMatrix, `shape ${characterId} bitmap matrix`);
@@ -1581,7 +1591,8 @@ function resolveFlashLibraryShapeProjections(
                 || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
         if (!mediaMatches)
             fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
-        return { bitmapId, sourcePath, styleIndex, ...tile, flipX: scaleX < 0, flipY: scaleY < 0 };
+        return { bitmapId, sourcePath, styleIndex, smoothing: fill.smooth, ...tile,
+            flipX: scaleX < 0, flipY: scaleY < 0 };
     });
     if (!rectanglesTileBounds(projections, bounds))
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
@@ -2011,8 +2022,8 @@ function extractFrameLabels(sourceTimeline: Record<string, any>): Readonly<Recor
 
 function validFrameLabel(value: unknown, label: string): string {
     const result = string(value, label);
-    if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(result))
-        fail("FLASH_LIBRARY_FRAME_LABEL_INVALID", `${label} is not a stable identifier.`);
+    if (result.length === 0 || result.length > 128 || /[\u0000-\u001f\u007f]/.test(result))
+        fail("FLASH_LIBRARY_FRAME_LABEL_INVALID", `${label} must be nonempty, control-free, and at most 128 UTF-16 units.`);
     return result;
 }
 

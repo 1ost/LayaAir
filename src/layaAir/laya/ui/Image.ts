@@ -9,6 +9,7 @@ import { ILaya } from "../../ILaya";
 import { URL } from "../net/URL";
 import { SerializeUtil } from "../loaders/SerializeUtil";
 import { TransformKind } from "../display/SpriteConst";
+import { FilterMode } from "../RenderEngine/RenderEnum/FilterMode";
 
 /**
  * @en The Image class represents a bitmap image or drawing graphics display object.
@@ -23,6 +24,7 @@ export class Image extends UIComponent {
     protected _skin: string;
     protected _group: string;
     protected _useSourceSize: boolean;
+    protected _smoothing: boolean = true;
     /**@internal */
     declare _graphics: AutoBitmap;
 
@@ -81,6 +83,7 @@ export class Image extends UIComponent {
     set source(value: Texture) {
         if (!this._graphics) return;
         this._graphics.source = value;
+        this._applySmoothing();
         this.event(Event.LOADED);
         this.repaint();
 
@@ -90,6 +93,26 @@ export class Image extends UIComponent {
         }
         else
             this._sizeChanged();
+    }
+
+    /**
+     * Whether this image uses bilinear sampling. Authored Flash bitmap fills
+     * set this explicitly so smooth and pixel-snapped resources remain
+     * distinct after native hierarchy decoding.
+     */
+    get smoothing(): boolean {
+        return this._smoothing;
+    }
+
+    set smoothing(value: boolean) {
+        this._smoothing = Boolean(value);
+        this._applySmoothing();
+    }
+
+    private _applySmoothing(): void {
+        const source = this._graphics?.source;
+        if (source?.bitmap)
+            source.bitmap.filterMode = this._smoothing ? FilterMode.Bilinear : FilterMode.Point;
     }
 
     /**

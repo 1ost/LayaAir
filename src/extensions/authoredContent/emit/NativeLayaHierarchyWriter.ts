@@ -386,6 +386,8 @@ function validateHierarchyNode(
         const expectedSkin = `res://${resourceAssetIds.get(source.resourceId!)}`;
         if (value.skin !== expectedSkin)
             fail("AUTHORED_CONTENT_NATIVE_IMAGE_BINDING_MISMATCH", `${path} expected skin '${expectedSkin}'.`);
+        if (source.smoothing !== undefined && value.smoothing !== source.smoothing)
+            fail("AUTHORED_CONTENT_NATIVE_IMAGE_SMOOTHING_MISMATCH", `${path} expected smoothing '${String(source.smoothing)}'.`);
     }
     const childrenValue = value._$child;
     const children = childrenValue === undefined ? [] : childrenValue;
@@ -423,6 +425,8 @@ function decorateAuthoredRuntime(
         value.authoredColorTransform = { _$type: "any", value: source.colorTransform };
     if (source.scale9Grid !== undefined)
         value.authoredScale9Grid = source.scale9Grid;
+    if (source.kind === "image" && source.smoothing !== undefined)
+        value.smoothing = source.smoothing;
     if (source.kind === "button") {
         value._$type = "Sprite";
         value._$runtime = AUTHORED_CONTENT_RUNTIME_IDS.button;

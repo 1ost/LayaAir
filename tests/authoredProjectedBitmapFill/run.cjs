@@ -115,10 +115,17 @@ assert.deepEqual([content.root.width, content.root.height], [103, 64]);
 assert.deepEqual([content.stage.width, content.stage.height], [103, 64]);
 assert.equal(content.resources[0].sourcePath, "assets/1.png");
 assert.equal(content.root.children[0].resourceId, "flash-bitmap-1");
+assert.equal(content.root.children[0].smoothing, false);
 assert.deepEqual([content.root.children[0].x, content.root.children[0].y], [-50.95, -32]);
 assert.equal(content.root.children[1].linkage, "character_4");
 assert.equal(content.root.children[1].name, "mc_hp");
 assert.equal(content.timeline.tracks.length, 0);
+
+const smoothFixture = fixture();
+smoothFixture.library.assets["2"].shape.fillStyles[1].smooth = true;
+const smoothProjection = adapter.parse(smoothFixture).root.children[0];
+assert.equal(smoothProjection.resourceId, "flash-bitmap-1-smooth");
+assert.equal(smoothProjection.smoothing, true);
 
 const jpegContent = adapter.parse(fixture("assets/1.jpg", "image/jpeg"));
 assert.equal(jpegContent.resources[0].sourcePath, "assets/1.jpg");
@@ -138,6 +145,7 @@ assert.deepEqual(mosaic.children.map(child => [child.x, child.y, child.width, ch
 assert.deepEqual(mosaic.children.map(child => child.resourceId), [
     "flash-bitmap-1", "flash-bitmap-5", "flash-bitmap-6",
 ]);
+assert.deepEqual(mosaic.children.map(child => child.smoothing), [false, false, false]);
 
 const incompleteMosaic = mosaicFixture();
 incompleteMosaic.library.assets["2"].shape.segments.splice(0, 4, ...tileEdges(0, 0, 99, 10, 1));
@@ -170,4 +178,4 @@ for (const [label, mutate, expected] of [
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored projected bitmap fill: 13/13 passed\n");
+process.stdout.write("authored projected bitmap fill: 14/14 passed\n");
