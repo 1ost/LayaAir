@@ -203,8 +203,23 @@ assert.deepEqual(
 const namedAnimatedRgb = fixture();
 namedAnimatedRgb.timelines.get(10).frames[0].operations[0].name = "Tinted";
 namedAnimatedRgb.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5;
-assert.throws(() => adapter.parse(namedAnimatedRgb), /FLASH_LIBRARY_NAMED_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED/,
-    "named animated RGB transition did not fail closed on ambiguous native lookup identity");
+namedAnimatedRgb.timelines.get(10).frames[1].operations[0].filters = [{
+    kind: "blur", sourceType: "BLURFILTER", blurX: 2, blurY: 3, passes: 1,
+}];
+const namedAnimatedRgbContent = adapter.parse(namedAnimatedRgb);
+const namedRgbNodes = namedAnimatedRgbContent.root.children.filter(value => value.name === "Tinted");
+assert.equal(namedRgbNodes.length, 1,
+    "named animated visual state did not retain one native lookup identity");
+const namedVisualTrack = track(namedAnimatedRgbContent, "character_3", "authoredVisualState");
+assert.deepEqual(namedVisualTrack.keyframes.slice(0, 2).map(value => ({
+    redMultiplier: value.value.colorTransform.redMultiplier,
+    filters: value.value.filters.map(filter => filter.kind),
+})), [{ redMultiplier: 0.5, filters: [] }, { redMultiplier: 1, filters: ["blur"] }],
+"named animated RGB/filter states drifted");
+const namedAnimatedRgbTextMap = structuredClone(namedAnimatedRgb);
+namedAnimatedRgbTextMap.textMapOnly = true;
+assert.equal(adapter.parse(namedAnimatedRgbTextMap).root.children.filter(value => value.name === "Tinted").length, 1,
+    "text-map-only projection did not ignore a non-text RGB transition while retaining one stable target identity");
 
 for (const [label, mutate, expected] of [
     ["move before place", value => value.timelines.get(10).frames[0].operations[0].move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
@@ -260,6 +275,17 @@ assert.deepEqual(
     "empty named anchor did not remain a zero-size named container",
 );
 
+const unnamedPlaceholder = structuredClone(labeled);
+unnamedPlaceholder.timelines = new Map([...labeled.timelines].map(([id, timeline]) => [id, structuredClone(timeline)]));
+delete unnamedPlaceholder.timelines.get(10).frames[0].operations[1].name;
+const unnamedPlaceholderContent = adapter.parse(unnamedPlaceholder);
+const retainedPlaceholder = unnamedPlaceholderContent.root.children.find(value => value.linkage === "character_43");
+assert.deepEqual(
+    { kind: retainedPlaceholder.kind, width: retainedPlaceholder.width, height: retainedPlaceholder.height },
+    { kind: "container", width: 0, height: 0 },
+    "authenticated unnamed empty placeholder did not retain its zero-size display-list identity",
+);
+
 for (const [label, mutate, expected] of [
     ["duplicate frame label", value => {
         value.timelines.get(10).frames[1].label = "up";
@@ -272,9 +298,6 @@ for (const [label, mutate, expected] of [
     ["mismatched frame label operation", value => {
         value.timelines.get(10).frames[1].operations[0].name = "down";
     }, /FLASH_LIBRARY_FRAME_LABEL_OPERATION_MISMATCH/],
-    ["unnamed empty sprite without bounds", value => {
-        delete value.timelines.get(10).frames[0].operations[1].name;
-    }, /FLASH_LIBRARY_SPRITE_BOUNDS_MISSING/],
     ["named content sprite without bounds", value => {
         value.timelines.get(43).frames[0].operations.push({
             op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: matrix(),

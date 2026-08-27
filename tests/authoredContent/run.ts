@@ -2072,6 +2072,36 @@ async function main(): Promise<void> {
         assert(node._keyFrames[1].data.val === 50, "keyframe value did not round-trip");
     });
 
+    await test("authored visual-state objects round-trip as discrete native keyframes", () => {
+        const source = sourceDocument() as any;
+        const identity = {
+            redMultiplier: 1, greenMultiplier: 1, blueMultiplier: 1, alphaMultiplier: 1,
+            redOffset: 0, greenOffset: 0, blueOffset: 0, alphaOffset: 0,
+        };
+        source.timeline.tracks = [{
+            targetPath: ["Root", "Title"],
+            property: "authoredVisualState",
+            keyframes: [{ time: 0, value: { colorTransform: identity, filters: [] } }, {
+                time: 1,
+                value: {
+                    colorTransform: { ...identity, redMultiplier: 0.5, redOffset: 32 },
+                    filters: [{ kind: "blur", blurX: 2, blurY: 3, quality: 1 }],
+                },
+            }],
+        }];
+        const content = normalizeNeutralAuthoredContent(source);
+        const parsed = AnimationClip2D._parse(
+            NativeAnimationClip2DWriter.write(NativeLayaEmitter.createTimeline(content)),
+        ) as any;
+        const track = parsed._nodes.getNodeByIndex(0);
+        assert(track.propertyCount === 1 && track.getPropertyByIndex(0) === "authoredVisualState",
+            "visual-state property binding drifted");
+        assert(track._keyFrames.every((keyframe: any) => keyframe.data.tweenType === undefined),
+            "visual-state keyframes must remain discrete holds");
+        assert(JSON.stringify(track._keyFrames[1].data.val) === JSON.stringify(source.timeline.tracks[0].keyframes[1].value),
+            "visual-state object did not round-trip through the native writer/parser");
+    });
+
     await test("animated affine matrix components round-trip to native transform bindings", () => {
         const affine = {
             matrixA: 0.000091552734,

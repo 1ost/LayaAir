@@ -46,6 +46,8 @@ type FlashDisplayState = {
     alpha: number;
     visible: boolean;
     colorTransform: DisplayColorTransform;
+    filters: ReadonlyArray<NeutralAuthoredFilter>;
+    animatedVisualState: boolean;
 };
 type PlacementEvidenceContext = {
     readonly timelineSymbolId: number;
@@ -583,6 +585,7 @@ export class FlashLibrarySymbolAdapter {
                             { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
                             inertPlacementRatios,
                             prior.colorTransform,
+                            prior.filters,
                         );
                         instances.push(state);
                         active.set(depth, state);
@@ -592,32 +595,53 @@ export class FlashLibrarySymbolAdapter {
                         prior.matrix = displayMatrix(operation.matrix);
                     if (operation.colorTransform !== undefined) {
                         const colorTransform = displayColorTransform(operation.colorTransform);
-                        if (!sameRgbColorTransform(colorTransform, prior.colorTransform)) {
-                            if (typeof prior.operation.name === "string")
-                                fail("FLASH_LIBRARY_NAMED_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED",
-                                    "Animated RGB color-transform changes on named placements cannot preserve one native lookup identity.");
-                            const state = createDisplayState(
-                                {
-                                    ...prior.operation,
-                                    ...operation,
-                                    op: "place",
-                                    characterId: replacementId,
-                                    depth,
-                                    move: false,
-                                    matrix: operation.matrix ?? prior.matrix,
-                                    colorTransform,
-                                },
-                                frameIndex + 1, instances.length + 1, assets, prior.alpha, prior.visible,
-                                { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
-                                inertPlacementRatios,
-                                prior.colorTransform,
-                            );
-                            instances.push(state);
-                            active.set(depth, state);
-                            return;
+                        if (!this.textMapOnly && !sameRgbColorTransform(colorTransform, prior.colorTransform)) {
+                            if (typeof prior.operation.name === "string") {
+                                const placedAsset = object(assets[String(prior.characterId)], `library.assets.${prior.characterId}`);
+                                if (placedAsset.kind !== "sprite")
+                                    fail("FLASH_LIBRARY_NAMED_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED",
+                                        `Timeline ${String(sourceTimeline.symbolId)} depth ${depth} placement '${prior.operation.name}' `
+                                        + "changes RGB color transform on a non-sprite target.");
+                                prior.animatedVisualState = true;
+                            }
+                            else {
+                                const state = createDisplayState(
+                                    {
+                                        ...prior.operation,
+                                        ...operation,
+                                        op: "place",
+                                        characterId: replacementId,
+                                        depth,
+                                        move: false,
+                                        matrix: operation.matrix ?? prior.matrix,
+                                        colorTransform,
+                                    },
+                                    frameIndex + 1, instances.length + 1, assets, prior.alpha, prior.visible,
+                                    { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
+                                    inertPlacementRatios,
+                                    prior.colorTransform,
+                                    prior.filters,
+                                );
+                                instances.push(state);
+                                active.set(depth, state);
+                                return;
+                            }
                         }
                         prior.colorTransform = colorTransform;
                         prior.alpha = colorTransform.alphaMultiplier;
+                    }
+                    if (operation.filters !== undefined) {
+                        const filters = authoredFilters(operation.filters, replacementId);
+                        if (!this.textMapOnly && typeof prior.operation.name === "string"
+                            && !sameAuthoredFilters(filters, prior.filters)) {
+                            const placedAsset = object(assets[String(prior.characterId)], `library.assets.${prior.characterId}`);
+                            if (placedAsset.kind !== "sprite")
+                                fail("FLASH_LIBRARY_NAMED_DYNAMIC_FILTER_UNSUPPORTED",
+                                    `Timeline ${String(sourceTimeline.symbolId)} depth ${depth} placement '${prior.operation.name}' `
+                                    + "changes filters on a non-sprite target.");
+                            prior.animatedVisualState = true;
+                        }
+                        prior.filters = filters;
                     }
                     if (operation.visible !== undefined)
                         prior.visible = boolean(operation.visible, "place.visible");
@@ -633,6 +657,7 @@ export class FlashLibrarySymbolAdapter {
                 ...state,
                 matrix: { ...state.matrix },
                 colorTransform: { ...state.colorTransform },
+                filters: [...state.filters],
             }])));
         });
         if (instances.length === 0)
@@ -644,6 +669,9 @@ export class FlashLibrarySymbolAdapter {
             const sourceName = typeof instance.operation.name === "string" ? instance.operation.name : undefined;
             const retainsVariableName = sourceName !== undefined && !claimedVariableNames.has(sourceName);
             if (retainsVariableName) claimedVariableNames.add(sourceName!);
+            const initial = instance.animatedVisualState
+                ? [...snapshots[0].values()].find(candidate => candidate.instanceId === instance.instanceId) ?? instance
+                : instance;
             const operation = {
                 op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
                 ...(retainsVariableName ? { name: sourceName } : {}),
@@ -652,8 +680,8 @@ export class FlashLibrarySymbolAdapter {
                     blendMode: instance.operation.blendMode,
                     blendModeCode: instance.operation.blendModeCode,
                 }),
-                ...(!isIdentityColorTransform(instance.colorTransform)
-                    ? { colorTransform: instance.colorTransform }
+                ...(!isIdentityColorTransform(initial.colorTransform)
+                    ? { colorTransform: initial.colorTransform }
                     : {}),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
@@ -669,6 +697,9 @@ export class FlashLibrarySymbolAdapter {
         const frameRate = positiveInteger(sourceTimeline.frameRate, `timeline ${sourceTimeline.symbolId}.frameRate`);
         const tracks = ordered.flatMap((instance, index) => {
             const child = children[index];
+            const initial = instance.animatedVisualState
+                ? [...snapshots[0].values()].find(candidate => candidate.instanceId === instance.instanceId) ?? instance
+                : instance;
             const baseX = child.x ?? 0;
             const baseY = child.y ?? 0;
             const values = snapshots.map(snapshot => {
@@ -691,7 +722,7 @@ export class FlashLibrarySymbolAdapter {
             const properties = usesAffineMatrix
                 ? (["x", "y", "matrixA", "matrixB", "matrixC", "matrixD", "alpha", "visible"] as const)
                 : (["x", "y", "scaleX", "scaleY", "alpha", "visible"] as const);
-            return properties.map(property => ({
+            const transformTracks = properties.map(property => ({
                 targetPath: [ownerInstanceId, child.instanceId ?? child.linkage],
                 property,
                 keyframes: values.map((state, frameIndex) => ({
@@ -701,6 +732,21 @@ export class FlashLibrarySymbolAdapter {
                             || property === "matrixA" || property === "matrixD" ? 1 : 0),
                 })),
             }));
+            return instance.animatedVisualState ? [...transformTracks, {
+                targetPath: [ownerInstanceId, child.instanceId ?? child.linkage],
+                property: "authoredVisualState" as const,
+                keyframes: snapshots.map((snapshot, frameIndex) => {
+                    const state = [...snapshot.values()].find(candidate => candidate.instanceId === instance.instanceId);
+                    const visual = state ?? initial;
+                    return {
+                        time: frameIndex / frameRate,
+                        value: {
+                            colorTransform: { ...visual.colorTransform },
+                            filters: visual.filters.map(filter => ({ ...filter })),
+                        },
+                    };
+                }),
+            }] : transformTracks;
         });
         return {
             children,
@@ -1017,8 +1063,12 @@ export class FlashLibrarySymbolAdapter {
         // translation channels instead of rejecting valid positioned glyphs.
         finite(staticMatrix.tx, `library.assets.${characterId}.staticText.matrix.tx`);
         finite(staticMatrix.ty, `library.assets.${characterId}.staticText.matrix.ty`);
+        if (runs.length > 1)
+            return this.createPositionedStaticTextRuns(
+                asset, operation, instanceId, assets, staticMatrix, runs, initialText,
+            );
         if (runs.length !== 1)
-            fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain exactly one translatable run.`);
+            fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain at least one authenticated run.`);
         const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);
         exactKeys(run, new Set(["color", "fontId", "fontSize", "glyphs", "text", "width", "x", "y"]),
             `library.assets.${characterId}.staticText.runs[0]`, "FLASH_LIBRARY_STATIC_TEXT_RUN_UNSUPPORTED");
@@ -1086,6 +1136,157 @@ export class FlashLibrarySymbolAdapter {
                 },
             },
             children: [],
+        };
+    }
+
+    /**
+     * DefineText may encode vertical or otherwise positioned labels as a run
+     * per glyph. A single browser text layout cannot retain those authored
+     * positions, so project each authenticated glyph as a device TextField
+     * child under one placement container. This intentionally remains a
+     * source-shaped static projection: named/static-text runtime semantics and
+     * unresolved glyph mappings still fail closed.
+     */
+    private createPositionedStaticTextRuns(
+        asset: Record<string, any>,
+        operation: Record<string, any>,
+        instanceId: string,
+        assets: Record<string, any>,
+        staticMatrix: Record<string, any>,
+        runs: ReadonlyArray<unknown>,
+        initialText: string,
+    ): NeutralAuthoredNode {
+        const characterId = positiveInteger(asset.characterId, "text.characterId");
+        if (operation.name !== undefined)
+            fail("FLASH_LIBRARY_NAMED_POSITIONED_STATIC_TEXT_UNSUPPORTED",
+                `Text ${characterId} has positioned runs and cannot preserve named StaticText identity.`);
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+        const width = positive(bounds.width, `Text ${characterId} width`);
+        const height = positive(bounds.height, `Text ${characterId} height`);
+        const staticTx = finite(staticMatrix.tx, `library.assets.${characterId}.staticText.matrix.tx`);
+        const staticTy = finite(staticMatrix.ty, `library.assets.${characterId}.staticText.matrix.ty`);
+        const linkage = flashLibraryAssetName(asset, characterId);
+        const children: NeutralAuthoredNode[] = [];
+        let authenticatedText = "";
+
+        runs.forEach((candidate, runIndex) => {
+            const runPath = `library.assets.${characterId}.staticText.runs[${runIndex}]`;
+            const run = object(candidate, runPath);
+            exactKeys(run, new Set(["color", "fontId", "fontSize", "glyphs", "text", "width", "x", "y"]),
+                runPath, "FLASH_LIBRARY_STATIC_TEXT_RUN_UNSUPPORTED");
+            const runText = string(run.text, `${runPath}.text`);
+            const runX = finite(run.x, `${runPath}.x`);
+            const runY = finite(run.y, `${runPath}.y`);
+            nonnegativeFinite(run.width, `${runPath}.width`);
+            const fontSize = positive(run.fontSize, `${runPath}.fontSize`);
+            const fontId = positiveInteger(run.fontId, `${runPath}.fontId`);
+            const fontAsset = object(assets[String(fontId)], `library.assets.${fontId}`);
+            if (fontAsset.kind !== "font")
+                fail("FLASH_LIBRARY_TEXT_FONT_REQUIRED", `Text ${characterId} does not reference a font asset.`);
+            const font = object(fontAsset.font, `library.assets.${fontId}.font`);
+            const family = string(font.family, `library.assets.${fontId}.font.family`);
+            const bold = boolean(font.bold, `library.assets.${fontId}.font.bold`);
+            const italic = boolean(font.italic, `library.assets.${fontId}.font.italic`);
+            const color = object(run.color, `${runPath}.color`);
+            exactKeys(color, new Set(["alpha", "color"]), `${runPath}.color`,
+                "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
+            exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED",
+                `Text ${characterId} run ${runIndex} color alpha is unsupported.`);
+            const colorValue = finite(color.color, `${runPath}.color.color`);
+            const glyphs = array(run.glyphs, `${runPath}.glyphs`);
+            if (glyphs.length === 0)
+                fail("FLASH_LIBRARY_STATIC_TEXT_GLYPHS_REQUIRED", `Text ${characterId} run ${runIndex} has no glyphs.`);
+            let glyphText = "";
+            glyphs.forEach((candidateGlyph, glyphIndex) => {
+                const glyphPath = `${runPath}.glyphs[${glyphIndex}]`;
+                const glyph = object(candidateGlyph, glyphPath);
+                exactKeys(glyph, new Set(["advance", "character", "glyphIndex", "x"]), glyphPath,
+                    "FLASH_LIBRARY_STATIC_TEXT_GLYPH_UNSUPPORTED");
+                const character = string(glyph.character, `${glyphPath}.character`);
+                if (Array.from(character).length !== 1)
+                    fail("FLASH_LIBRARY_STATIC_TEXT_GLYPH_CHARACTER_UNSUPPORTED",
+                        `${glyphPath}.character must be one Unicode scalar.`);
+                nonnegativeInteger(glyph.glyphIndex, `${glyphPath}.glyphIndex`);
+                const glyphX = finite(glyph.x, `${glyphPath}.x`);
+                const advance = finite(glyph.advance, `${glyphPath}.advance`);
+                glyphText += character;
+                const childInstanceId = `${instanceId}$static-run-${runIndex + 1}-glyph-${glyphIndex + 1}`;
+                children.push({
+                    linkage: `${linkage}$static-glyph`,
+                    instanceId: childInstanceId,
+                    name: childInstanceId,
+                    kind: "dynamic-text",
+                    depth: children.length + 1,
+                    x: staticTx + glyphX - boundsX,
+                    y: staticTy + runY - fontSize - boundsY,
+                    width: Math.max(fontSize + 4, Math.abs(advance) + 4),
+                    height: fontSize + 4,
+                    variable: false,
+                    textField: {
+                        sourceId: characterId,
+                        type: "dynamic",
+                        multiline: false,
+                        wordWrap: false,
+                        selectable: false,
+                        displayAsPassword: false,
+                        autoSize: "none",
+                        html: false,
+                        useOutlines: false,
+                        filters: [],
+                        gutter: 2,
+                        overflow: "hidden",
+                        initialText: character,
+                        format: {
+                            fontMode: "device",
+                            font: family,
+                            size: fontSize,
+                            color: colorValue,
+                            bold,
+                            italic,
+                            underline: false,
+                            align: "left",
+                            leftMargin: 0,
+                            rightMargin: 0,
+                            indent: 0,
+                            leading: 0,
+                            letterSpacing: 0,
+                            kerning: true,
+                        },
+                    },
+                    children: [],
+                });
+            });
+            if (glyphText !== runText)
+                fail("FLASH_LIBRARY_STATIC_TEXT_GLYPH_TEXT_MISMATCH",
+                    `Text ${characterId} run ${runIndex} glyph characters disagree with its string.`);
+            authenticatedText += runText;
+            // The first glyph position is separately authenticated above; the
+            // redundant run x channel must agree with it rather than becoming
+            // an unauthenticated alternate layout authority.
+            const firstGlyph = object(glyphs[0], `${runPath}.glyphs[0]`);
+            if (finite(firstGlyph.x, `${runPath}.glyphs[0].x`) !== runX)
+                fail("FLASH_LIBRARY_STATIC_TEXT_RUN_POSITION_MISMATCH",
+                    `Text ${characterId} run ${runIndex} x authorities disagree.`);
+        });
+        if (authenticatedText !== initialText)
+            fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
+
+        const placement = placementTransform(operation);
+        return {
+            linkage,
+            instanceId,
+            kind: "container",
+            depth: positiveInteger(operation.depth, "place.depth"),
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
+            matrix: placement.matrix,
+            width,
+            height,
+            variable: false,
+            ...(operation.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
+            children,
         };
     }
 
@@ -1940,6 +2141,7 @@ function createDisplayState(
     evidenceContext?: PlacementEvidenceContext,
     inertPlacementRatios?: Map<string, NeutralInertPlacementRatio>,
     inheritedColorTransform?: DisplayColorTransform,
+    inheritedFilters: ReadonlyArray<NeutralAuthoredFilter> = [],
 ): FlashDisplayState {
     const characterId = positiveInteger(operation.characterId, "place.characterId");
     const authoredDepth = positiveInteger(operation.depth, "place.depth");
@@ -1967,6 +2169,10 @@ function createDisplayState(
         colorTransform: operation.colorTransform === undefined
             ? inheritedColorTransform ?? identityColorTransform(inheritedAlpha)
             : displayColorTransform(operation.colorTransform),
+        filters: operation.filters === undefined
+            ? inheritedFilters
+            : authoredFilters(operation.filters, characterId),
+        animatedVisualState: false,
     };
 }
 
@@ -2030,6 +2236,13 @@ function sameRgbColorTransform(left: DisplayColorTransform, right: DisplayColorT
         && left.greenOffset === right.greenOffset
         && left.blueOffset === right.blueOffset
         && left.alphaOffset === right.alphaOffset;
+}
+
+function sameAuthoredFilters(
+    left: ReadonlyArray<NeutralAuthoredFilter>,
+    right: ReadonlyArray<NeutralAuthoredFilter>,
+): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function validateTimelineRatio(

@@ -42,6 +42,23 @@ export class AuthoredMovieClip extends MovieClip {
         this._authoredColorTransform = value;
     }
 
+    /** Atomic animation surface for frame-authored tint and filter changes. */
+    get authoredVisualState(): AuthoredVisualStateConfiguration {
+        return { colorTransform: this._authoredColorTransform ?? IDENTITY_COLOR_TRANSFORM, filters: this._authoredFilters };
+    }
+
+    set authoredVisualState(value: AuthoredVisualStateConfiguration) {
+        if (!value || typeof value !== "object" || Array.isArray(value)
+            || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(["colorTransform", "filters"]))
+            throw new TypeError("AuthoredMovieClip authoredVisualState must contain exactly colorTransform and filters");
+        const nativeFilters = createAuthoredFilters(value.filters);
+        const nativeColorTransform = createNativeColorTransform(value.colorTransform);
+        this._authoredFilters = value.filters;
+        this._authoredColorTransform = value.colorTransform;
+        this.filters = nativeFilters;
+        this.transform.colorTransform = nativeColorTransform;
+    }
+
     override get width(): number { return super.width; }
     override set width(value: number) {
         super.width = value;
@@ -65,16 +82,7 @@ export class AuthoredMovieClip extends MovieClip {
         const value = this._authoredColorTransform;
         if (!value)
             return;
-        const fields = [
-            value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
-            value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
-        ];
-        if (fields.some(component => !Number.isFinite(component)) || value.alphaMultiplier < 0 || value.alphaMultiplier > 1)
-            throw new Error("AuthoredMovieClip authoredColorTransform is invalid");
-        this.transform.colorTransform = new ColorTransform(
-            value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
-            value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
-        );
+        this.transform.colorTransform = createNativeColorTransform(value);
     }
 
     private _configureAuthoredScale9Grid(): void {
@@ -127,6 +135,37 @@ export interface AuthoredColorTransformConfiguration {
     readonly greenOffset: number;
     readonly blueOffset: number;
     readonly alphaOffset: number;
+}
+
+export interface AuthoredVisualStateConfiguration {
+    readonly colorTransform: AuthoredColorTransformConfiguration;
+    readonly filters: ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration>;
+}
+
+const IDENTITY_COLOR_TRANSFORM: AuthoredColorTransformConfiguration = Object.freeze({
+    redMultiplier: 1, greenMultiplier: 1, blueMultiplier: 1, alphaMultiplier: 1,
+    redOffset: 0, greenOffset: 0, blueOffset: 0, alphaOffset: 0,
+});
+
+function createNativeColorTransform(value: AuthoredColorTransformConfiguration): ColorTransform {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new TypeError("AuthoredMovieClip authoredColorTransform must be an object");
+    const expected = [
+        "alphaMultiplier", "alphaOffset", "blueMultiplier", "blueOffset",
+        "greenMultiplier", "greenOffset", "redMultiplier", "redOffset",
+    ];
+    if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(expected))
+        throw new TypeError("AuthoredMovieClip authoredColorTransform has unsupported fields");
+    const fields = [
+        value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
+        value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
+    ];
+    if (fields.some(component => !Number.isFinite(component)) || value.alphaMultiplier < 0 || value.alphaMultiplier > 1)
+        throw new Error("AuthoredMovieClip authoredColorTransform is invalid");
+    return new ColorTransform(
+        value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
+        value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
+    );
 }
 
 /** Serialized owner for one independently instantiated DefineButton2 state display list. */

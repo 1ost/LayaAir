@@ -258,6 +258,71 @@ assert.throws(() => adapter.parse({
     runtimeLinkage: "fixtures.ScaledStaticText",
 }), /FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED/);
 
+const positionedStaticText = fixture();
+positionedStaticText.library.assets[5] = {
+    ...positionedStaticText.library.assets[5],
+    initialText: "AB",
+    bounds: { x: -9, y: 1.5, width: 14, height: 20 },
+    staticText: {
+        exactGlyphs: true,
+        issues: [],
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: -14, ty: 0 },
+        runs: [{
+            color: { alpha: 1, color: 0xb3b3b3 }, fontId: 7, fontSize: 6,
+            glyphs: [{ character: "A", glyphIndex: 1, x: 10, advance: 0 }],
+            text: "A", width: 0, x: 10, y: 10,
+        }, {
+            color: { alpha: 1, color: 0xb3b3b3 }, fontId: 7, fontSize: 6,
+            glyphs: [{ character: "B", glyphIndex: 2, x: 5, advance: 0 }],
+            text: "B", width: 0, x: 5, y: 16,
+        }],
+    },
+};
+positionedStaticText.timelines.set(40, timeline(40, 1, [
+    frame(1, [{
+        op: "place", characterId: 5, depth: 1, move: false, ratio: 0,
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: 20, ty: 30 },
+    }]),
+]));
+const positionedContent = adapter.parse({
+    ...positionedStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.PositionedStaticText",
+});
+const positioned = positionedContent.root.children[0];
+assert.deepEqual(
+    { kind: positioned.kind, x: positioned.x, y: positioned.y, width: positioned.width, height: positioned.height },
+    { kind: "container", x: 11, y: 31.5, width: 14, height: 20 },
+);
+assert.deepEqual(positioned.children.map(child => ({
+    kind: child.kind,
+    x: child.x,
+    y: child.y,
+    text: child.textField.initialText,
+    font: child.textField.format.font,
+    color: child.textField.format.color,
+})), [{ kind: "dynamic-text", x: 5, y: 2.5, text: "A", font: "Arial", color: 0xb3b3b3 },
+    { kind: "dynamic-text", x: 0, y: 8.5, text: "B", font: "Arial", color: 0xb3b3b3 }]);
+assert.equal(new Set(positioned.children.map(child => child.instanceId)).size, 2);
+
+const positionedGlyphDrift = structuredClone(positionedStaticText);
+positionedGlyphDrift.timelines = new Map(positionedStaticText.timelines);
+positionedGlyphDrift.library.assets[5].staticText.runs[1].glyphs[0].character = "C";
+assert.throws(() => adapter.parse({
+    ...positionedGlyphDrift,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.PositionedGlyphDrift",
+}), /FLASH_LIBRARY_STATIC_TEXT_GLYPH_TEXT_MISMATCH/);
+
+const namedPositionedStaticText = structuredClone(positionedStaticText);
+namedPositionedStaticText.timelines = new Map(positionedStaticText.timelines);
+namedPositionedStaticText.timelines.get(40).frames[0].operations[0].name = "label";
+assert.throws(() => adapter.parse({
+    ...namedPositionedStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.NamedPositionedStaticText",
+}), /FLASH_LIBRARY_NAMED_POSITIONED_STATIC_TEXT_UNSUPPORTED/);
+
 const invalidScalingGrid = fixture();
 invalidScalingGrid.library.stage.width = 40;
 invalidScalingGrid.library.stage.height = 36;
@@ -269,4 +334,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 10/10 passed\n");
+process.stdout.write("authored popup-menu admission: 13/13 passed\n");

@@ -6,9 +6,11 @@ export type NeutralFontMediaType = "font/ttf";
 export type NeutralAuthoredMediaType = NeutralImageMediaType | NeutralFontMediaType;
 export type NeutralTimelineProperty =
     | "x" | "y" | "scaleX" | "scaleY" | "rotation" | "alpha" | "visible"
+    /** Atomic runtime update for named Flash placements whose filters/RGB tint change by frame. */
+    | "authoredVisualState"
     /** Exact components of an authored 2D affine matrix, emitted through Sprite.transform. */
     | "matrixA" | "matrixB" | "matrixC" | "matrixD";
-export type NeutralKeyframeValue = number | boolean;
+export type NeutralKeyframeValue = number | boolean | NeutralAuthoredVisualState;
 
 export interface NeutralAuthoredMatrix {
     readonly a: number;
@@ -27,6 +29,11 @@ export interface NeutralAuthoredColorTransform {
     readonly greenOffset: number;
     readonly blueOffset: number;
     readonly alphaOffset: number;
+}
+
+export interface NeutralAuthoredVisualState {
+    readonly colorTransform: NeutralAuthoredColorTransform;
+    readonly filters: ReadonlyArray<NeutralAuthoredFilter>;
 }
 
 export interface NeutralBlurFilter {
@@ -309,7 +316,7 @@ const BUTTON_STATE_NAMES: ReadonlySet<string> = new Set(BUTTON_STATE_ORDER);
 const RESOURCE_MEDIA_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "font/ttf"]);
 const TIMELINE_PROPERTIES: ReadonlySet<string> = new Set([
     "x", "y", "scaleX", "scaleY", "rotation", "alpha", "visible",
-    "matrixA", "matrixB", "matrixC", "matrixD",
+    "matrixA", "matrixB", "matrixC", "matrixD", "authoredVisualState",
 ]);
 const SCALED_NODE_PROPERTIES: ReadonlySet<string> = new Set(["x", "y", "width", "height", "fontSize"]);
 const SCALED_TRACK_PROPERTIES: ReadonlySet<string> = new Set(["x", "y"]);
@@ -1102,6 +1109,19 @@ function normalizeTimeline(value: unknown, scale: number, nodePaths: ReadonlySet
             if (property === "visible") {
                 if (typeof keyValue !== "boolean")
                     fail("AUTHORED_CONTENT_KEYFRAME_TYPE_INVALID", "Visible keyframes require boolean values.");
+            }
+            else if (property === "authoredVisualState") {
+                const visualState = record(keyValue, `timeline.tracks[${index}].keyframes[${keyIndex}].value`);
+                allowedKeys(visualState, ["colorTransform", "filters"],
+                    `timeline.tracks[${index}].keyframes[${keyIndex}].value`);
+                keyValue = {
+                    colorTransform: normalizeColorTransform(visualState.colorTransform,
+                        `timeline.tracks[${index}].keyframes[${keyIndex}].value.colorTransform`),
+                    filters: array(visualState.filters,
+                        `timeline.tracks[${index}].keyframes[${keyIndex}].value.filters`)
+                        .map((filter, filterIndex) => normalizeAuthoredFilter(filter,
+                            `timeline.tracks[${index}].keyframes[${keyIndex}].value.filters[${filterIndex}]`, scale)),
+                };
             }
             else {
                 keyValue = requiredFiniteNumber(keyValue, `timeline.tracks[${index}].keyframes[${keyIndex}].value`);

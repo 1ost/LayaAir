@@ -18,7 +18,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -35,7 +35,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
           ]
         }
@@ -82,7 +82,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -99,7 +99,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
           ]
         }
@@ -114,7 +114,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "a49c57347aa4e9e81434baab6d16634c54b04ea857367bd40efd1d13fa5a01cc",
+          "sha256": "490bf33a74e33c21f681e3078e29c954bb8e3310ff812d29d94aff598e1c8fc6",
           "members": [
             {
               "abstract": false,
@@ -140,7 +140,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "display.place-remove-depth",
           "covers": [
-            "a49c57347aa4e9e81434baab6d16634c54b04ea857367bd40efd1d13fa5a01cc"
+            "490bf33a74e33c21f681e3078e29c954bb8e3310ff812d29d94aff598e1c8fc6"
           ]
         }
       ]
@@ -154,7 +154,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
@@ -171,7 +171,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
           ]
         }
@@ -283,14 +283,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts",
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "a49c57347aa4e9e81434baab6d16634c54b04ea857367bd40efd1d13fa5a01cc",
+          "sha256": "490bf33a74e33c21f681e3078e29c954bb8e3310ff812d29d94aff598e1c8fc6",
           "members": [
             {
               "abstract": false,
@@ -320,7 +320,7 @@
           "export": "registerAuthoredContentPrimitives",
           "kind": "function",
           "signature": "() => void",
-          "sha256": "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f"
+          "sha256": "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482"
         }
       ],
       "evidence": [
@@ -330,9 +330,9 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.button-states",
           "covers": [
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
-            "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f",
-            "a49c57347aa4e9e81434baab6d16634c54b04ea857367bd40efd1d13fa5a01cc",
+            "490bf33a74e33c21f681e3078e29c954bb8e3310ff812d29d94aff598e1c8fc6",
+            "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
           ]
         }
@@ -371,7 +371,7 @@
           "export": "isAuthoredSimpleButton",
           "kind": "function",
           "signature": "(value: unknown) => value is AuthoredSimpleButton",
-          "sha256": "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f"
+          "sha256": "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482"
         }
       ],
       "evidence": [
@@ -381,7 +381,7 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.pointer",
           "covers": [
-            "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f"
+            "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482"
           ]
         }
       ]
@@ -432,7 +432,7 @@
         {
           "path": "tests/authoredFlashDisplayListTimeline/run.cjs",
           "test": "Authored Flash animated affine projection and replacement continuity",
-          "sha256": "685e4be5406e6af081523f976ca0cde3306b0d1b646a4efb9b4542119606afea",
+          "sha256": "4f6fec50409092acc67f5b13ca8b04ecc69a190bcef750362aa2251c58c530cd",
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
@@ -444,7 +444,7 @@
         {
           "path": "tests/authoredContent/run.ts",
           "test": "Neutral affine components round-trip through native timeline transform bindings",
-          "sha256": "1d0bad0b1bbc48083363b48946d3c102299be48380e74ccfbf1e86c6453b5029",
+          "sha256": "518cffbca3054881aa815692103ca7ae6217d4d5dc5d63adfc61dc8bfb258ae9",
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
@@ -546,7 +546,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -563,7 +563,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.frames-labels",
           "covers": [
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
           ]
         }
@@ -578,7 +578,7 @@
           "export": "NativeLayaEmitter",
           "kind": "class",
           "signature": "typeof NativeLayaEmitter",
-          "sha256": "713656b82a7d42c6cc9a011e8bf877d5bdfb7e77fd931a3f09854fe072db59af",
+          "sha256": "e39380de96e213862c1e765adce7677647e1a901603e04e78082693adf470b1b",
           "members": [
             {
               "abstract": false,
@@ -664,7 +664,7 @@
           "capability": "timeline.property-track",
           "covers": [
             "10a06837473eaadef5eaf61f58da3e68ccd19a406634421815220e508b340ed0",
-            "713656b82a7d42c6cc9a011e8bf877d5bdfb7e77fd931a3f09854fe072db59af"
+            "e39380de96e213862c1e765adce7677647e1a901603e04e78082693adf470b1b"
           ]
         }
       ]
@@ -685,7 +685,7 @@
           "export": "registerAuthoredContentPrimitives",
           "kind": "function",
           "signature": "() => void",
-          "sha256": "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f"
+          "sha256": "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482"
         }
       ],
       "evidence": [
@@ -695,7 +695,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.nested-symbol",
           "covers": [
-            "67555c4e95cbf43f5e56753adc47a85f61b6d563fd3eb563e58efb31d13f735f",
+            "9d2d9551e0dfe90aabb0e85b91568d98fd40a95407e9e0aed7d289bb4b6dd482",
             "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
           ]
         }
@@ -44697,28 +44697,28 @@
           "export": "NeutralFontMediaType",
           "kind": "type",
           "signature": "any",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralEmbeddedFont",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralFontAlignZones",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralAdvancedTextRasterization",
           "kind": "interface",
           "signature": "any",
-          "sha256": "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e"
+          "sha256": "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts",
@@ -44891,8 +44891,8 @@
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
             "5062c2a033c38c464932345d8c103d1d5f1065c8a360ee6c1d3731312ca27e3a",
-            "53ea128288647f957075222454190f3105cb95533cb60f216deadff3654c341e",
             "b0074173d4e3f21f609a2d9e7662b1b5869fbd8b67646510ef470c7f39843cec",
+            "c7464a76366448a89ddf7954ff5b9996ed99d72bcf7f4eb71b27eb7ef1528224",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
           ]
         }

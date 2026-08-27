@@ -273,7 +273,10 @@ export class NativeLayaEmitter {
             keyframe.time = source.time;
             keyframe.data = {
                 f: Math.round(source.time * 1000000),
-                val: source.value,
+                // Native AnimationClip2D accepts serialized object keyframes
+                // (the writer emits tag 3), although the IDE declaration
+                // still narrows TypeAniKey.val to scalar/CurvePath values.
+                val: source.value as any,
                 tweenType: source.tweenType
             };
             node._keyFrames[index] = keyframe;
