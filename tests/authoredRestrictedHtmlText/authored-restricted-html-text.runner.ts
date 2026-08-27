@@ -33,6 +33,8 @@ const REDUNDANT_FONT_MARKUP = '<p align="right"><font face="Arial" size="12" col
 const FALLBACK_FONT_MARKUP = '<p align="left"><font face="Arial" size="12" color="#ffc867" letterSpacing="0.000000" kerning="0">Today&apos;s remaining reward chances<font face="MS PGothic">ï¼š</font></font></p>';
 const MULTI_PARAGRAPH_MARKUP = '<p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Do not start fighting </font></p><p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Then kicked captain</font></p>';
 const EMPTY_TRAILING_PARAGRAPH_MARKUP = '<p align="right"><font face="Arial" size="10" color="#dea05d" letterSpacing="0.000000" kerning="0">Consumes Basic <sbr />Gikogan</font></p><p align="right"></p>';
+const LETTER_SPACING_RUN_MARKUP = '<p align="left"><font face="Arial" size="14" color="#ffffff" letterSpacing="2.000000" kerning="0"><b>Hueco Mundo <sbr />Shinigam</b><font letterSpacing="0.000000"><b>i</b></font></font></p>';
+const BOLD_FONT_WITH_FALLBACK_MARKUP = '<p align="left"><font face="Arial" size="14" color="#ff8448" letterSpacing="1.000000" kerning="0"><b>Introduction</b><font face="SimSun">\uff1a</font></font></p>';
 
 function configuration(markup = MARKUP): AuthoredTextFieldConfiguration {
     return {
@@ -138,6 +140,47 @@ test("restricted Flash HTML preserves authenticated nested face and mixed bold r
     }).htmlText, markup);
 });
 
+test("restricted Flash HTML preserves authenticated nested letter-spacing runs", () => {
+    assert.deepEqual(parseRestrictedFlashHtmlText(LETTER_SPACING_RUN_MARKUP), {
+        markup: LETTER_SPACING_RUN_MARKUP, plainText: "Hueco Mundo \rShinigami", align: "left", font: "Arial", size: 14,
+        color: 0xffffff, letterSpacing: 2, kerning: false, bold: true,
+    });
+    const base = configuration(LETTER_SPACING_RUN_MARKUP);
+    const field = createAuthoredTextField({
+        ...base,
+        multiline: true,
+        format: {
+            ...base.format,
+            font: "Arial", size: 14, color: 0xffffff, letterSpacing: 2,
+            kerning: false, bold: true, align: "left",
+        },
+    });
+    try {
+        assert.equal(field.htmlText, LETTER_SPACING_RUN_MARKUP);
+        assert.equal(field.text.replace(/\n/g, "\r"), "Hueco Mundo \rShinigami");
+    } finally { field.destroy(true); }
+});
+
+test("restricted Flash HTML retains inline emphasis independently from the authored font style", () => {
+    assert.deepEqual(parseRestrictedFlashHtmlText(BOLD_FONT_WITH_FALLBACK_MARKUP), {
+        markup: BOLD_FONT_WITH_FALLBACK_MARKUP, plainText: "Introduction\uff1a", align: "left", font: "Arial", size: 14,
+        color: 0xff8448, letterSpacing: 1, kerning: false, bold: false,
+    });
+    const base = configuration(BOLD_FONT_WITH_FALLBACK_MARKUP);
+    const field = createAuthoredTextField({
+        ...base,
+        format: {
+            ...base.format,
+            font: "Arial", size: 14, color: 0xff8448, letterSpacing: 1,
+            kerning: false, bold: true, align: "left",
+        },
+    });
+    try {
+        assert.equal(field.htmlText, BOLD_FONT_WITH_FALLBACK_MARKUP);
+        assert.equal(field.text, "Introduction\uff1a");
+    } finally { field.destroy(true); }
+});
+
 test("restricted Flash HTML fails closed before TextField publication", () => {
     for (const markup of [
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><i>bad</i></font></p>',
@@ -148,6 +191,8 @@ test("restricted Flash HTML fails closed before TextField publication", () => {
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">&bogus;</font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="Bad\u0001Face">bad</font></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans" color="#ffffff">bad</font></font></p>',
+        LETTER_SPACING_RUN_MARKUP.replace('letterSpacing="0.000000"', 'letterSpacing="NaN"'),
+        LETTER_SPACING_RUN_MARKUP.replace('letterSpacing="0.000000"', 'letterSpacing="0" color="#ffffff"'),
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans"><b>bad</font></b></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1"><font face="TestSans">bad</font></font></font></p>',
         '<p align="center"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">one</font></p><p align="left"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">two</font></p>',

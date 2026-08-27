@@ -346,7 +346,7 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
             throw new TypeError("authored HTML is admitted only for dynamic fields");
         const layout = parseRestrictedFlashHtmlText(record.initialText);
         if (layout.font !== format.font || layout.size !== format.size || layout.color !== format.color
-            || layout.align !== format.align || layout.bold !== format.bold
+            || layout.align !== format.align
             || layout.letterSpacing !== (hasLetterSpacing ? format.letterSpacing : 0)
             || layout.kerning !== (hasKerning ? format.kerning : false))
             throw new TypeError("authored HTML markup must match its exact format");

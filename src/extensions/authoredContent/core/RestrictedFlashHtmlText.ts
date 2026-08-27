@@ -20,7 +20,7 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = Object.freeze({
 /**
  * Validates the frozen authored Flash HTML slice. This is deliberately not a
  * browser HTML parser: only consecutive p/font runs plus balanced b/br/sbr and
- * color- or face-only nested font content are accepted. Every formatting
+ * color-, face-, or letterSpacing-only nested font content are accepted. Every formatting
  * attribute is authenticated before the markup reaches TextField.htmlText.
  * Empty paragraphs retain Flash's authored line breaks but cannot introduce
  * formatting of their own.
@@ -123,8 +123,11 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
             } else if (nestedFontSource.startsWith('face="')) {
                 const nestedFont = attributes(nestedFontSource, new Set(["face"]), "nested font");
                 validFontFace(nestedFont.face);
+            } else if (nestedFontSource.startsWith('letterSpacing="')) {
+                const nestedFont = attributes(nestedFontSource, new Set(["letterSpacing"]), "nested font");
+                finiteNumber(nestedFont.letterSpacing, "nested letterSpacing");
             } else {
-                throw new Error("AUTHORED_CONTENT_HTML_TEXT_ATTRIBUTE_UNSUPPORTED: nested font admits one color or face attribute.");
+                throw new Error("AUTHORED_CONTENT_HTML_TEXT_ATTRIBUTE_UNSUPPORTED: nested font admits one color, face, or letterSpacing attribute.");
             }
             tagStack.push("font");
             cursor += nestedFontMatch[0].length;
@@ -139,7 +142,7 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
         const breakMatch = /^<(?:br|sbr)\s*\/?>/.exec(source.slice(cursor));
         if (breakMatch) { plainText += "\r"; cursor += breakMatch[0].length; continue; }
         if (source[cursor] === "<")
-            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and color- or face-only font runs are allowed in font content.");
+            throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and color-, face-, or letterSpacing-only font runs are allowed in font content.");
         let character: string;
         if (source[cursor] === "&") {
             const end = source.indexOf(";", cursor + 1);

@@ -987,8 +987,7 @@ function parseAuthoredFlashHtml(
     if (layout.font !== string(font.family, `Text ${characterId} font family`)
         || layout.size !== finite(textField.fontSize, `Text ${characterId} font size`)
         || layout.color !== finite(color.color, `Text ${characterId} color`)
-        || layout.align !== string(textField.align, `Text ${characterId} align`)
-        || layout.bold !== boolean(font.bold, `Text ${characterId} font bold`)) {
+        || layout.align !== string(textField.align, `Text ${characterId} align`)) {
         fail("FLASH_LIBRARY_TEXT_HTML_AUTHORITY_MISMATCH", `Text ${characterId} HTML formatting disagrees with its field metadata.`);
     }
     return layout;
