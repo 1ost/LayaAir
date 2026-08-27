@@ -172,9 +172,42 @@ const withoutRatioEvidence = value => {
 assert.deepEqual(withoutRatioEvidence(content), withoutRatioEvidence(zeroRatioContent),
     "inert ratios changed native hierarchy or timeline semantics");
 
+const animatedRgb = fixture();
+Object.assign(animatedRgb.timelines.get(10).frames[0].operations[0].colorTransform, {
+    redMultiplier: 0.5,
+    redOffset: 10,
+});
+Object.assign(animatedRgb.timelines.get(10).frames[1].operations[0].colorTransform, {
+    redMultiplier: 0.75,
+    redOffset: 20,
+});
+const animatedRgbContent = adapter.parse(animatedRgb);
+const animatedRgbNodes = animatedRgbContent.root.children.filter(value => value.linkage === "character_3");
+assert.equal(animatedRgbNodes.length, 2,
+    "animated RGB color-transform transition did not create two exact native placement instances");
+assert.deepEqual(animatedRgbNodes.map(value => [
+    value.colorTransform.redMultiplier,
+    value.colorTransform.redOffset,
+]), [[0.5, 10], [0.75, 20]], "animated RGB transforms drifted on the native placement instances");
+assert.deepEqual(
+    track(animatedRgbContent, "character_3", "visible", 0).keyframes.map(value => value.value),
+    [true, false, false],
+    "pre-transition RGB placement remained visible after its authored move",
+);
+assert.deepEqual(
+    track(animatedRgbContent, "character_3", "visible", 1).keyframes.map(value => value.value),
+    [false, true, false],
+    "post-transition RGB placement did not retain the authored active-frame interval",
+);
+
+const namedAnimatedRgb = fixture();
+namedAnimatedRgb.timelines.get(10).frames[0].operations[0].name = "Tinted";
+namedAnimatedRgb.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5;
+assert.throws(() => adapter.parse(namedAnimatedRgb), /FLASH_LIBRARY_NAMED_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED/,
+    "named animated RGB transition did not fail closed on ambiguous native lookup identity");
+
 for (const [label, mutate, expected] of [
     ["move before place", value => value.timelines.get(10).frames[0].operations[0].move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
-    ["RGB color transform", value => value.timelines.get(10).frames[0].operations[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
     ["declared frame-count drift", value => value.timelines.get(10).frameCount = 4, /FLASH_LIBRARY_FRAME_CLOSURE/],
     ["nonconsecutive frame index", value => value.timelines.get(10).frames[1].index = 3, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],
     ["non-unit frame duration", value => value.timelines.get(10).frames[1].durationTicks = 2, /FLASH_LIBRARY_FRAME_INDEX_INVALID/],

@@ -591,9 +591,30 @@ export class FlashLibrarySymbolAdapter {
                         prior.matrix = displayMatrix(operation.matrix);
                     if (operation.colorTransform !== undefined) {
                         const colorTransform = displayColorTransform(operation.colorTransform);
-                        if (!sameRgbColorTransform(colorTransform, prior.colorTransform))
-                            fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED",
-                                "Animated RGB color-transform changes require a new placement instance.");
+                        if (!sameRgbColorTransform(colorTransform, prior.colorTransform)) {
+                            if (typeof prior.operation.name === "string")
+                                fail("FLASH_LIBRARY_NAMED_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED",
+                                    "Animated RGB color-transform changes on named placements cannot preserve one native lookup identity.");
+                            const state = createDisplayState(
+                                {
+                                    ...prior.operation,
+                                    ...operation,
+                                    op: "place",
+                                    characterId: replacementId,
+                                    depth,
+                                    move: false,
+                                    matrix: operation.matrix ?? prior.matrix,
+                                    colorTransform,
+                                },
+                                frameIndex + 1, instances.length + 1, assets, prior.alpha, prior.visible,
+                                { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
+                                inertPlacementRatios,
+                                prior.colorTransform,
+                            );
+                            instances.push(state);
+                            active.set(depth, state);
+                            return;
+                        }
                         prior.colorTransform = colorTransform;
                         prior.alpha = colorTransform.alphaMultiplier;
                     }
