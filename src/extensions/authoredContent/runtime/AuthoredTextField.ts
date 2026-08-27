@@ -1,7 +1,7 @@
 import {
     AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
-import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
+import { AuthoredFontRegistry, type AuthoredTextFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
 import { PostProcess2DEffect } from "../../../layaAir/laya/display/PostProcess2DEffect";
 import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
@@ -212,7 +212,8 @@ const DROP_SHADOW_FILTER_KEYS = Object.freeze([
     "kind", "knockout", "quality", "strength",
 ]);
 const COLOR_MATRIX_FILTER_KEYS = Object.freeze(["kind", "matrix"]);
-const authoredFontBindings = new WeakMap<TextField, AuthoredFontBinding>();
+const authoredFontBindings = new WeakMap<TextField, AuthoredTextFontBinding>();
+const authoredHtmlFields = new WeakSet<TextField>();
 
 /**
  * Validates neutral authored metadata completely before constructing the public
@@ -231,8 +232,10 @@ export function configureAuthoredTextField(
     if (!(field instanceof TextField) || field.destroyed)
         throw new TypeError("Authored TextField target must be a live TextField");
     const value = validateConfiguration(configuration);
+    if (value.html) authoredHtmlFields.add(field);
+    else authoredHtmlFields.delete(field);
     const previousBinding = authoredFontBindings.get(field);
-    let fontBinding: AuthoredFontBinding | undefined;
+    let fontBinding: AuthoredTextFontBinding | undefined;
     if (value.format.fontMode === "embedded") {
         const font = value.format.embeddedFont!;
         fontBinding = AuthoredFontRegistry.bindPublishedText(field, {
@@ -290,6 +293,32 @@ export function configureAuthoredTextField(
 export function releaseAuthoredTextFieldFontBinding(field: TextField): void {
     authoredFontBindings.get(field)?.cancel();
     authoredFontBindings.delete(field);
+    authoredHtmlFields.delete(field);
+}
+
+/**
+ * Applies a locale sidecar string without making an English embedded font a
+ * false full-Unicode authority. Fields whose selected authored face covers
+ * the localized text keep their exact metrics; only a field with a missing
+ * visible glyph returns to the device/browser font providers.
+ */
+export function applyAuthoredLocaleText(field: TextField, text: string): void {
+    if (!(field instanceof TextField) || field.destroyed)
+        throw new TypeError("Authored locale text target must be a live TextField");
+    if (typeof text !== "string") throw new TypeError("Authored locale text must be a string");
+    const html = authoredHtmlFields.has(field);
+    const visibleText = html ? parseRestrictedFlashHtmlText(text).plainText : text;
+    const binding = authoredFontBindings.get(field);
+    if (binding?.active) {
+        const format = field.defaultTextFormat;
+        if (!binding.hasGlyphs(visibleText, format.font ?? "", format.bold === true, format.italic === true)) {
+            binding.cancel();
+            authoredFontBindings.delete(field);
+            field.embedFonts = false;
+        }
+    }
+    if (html) field.htmlText = text;
+    else field.text = text;
 }
 
 export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {

@@ -38,6 +38,7 @@ import {
     AuthoredDynamicTextField,
     registerAuthoredContentPrimitives,
 } from "../../src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives";
+import { applyAuthoredLocaleText } from "../../src/extensions/authoredContent/runtime/AuthoredTextField";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -610,6 +611,8 @@ test("published embedded prefab fields bind one exact active font identity witho
         const binding = AuthoredFontRegistry.bindPublishedText(field, {
             ...keyOf(authored), fontName: authored.fontName,
         });
+        assert.equal(binding.hasGlyphs("A\r\n", authored.fontName, true, false), true);
+        assert.equal(binding.hasGlyphs("für", authored.fontName, true, false), false);
         assert.equal(field.fontFamilyResolver(authored.fontName, true, false), registry.runtimeFamilyFor(keyOf(authored)));
         assert.deepEqual(field.fontMetricsProvider(authored.fontName, 10, true, false), { ascent: 8, descent: 2 });
         assert.throws(() => field.fontFamilyResolver("Device Arial", true, false), /device fallback is not permitted/);
@@ -736,6 +739,13 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
     const settings = (field.children[0] as LayaInput).rasterizationSettings;
     assert.equal(settings?.alignmentZones?.[String(0x56)]?.x?.coordinate, 0.1);
     assert.equal(settings?.alignmentZones?.[String(0x41)]?.y?.range, 1);
+    applyAuthoredLocaleText(field, "AV");
+    assert.equal(field.embedFonts, true, "covered locale text retains the exact authored font");
+    assert.equal(field.fontFamilyResolver, boundFamilyResolver);
+    applyAuthoredLocaleText(field, "Aü");
+    assert.equal(field.text, "Aü");
+    assert.equal(field.embedFonts, false, "an uncovered locale glyph selects device/browser fallback");
+    assert.notEqual(field.fontFamilyResolver, boundFamilyResolver);
     field.destroy(true);
     assert.notEqual(field.fontFamilyResolver, boundFamilyResolver,
         "destroy releases the authenticated field binding before native input teardown");

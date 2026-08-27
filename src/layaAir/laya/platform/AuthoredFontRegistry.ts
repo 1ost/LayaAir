@@ -104,6 +104,11 @@ export interface AuthoredFontBinding {
     cancel(): void;
 }
 
+export interface AuthoredTextFontBinding extends AuthoredFontBinding {
+    /** True when the selected authored face covers every renderable scalar. */
+    hasGlyphs(text: string, font: string, bold: boolean, italic: boolean): boolean;
+}
+
 type FrozenEntry = AuthoredFontManifestEntry & {
     readonly runtimeFamily: string;
     readonly glyphAdvances: Readonly<Record<string, number>>;
@@ -207,7 +212,7 @@ export class AuthoredFontRegistry {
     static bindPublishedText(
         consumer: AuthoredTextProviderConsumer,
         selectionValue: AuthoredPublishedFontSelection,
-    ): AuthoredFontBinding {
+    ): AuthoredTextFontBinding {
         const selectionRecord = exactDataObject(selectionValue, [...KEY_KEYS, "fontName"], "Published authored font selection");
         const selection = {
             ...normalizeKey(selectionRecord, "Published authored font selection"),
@@ -301,7 +306,7 @@ export class AuthoredFontRegistry {
         }
     }
 
-    bindText(consumer: AuthoredTextProviderConsumer, documentId: string): AuthoredFontBinding {
+    bindText(consumer: AuthoredTextProviderConsumer, documentId: string): AuthoredTextFontBinding {
         requireConsumer(consumer);
         if (consumer.destroyed) throw new AuthoredFontBindingCancelledError();
         if (!this.loadedDocuments.has(documentId))
@@ -355,6 +360,15 @@ export class AuthoredFontRegistry {
         this.bindingStates.add(state);
         const binding = {
             get active() { return state.active; },
+            hasGlyphs: (text: string, font: string, bold: boolean, italic: boolean): boolean => {
+                if (typeof text !== "string") throw new TypeError("Authored text must be a string");
+                const entry = resolve(font, bold, italic);
+                return Array.from(text).every(character => {
+                    const codePoint = character.codePointAt(0)!;
+                    return codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d
+                        || entry.glyphAdvances[String(codePoint)] !== undefined;
+                });
+            },
             cancel: () => this.cancelBinding(state),
         };
         return Object.freeze(binding);
@@ -364,7 +378,7 @@ export class AuthoredFontRegistry {
         consumer: AuthoredTextProviderConsumer,
         documentId: string,
         signal?: AbortSignal,
-    ): Promise<AuthoredFontBinding> {
+    ): Promise<AuthoredTextFontBinding> {
         requireConsumer(consumer);
         if (consumer.destroyed || signal?.aborted) throw new AuthoredFontBindingCancelledError();
         const id = requireNonemptyString(documentId, "documentId");

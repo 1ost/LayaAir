@@ -11,6 +11,7 @@ import {
     type AuthoredFontCatalogResponse,
 } from "./AuthoredFontCatalog";
 import { DisplayObject, MovieClip, SimpleButton, Sprite, TextField } from "../../../layaAir/flash";
+import { applyAuthoredLocaleText } from "./AuthoredTextField";
 import { ApplicationDomain } from "../../../layaAir/flash/system/ApplicationDomain";
 import {
     createAuthoredPrefabDefinition,
@@ -577,7 +578,7 @@ function localizeDefinition(
         try {
             for (const translation of translations) {
                 const target = resolveTranslationTarget(root, translation.target);
-                target.text = translation.text;
+                applyAuthoredLocaleText(target, translation.text);
             }
             return root;
         } catch (error) {
