@@ -1047,8 +1047,6 @@ export class FlashLibrarySymbolAdapter {
                 width: 0, height: 0, children: [],
             };
         }
-        if (this.textMapOnly)
-            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         exactValue(staticText.exactGlyphs, true, "FLASH_LIBRARY_STATIC_TEXT_GLYPHS_REQUIRED",
             `Text ${characterId} lacks exact glyph evidence.`);
         if (issues.length !== 0)
@@ -1066,6 +1064,8 @@ export class FlashLibrarySymbolAdapter {
             return this.createPositionedStaticTextRuns(
                 asset, operation, instanceId, assets, projection, runs, initialText,
             );
+        if (this.textMapOnly)
+            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         if (runs.length !== 1)
             fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain at least one authenticated run.`);
         const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);

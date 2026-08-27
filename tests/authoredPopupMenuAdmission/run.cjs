@@ -417,6 +417,19 @@ assert.deepEqual(positioned.children.map(child => ({
 })), [{ kind: "dynamic-text", x: 5, y: 2.5, text: "A", font: "Arial", color: 0xb3b3b3 },
     { kind: "dynamic-text", x: 0, y: 8.5, text: "B", font: "Arial", color: 0xb3b3b3 }]);
 assert.equal(new Set(positioned.children.map(child => child.instanceId)).size, 2);
+const positionedTextMap = adapter.parse({
+    ...positionedStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.PositionedStaticTextMap",
+    textMapOnly: true,
+}).root.children[0];
+assert.deepEqual(positionedTextMap.children.map(child => ({
+    instanceId: child.instanceId,
+    text: child.textField.initialText,
+})), positioned.children.map(child => ({
+    instanceId: child.instanceId,
+    text: child.textField.initialText,
+})));
 
 const positionedGlyphDrift = structuredClone(positionedStaticText);
 positionedGlyphDrift.timelines = new Map(positionedStaticText.timelines);
@@ -447,4 +460,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 21/21 passed\n");
+process.stdout.write("authored popup-menu admission: 22/22 passed\n");
