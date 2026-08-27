@@ -86,6 +86,7 @@ const FONT_FIELDS = new Set([
     "italic", "kerning", "leading", "unitsPerEm",
 ]);
 const FONT_GLYPH_FIELDS = new Set(["advance", "bounds", "codePoint", "index"]);
+const FONT_GLYPH_WITHOUT_LAYOUT_FIELDS = new Set(["codePoint", "index"]);
 const FONT_GLYPH_BOUNDS_FIELDS = new Set(["xmax", "xmin", "ymax", "ymin"]);
 const FONT_KERNING_FIELDS = new Set(["adjustment", "leftCodePoint", "rightCodePoint"]);
 const FONT_ALIGN_ZONES_FIELDS = new Set(["fontId", "sourceTag", "tableHint", "tableHintName", "zones"]);
@@ -770,9 +771,16 @@ export class FlashLibrarySymbolAdapter {
         const isEmbedded = font.embedded === undefined
             ? false
             : boolean(font.embedded, `library.assets.${fontId}.font.embedded`);
+        const hasLayout = isEmbedded
+            ? boolean(font.hasLayout, `library.assets.${fontId}.font.hasLayout`)
+            : false;
         if (useOutlines && !isEmbedded)
             fail("FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED", `Text ${characterId} uses outlines without an embedded font.`);
-        const embeddedFont = isEmbedded
+        if (useOutlines && !hasLayout)
+            fail("FLASH_LIBRARY_FONT_LAYOUT_REQUIRED", `Text ${characterId} uses outlines from font ${fontId}, which does not retain layout metrics.`);
+        if (isEmbedded && !hasLayout)
+            admitEmbeddedFontAsDevice(fontAsset, font, fontId, resourceAuthorities);
+        const embeddedFont = isEmbedded && hasLayout
             ? authoredEmbeddedFont(fontAsset, font, fontId, resourceAuthorities, resources)
             : undefined;
         // DefineEditText.useOutlines selects the embedded font independently
@@ -789,7 +797,7 @@ export class FlashLibrarySymbolAdapter {
         const placement = placementTransform(operation);
         const html = boolean(textField.html, `library.assets.${characterId}.textField.html`);
         const authoredHtml = html
-            ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color)
+            ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color, isEmbedded && !hasLayout)
             : undefined;
         const initialText = authoredHtml?.markup ?? sourceInitialText;
         return {
@@ -821,7 +829,7 @@ export class FlashLibrarySymbolAdapter {
                 ...(rasterization === undefined ? {} : { rasterization }),
                 format: {
                     fontMode: embeddedFont === undefined ? "device" : "embedded",
-                    font: string(font.family, `library.assets.${fontId}.font.family`),
+                    font: authoredHtml?.font ?? string(font.family, `library.assets.${fontId}.font.family`),
                     size: finite(textField.fontSize, "text.fontSize"),
                     color: finite(color.color, "text.color.color"),
                     bold: boolean(font.bold, "font.bold"),
@@ -978,19 +986,63 @@ function parseAuthoredFlashHtml(
     font: Record<string, any>,
     textField: Record<string, any>,
     color: Record<string, any>,
+    allowDeviceFaceOverride = false,
 ): ReturnType<typeof parseRestrictedFlashHtmlText> {
     let layout: ReturnType<typeof parseRestrictedFlashHtmlText>;
     try { layout = parseRestrictedFlashHtmlText(value); }
     catch (error) {
         fail("FLASH_LIBRARY_TEXT_HTML_UNSUPPORTED", `Text ${characterId}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    if (layout.font !== string(font.family, `Text ${characterId} font family`)
+    if (!allowDeviceFaceOverride && layout.font !== string(font.family, `Text ${characterId} font family`)
         || layout.size !== finite(textField.fontSize, `Text ${characterId} font size`)
         || layout.color !== finite(color.color, `Text ${characterId} color`)
         || layout.align !== string(textField.align, `Text ${characterId} align`)) {
         fail("FLASH_LIBRARY_TEXT_HTML_AUTHORITY_MISMATCH", `Text ${characterId} HTML formatting disagrees with its field metadata.`);
     }
     return layout;
+}
+
+function admitEmbeddedFontAsDevice(
+    fontAsset: Record<string, any>,
+    font: Record<string, any>,
+    fontId: number,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+): void {
+    exactValue(fontAsset.sourceTag, "DefineFont3Tag", "FLASH_LIBRARY_FONT_FORMAT_UNSUPPORTED", `Font ${fontId} is not an embedded DefineFont3 resource.`);
+    exactValue(font.embedded, true, "FLASH_LIBRARY_FONT_NOT_EMBEDDED", `Font ${fontId} is not embedded.`);
+    exactValue(font.hasLayout, false, "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} unexpectedly retains layout metrics.`);
+    exactValue(font.ascent, 0, "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} has an ascent without layout authority.`);
+    exactValue(font.descent, 0, "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} has a descent without layout authority.`);
+    exactValue(font.leading, 0, "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} has leading without layout authority.`);
+    positive(font.unitsPerEm, `library.assets.${fontId}.font.unitsPerEm`);
+    boolean(font.bold, `library.assets.${fontId}.font.bold`);
+    boolean(font.italic, `library.assets.${fontId}.font.italic`);
+    string(font.family, `library.assets.${fontId}.font.family`);
+
+    const sourcePath = string(fontAsset.path, `library.assets.${fontId}.path`);
+    if (!sourcePath.toLocaleLowerCase("en-US").endsWith(".ttf"))
+        fail("FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED", `Font ${fontId} must identify a .ttf resource.`);
+    const authority = resourceAuthorities.get(sourcePath);
+    if (!authority || authority.sourcePath !== sourcePath || authority.mediaType !== "font/ttf")
+        fail("FLASH_LIBRARY_FONT_RESOURCE_AUTHORITY_MISSING", `No authenticated TrueType authority exists for '${sourcePath}'.`);
+
+    const glyphCount = positiveInteger(font.glyphCount, `library.assets.${fontId}.font.glyphCount`);
+    const glyphs = array(font.glyphs, `library.assets.${fontId}.font.glyphs`);
+    if (glyphs.length !== glyphCount)
+        fail("FLASH_LIBRARY_FONT_GLYPH_COUNT_MISMATCH", `Font ${fontId} glyph count does not match its retained outline inventory.`);
+    let previousCodePoint = -1;
+    glyphs.forEach((candidate, index) => {
+        const glyph = object(candidate, `library.assets.${fontId}.font.glyphs[${index}]`);
+        exactKeys(glyph, FONT_GLYPH_WITHOUT_LAYOUT_FIELDS, `library.assets.${fontId}.font.glyphs[${index}]`, "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH");
+        exactValue(glyph.index, index, "FLASH_LIBRARY_FONT_GLYPH_INDEX_MISMATCH", `Font ${fontId} glyph indices must be contiguous source order.`);
+        const codePoint = unicodeScalar(glyph.codePoint, `font ${fontId} glyph ${index}.codePoint`);
+        if (codePoint <= previousCodePoint)
+            fail("FLASH_LIBRARY_FONT_GLYPH_ORDER_UNSUPPORTED", `Font ${fontId} glyph code points must be strictly ordered.`);
+        previousCodePoint = codePoint;
+    });
+    exactValue(array(font.kerning, `library.assets.${fontId}.font.kerning`).length, 0,
+        "FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH", `Font ${fontId} has kerning without layout authority.`);
+    authoredFontAlignZones(fontAsset.fontAlignZones, fontId, glyphCount);
 }
 
 function authoredEmbeddedFont(

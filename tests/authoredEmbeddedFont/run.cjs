@@ -265,6 +265,32 @@ async function main() {
     assert.equal(inputText.format.fontMode, "embedded",
         "authenticated non-HTML input text must retain its embedded TrueType authority");
 
+    const noLayoutFixture = fixture();
+    const noLayoutFont = noLayoutFixture.library.assets[18].font;
+    noLayoutFont.ascent = 0;
+    noLayoutFont.descent = 0;
+    noLayoutFont.hasLayout = false;
+    noLayoutFont.kerning = [];
+    noLayoutFont.leading = 0;
+    noLayoutFont.bold = false;
+    noLayoutFont.family = "MS PGothic";
+    noLayoutFont.glyphs = noLayoutFont.glyphs.map(({ codePoint, index }) => ({ codePoint, index }));
+    const noLayoutTextAsset = noLayoutFixture.library.assets[203];
+    const noLayoutMarkup = '<p align="center"><font face="Arial" size="12" color="#ffffff" letterSpacing="0.000000" kerning="1">loading</font></p>';
+    noLayoutTextAsset.initialText = noLayoutMarkup;
+    noLayoutTextAsset.textField.html = true;
+    noLayoutTextAsset.textField.initialText = noLayoutMarkup;
+    noLayoutTextAsset.textField.useOutlines = false;
+    delete noLayoutTextAsset.textRendering;
+    const noLayoutContent = adapter.parse(noLayoutFixture);
+    const noLayoutText = noLayoutContent.root.children[0].textField;
+    assert.equal(noLayoutText.format.fontMode, "device");
+    assert.equal(noLayoutText.format.font, "Arial",
+        "the exact HTML face is the device-font authority when Flash retained no layout metrics");
+    assert.equal(noLayoutText.format.embeddedFont, undefined);
+    assert.deepEqual(noLayoutContent.resources, [],
+        "a no-layout embedded outline is authenticated but not mispublished as a measurable native font");
+
     const description = describeNativeAuthoredFontCatalog(content, "nested/pet-house.lh");
     assert.equal(description.manifest.fonts[0].sourceUrl, "../resources/flash-font-18.ttf");
     assert.equal(description.definitions[0].className, "MC_PetHouse.__authoredFont_18_bold");
@@ -333,6 +359,24 @@ async function main() {
             value.library.assets[203].textRendering.gridFit = 3;
             value.library.assets[203].textRendering.gridFitMode = "none";
         }, /FLASH_LIBRARY_TEXT_GRID_FIT_UNSUPPORTED/],
+        ["no-layout outlined font", value => {
+            const font = value.library.assets[18].font;
+            font.ascent = 0; font.descent = 0; font.hasLayout = false; font.kerning = []; font.leading = 0;
+            font.glyphs = font.glyphs.map(({ codePoint, index }) => ({ codePoint, index }));
+        }, /FLASH_LIBRARY_FONT_LAYOUT_REQUIRED/],
+        ["no-layout font with fabricated advance", value => {
+            const font = value.library.assets[18].font;
+            font.ascent = 0; font.descent = 0; font.hasLayout = false; font.kerning = []; font.leading = 0;
+            font.glyphs = font.glyphs.map(({ codePoint, index }) => ({ codePoint, index }));
+            font.glyphs[0].advance = 1;
+            value.library.assets[203].textField.useOutlines = false;
+            delete value.library.assets[203].textRendering;
+        }, /FLASH_LIBRARY_FONT_LAYOUT_AUTHORITY_MISMATCH/],
+        ["layout font HTML face mismatch", value => {
+            value.library.assets[203].initialText = '<p align="center"><font face="Other" size="12" color="#ffffff" letterSpacing="0.000000" kerning="1">A</font></p>';
+            value.library.assets[203].textField.html = true;
+            value.library.assets[203].textField.initialText = value.library.assets[203].initialText;
+        }, /FLASH_LIBRARY_TEXT_HTML_AUTHORITY_MISMATCH/],
     ]) {
         const value = fixture();
         mutate(value);
