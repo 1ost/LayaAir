@@ -15,3 +15,10 @@ execFileSync(process.execPath, [path.join(repositoryRoot, "tests", "authoredCont
     cwd: repositoryRoot,
     stdio: "inherit"
 });
+
+const pythonExecutable = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
+execFileSync(pythonExecutable, [path.join(repositoryRoot, "tests", "authoredContentTooling", "swf-to-laya-provider.test.py")], {
+    cwd: repositoryRoot,
+    stdio: "inherit",
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
+});
