@@ -373,6 +373,8 @@ function validateHierarchyNode(
     validateEffectiveNodeField(source, value, path, "height", 0);
     validateEffectiveNodeField(source, value, path, "alpha", 1);
     validateEffectiveNodeField(source, value, path, "visible", true);
+    if (source.blendMode !== undefined && value.blendMode !== source.blendMode)
+        fail("AUTHORED_CONTENT_NATIVE_BLEND_MODE_MISMATCH", `${path} expected blendMode '${source.blendMode}'; received ${String(value.blendMode)}.`);
     if (!root) {
         if (value.zOrder !== undefined && value.zOrder !== source.depth)
             fail("AUTHORED_CONTENT_NATIVE_DEPTH_MISMATCH", `${path} expected zOrder ${source.depth}; received ${String(value.zOrder)}.`);

@@ -618,6 +618,7 @@ async function main(): Promise<void> {
             schema: "flash-timeline@1", symbolId: 1, symbolName: "Role_Affine", frameRate: 30, frameCount: 1,
             frames: [{ index: 1, operations: [{
                 op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                blendMode: "add", blendModeCode: 8,
                 matrix: { a: 2, b: 0.25, c: -0.5, d: 3, tx: 5, ty: 7 },
             }, {
                 op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [gradientGlow, glow],
@@ -635,6 +636,7 @@ async function main(): Promise<void> {
         assert(image.matrix?.a === 2 && image.matrix.b === 0.25 && image.matrix.c === -0.5 && image.matrix.d === 3,
             "static affine matrix drifted");
         assert(image.x === 7.5 && image.y === 16.5, "affine image-bounds closure drifted");
+        assert(image.blendMode === "add", "authenticated additive blend mode drifted");
         assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "gradient-glow"
             && field.textField.filters[0].strength === 1.359375 && field.textField.filters[0].quality === 3
             && field.textField.filters[1].kind === "glow" && field.textField.filters[1].strength === 5,
@@ -646,6 +648,7 @@ async function main(): Promise<void> {
             y: node.y ?? 0,
             width: node.width ?? 0,
             height: node.height ?? 0,
+            ...(node.blendMode === undefined ? {} : { blendMode: node.blendMode }),
             ...(node.kind === "image" ? { skin: "res://shape-2.png" } : {}),
             "_$child": node.children.map(hierarchyNode),
         });
@@ -654,6 +657,8 @@ async function main(): Promise<void> {
             ...hierarchyNode(content.root),
         }, "role-affine.mc", new Map([["flash-character-2", "shape-2.png"]]));
         const serializedField = (hierarchy._$child as any[])[1];
+        assert((hierarchy._$child as any[])[0].blendMode === "add",
+            "hierarchy writer lost the authenticated additive blend mode");
         const serializedFilters = serializedField.authoredConfiguration.filters;
         assert(Array.isArray(serializedFilters) && serializedFilters.length === 2,
             "hierarchy writer lost the authored filter closure");

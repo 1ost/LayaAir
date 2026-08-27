@@ -87,7 +87,10 @@ function verifyFailClosedMutations(adapter, baseline) {
         ["text variable binding", request => firstTextField(request).variableName = "loading", /FLASH_LIBRARY_TEXT_VARIABLE_UNSUPPORTED/],
         ["text authority mismatch", request => firstTextAsset(request).initialText = "drift", /FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH/],
         ["placement filter target", request => firstStaticPlacement(request).filters = [], /FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED/],
-        ["placement blend mode", request => firstStaticPlacement(request).blendMode = "multiply", /FLASH_LIBRARY_PLACE_FIELD_UNSUPPORTED/],
+        ["placement blend mode", request => {
+            firstStaticPlacement(request).blendMode = "multiply";
+            firstStaticPlacement(request).blendModeCode = 3;
+        }, /FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED/],
         ["placement matrix field", request => firstStaticPlacement(request).matrix.perspective = 1, /FLASH_LIBRARY_MATRIX_FIELD_UNSUPPORTED/],
         ["move before place", request => firstStaticPlacement(request).move = true, /FLASH_LIBRARY_DISPLAY_DEPTH_INVALID/],
         ["animated singular matrix", request => firstReplacement(request).matrix = { ...unitMatrix(1, 0), a: 1, b: 2, c: 2, d: 4 }, /FLASH_LIBRARY_ANIMATED_MATRIX_SINGULAR/],

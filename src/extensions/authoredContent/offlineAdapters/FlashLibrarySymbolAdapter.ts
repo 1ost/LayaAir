@@ -50,7 +50,7 @@ type FlashLibraryShapeProjection = {
     readonly height: number;
 };
 
-const PLACEMENT_FIELDS = new Set(["characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
+const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
 const FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
@@ -347,6 +347,9 @@ export class FlashLibrarySymbolAdapter {
             node = this.createStaticTextField(asset, operation, instanceId, assets);
         else
             fail("FLASH_LIBRARY_CHARACTER_KIND_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' is unsupported.`);
+        const blendMode = authoredBlendMode(operation);
+        if (blendMode !== undefined)
+            node = { ...node, blendMode };
         return operation.clipDepth === undefined
             ? node
             : { ...node, clipDepth: positiveInteger(operation.clipDepth, "place.clipDepth") };
@@ -551,6 +554,10 @@ export class FlashLibrarySymbolAdapter {
                 op: "place", characterId: instance.characterId, depth: index + 1, move: false, ratio: 0,
                 ...(retainsVariableName ? { name: sourceName } : {}),
                 ...(instance.operation.filters === undefined ? {} : { filters: instance.operation.filters }),
+                ...(instance.operation.blendMode === undefined ? {} : {
+                    blendMode: instance.operation.blendMode,
+                    blendModeCode: instance.operation.blendModeCode,
+                }),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
             const placedAsset = object(assets[String(instance.characterId)], `library.assets.${instance.characterId}`);
@@ -1805,11 +1812,24 @@ function exactPlace(operation: Record<string, any>, mode: "static" | "replacemen
         fail("FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED", "Replacement frames cannot override the retained depth transform.");
     if (operation.ratio !== undefined && operation.ratio !== 0)
         fail("FLASH_LIBRARY_MORPH_RATIO_UNSUPPORTED", "Non-zero morph ratios are unsupported.");
+    authoredBlendMode(operation);
     if (operation.matrix !== undefined) {
         const placement = placementTransform(operation);
         if (mode === "replacement" && (placement.x !== 0 || placement.y !== 0))
             fail("FLASH_LIBRARY_REPLACEMENT_MATRIX_UNSUPPORTED", "Replacement timelines require a zero-translation retained depth transform.");
     }
+}
+
+function authoredBlendMode(operation: Record<string, any>): "add" | undefined {
+    const hasMode = operation.blendMode !== undefined;
+    const hasCode = operation.blendModeCode !== undefined;
+    if (hasMode !== hasCode)
+        fail("FLASH_LIBRARY_BLEND_MODE_AUTHORITY_INCOMPLETE", "Authored blendMode and blendModeCode must be retained together.");
+    if (!hasMode)
+        return undefined;
+    exactValue(operation.blendMode, "add", "FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED", `Blend mode '${String(operation.blendMode)}' is unsupported.`);
+    exactValue(operation.blendModeCode, 8, "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH", `Blend mode '${String(operation.blendMode)}' requires code 8.`);
+    return "add";
 }
 
 interface PlacementTransform {

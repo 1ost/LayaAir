@@ -84,6 +84,8 @@ export interface NeutralAuthoredNode {
     readonly height?: number;
     readonly alpha?: number;
     readonly visible?: boolean;
+    /** Closed native compositing set admitted from authored Flash placements. */
+    readonly blendMode?: "add";
     readonly matrix?: NeutralAuthoredMatrix;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
     readonly filters?: ReadonlyArray<NeutralAuthoredFilter>;
@@ -382,7 +384,7 @@ function normalizeNode(
 ): NeutralAuthoredNode {
     const source = record(value, path);
     allowedKeys(source, [
-        "linkage", "instanceId", "kind", "name", "depth", "clipDepth", "x", "y", "width", "height", "alpha", "visible", "matrix",
+        "linkage", "instanceId", "kind", "name", "depth", "clipDepth", "x", "y", "width", "height", "alpha", "visible", "blendMode", "matrix",
         "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
@@ -409,6 +411,9 @@ function normalizeNode(
         height: optionalNumber(source.height, `${path}.height`, scale),
         alpha: optionalNumber(source.alpha, `${path}.alpha`),
         visible: optionalBoolean(source.visible, `${path}.visible`),
+        blendMode: source.blendMode === undefined
+            ? undefined
+            : exactLiteral(source.blendMode, "add", `${path}.blendMode`),
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
         filters: source.filters === undefined ? undefined : array(source.filters, `${path}.filters`).map((filter, index) =>
             normalizeAuthoredFilter(filter, `${path}.filters[${index}]`, scale)),
