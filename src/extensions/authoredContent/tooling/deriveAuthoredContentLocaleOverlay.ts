@@ -249,10 +249,24 @@ function visitLocaleTextTargets(
     }
     if (!Array.isArray(node.children))
         fail("AUTHORED_CONTENT_LOCALE_NODE_CHILDREN", `${path}.children must be an array.`);
-    for (const [index, value] of node.children.entries()) {
+    const childRecords = node.children.map((value, index) =>
+        plainRecord(value, `${path}.children[${index}]`));
+    const nominalSegments = childRecords.map((child, index) => nodeSegment(child, `${path}.children[${index}]`));
+    const segmentCounts = new Map<string, number>();
+    nominalSegments.forEach(segment => segmentCounts.set(segment, (segmentCounts.get(segment) ?? 0) + 1));
+    const placementIds = new Set<string>();
+    for (const [index, child] of childRecords.entries()) {
         const childPath = `${path}.children[${index}]`;
-        const child = plainRecord(value, childPath);
-        const segment = nodeSegment(child, childPath);
+        let segment = nominalSegments[index];
+        if ((segmentCounts.get(segment) ?? 0) > 1) {
+            if (child.textField === undefined)
+                fail("AUTHORED_CONTENT_LOCALE_TEXT_TARGET_AMBIGUOUS", `${childPath} duplicates non-text runtime target '${segment}'.`);
+            const instanceId = stableText(child.instanceId, `${childPath}.instanceId`);
+            if (!/^character_\d+\$d\d+\$f\d+\$i\d+$/.test(instanceId) || placementIds.has(instanceId))
+                fail("AUTHORED_CONTENT_LOCALE_TEXT_TARGET_AMBIGUOUS", `${childPath} has no unique dynamic-text placement identity.`);
+            placementIds.add(instanceId);
+            segment = instanceId;
+        }
         const generated = /^character_\d+(\$d\d+\$f\d+\$i\d+)?$/.exec(segment);
         const canonicalSegment = generated ? `character_*${generated[1] ?? ""}` : segment;
         visitLocaleTextTargets(

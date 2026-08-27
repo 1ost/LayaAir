@@ -142,7 +142,7 @@ function runtimeHierarchyTextTargets(value: unknown, label: string): readonly st
     const authored = plainRecord(hierarchy._$authoredContent, `${label}._$authoredContent`);
     if (!Array.isArray(authored.nodes))
         fail("AUTHORED_CONTENT_LOCALE_RUNTIME_HIERARCHY", `${label}._$authoredContent.nodes must be an array.`);
-    const targets: string[] = [];
+    const targets: Array<{ path: string; instanceId: unknown }> = [];
     for (const [index, value] of authored.nodes.entries()) {
         const node = plainRecord(value, `${label}._$authoredContent.nodes[${index}]`);
         if (node.kind !== "dynamic-text") continue;
@@ -151,11 +151,22 @@ function runtimeHierarchyTextTargets(value: unknown, label: string): readonly st
         const path = node.animatorOwnerPath as string[];
         if (path.some(segment => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\")))
             fail("AUTHORED_CONTENT_LOCALE_RUNTIME_HIERARCHY", `${label}._$authoredContent.nodes[${index}].animatorOwnerPath is not normalized.`);
-        targets.push(path.length === 0 ? "$" : path.join("/"));
+        targets.push({ path: path.length === 0 ? "$" : path.join("/"), instanceId: node.instanceId });
     }
-    if (new Set(targets).size !== targets.length)
-        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS", `${label} contains duplicate dynamic-text runtime paths.`);
-    return targets;
+    const counts = new Map<string, number>();
+    targets.forEach(target => counts.set(target.path, (counts.get(target.path) ?? 0) + 1));
+    const resolved = targets.map(target => {
+        if (counts.get(target.path) === 1) return target.path;
+        const instanceId = requiredString(target.instanceId, `${label} duplicate dynamic-text instanceId`);
+        if (!/^character_\d+\$d\d+\$f\d+\$i\d+$/.test(instanceId))
+            fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS",
+                `${label} duplicate dynamic-text path '${target.path}' has no unique placement identity.`);
+        const slash = target.path.lastIndexOf("/");
+        return slash < 0 ? instanceId : `${target.path.slice(0, slash)}/${instanceId}`;
+    });
+    if (new Set(resolved).size !== resolved.length)
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS", `${label} contains duplicate dynamic-text placement identities.`);
+    return resolved;
 }
 
 function derivationMode(value: unknown, label: string): "strict" | "text-map-only" {

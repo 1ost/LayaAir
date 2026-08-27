@@ -175,3 +175,38 @@ test("text-map-only fails closed on ambiguous, missing, or extra canonical text 
             || error.code === "AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_SET_DIFFERENCE"
     );
 });
+
+test("text-map-only reconciles duplicate authored text names through unique placement identities", () => {
+    const base = document();
+    const localized = document();
+    const duplicate = (instanceId, sourceId, text) => {
+        const value = textField("AttributeName", text);
+        value.instanceId = instanceId;
+        value.linkage = instanceId.split("$", 1)[0];
+        value.textField.sourceId = sourceId;
+        return value;
+    };
+    base.root.children[1].children = [
+        duplicate("character_288$d21$f1$i9", 288, "Post-inherit"),
+        duplicate("character_296$d30$f1$i17", 296, "Post-inherit"),
+    ];
+    localized.root.children[1].children = [
+        duplicate("character_285$d21$f1$i9", 285, "Nach Vererbung"),
+        duplicate("character_293$d30$f1$i17", 293, "Nach Vererbung"),
+    ];
+    const overlay = api.deriveAuthoredContentLocaleOverlay({
+        ...request(base, localized),
+        mode: "text-map-only",
+        bundles: [{
+            ...request(base, localized).bundles[0],
+            baseRuntimeTargets: [
+                "panel/character_288$d21$f1$i9",
+                "panel/character_296$d30$f1$i17",
+            ],
+        }],
+    });
+    assert.deepEqual(overlay.translations, [
+        { bundle: "lobby", target: "panel/character_288$d21$f1$i9", text: "Nach Vererbung" },
+        { bundle: "lobby", target: "panel/character_296$d30$f1$i17", text: "Nach Vererbung" },
+    ]);
+});

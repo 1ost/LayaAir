@@ -6,6 +6,7 @@ import { registerDefinitionByName } from "../../src/layaAir/flash/utils/Definiti
 import { MovieClip } from "../../src/layaAir/flash/display/MovieClip";
 import { Sprite } from "../../src/layaAir/flash/display/Sprite";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
+import { Node } from "../../src/layaAir/laya/display/Node";
 import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
 import { Loader } from "../../src/layaAir/laya/net/Loader";
 import { AssetDb } from "../../src/layaAir/laya/resource/AssetDb";
@@ -472,6 +473,64 @@ test("locale overlays share native structure while replacing editable text and b
     const created = activation.create("entry");
     assert.equal(title.text, "Deutsch");
     created.destroy(true);
+});
+
+test("locale overlays resolve duplicate authored names through unique dynamic-text source identities", async () => {
+    const fields = [288, 296].map(sourceId => {
+        const field = Object.create(TextField.prototype) as TextField & { authoredConfiguration: { sourceId: number } };
+        Object.defineProperties(field, {
+            name: { value: "AttributeName", writable: true, configurable: true },
+            text: { value: "Post-inherit", writable: true, configurable: true },
+            destroyed: { value: false, configurable: true },
+            authoredConfiguration: { value: { sourceId }, configurable: true },
+        });
+        return field;
+    });
+    const prefab = {
+        create: () => {
+            const panel = Object.create(Node.prototype) as Node;
+            Object.defineProperties(panel, {
+                numChildren: { value: fields.length, configurable: true },
+                getChildByName: { value: (): null => null, configurable: true },
+                getChildAt: { value: (index: number) => fields[index], configurable: true },
+            });
+            const root = createCatalogClip();
+            Object.defineProperty(root, "getChildByName", {
+                value: (name: string) => name === "UIInherit" ? panel : null,
+                configurable: true,
+            });
+            return root;
+        },
+    };
+    const manifest = {
+        schema: "laya-authored-content-catalog@1",
+        id: "fixtures.duplicate-text-base",
+        bundles: [{
+            id: "entry", runtimeId: "fixtures.catalog.DuplicateText", linkage: "MC_DuplicateText",
+            sourceType: "MovieClip", prefab: "entry.lh", assets: [],
+        }],
+    } as const;
+    const overlay = {
+        schema: "laya-authored-content-locale@1",
+        id: "fixtures.duplicate-text-de", locale: "de_DE", baseCatalog: "Duplicate.runtime-catalog.json",
+        assetOverrides: [], translations: [
+            { bundle: "entry", target: "UIInherit/character_288$d21$f1$i9", text: "Nach Vererbung A" },
+            { bundle: "entry", target: "UIInherit/character_296$d30$f1$i17", text: "Nach Vererbung B" },
+        ],
+    } as const;
+    const activation = await loadAndActivateAuthoredContentResource("/Resources/de_DE/Swf/Duplicate.swf", {
+        loader: { async load(_url: string, type?: string): Promise<unknown> {
+            if (type === Loader.JSON) return _url.endsWith(".locale.json") ? overlay : manifest;
+            return prefab;
+        } },
+        applicationDomain: new ApplicationDomain(),
+        runtimeBindings: [{ runtimeId: "fixtures.catalog.DuplicateText", ctor: CatalogClip }],
+    });
+    activation.create("entry");
+    assert.deepEqual(fields.map(field => field.text), ["Nach Vererbung A", "Nach Vererbung B"]);
+
+    fields[1].authoredConfiguration.sourceId = 288;
+    assert.throws(() => activation.create("entry"), /ambiguous generated placement identity/);
 });
 
 test("locale overlays fail closed on timeline replacement and unknown text targets", async () => {

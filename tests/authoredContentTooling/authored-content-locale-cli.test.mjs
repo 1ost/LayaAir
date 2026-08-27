@@ -145,3 +145,43 @@ test("derive-locale passes the strict text-map-only request policy to the API", 
     }
     finally { await rm(value.root, { recursive: true, force: true }); }
 });
+
+test("derive-locale projects duplicate runtime names to unique generated text placements", async () => {
+    const value = await fixture();
+    try {
+        const base = document("Ready");
+        const localized = document("Pret");
+        const cloneText = (source, name, instanceId, sourceId, text) => ({
+            ...structuredClone(source), name, instanceId, linkage: instanceId.split("$", 1)[0],
+            textField: { ...structuredClone(source.textField), sourceId, initialText: text },
+        });
+        base.root.children = [
+            cloneText(base.root.children[0], "AttributeName", "character_288$d21$f1$i9", 288, "Post-inherit"),
+            cloneText(base.root.children[0], "AttributeName", "character_296$d30$f1$i17", 296, "Post-inherit"),
+        ];
+        localized.root.children = [
+            cloneText(localized.root.children[0], "AttributeName", "character_285$d21$f1$i9", 285, "Nach Vererbung"),
+            cloneText(localized.root.children[0], "AttributeName", "character_293$d30$f1$i17", 293, "Nach Vererbung"),
+        ];
+        await writeFile(path.join(value.root, "ir/base.json"), JSON.stringify(base));
+        await writeFile(path.join(value.root, "ir/fr.json"), JSON.stringify(localized));
+        await writeFile(path.join(value.root, "ir/base.lh"), JSON.stringify({
+            "_$authoredContent": { nodes: [
+                { kind: "dynamic-text", instanceId: "character_288$d21$f1$i9", animatorOwnerPath: ["AttributeName"] },
+                { kind: "dynamic-text", instanceId: "character_296$d30$f1$i17", animatorOwnerPath: ["AttributeName"] },
+            ] },
+        }));
+        await writeFile(value.requestPath, JSON.stringify({
+            ...value.request,
+            mode: "text-map-only",
+            bundles: [{ ...value.request.bundles[0], baseRuntimeHierarchy: "ir/base.lh" }],
+        }));
+        const result = invoke("derive-locale", "--request", value.requestPath, "--output", value.outputPath);
+        assert.equal(result.status, 0, result.stderr);
+        assert.deepEqual(JSON.parse(result.stdout).overlay.translations, [
+            { bundle: "lobby", target: "character_288$d21$f1$i9", text: "Nach Vererbung" },
+            { bundle: "lobby", target: "character_296$d30$f1$i17", text: "Nach Vererbung" },
+        ]);
+    }
+    finally { await rm(value.root, { recursive: true, force: true }); }
+});

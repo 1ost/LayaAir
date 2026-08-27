@@ -594,13 +594,32 @@ function resolveTranslationTarget(root: Node, target: string): TextField {
     let current: Node | null = root;
     if (target !== "$") {
         for (const segment of target.split("/")) {
-            current = current?.getChildByName(segment) ?? null;
+            current = current === null ? null
+                : current.getChildByName(segment) ?? resolveGeneratedTextPlacement(current, segment, target);
             if (current === null) throw new Error(`Authored locale text target '${target}' is missing`);
         }
     }
     if (!(current instanceof TextField))
         throw new TypeError(`Authored locale text target '${target}' must be a TextField`);
     return current;
+}
+
+function resolveGeneratedTextPlacement(parent: Node, segment: string, target: string): TextField | null {
+    const generated = /^character_(\d+)\$d\d+\$f\d+\$i\d+$/.exec(segment);
+    if (!generated) return null;
+    const sourceId = Number(generated[1]);
+    const candidates: TextField[] = [];
+    for (let index = 0; index < parent.numChildren; index++) {
+        const child = parent.getChildAt(index);
+        if (!(child instanceof TextField)) continue;
+        const configuration = (child as TextField & { readonly authoredConfiguration?: unknown }).authoredConfiguration;
+        if (configuration && typeof configuration === "object"
+            && (configuration as { readonly sourceId?: unknown }).sourceId === sourceId)
+            candidates.push(child);
+    }
+    if (candidates.length > 1)
+        throw new Error(`Authored locale text target '${target}' has an ambiguous generated placement identity`);
+    return candidates[0] ?? null;
 }
 
 function normalizeBindings(
