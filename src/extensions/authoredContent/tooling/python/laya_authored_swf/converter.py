@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import lzma
+import math
 import os
 import re
 import shutil
@@ -1545,20 +1546,31 @@ def color_transform_value(element: ET.Element | None) -> dict[str, float] | None
     if element is None:
         return None
     keys = {
-        "redMultiplier": ("redMultTerm", 256),
-        "greenMultiplier": ("greenMultTerm", 256),
-        "blueMultiplier": ("blueMultTerm", 256),
-        "alphaMultiplier": ("alphaMultTerm", 256),
-        "redOffset": ("redAddTerm", 1),
-        "greenOffset": ("greenAddTerm", 1),
-        "blueOffset": ("blueAddTerm", 1),
-        "alphaOffset": ("alphaAddTerm", 1),
+        "redMultiplier": ("redMultTerm", 256, 1.0),
+        "greenMultiplier": ("greenMultTerm", 256, 1.0),
+        "blueMultiplier": ("blueMultTerm", 256, 1.0),
+        "alphaMultiplier": ("alphaMultTerm", 256, 1.0),
+        "redOffset": ("redAddTerm", 1, 0.0),
+        "greenOffset": ("greenAddTerm", 1, 0.0),
+        "blueOffset": ("blueAddTerm", 1, 0.0),
+        "alphaOffset": ("alphaAddTerm", 1, 0.0),
     }
+    if not any(source in element.attrib for source, _, _ in keys.values()):
+        return None
     result: dict[str, float] = {}
-    for output, (source, divisor) in keys.items():
-        if source in element.attrib:
-            result[output] = number(element.attrib[source]) / divisor
-    return result or None
+    for output, (source, divisor, default) in keys.items():
+        raw = element.attrib.get(source)
+        if raw in (None, ""):
+            result[output] = default
+            continue
+        try:
+            value = float(raw)
+        except ValueError as error:
+            raise SwfToolError(f"invalid finite color transform field {source}: {raw!r}") from error
+        if not math.isfinite(value):
+            raise SwfToolError(f"invalid finite color transform field {source}: {raw!r}")
+        result[output] = value / divisor
+    return result
 
 
 def rgba_value(element: ET.Element | None) -> dict[str, float | int] | None:

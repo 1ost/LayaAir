@@ -258,6 +258,119 @@ assert.throws(() => adapter.parse({
     runtimeLinkage: "fixtures.ScaledStaticText",
 }), /FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED/);
 
+function projectedQuarterTurn(staticMatrix, bounds, placementMatrix, runtimeLinkage) {
+    const source = fixture();
+    source.library.assets[5].staticText.matrix = staticMatrix;
+    source.library.assets[5].bounds = bounds;
+    source.timelines.set(40, timeline(40, 1, [
+        frame(1, [{
+            op: "place", characterId: 5, depth: 1, move: false, ratio: 0,
+            matrix: placementMatrix,
+        }]),
+    ]));
+    return adapter.parse({ ...source, entrySymbolId: 40, runtimeLinkage }).root.children[0];
+}
+
+const clockwiseStaticText = projectedQuarterTurn(
+    { a: 0, b: 1, c: -1, d: 0, tx: 10, ty: 20 },
+    { x: -12, y: 25, width: 20, height: 42 },
+    { a: 1, b: 0, c: 0, d: 1, tx: 100, ty: 200 },
+    "fixtures.ClockwiseStaticText",
+);
+assert.deepEqual({
+    x: clockwiseStaticText.x, y: clockwiseStaticText.y,
+    width: clockwiseStaticText.width, height: clockwiseStaticText.height,
+    matrix: clockwiseStaticText.matrix,
+}, { x: 108, y: 225, width: 42, height: 20, matrix: { a: 0, b: 1, c: -1, d: 0 } });
+
+const counterclockwiseStaticText = projectedQuarterTurn(
+    { a: 0, b: -1, c: 1, d: 0, tx: 30, ty: 40 },
+    { x: 32, y: -7, width: 20, height: 42 },
+    { a: 1, b: 0, c: 0, d: 1, tx: 100, ty: 200 },
+    "fixtures.CounterclockwiseStaticText",
+);
+assert.deepEqual({
+    x: counterclockwiseStaticText.x, y: counterclockwiseStaticText.y,
+    width: counterclockwiseStaticText.width, height: counterclockwiseStaticText.height,
+    matrix: counterclockwiseStaticText.matrix,
+}, { x: 132, y: 235, width: 42, height: 20, matrix: { a: 0, b: -1, c: 1, d: 0 } });
+
+const singularStaticText = fixture();
+singularStaticText.library.assets[5].staticText.matrix = { a: 0, b: 0, c: 0, d: 0, tx: 0, ty: 0 };
+singularStaticText.timelines.set(40, timeline(40, 1, [
+    frame(1, [{ op: "place", characterId: 5, depth: 1, move: false, ratio: 0, matrix: matrix() }]),
+]));
+assert.throws(() => adapter.parse({
+    ...singularStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.SingularStaticText",
+}), /FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED/);
+
+const nonFiniteStaticText = fixture();
+nonFiniteStaticText.library.assets[5].staticText.matrix.b = Number.NaN;
+nonFiniteStaticText.timelines.set(40, timeline(40, 1, [
+    frame(1, [{ op: "place", characterId: 5, depth: 1, move: false, ratio: 0, matrix: matrix() }]),
+]));
+assert.throws(() => adapter.parse({
+    ...nonFiniteStaticText,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.NonFiniteStaticText",
+}), /FLASH_LIBRARY_NUMBER_REQUIRED/);
+
+const zeroDepthMixed = fixture();
+zeroDepthMixed.timelines.set(40, timeline(40, 1, [frame(1, [
+    { op: "place", characterId: 5, depth: 0, move: false, ratio: 0, matrix: matrix() },
+    { op: "place", characterId: 6, depth: 1, move: false, ratio: 0, matrix: matrix() },
+])]));
+const zeroDepthMixedContent = adapter.parse({
+    ...zeroDepthMixed,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.ZeroDepthMixed",
+});
+assert.deepEqual(zeroDepthMixedContent.root.children.map(child => child.depth), [1, 2]);
+
+const zeroDepthAnimated = fixture();
+zeroDepthAnimated.timelines.set(40, timeline(40, 2, [
+    frame(1, [
+        { op: "place", characterId: 5, depth: 0, move: false, ratio: 0, matrix: matrix() },
+        { op: "place", characterId: 6, depth: 1, move: false, ratio: 0, matrix: matrix() },
+    ]),
+    frame(2, [
+        { op: "place", depth: 0, move: true, ratio: 0, matrix: { ...matrix(), tx: 7 } },
+        { op: "remove", depth: 1 },
+    ]),
+]));
+const zeroDepthAnimatedContent = adapter.parse({
+    ...zeroDepthAnimated,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.ZeroDepthAnimated",
+});
+assert.deepEqual(zeroDepthAnimatedContent.root.children.map(child => child.depth), [1, 2]);
+assert.ok(zeroDepthAnimatedContent.timeline.tracks.some(track =>
+    track.property === "x" && track.keyframes.some(keyframe => keyframe.value === 12)));
+
+const ambiguousZeroDepth = fixture();
+ambiguousZeroDepth.timelines.set(40, timeline(40, 1, [frame(1, [
+    { op: "place", characterId: 7, depth: 0, move: false, ratio: 0, matrix: matrix() },
+    { op: "place", characterId: 5, depth: 0, move: false, ratio: 0, matrix: matrix() },
+])]));
+assert.throws(() => adapter.parse({
+    ...ambiguousZeroDepth,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.AmbiguousZeroDepth",
+}), /FLASH_LIBRARY_ZERO_DEPTH_NORMALIZATION_AMBIGUOUS/);
+
+const overflowingZeroDepth = fixture();
+overflowingZeroDepth.timelines.set(40, timeline(40, 1, [frame(1, [
+    { op: "place", characterId: 5, depth: 0, move: false, ratio: 0, matrix: matrix() },
+    { op: "place", characterId: 6, depth: 0xffff, move: false, ratio: 0, matrix: matrix() },
+])]));
+assert.throws(() => adapter.parse({
+    ...overflowingZeroDepth,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.OverflowingZeroDepth",
+}), /FLASH_LIBRARY_ZERO_DEPTH_NORMALIZATION_UNSUPPORTED/);
+
 const positionedStaticText = fixture();
 positionedStaticText.library.assets[5] = {
     ...positionedStaticText.library.assets[5],
@@ -334,4 +447,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 13/13 passed\n");
+process.stdout.write("authored popup-menu admission: 21/21 passed\n");

@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
 
@@ -43,6 +44,45 @@ def _minimal_swf() -> bytes:
 
 
 class ProviderOwnedSwfToolTests(unittest.TestCase):
+    def test_color_transform_canonicalizes_flash_identity_defaults(self) -> None:
+        self.assertIsNone(swf.color_transform_value(None))
+        self.assertIsNone(swf.color_transform_value(ET.fromstring("<colorTransform />")))
+        self.assertEqual(
+            {
+                "redMultiplier": 1.0,
+                "greenMultiplier": 1.0,
+                "blueMultiplier": 1.0,
+                "alphaMultiplier": 0.5,
+                "redOffset": 0.0,
+                "greenOffset": 0.0,
+                "blueOffset": 0.0,
+                "alphaOffset": 0.0,
+            },
+            swf.color_transform_value(ET.fromstring('<colorTransform alphaMultTerm="128" />')),
+        )
+        self.assertEqual(
+            {
+                "redMultiplier": 0.5,
+                "greenMultiplier": 0.75,
+                "blueMultiplier": 1.0,
+                "alphaMultiplier": 0.25,
+                "redOffset": -5.0,
+                "greenOffset": 6.0,
+                "blueOffset": 7.0,
+                "alphaOffset": 8.0,
+            },
+            swf.color_transform_value(ET.fromstring(
+                '<colorTransform redMultTerm="128" greenMultTerm="192" blueMultTerm="256" '
+                'alphaMultTerm="64" redAddTerm="-5" greenAddTerm="6" blueAddTerm="7" alphaAddTerm="8" />'
+            )),
+        )
+
+    def test_color_transform_rejects_invalid_and_non_finite_fields(self) -> None:
+        for value in ("invalid", "NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(swf.SwfToolError, "invalid finite color transform field redMultTerm"):
+                    swf.color_transform_value(ET.fromstring(f'<colorTransform redMultTerm="{value}" />'))
+
     def test_required_migration_surface_is_exported(self) -> None:
         required = {
             "BitReader", "SWF_TAG_NAMES", "SwfToolError", "TOOL_VERSION",

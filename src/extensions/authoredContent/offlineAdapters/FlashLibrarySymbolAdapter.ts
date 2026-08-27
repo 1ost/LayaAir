@@ -250,7 +250,7 @@ export class FlashLibrarySymbolAdapter {
         if (asset.kind !== "sprite")
             fail("FLASH_LIBRARY_SPRITE_REQUIRED", `Character ${characterId} is not a sprite.`);
         const linkage = flashLibraryAssetName(asset, characterId);
-        const sourceTimeline = timeline(timelines, characterId);
+        const sourceTimeline = normalizeReservedZeroDepthTimeline(timeline(timelines, characterId), assets);
         if (sourceTimeline.symbolId !== characterId)
             fail("FLASH_LIBRARY_TIMELINE_ID_MISMATCH", `Timeline ${characterId} identifies another symbol.`);
         const firstFrame = frame(sourceTimeline, 0);
@@ -1055,18 +1055,16 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_STATIC_TEXT_ISSUES", `Text ${characterId} contains unresolved extraction issues.`);
         const staticMatrix = object(staticText.matrix, `library.assets.${characterId}.staticText.matrix`);
         exactKeys(staticMatrix, MATRIX_FIELDS, `library.assets.${characterId}.staticText.matrix`, "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED");
-        for (const field of ["a", "d"] as const) exactValue(staticMatrix[field], 1,
-            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a scaled text matrix.`);
-        for (const field of ["b", "c"] as const) exactValue(staticMatrix[field], 0,
-            "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a skewed text matrix.`);
-        // DefineText bounds already contain the text-matrix translation. Keep
-        // accepting only unit-scale, unskewed text, but authenticate finite
-        // translation channels instead of rejecting valid positioned glyphs.
-        finite(staticMatrix.tx, `library.assets.${characterId}.staticText.matrix.tx`);
-        finite(staticMatrix.ty, `library.assets.${characterId}.staticText.matrix.ty`);
+        // DefineText bounds already contain the text-matrix transform. Project
+        // the authenticated local rectangle back through that matrix before
+        // composing it with the placement transform. The deliberately narrow
+        // admitted set covers Flash identity and exact quarter-turn labels;
+        // scaling, skew, singular, and approximate rotations remain closed.
+        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const projection = staticTextProjection(staticMatrix, bounds, placementTransform(operation), characterId);
         if (runs.length > 1)
             return this.createPositionedStaticTextRuns(
-                asset, operation, instanceId, assets, staticMatrix, runs, initialText,
+                asset, operation, instanceId, assets, projection, runs, initialText,
             );
         if (runs.length !== 1)
             fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain at least one authenticated run.`);
@@ -1088,22 +1086,18 @@ export class FlashLibrarySymbolAdapter {
         exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.staticText.runs[0].color`,
             "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
         exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
-        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
-        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
-        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
         const fontSize = positive(run.fontSize, `library.assets.${characterId}.staticText.runs[0].fontSize`);
-        const placement = placementTransform(operation);
         return {
             linkage: flashLibraryAssetName(asset, characterId),
             instanceId,
             ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "dynamic-text",
             depth: positiveInteger(operation.depth, "place.depth"),
-            x: placement.x + placement.a * boundsX + placement.c * boundsY,
-            y: placement.y + placement.b * boundsX + placement.d * boundsY,
-            matrix: placement.matrix,
-            width: positive(bounds.width, `Text ${characterId} width`),
-            height: Math.max(positive(bounds.height, `Text ${characterId} height`), fontSize + 4),
+            x: projection.x,
+            y: projection.y,
+            matrix: projection.matrix,
+            width: projection.width,
+            height: Math.max(projection.height, fontSize + 4),
             variable: typeof operation.name === "string",
             textField: {
                 sourceId: characterId,
@@ -1153,7 +1147,7 @@ export class FlashLibrarySymbolAdapter {
         operation: Record<string, any>,
         instanceId: string,
         assets: Record<string, any>,
-        staticMatrix: Record<string, any>,
+        projection: StaticTextProjection,
         runs: ReadonlyArray<unknown>,
         initialText: string,
     ): NeutralAuthoredNode {
@@ -1161,13 +1155,6 @@ export class FlashLibrarySymbolAdapter {
         if (operation.name !== undefined)
             fail("FLASH_LIBRARY_NAMED_POSITIONED_STATIC_TEXT_UNSUPPORTED",
                 `Text ${characterId} has positioned runs and cannot preserve named StaticText identity.`);
-        const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
-        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
-        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
-        const width = positive(bounds.width, `Text ${characterId} width`);
-        const height = positive(bounds.height, `Text ${characterId} height`);
-        const staticTx = finite(staticMatrix.tx, `library.assets.${characterId}.staticText.matrix.tx`);
-        const staticTy = finite(staticMatrix.ty, `library.assets.${characterId}.staticText.matrix.ty`);
         const linkage = flashLibraryAssetName(asset, characterId);
         const children: NeutralAuthoredNode[] = [];
         let authenticatedText = "";
@@ -1220,8 +1207,8 @@ export class FlashLibrarySymbolAdapter {
                     name: childInstanceId,
                     kind: "dynamic-text",
                     depth: children.length + 1,
-                    x: staticTx + glyphX - boundsX,
-                    y: staticTy + runY - fontSize - boundsY,
+                    x: glyphX - projection.localX,
+                    y: runY - fontSize - projection.localY,
                     width: Math.max(fontSize + 4, Math.abs(advance) + 4),
                     height: fontSize + 4,
                     variable: false,
@@ -1274,17 +1261,16 @@ export class FlashLibrarySymbolAdapter {
         if (authenticatedText !== initialText)
             fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} initial-text authorities disagree.`);
 
-        const placement = placementTransform(operation);
         return {
             linkage,
             instanceId,
             kind: "container",
             depth: positiveInteger(operation.depth, "place.depth"),
-            x: placement.x + placement.a * boundsX + placement.c * boundsY,
-            y: placement.y + placement.b * boundsX + placement.d * boundsY,
-            matrix: placement.matrix,
-            width,
-            height,
+            x: projection.x,
+            y: projection.y,
+            matrix: projection.matrix,
+            width: projection.width,
+            height: projection.height,
             variable: false,
             ...(operation.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
             children,
@@ -2580,6 +2566,71 @@ interface PlacementTransform {
     readonly matrix?: { readonly a: number; readonly b: number; readonly c: number; readonly d: number };
 }
 
+/**
+ * Some authenticated SWFs retain a display list whose depth domain begins at
+ * zero. Neutral authored content reserves zero, so translate the complete
+ * timeline domain by one. The translation is deliberately all-or-nothing:
+ * every place/move/remove depth and mask clipDepth moves together, preserving
+ * operation order, collisions, and display-list relationships. An isolated
+ * identity font placement at depth zero remains the separately authenticated
+ * nonvisual authority case and does not trigger translation.
+ */
+function normalizeReservedZeroDepthTimeline(
+    sourceTimeline: Record<string, any>,
+    assets: Record<string, any>,
+): Record<string, any> {
+    const symbolId = positiveInteger(sourceTimeline.symbolId, "timeline.symbolId");
+    const frames = validatedTimelineFrames(sourceTimeline);
+    const operations = frames.flatMap(frameValue => indexedDisplayOperations(object(frameValue, `timeline ${symbolId} frame`), symbolId)
+        .map(value => value.operation));
+    const zeroDepthOperations = operations.filter(operation => operation.depth === 0);
+    if (zeroDepthOperations.length === 0)
+        return sourceTimeline;
+    const zeroDepthFontAuthorities = zeroDepthOperations.filter(operation =>
+        operation.op === "place" && admitNonvisualFontAuthorityPlacement(operation, assets));
+    if (zeroDepthFontAuthorities.length === zeroDepthOperations.length)
+        return sourceTimeline;
+    if (zeroDepthFontAuthorities.length !== 0)
+        fail("FLASH_LIBRARY_ZERO_DEPTH_NORMALIZATION_AMBIGUOUS",
+            `Timeline ${symbolId} mixes nonvisual font authority and display content at reserved depth zero.`);
+
+    const shiftedFrames = frames.map((frameValue, frameIndex) => {
+        const current = object(frameValue, `timeline ${symbolId} frame ${frameIndex + 1}`);
+        const shiftedOperations = array(current.operations, `timeline ${symbolId}.operations`).map((value, operationIndex) => {
+            const operation = object(value, `timeline ${symbolId}.operations[${operationIndex}]`);
+            if (operation.op === "label") return operation;
+            const depth = finite(operation.depth, `${operation.op}.depth`);
+            if (!Number.isSafeInteger(depth) || depth < 0 || depth >= 0xffff)
+                fail("FLASH_LIBRARY_ZERO_DEPTH_NORMALIZATION_UNSUPPORTED",
+                    `Timeline ${symbolId} cannot shift display depth ${String(operation.depth)} into the native range.`);
+            let clipDepth: number | undefined;
+            if (operation.clipDepth !== undefined) {
+                clipDepth = finite(operation.clipDepth, "place.clipDepth");
+                if (!Number.isSafeInteger(clipDepth) || clipDepth < 0 || clipDepth >= 0xffff)
+                    fail("FLASH_LIBRARY_ZERO_DEPTH_NORMALIZATION_UNSUPPORTED",
+                        `Timeline ${symbolId} cannot shift clip depth ${String(operation.clipDepth)} into the native range.`);
+            }
+            return {
+                ...operation,
+                depth: depth + 1,
+                ...(clipDepth === undefined ? {} : { clipDepth: clipDepth + 1 }),
+            };
+        });
+        return { ...current, operations: shiftedOperations };
+    });
+    return { ...sourceTimeline, frames: shiftedFrames };
+}
+
+interface StaticTextProjection {
+    readonly x: number;
+    readonly y: number;
+    readonly localX: number;
+    readonly localY: number;
+    readonly width: number;
+    readonly height: number;
+    readonly matrix?: { readonly a: number; readonly b: number; readonly c: number; readonly d: number };
+}
+
 function unitPlacement(): PlacementTransform {
     return { a: 1, b: 0, c: 0, d: 1, x: 0, y: 0 };
 }
@@ -2596,6 +2647,70 @@ function placementTransform(operation: Record<string, any>): PlacementTransform 
     const x = finite(matrix.tx, "place.matrix.tx");
     const y = finite(matrix.ty, "place.matrix.ty");
     return { a, b, c, d, x, y, ...(a === 1 && b === 0 && c === 0 && d === 1 ? {} : { matrix: { a, b, c, d } }) };
+}
+
+function staticTextProjection(
+    staticMatrix: Record<string, any>,
+    bounds: Record<string, any>,
+    placement: PlacementTransform,
+    characterId: number,
+): StaticTextProjection {
+    const path = `library.assets.${characterId}.staticText.matrix`;
+    const a = finite(staticMatrix.a, `${path}.a`);
+    const b = finite(staticMatrix.b, `${path}.b`);
+    const c = finite(staticMatrix.c, `${path}.c`);
+    const d = finite(staticMatrix.d, `${path}.d`);
+    const tx = finite(staticMatrix.tx, `${path}.tx`);
+    const ty = finite(staticMatrix.ty, `${path}.ty`);
+    const determinant = a * d - b * c;
+    if (determinant === 0)
+        fail("FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED", `Text ${characterId} has a singular text matrix.`);
+    const identity = a === 1 && b === 0 && c === 0 && d === 1;
+    const clockwiseQuarterTurn = a === 0 && b === 1 && c === -1 && d === 0;
+    const counterclockwiseQuarterTurn = a === 0 && b === -1 && c === 1 && d === 0;
+    if (!identity && !clockwiseQuarterTurn && !counterclockwiseQuarterTurn)
+        fail("FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED",
+            `Text ${characterId} has an unsupported scaled, skewed, or non-quarter-turn text matrix.`);
+
+    const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+    const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+    const boundsWidth = positive(bounds.width, `Text ${characterId} width`);
+    const boundsHeight = positive(bounds.height, `Text ${characterId} height`);
+    const inversePoint = (x: number, y: number): readonly [number, number] => {
+        const translatedX = x - tx;
+        const translatedY = y - ty;
+        return [
+            (d * translatedX - c * translatedY) / determinant,
+            (-b * translatedX + a * translatedY) / determinant,
+        ];
+    };
+    const corners = [
+        inversePoint(boundsX, boundsY),
+        inversePoint(boundsX + boundsWidth, boundsY),
+        inversePoint(boundsX, boundsY + boundsHeight),
+        inversePoint(boundsX + boundsWidth, boundsY + boundsHeight),
+    ];
+    const localX = Math.min(...corners.map(point => point[0]));
+    const localY = Math.min(...corners.map(point => point[1]));
+    const localRight = Math.max(...corners.map(point => point[0]));
+    const localBottom = Math.max(...corners.map(point => point[1]));
+    const transformedX = a * localX + c * localY + tx;
+    const transformedY = b * localX + d * localY + ty;
+    const composedA = placement.a * a + placement.c * b;
+    const composedB = placement.b * a + placement.d * b;
+    const composedC = placement.a * c + placement.c * d;
+    const composedD = placement.b * c + placement.d * d;
+    return {
+        x: placement.x + placement.a * transformedX + placement.c * transformedY,
+        y: placement.y + placement.b * transformedX + placement.d * transformedY,
+        localX,
+        localY,
+        width: positive(localRight - localX, `Text ${characterId} projected width`),
+        height: positive(localBottom - localY, `Text ${characterId} projected height`),
+        ...(composedA === 1 && composedB === 0 && composedC === 0 && composedD === 1
+            ? {}
+            : { matrix: { a: composedA, b: composedB, c: composedC, d: composedD } }),
+    };
 }
 
 function authoredFilters(value: unknown, characterId: number): ReadonlyArray<NeutralAuthoredFilter> {
