@@ -28,21 +28,20 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 async function main() {
-    const sourceRoot = path.resolve(process.argv[2] || "");
-    const outputRoot = path.resolve(process.argv[3] || "");
-    const entrySymbolId = Number(process.argv[4]);
-    const runtimeLinkage = process.argv[5];
-    const assetBaseName = process.argv[6] || "bootstrap-loading";
-    const projection = process.argv[7] || "document";
-    if (!path.isAbsolute(sourceRoot) || !path.isAbsolute(outputRoot)
+    const options = parseOptions(process.argv.slice(2));
+    if (!options) return;
+    const {
+        sourceRoot, outputRoot, entrySymbolId, runtimeLinkage, assetBaseName, projection,
+        neutralOutput, neutralOnly, check,
+    } = options;
+    if (!path.isAbsolute(sourceRoot) || (!neutralOnly && !path.isAbsolute(outputRoot))
         || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage
         || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(assetBaseName)
         || !["document", "library-symbol"].includes(projection)) {
-        process.stderr.write("usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root> <symbol-id> <runtime-linkage> [asset-base-name] [document|library-symbol]\n");
-        process.exitCode = 2;
+        usage();
         return;
     }
-    if (fs.existsSync(outputRoot))
+    if (!neutralOnly && fs.existsSync(outputRoot))
         throw new Error(`AUTHORED_CONTENT_OUTPUT_EXISTS: ${outputRoot}`);
 
     const library = readJson(path.join(sourceRoot, "library.json"));
@@ -76,6 +75,18 @@ async function main() {
         rasterizedShapes: rasterAuthorities.shapes,
         rasterizedSprites: rasterAuthorities.sprites,
     });
+    const neutralBytes = Buffer.from(canonicalJson(content), "utf8");
+    if (neutralOnly) {
+        const status = publishNeutralOutput(neutralOutput, neutralBytes, check);
+        process.stdout.write(`${JSON.stringify({
+            schema: "neutral-authored-content-emission@1",
+            status,
+            output: neutralOutput,
+            sha256: hash(neutralBytes),
+            byteLength: neutralBytes.byteLength,
+        }, null, 2)}\n`);
+        return;
+    }
 
     const HierarchyWriter = loadIdeHierarchyWriter();
     const { NativeLayaEmitter } = require("../emit/NativeLayaEmitter.ts");
@@ -140,9 +151,20 @@ async function main() {
             fs.mkdirSync(path.dirname(target), { recursive: true });
             fs.writeFileSync(target, file.bytes);
         }
+        const neutralStatus = neutralOutput === undefined
+            ? undefined
+            : publishNeutralOutput(neutralOutput, neutralBytes, false);
         process.stdout.write(`${JSON.stringify({
             schema: bundle.schema,
             files: bundle.files.map(file => ({ path: file.path, kind: file.kind, byteLength: file.bytes.byteLength })),
+            ...(neutralOutput === undefined ? {} : {
+                neutralIr: {
+                    status: neutralStatus,
+                    output: neutralOutput,
+                    sha256: hash(neutralBytes),
+                    byteLength: neutralBytes.byteLength,
+                },
+            }),
         }, null, 2)}\n`);
     }
     finally {
@@ -150,6 +172,130 @@ async function main() {
         rootClip.destroy();
         nestedClips.forEach(clip => clip.destroy());
     }
+}
+
+function parseOptions(arguments_) {
+    const flagIndex = arguments_.findIndex(value => value.startsWith("--"));
+    const positional = flagIndex < 0 ? arguments_ : arguments_.slice(0, flagIndex);
+    const flags = flagIndex < 0 ? [] : arguments_.slice(flagIndex);
+    if (positional.length < 4 || positional.length > 6) {
+        usage();
+        return null;
+    }
+    let neutralOutput;
+    let neutralOnly = false;
+    let check = false;
+    for (let index = 0; index < flags.length; index++) {
+        const flag = flags[index];
+        if (flag === "--neutral-output") {
+            if (neutralOutput !== undefined || index + 1 >= flags.length || flags[index + 1].startsWith("--")) {
+                usage();
+                return null;
+            }
+            const value = flags[++index];
+            if (!path.isAbsolute(value) || value.includes("\0")) {
+                usage();
+                return null;
+            }
+            neutralOutput = path.normalize(value);
+        }
+        else if (flag === "--neutral-only") {
+            if (neutralOnly) { usage(); return null; }
+            neutralOnly = true;
+        }
+        else if (flag === "--check") {
+            if (check) { usage(); return null; }
+            check = true;
+        }
+        else { usage(); return null; }
+    }
+    if ((neutralOnly || check) && neutralOutput === undefined) { usage(); return null; }
+    if (check) neutralOnly = true;
+    const rawSourceRoot = positional[0];
+    const rawOutputRoot = positional[1];
+    if (!path.isAbsolute(rawSourceRoot) || (!neutralOnly && !path.isAbsolute(rawOutputRoot))) {
+        usage();
+        return null;
+    }
+    return {
+        sourceRoot: path.normalize(rawSourceRoot),
+        outputRoot: neutralOnly ? rawOutputRoot : path.normalize(rawOutputRoot),
+        entrySymbolId: Number(positional[2]),
+        runtimeLinkage: positional[3],
+        assetBaseName: positional[4] || "bootstrap-loading",
+        projection: positional[5] || "document",
+        neutralOutput,
+        neutralOnly,
+        check,
+    };
+}
+
+function usage() {
+    process.stderr.write(
+        "usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root|-> <symbol-id> <runtime-linkage> [asset-base-name] [document|library-symbol] [--neutral-output <absolute-file>] [--neutral-only] [--check]\n"
+    );
+    process.exitCode = 2;
+}
+
+function publishNeutralOutput(output, bytes, check) {
+    const existing = readRegularOutput(output);
+    if (existing?.equals(bytes)) return "unchanged";
+    if (check)
+        throw new Error(existing === undefined
+            ? `AUTHORED_CONTENT_NEUTRAL_OUTPUT_MISSING: ${output}`
+            : `AUTHORED_CONTENT_NEUTRAL_OUTPUT_DRIFT: ${output}`);
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    const temporary = path.join(path.dirname(output), `.${path.basename(output)}.${process.pid}.${crypto.randomBytes(12).toString("hex")}.tmp`);
+    const handle = fs.openSync(temporary, "wx");
+    try {
+        fs.writeFileSync(handle, bytes);
+        fs.fsyncSync(handle);
+    }
+    finally { fs.closeSync(handle); }
+    try { fs.renameSync(temporary, output); }
+    catch (error) {
+        try { fs.unlinkSync(temporary); } catch {}
+        throw error;
+    }
+    return "written";
+}
+
+function readRegularOutput(output) {
+    try {
+        const info = fs.lstatSync(output);
+        if (info.isSymbolicLink() || !info.isFile())
+            throw new Error(`AUTHORED_CONTENT_NEUTRAL_OUTPUT_TYPE_INVALID: ${output}`);
+        return fs.readFileSync(output);
+    }
+    catch (error) {
+        if (error?.code === "ENOENT") return undefined;
+        throw error;
+    }
+}
+
+function canonicalJson(value) {
+    return `${JSON.stringify(canonicalValue(value))}\n`;
+}
+
+function canonicalValue(value) {
+    if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+    if (typeof value === "number") {
+        if (!Number.isFinite(value)) throw new Error("AUTHORED_CONTENT_NEUTRAL_CANONICAL_NUMBER_INVALID");
+        return value;
+    }
+    if (Array.isArray(value)) return value.map(canonicalValue);
+    if (value && typeof value === "object") {
+        const result = {};
+        for (const key of Object.keys(value).sort()) {
+            // Normalized IR retains optional interface slots as undefined in
+            // memory. JSON has no undefined value, so canonical persistence
+            // omits those optional object fields exactly as JSON.stringify.
+            if (value[key] === undefined) continue;
+            result[key] = canonicalValue(value[key]);
+        }
+        return result;
+    }
+    throw new Error(`AUTHORED_CONTENT_NEUTRAL_CANONICAL_TYPE_INVALID: ${typeof value}`);
 }
 
 function readRasterAuthorities(sourceRoot) {
