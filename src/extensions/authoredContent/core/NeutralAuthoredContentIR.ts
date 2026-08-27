@@ -17,6 +17,25 @@ export interface NeutralAuthoredMatrix {
     readonly d: number;
 }
 
+/** Exact Flash placement color transform retained for the native MovieClip runtime. */
+export interface NeutralAuthoredColorTransform {
+    readonly redMultiplier: number;
+    readonly greenMultiplier: number;
+    readonly blueMultiplier: number;
+    readonly alphaMultiplier: number;
+    readonly redOffset: number;
+    readonly greenOffset: number;
+    readonly blueOffset: number;
+    readonly alphaOffset: number;
+}
+
+export interface NeutralBlurFilter {
+    readonly kind: "blur";
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly quality: number;
+}
+
 export interface NeutralGlowFilter {
     readonly kind: "glow";
     readonly color: number;
@@ -69,7 +88,7 @@ export interface NeutralColorMatrixFilter {
     readonly matrix: ReadonlyArray<number>;
 }
 
-export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralDropShadowFilter
+export type NeutralAuthoredFilter = NeutralBlurFilter | NeutralGlowFilter | NeutralDropShadowFilter
     | NeutralGradientBevelFilter | NeutralGradientGlowFilter | NeutralColorMatrixFilter;
 
 export interface NeutralScale9Grid {
@@ -108,6 +127,7 @@ export interface NeutralAuthoredNode {
     /** Closed native compositing set admitted from authored Flash placements. */
     readonly blendMode?: "add";
     readonly matrix?: NeutralAuthoredMatrix;
+    readonly colorTransform?: NeutralAuthoredColorTransform;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
     readonly filters?: ReadonlyArray<NeutralAuthoredFilter>;
     /** Closed nine-slice projection for a single raster-backed authored sprite. */
@@ -406,7 +426,7 @@ function normalizeNode(
     const source = record(value, path);
     allowedKeys(source, [
         "linkage", "instanceId", "kind", "name", "depth", "clipDepth", "x", "y", "width", "height", "alpha", "visible", "blendMode", "matrix",
-        "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
+        "colorTransform", "filters", "scale9Grid", "text", "fontSize", "color", "resourceId", "runtimeLinkage", "variable", "textField", "timeline", "children"
     ], path);
     const rawLinkage = requiredString(source.linkage, `${path}.linkage`);
     const linkage = canonicalLinkage(rawLinkage);
@@ -436,6 +456,9 @@ function normalizeNode(
             ? undefined
             : exactLiteral(source.blendMode, "add", `${path}.blendMode`),
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
+        colorTransform: source.colorTransform === undefined
+            ? undefined
+            : normalizeColorTransform(source.colorTransform, `${path}.colorTransform`),
         filters: source.filters === undefined ? undefined : array(source.filters, `${path}.filters`).map((filter, index) =>
             normalizeAuthoredFilter(filter, `${path}.filters[${index}]`, scale)),
         scale9Grid: source.scale9Grid === undefined
@@ -470,6 +493,8 @@ function normalizeNode(
         fail("AUTHORED_CONTENT_DYNAMIC_TEXT_CONFIGURATION_UNEXPECTED", `${path}.textField is only valid on a dynamic-text node.`);
     if (node.filters !== undefined && node.kind !== "container")
         fail("AUTHORED_CONTENT_DISPLAY_FILTER_TARGET_UNSUPPORTED", `${path}.filters requires a container node.`);
+    if (node.colorTransform !== undefined && node.kind !== "container")
+        fail("AUTHORED_CONTENT_COLOR_TRANSFORM_TARGET_UNSUPPORTED", `${path}.colorTransform requires a container node.`);
     if (node.scale9Grid !== undefined && node.kind !== "container")
         fail("AUTHORED_CONTENT_SCALE9_GRID_TARGET_UNSUPPORTED", `${path}.scale9Grid requires a container node.`);
     if (node.scale9Grid !== undefined) {
@@ -746,6 +771,28 @@ function normalizeMatrix(value: unknown, path: string): NeutralAuthoredMatrix {
     };
 }
 
+function normalizeColorTransform(value: unknown, path: string): NeutralAuthoredColorTransform {
+    const source = record(value, path);
+    const fields = [
+        "redMultiplier", "greenMultiplier", "blueMultiplier", "alphaMultiplier",
+        "redOffset", "greenOffset", "blueOffset", "alphaOffset",
+    ];
+    allowedKeys(source, fields, path);
+    const transform: NeutralAuthoredColorTransform = {
+        redMultiplier: requiredFiniteNumber(source.redMultiplier, `${path}.redMultiplier`),
+        greenMultiplier: requiredFiniteNumber(source.greenMultiplier, `${path}.greenMultiplier`),
+        blueMultiplier: requiredFiniteNumber(source.blueMultiplier, `${path}.blueMultiplier`),
+        alphaMultiplier: requiredFiniteNumber(source.alphaMultiplier, `${path}.alphaMultiplier`),
+        redOffset: requiredFiniteNumber(source.redOffset, `${path}.redOffset`),
+        greenOffset: requiredFiniteNumber(source.greenOffset, `${path}.greenOffset`),
+        blueOffset: requiredFiniteNumber(source.blueOffset, `${path}.blueOffset`),
+        alphaOffset: requiredFiniteNumber(source.alphaOffset, `${path}.alphaOffset`),
+    };
+    if (transform.alphaMultiplier < 0 || transform.alphaMultiplier > 1)
+        fail("AUTHORED_CONTENT_COLOR_TRANSFORM_ALPHA_RANGE", `${path}.alphaMultiplier must be between zero and one.`);
+    return transform;
+}
+
 function normalizeGlowFilter(value: unknown, path: string, scale: number): NeutralGlowFilter {
     const source = record(value, path);
     allowedKeys(source, ["alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength"], path);
@@ -804,6 +851,19 @@ function normalizeDropShadowFilter(value: unknown, path: string, scale: number):
         knockout: requiredBoolean(source.knockout, `${path}.knockout`),
         hideObject: requiredBoolean(source.hideObject, `${path}.hideObject`),
     };
+}
+
+function normalizeBlurFilter(value: unknown, path: string, scale: number): NeutralBlurFilter {
+    const source = record(value, path);
+    allowedKeys(source, ["blurX", "blurY", "kind", "quality"], path);
+    const blurX = requiredFiniteNumber(source.blurX, `${path}.blurX`) * scale;
+    const blurY = requiredFiniteNumber(source.blurY, `${path}.blurY`) * scale;
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("AUTHORED_CONTENT_BLUR_FILTER_RANGE_INVALID", `${path} blur dimensions must be between zero and 255.`);
+    const quality = requiredFiniteNumber(source.quality, `${path}.quality`);
+    if (!Number.isInteger(quality) || quality < 1 || quality > 15)
+        fail("AUTHORED_CONTENT_BLUR_FILTER_QUALITY_INVALID", `${path}.quality must be an integer from one through 15.`);
+    return { kind: "blur", blurX, blurY, quality };
 }
 
 function normalizeGradientFilter(
@@ -871,7 +931,9 @@ function normalizeAuthoredFilter(value: unknown, path: string, scale: number): N
             fail("AUTHORED_CONTENT_COLOR_MATRIX_LENGTH", `${path}.matrix must contain exactly 20 values.`);
         return { kind: "color-matrix", matrix };
     }
-    return source.kind === "gradient-bevel" || source.kind === "gradient-glow"
+    return source.kind === "blur"
+        ? normalizeBlurFilter(value, path, scale)
+        : source.kind === "gradient-bevel" || source.kind === "gradient-glow"
         ? normalizeGradientFilter(value, path, scale, source.kind)
         : source.kind === "drop-shadow"
         ? normalizeDropShadowFilter(value, path, scale)

@@ -1,5 +1,6 @@
 import { DisplayObject, MovieClip, SimpleButton, TextField } from "../../../layaAir/flash";
 import { Rectangle } from "../../../layaAir/flash/geom/Rectangle";
+import { ColorTransform } from "../../../layaAir/flash/geom/ColorTransform";
 import { ClassUtils } from "../../../layaAir/laya/utils/ClassUtils";
 import type { TextGlyphAlignmentZone } from "../../../layaAir/laya/webgl/text/TextRasterizationSettings";
 import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
@@ -15,6 +16,7 @@ export { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 export class AuthoredMovieClip extends MovieClip {
     private _authoredFilters: ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration> = [];
     private _authoredScale9Grid: AuthoredScale9GridConfiguration | null = null;
+    private _authoredColorTransform: AuthoredColorTransformConfiguration | null = null;
 
     get authoredFilters(): ReadonlyArray<import("./AuthoredTextField").AuthoredFilterConfiguration> {
         return this._authoredFilters;
@@ -32,6 +34,14 @@ export class AuthoredMovieClip extends MovieClip {
         this._authoredScale9Grid = value;
     }
 
+    get authoredColorTransform(): AuthoredColorTransformConfiguration | null {
+        return this._authoredColorTransform;
+    }
+
+    set authoredColorTransform(value: AuthoredColorTransformConfiguration | null) {
+        this._authoredColorTransform = value;
+    }
+
     override get width(): number { return super.width; }
     override set width(value: number) {
         super.width = value;
@@ -47,7 +57,24 @@ export class AuthoredMovieClip extends MovieClip {
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
         this.filters = createAuthoredFilters(this._authoredFilters);
+        this._configureAuthoredColorTransform();
         this._configureAuthoredScale9Grid();
+    }
+
+    private _configureAuthoredColorTransform(): void {
+        const value = this._authoredColorTransform;
+        if (!value)
+            return;
+        const fields = [
+            value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
+            value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
+        ];
+        if (fields.some(component => !Number.isFinite(component)) || value.alphaMultiplier < 0 || value.alphaMultiplier > 1)
+            throw new Error("AuthoredMovieClip authoredColorTransform is invalid");
+        this.transform.colorTransform = new ColorTransform(
+            value.redMultiplier, value.greenMultiplier, value.blueMultiplier, value.alphaMultiplier,
+            value.redOffset, value.greenOffset, value.blueOffset, value.alphaOffset,
+        );
     }
 
     private _configureAuthoredScale9Grid(): void {
@@ -89,6 +116,17 @@ export class AuthoredMovieClip extends MovieClip {
         target.width = this.width;
         target.height = this.height;
     }
+}
+
+export interface AuthoredColorTransformConfiguration {
+    readonly redMultiplier: number;
+    readonly greenMultiplier: number;
+    readonly blueMultiplier: number;
+    readonly alphaMultiplier: number;
+    readonly redOffset: number;
+    readonly greenOffset: number;
+    readonly blueOffset: number;
+    readonly alphaOffset: number;
 }
 
 /** Serialized owner for one independently instantiated DefineButton2 state display list. */

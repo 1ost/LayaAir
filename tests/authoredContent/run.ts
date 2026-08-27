@@ -778,6 +778,58 @@ async function main(): Promise<void> {
         "reverse-wound Flash fillStyle0 geometry did not preserve its exact vertical mirroring");
     });
 
+    await test("Flash library RGB placement transforms emit exact native MovieClip configuration", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const colorTransform = {
+            redMultiplier: 0, greenMultiplier: 0, blueMultiplier: 0, alphaMultiplier: 1,
+            redOffset: 212, greenOffset: 255, blueOffset: 0, alphaOffset: 0,
+        };
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 40, height: 30, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 40, height: 30 } },
+                "2": { characterId: 2, kind: "sprite", symbolName: "Tinted", bounds: { x: 0, y: 0, width: 20, height: 10 } },
+                "3": { characterId: 3, kind: "shape", symbolName: "Shape", path: "assets/3.png", bounds: { x: 0, y: 0, width: 20, height: 10 } },
+            },
+        };
+        const timelines = new Map<number, any>([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0, name: "Tinted",
+                colorTransform,
+            }], labels: [], sounds: [] }],
+        }], [2, {
+            schema: "flash-timeline@1", symbolId: 2, symbolName: "Tinted", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{ op: "place", characterId: 3, depth: 1, move: false, ratio: 0 }], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.Root",
+            resources: new Map([["assets/3.png", {
+                sourcePath: "assets/3.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        });
+        const tinted = content.root.children[0];
+        assert(JSON.stringify(tinted.colorTransform) === JSON.stringify(colorTransform),
+            "RGB placement color transform drifted in neutral IR");
+        const nestedTimelineIds = new Map([...NativeLayaEmitter.createNestedTimelines(content).keys()]
+            .map(key => [key, `nested-${key}`]));
+        const hierarchy = prepareNativeLayaHierarchy(content, {
+            "_$ver": 1, "_$type": "Sprite", name: "Root", width: 40, height: 30,
+            "_$child": [{
+                "_$type": "Sprite", name: "Tinted", width: 20, height: 10,
+                "_$child": [{ "_$type": "Image", name: "Shape$d1$f1$i1", width: 20, height: 10, skin: "res://shape.png" }],
+            }],
+        }, "root.mc", new Map([["flash-character-3", "shape.png"]]), nestedTimelineIds);
+        const serialized = (hierarchy._$child as any[])[0];
+        assert(serialized._$runtime === "Laya.AuthoredContent.MovieClip",
+            "RGB placement did not bind the native authored MovieClip runtime");
+        assert(serialized.authoredColorTransform._$type === "any"
+            && JSON.stringify(serialized.authoredColorTransform.value) === JSON.stringify(colorTransform),
+            "native hierarchy lost the exact RGB placement transform");
+    });
+
     await test("Flash static depth masks bind one deterministic local Laya reference", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const library: any = {

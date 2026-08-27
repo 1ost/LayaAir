@@ -1,5 +1,5 @@
 import {
-    AntiAliasType, BitmapFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+    AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
@@ -33,6 +33,13 @@ export interface AuthoredDropShadowFilterConfiguration {
     readonly hideObject: boolean;
 }
 
+export interface AuthoredBlurFilterConfiguration {
+    readonly kind: "blur";
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly quality: number;
+}
+
 export interface AuthoredGradientBevelFilterConfiguration {
     readonly kind: "gradient-bevel";
     readonly distance: number;
@@ -53,7 +60,7 @@ export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGr
     readonly kind: "gradient-glow";
 }
 
-export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
+export type AuthoredFilterConfiguration = AuthoredBlurFilterConfiguration | AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
     | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration
     | AuthoredColorMatrixFilterConfiguration;
 
@@ -296,7 +303,9 @@ export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
 export function createAuthoredFilters(value: unknown): BitmapFilter[] {
     if (!Array.isArray(value)) throw new TypeError("Authored filters must be an array");
     return value.map((candidate, index) => validateAuthoredFilter(candidate, `filters[${index}]`)).map(filter =>
-        filter.kind === "color-matrix"
+        filter.kind === "blur"
+            ? new BlurFilter(filter.blurX, filter.blurY, filter.quality)
+            : filter.kind === "color-matrix"
             ? new ColorMatrixFilter(filter.matrix)
             : filter.kind === "glow"
             ? new GlowFilter(filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
@@ -576,6 +585,14 @@ function validateGlowFilter(value: unknown, label: string): AuthoredGlowFilterCo
 
 function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterConfiguration {
     const kind = value !== null && typeof value === "object" ? Reflect.get(value, "kind") : undefined;
+    if (kind === "blur") {
+        const record = exactDataObject(value, ["blurX", "blurY", "kind", "quality"], label);
+        equal(record.kind, "blur", `${label}.kind`);
+        range(record.blurX, 0, 255, `${label}.blurX`);
+        range(record.blurY, 0, 255, `${label}.blurY`);
+        integerRange(record.quality, 1, 15, `${label}.quality`);
+        return Object.freeze({ kind: "blur", blurX: record.blurX, blurY: record.blurY, quality: record.quality });
+    }
     if (kind === "color-matrix")
         return validateColorMatrixFilter(value, label);
     if (kind === "gradient-bevel" || kind === "gradient-glow")

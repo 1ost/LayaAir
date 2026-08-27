@@ -26,6 +26,16 @@ type DisplayMatrix = {
     readonly tx: number;
     readonly ty: number;
 };
+type DisplayColorTransform = {
+    readonly redMultiplier: number;
+    readonly greenMultiplier: number;
+    readonly blueMultiplier: number;
+    readonly alphaMultiplier: number;
+    readonly redOffset: number;
+    readonly greenOffset: number;
+    readonly blueOffset: number;
+    readonly alphaOffset: number;
+};
 type FlashDisplayState = {
     readonly instanceId: number;
     readonly characterId: number;
@@ -35,6 +45,7 @@ type FlashDisplayState = {
     matrix: DisplayMatrix;
     alpha: number;
     visible: boolean;
+    colorTransform: DisplayColorTransform;
 };
 type PlacementEvidenceContext = {
     readonly timelineSymbolId: number;
@@ -62,6 +73,7 @@ const DROP_SHADOW_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "color", "compositeSource", "distance", "innerShadow",
     "kind", "knockout", "passes", "sourceType", "strength",
 ]);
+const BLUR_FILTER_FIELDS = new Set(["blurX", "blurY", "kind", "passes", "sourceType"]);
 const GRADIENT_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
     "knockout", "onTop", "passes", "ratios", "sourceType", "strength", "type",
@@ -278,6 +290,9 @@ export class FlashLibrarySymbolAdapter {
             );})
             : animated.children;
         const placement = operation === undefined ? unitPlacement() : placementTransform(operation);
+        const colorTransform = operation?.colorTransform === undefined
+            ? undefined
+            : displayColorTransform(operation.colorTransform);
         const authoredName = forcedName ?? operation?.name;
         const node: NeutralAuthoredNode = {
             linkage,
@@ -288,6 +303,12 @@ export class FlashLibrarySymbolAdapter {
             x: placement.x,
             y: placement.y,
             matrix: placement.matrix,
+            ...(this.textMapOnly || colorTransform === undefined || isIdentityColorTransform(colorTransform)
+                ? {}
+                : { colorTransform }),
+            ...(this.textMapOnly || colorTransform === undefined || colorTransform.alphaMultiplier === 1
+                ? {}
+                : { alpha: colorTransform.alphaMultiplier }),
             ...(this.textMapOnly || operation?.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
@@ -559,6 +580,7 @@ export class FlashLibrarySymbolAdapter {
                             frameIndex + 1, instances.length + 1, assets, prior.alpha, prior.visible,
                             { timelineSymbolId: sourceTimeline.symbolId, frameIndex: frameIndex + 1, operationIndex },
                             inertPlacementRatios,
+                            prior.colorTransform,
                         );
                         instances.push(state);
                         active.set(depth, state);
@@ -566,8 +588,14 @@ export class FlashLibrarySymbolAdapter {
                     }
                     if (operation.matrix !== undefined)
                         prior.matrix = displayMatrix(operation.matrix);
-                    if (operation.colorTransform !== undefined)
-                        prior.alpha = displayAlpha(operation.colorTransform);
+                    if (operation.colorTransform !== undefined) {
+                        const colorTransform = displayColorTransform(operation.colorTransform);
+                        if (!sameRgbColorTransform(colorTransform, prior.colorTransform))
+                            fail("FLASH_LIBRARY_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED",
+                                "Animated RGB color-transform changes require a new placement instance.");
+                        prior.colorTransform = colorTransform;
+                        prior.alpha = colorTransform.alphaMultiplier;
+                    }
                     if (operation.visible !== undefined)
                         prior.visible = boolean(operation.visible, "place.visible");
                     recordInertPlacementRatio(
@@ -578,7 +606,11 @@ export class FlashLibrarySymbolAdapter {
                         inertPlacementRatios,
                     );
                 });
-            snapshots.push(new Map([...active].map(([depth, state]) => [depth, { ...state, matrix: { ...state.matrix } }])));
+            snapshots.push(new Map([...active].map(([depth, state]) => [depth, {
+                ...state,
+                matrix: { ...state.matrix },
+                colorTransform: { ...state.colorTransform },
+            }])));
         });
         if (instances.length === 0)
             fail("FLASH_LIBRARY_ANIMATED_DISPLAY_LIST_EMPTY", `Timeline ${sourceTimeline.symbolId} contains no display objects.`);
@@ -597,6 +629,9 @@ export class FlashLibrarySymbolAdapter {
                     blendMode: instance.operation.blendMode,
                     blendModeCode: instance.operation.blendModeCode,
                 }),
+                ...(!isIdentityColorTransform(instance.colorTransform)
+                    ? { colorTransform: instance.colorTransform }
+                    : {}),
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
             };
             const placedAsset = object(assets[String(instance.characterId)], `library.assets.${instance.characterId}`);
@@ -1658,6 +1693,7 @@ function createDisplayState(
     inheritedVisible = true,
     evidenceContext?: PlacementEvidenceContext,
     inertPlacementRatios?: Map<string, NeutralInertPlacementRatio>,
+    inheritedColorTransform?: DisplayColorTransform,
 ): FlashDisplayState {
     const characterId = positiveInteger(operation.characterId, "place.characterId");
     const authoredDepth = positiveInteger(operation.depth, "place.depth");
@@ -1678,10 +1714,13 @@ function createDisplayState(
             : displayMatrix(operation.matrix),
         alpha: operation.colorTransform === undefined
             ? inheritedAlpha
-            : displayAlpha(operation.colorTransform),
+            : displayColorTransform(operation.colorTransform).alphaMultiplier,
         visible: operation.visible === undefined
             ? inheritedVisible
             : boolean(operation.visible, "place.visible"),
+        colorTransform: operation.colorTransform === undefined
+            ? inheritedColorTransform ?? identityColorTransform(inheritedAlpha)
+            : displayColorTransform(operation.colorTransform),
     };
 }
 
@@ -1698,19 +1737,53 @@ function displayMatrix(value: unknown): DisplayMatrix {
 }
 
 function displayAlpha(value: unknown): number {
-    const transform = object(value, "place.colorTransform");
-    exactKeys(transform, COLOR_TRANSFORM_FIELDS, "place.colorTransform", "FLASH_LIBRARY_COLOR_TRANSFORM_FIELD_UNSUPPORTED");
+    const transform = displayColorTransform(value);
     for (const channel of ["red", "green", "blue"] as const) {
-        if (finite(transform[`${channel}Multiplier`], `colorTransform.${channel}Multiplier`) !== 1
-            || finite(transform[`${channel}Offset`], `colorTransform.${channel}Offset`) !== 0)
+        if (transform[`${channel}Multiplier`] !== 1 || transform[`${channel}Offset`] !== 0)
             fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list projection only admits alpha transforms.");
     }
-    if (finite(transform.alphaOffset, "colorTransform.alphaOffset") !== 0)
+    if (transform.alphaOffset !== 0)
         fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list projection does not admit alpha offsets.");
-    const alpha = finite(transform.alphaMultiplier, "colorTransform.alphaMultiplier");
-    if (alpha < 0 || alpha > 1)
+    return transform.alphaMultiplier;
+}
+
+function displayColorTransform(value: unknown): DisplayColorTransform {
+    const transform = object(value, "place.colorTransform");
+    exactKeys(transform, COLOR_TRANSFORM_FIELDS, "place.colorTransform", "FLASH_LIBRARY_COLOR_TRANSFORM_FIELD_UNSUPPORTED");
+    const result = {
+        redMultiplier: finite(transform.redMultiplier, "colorTransform.redMultiplier"),
+        greenMultiplier: finite(transform.greenMultiplier, "colorTransform.greenMultiplier"),
+        blueMultiplier: finite(transform.blueMultiplier, "colorTransform.blueMultiplier"),
+        alphaMultiplier: finite(transform.alphaMultiplier, "colorTransform.alphaMultiplier"),
+        redOffset: finite(transform.redOffset, "colorTransform.redOffset"),
+        greenOffset: finite(transform.greenOffset, "colorTransform.greenOffset"),
+        blueOffset: finite(transform.blueOffset, "colorTransform.blueOffset"),
+        alphaOffset: finite(transform.alphaOffset, "colorTransform.alphaOffset"),
+    };
+    if (result.alphaMultiplier < 0 || result.alphaMultiplier > 1)
         fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED", "Animated display-list alpha multiplier must be between zero and one.");
-    return alpha;
+    return result;
+}
+
+function identityColorTransform(alphaMultiplier = 1): DisplayColorTransform {
+    return {
+        redMultiplier: 1, greenMultiplier: 1, blueMultiplier: 1, alphaMultiplier,
+        redOffset: 0, greenOffset: 0, blueOffset: 0, alphaOffset: 0,
+    };
+}
+
+function isIdentityColorTransform(value: DisplayColorTransform): boolean {
+    return value.alphaMultiplier === 1 && sameRgbColorTransform(value, identityColorTransform());
+}
+
+function sameRgbColorTransform(left: DisplayColorTransform, right: DisplayColorTransform): boolean {
+    return left.redMultiplier === right.redMultiplier
+        && left.greenMultiplier === right.greenMultiplier
+        && left.blueMultiplier === right.blueMultiplier
+        && left.redOffset === right.redOffset
+        && left.greenOffset === right.greenOffset
+        && left.blueOffset === right.blueOffset
+        && left.alphaOffset === right.alphaOffset;
 }
 
 function validateTimelineRatio(
@@ -2015,6 +2088,18 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
     return array(value, `place ${characterId}.filters`).map((filterValue, index) => {
         const label = `place ${characterId}.filters[${index}]`;
         const filter = object(filterValue, label);
+        if (filter.kind === "blur") {
+            exactKeys(filter, BLUR_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+            exactValue(filter.sourceType, "BLURFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+            const blurX = finite(filter.blurX, `${label}.blurX`);
+            const blurY = finite(filter.blurY, `${label}.blurY`);
+            if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+                fail("FLASH_LIBRARY_FILTER_BLUR_INVALID", `${label} blur dimensions must be between zero and 255.`);
+            const quality = positiveInteger(filter.passes, `${label}.passes`);
+            if (quality > 15)
+                fail("FLASH_LIBRARY_FILTER_QUALITY_INVALID", `${label}.passes exceeds the Flash quality range.`);
+            return { kind: "blur", blurX, blurY, quality };
+        }
         if (filter.kind === "gradient-bevel" || filter.kind === "gradient-glow")
             return authoredGradientFilter(filter, label);
         if (filter.kind === "drop-shadow")

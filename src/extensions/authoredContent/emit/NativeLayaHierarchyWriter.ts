@@ -419,6 +419,8 @@ function decorateAuthoredRuntime(
     }
     if (source.filters !== undefined)
         value.authoredFilters = source.filters.map(filter => ({ _$type: "any", value: filter }));
+    if (source.colorTransform !== undefined)
+        value.authoredColorTransform = { _$type: "any", value: source.colorTransform };
     if (source.scale9Grid !== undefined)
         value.authoredScale9Grid = source.scale9Grid;
     if (source.kind === "button") {
