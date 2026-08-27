@@ -1,6 +1,18 @@
 export { convertAuthoredContent } from "./convertAuthoredContent.js";
 export { checkAuthoredContentDelivery } from "./checkAuthoredContentDelivery.js";
 export {
+    AUTHORED_CONTENT_LOCALE_SCHEMA,
+    deriveAuthoredContentLocaleOverlay,
+} from "./deriveAuthoredContentLocaleOverlay.js";
+export type {
+    AuthoredContentLocaleAssetOverride,
+    AuthoredContentLocaleBundleComparison,
+    AuthoredContentLocaleImageBinding,
+    AuthoredContentLocaleTranslation,
+    DeriveAuthoredContentLocaleOverlayRequest,
+    DerivedAuthoredContentLocaleOverlay,
+} from "./deriveAuthoredContentLocaleOverlay.js";
+export {
     AUTHORED_CONTENT_PROJECT_SCHEMA,
     AUTHORED_CONTENT_RECEIPT_SCHEMA,
     AUTHORED_CONTENT_TOOL_VERSION,

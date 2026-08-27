@@ -16,13 +16,15 @@ const projectValidator = await import(pathToFileURL(path.join(repositoryRoot, "b
 test("public package imports without IDE globals and exposes only the headless API", () => {
     assert.equal(globalThis.Laya, undefined);
     assert.deepEqual(Object.keys(api).sort(), [
+        "AUTHORED_CONTENT_LOCALE_SCHEMA",
         "AUTHORED_CONTENT_PROJECT_SCHEMA",
         "AUTHORED_CONTENT_RECEIPT_SCHEMA",
         "AUTHORED_CONTENT_TOOL_SOURCE_SHA256",
         "AUTHORED_CONTENT_TOOL_VERSION",
         "AuthoredContentToolError",
         "checkAuthoredContentDelivery",
-        "convertAuthoredContent"
+        "convertAuthoredContent",
+        "deriveAuthoredContentLocaleOverlay"
     ]);
 });
 
