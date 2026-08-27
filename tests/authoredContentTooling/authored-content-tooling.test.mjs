@@ -189,6 +189,7 @@ test("generated package packs without IDE implementation sources and supports ES
         assert.ok(names.includes("dist/index.mjs"));
         assert.ok(names.includes("dist/index.cjs"));
         assert.ok(names.includes("dist/cli.cjs"));
+        assert.ok(names.includes("schema/laya-authored-content-locale-diff-request-v1.schema.json"));
         assert.equal(names.some(name => /(?:EnvMain|UIMain|editorResources|\.ts$)/.test(name) && !name.endsWith(".d.ts")), false);
         const installRoot = path.join(temporary, "consumer");
         await mkdir(installRoot);

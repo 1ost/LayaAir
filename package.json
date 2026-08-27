@@ -54,6 +54,7 @@
     "test:authored-content": "npm --prefix src/extensions/authoredContent run test",
     "test:authored-content-tooling": "npm run build:authored-content-tooling && node --test tests/authoredContentTooling/*.test.mjs",
     "test:authored-content-locale-overlay": "npm run build:authored-content-tooling && node --test tests/authoredContentTooling/authored-content-locale-overlay.test.mjs",
+    "test:authored-content-locale-cli": "npm run build:authored-content-tooling && node --test tests/authoredContentTooling/authored-content-locale-cli.test.mjs",
     "test:authored-bridge": "node --max-old-space-size=768 scripts/testAuthoredContentBridge.mjs",
     "test:authored-bridge:types": "tsc -p tests/extensions/authoredContentBridge/tsconfig.json --pretty false",
     "test:authored-font-registry": "node scripts/testAuthoredFontRegistry.mjs",

@@ -76,6 +76,7 @@ await run(process.execPath, [
 ]);
 await mkdir(path.join(packageRoot, "schema"), { recursive: true });
 await cp(path.join(repositoryRoot, "tooling/layaAuthoredContent/project-v1.json"), path.join(packageRoot, "schema/laya-authored-content-project-v1.schema.json"));
+await cp(path.join(repositoryRoot, "tooling/layaAuthoredContent/locale-diff-request-v1.json"), path.join(packageRoot, "schema/laya-authored-content-locale-diff-request-v1.schema.json"));
 await cp(path.join(repositoryRoot, "LICENSE"), path.join(packageRoot, "LICENSE"));
 
 const manifest = {
@@ -90,6 +91,7 @@ const manifest = {
     exports: {
         ".": { types: "./dist/index.d.ts", import: "./dist/index.mjs", require: "./dist/index.cjs" },
         "./schema/project-v1": "./schema/laya-authored-content-project-v1.schema.json",
+        "./schema/locale-diff-request-v1": "./schema/laya-authored-content-locale-diff-request-v1.schema.json",
         "./package.json": "./package.json"
     },
     files: ["dist", "schema", "README.md", "LICENSE"]
@@ -99,10 +101,11 @@ await writeFile(path.join(packageRoot, "package.json"), `${JSON.stringify(manife
 await writeFile(path.join(packageRoot, "README.md"), `# @layabox/laya-authored-content
 
 This is the headless LayaAir-owned authored-content conversion API and CLI.
-The current first production slice authenticates project, provider, capability,
-and input identities, then returns a deterministic HOLD receipt until a
-Node-safe adapter is admitted. It never loads IDE globals or claims raw SWF
-support.
+The conversion entrypoint authenticates project, provider, capability, and
+input identities, then returns a deterministic HOLD receipt until a Node-safe
+adapter is admitted. The derive-locale command compares normalized neutral IR
+files and atomically writes or checks a deterministic locale overlay. It never
+loads IDE globals or claims raw SWF support.
 `, "utf8");
 
 async function run(command, arguments_) {
