@@ -254,9 +254,9 @@ export class FlashLibrarySymbolAdapter {
         const firstFrame = frame(sourceTimeline, 0);
         validateFrame(firstFrame, characterId);
         const initialPlacements = indexedDisplayOperations(firstFrame, characterId);
-        const boundslessEmptyNamedAnchor = asset.bounds === undefined
-            && isBoundslessEmptyNamedAnchor(operation, sourceTimeline);
-        const bounds = spriteBounds(asset, characterId, boundslessEmptyNamedAnchor);
+        const boundslessNamedAnchor = asset.bounds === undefined
+            && isBoundslessNamedAnchorTree(operation, sourceTimeline, assets, timelines, new Set([characterId]));
+        const bounds = spriteBounds(asset, characterId, boundslessNamedAnchor);
         // Text remains semantic authored content. A diagnostic full-frame
         // raster may authenticate visual evidence, but it must never replace
         // a reachable DefineText/DefineEditText node in production output.
@@ -266,7 +266,7 @@ export class FlashLibrarySymbolAdapter {
         if (rasterFrames !== undefined)
             recordRasterizedTimelineInertPlacementRatios(sourceTimeline, assets, inertPlacementRatios);
         const animated = rasterFrames === undefined
-            ? sourceTimeline.frameCount === 1 || boundslessEmptyNamedAnchor ? undefined : this.createAnimatedDisplayList(
+            ? sourceTimeline.frameCount === 1 || boundslessNamedAnchor ? undefined : this.createAnimatedDisplayList(
                 sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
                 inertPlacementRatios, root ? linkage : instanceId!,
             )
@@ -592,7 +592,7 @@ export class FlashLibrarySymbolAdapter {
                     if (operation.colorTransform !== undefined) {
                         const colorTransform = displayColorTransform(operation.colorTransform);
                         if (!sameRgbColorTransform(colorTransform, prior.colorTransform))
-                            fail("FLASH_LIBRARY_DYNAMIC_COLOR_TRANSFORM_UNSUPPORTED",
+                            fail("FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED",
                                 "Animated RGB color-transform changes require a new placement instance.");
                         prior.colorTransform = colorTransform;
                         prior.alpha = colorTransform.alphaMultiplier;
@@ -1427,26 +1427,47 @@ function authoredScale9Grid(
 function spriteBounds(
     asset: Record<string, any>,
     characterId: number,
-    boundslessEmptyNamedAnchor: boolean,
+    boundslessNamedAnchor: boolean,
 ): Record<string, any> {
     if (asset.bounds !== undefined)
         return object(asset.bounds, `library.assets.${characterId}.bounds`);
-    if (!boundslessEmptyNamedAnchor)
-        fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is an empty named anchor.`);
+    if (!boundslessNamedAnchor)
+        fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is a named nonvisual anchor tree.`);
     return { x: 0, y: 0, width: 0, height: 0 };
 }
 
-function isBoundslessEmptyNamedAnchor(
+function isBoundslessNamedAnchorTree(
     operation: Record<string, any> | undefined,
     sourceTimeline: Record<string, any>,
+    assets: Record<string, any>,
+    timelines: ReadonlyMap<number, unknown>,
+    visited: ReadonlySet<number>,
 ): boolean {
     if (operation === undefined || typeof operation.name !== "string")
         return false;
-    return validatedTimelineFrames(sourceTimeline).every((value, index) => {
+    const frames = validatedTimelineFrames(sourceTimeline);
+    let containsNestedAnchor = false;
+    const valid = frames.every((value, index) => {
         const current = object(value, `timeline ${sourceTimeline.symbolId} frame ${index + 1}`);
-        return current.label === undefined
-            && array(current.operations, `timeline ${sourceTimeline.symbolId}.operations`).length === 0;
+        if (current.label !== undefined) return false;
+        return indexedDisplayOperations(current, positiveInteger(sourceTimeline.symbolId, "anchor symbolId"))
+            .every(({ operation: placed }) => {
+                containsNestedAnchor = true;
+                if (typeof placed.name !== "string") return false;
+                const childId = positiveInteger(placed.characterId, "anchor child characterId");
+                if (visited.has(childId)) return false;
+                const child = object(assets[String(childId)], `library.assets.${childId}`);
+                if (child.kind !== "sprite" || child.bounds !== undefined) return false;
+                return isBoundslessNamedAnchorTree(
+                    placed,
+                    timeline(timelines, childId),
+                    assets,
+                    timelines,
+                    new Set([...visited, childId]),
+                );
+            });
     });
+    return valid && (!containsNestedAnchor || frames.length === 1);
 }
 
 function registerResource(
@@ -1550,10 +1571,24 @@ function resolveFlashLibraryShapeProjections(
             fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} contains geometry outside its authenticated bitmap fills.`);
     }
 
+    const tiles = new Map(fillStyles.map(({ styleIndex }) => [
+        styleIndex,
+        rectangleForFill(segments, styleIndex, characterId),
+    ]));
+    const repeatedMosaic = resolveRepeatedBitmapMosaicProjection(
+        fillStyles,
+        tiles,
+        bounds,
+        characterId,
+        assets,
+        resourceAuthorities,
+    );
+    if (repeatedMosaic !== undefined) return [repeatedMosaic];
+
     const projections = fillStyles.map(({ value: fill, styleIndex }): FlashLibraryShapeProjection => {
         if (fill.kind !== "bitmap" || fill.repeat !== false || typeof fill.smooth !== "boolean")
             fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} bitmap fill mode is unsupported.`);
-        const tile = rectangleForFill(segments, styleIndex, characterId);
+        const tile = tiles.get(styleIndex)!;
         const matrix = object(fill.startMatrix, `shape ${characterId} bitmap matrix`);
         exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
         const scaleX = finite(matrix.a, `shape ${characterId} bitmap matrix.a`);
@@ -1597,6 +1632,85 @@ function resolveFlashLibraryShapeProjections(
     if (!rectanglesTileBounds(projections, bounds))
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
     return projections;
+}
+
+/**
+ * FFDec can split one repeating bitmap fill into a rectangular mosaic while
+ * retaining the same bitmap and transform on every region. When that mosaic
+ * partitions exactly one full bitmap projection, repetition is inert and the
+ * authored result is the original bitmap. Anything less exact stays rejected.
+ */
+function resolveRepeatedBitmapMosaicProjection(
+    fillStyles: ReadonlyArray<{ readonly value: Record<string, any>; readonly styleIndex: number }>,
+    tiles: ReadonlyMap<number, { readonly x: number; readonly y: number; readonly width: number; readonly height: number }>,
+    bounds: Record<string, any>,
+    characterId: number,
+    assets: Record<string, any>,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+): FlashLibraryShapeProjection | undefined {
+    if (!fillStyles.some(({ value }) => value.repeat === true)) return undefined;
+    if (!fillStyles.every(({ value }) => value.kind === "bitmap" && value.repeat === true && value.smooth === false))
+        fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} mixes incompatible repeating bitmap fill modes.`);
+
+    const first = fillStyles[0].value;
+    const bitmapId = positiveInteger(first.bitmapId, `shape ${characterId}.bitmapId`);
+    const matrix = object(first.startMatrix, `shape ${characterId} repeating bitmap matrix`);
+    exactKeys(matrix, MATRIX_FIELDS, `shape ${characterId} repeating bitmap matrix`, "FLASH_LIBRARY_BITMAP_FILL_MATRIX_FIELD_UNSUPPORTED");
+    const matrixIdentity = JSON.stringify(matrix);
+    for (const { value: fill } of fillStyles) {
+        if (positiveInteger(fill.bitmapId, `shape ${characterId}.bitmapId`) !== bitmapId
+            || JSON.stringify(object(fill.startMatrix, `shape ${characterId} repeating bitmap matrix`)) !== matrixIdentity)
+            fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} repeating bitmap fills do not share one exact source projection.`);
+    }
+
+    const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
+    if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId)
+        fail("FLASH_LIBRARY_BITMAP_FILL_IMAGE_REQUIRED", `Shape ${characterId} bitmap ${bitmapId} does not identify an image asset.`);
+    const bitmap = object(bitmapAsset.bitmap, `library.assets.${bitmapId}.bitmap`);
+    const bitmapWidth = positive(bitmap.width, `library.assets.${bitmapId}.bitmap.width`);
+    const bitmapHeight = positive(bitmap.height, `library.assets.${bitmapId}.bitmap.height`);
+    const x = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+    const y = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+    const width = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
+    const height = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
+    const scaleX = finite(matrix.a, `shape ${characterId} repeating bitmap matrix.a`);
+    const scaleY = finite(matrix.d, `shape ${characterId} repeating bitmap matrix.d`);
+    if (scaleX === 0 || scaleY === 0 || matrix.b !== 0 || matrix.c !== 0)
+        fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} repeating bitmap matrix is not signed axis-aligned.`);
+    const projectedX0 = finite(matrix.tx, `shape ${characterId} repeating bitmap matrix.tx`);
+    const projectedY0 = finite(matrix.ty, `shape ${characterId} repeating bitmap matrix.ty`);
+    const projectedX1 = projectedX0 + bitmapWidth * scaleX / 20;
+    const projectedY1 = projectedY0 + bitmapHeight * scaleY / 20;
+    if (Math.abs(Math.min(projectedX0, projectedX1) - x) > 0.05
+        || Math.abs(Math.max(projectedX0, projectedX1) - (x + width)) > 0.05
+        || Math.abs(Math.min(projectedY0, projectedY1) - y) > 0.05
+        || Math.abs(Math.max(projectedY0, projectedY1) - (y + height)) > 0.05)
+        fail("FLASH_LIBRARY_BITMAP_FILL_MATRIX_UNSUPPORTED", `Shape ${characterId} repeating bitmap does not project exactly once across its bounds.`);
+
+    const tileProjections = fillStyles.map(({ styleIndex }): FlashLibraryShapeProjection => ({
+        bitmapId,
+        sourcePath: "",
+        styleIndex,
+        smoothing: false,
+        ...tiles.get(styleIndex)!,
+        flipX: false,
+        flipY: false,
+    }));
+    if (!rectanglesExactlyPartitionBounds(tileProjections, bounds))
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} repeating bitmap regions do not exactly partition its bounds.`);
+
+    const sourcePath = string(bitmapAsset.path, `library.assets.${bitmapId}.path`);
+    const authority = resourceAuthorities.get(sourcePath);
+    const lower = sourcePath.replace(/\\/g, "/").toLowerCase();
+    const mediaMatches = authority !== undefined && authority.sourcePath === sourcePath
+        && ((lower.endsWith(".png") && authority.mediaType === "image/png")
+            || ((lower.endsWith(".jpg") || lower.endsWith(".jpeg")) && authority.mediaType === "image/jpeg"));
+    if (!mediaMatches)
+        fail("FLASH_LIBRARY_BITMAP_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} bitmap ${bitmapId} has no unique authenticated image authority.`);
+    return {
+        bitmapId, sourcePath, styleIndex: fillStyles[0].styleIndex, smoothing: false,
+        x, y, width, height, flipX: scaleX < 0, flipY: scaleY < 0,
+    };
 }
 
 function flashLibraryAssetName(asset: Record<string, any>, characterId: number): string {
@@ -1655,21 +1769,37 @@ function rectanglesTileBounds(
         && Math.max(...projections.map(projection => projection.y + projection.height)) === y + height;
 }
 
+function rectanglesExactlyPartitionBounds(
+    projections: ReadonlyArray<FlashLibraryShapeProjection>,
+    bounds: Record<string, any>,
+): boolean {
+    if (!rectanglesTileBounds(projections, bounds)) return false;
+    const width = finite(bounds.width, "shape.bounds.width");
+    const height = finite(bounds.height, "shape.bounds.height");
+    let area = 0;
+    for (let index = 0; index < projections.length; index++) {
+        const current = projections[index];
+        area += current.width * current.height;
+        for (let otherIndex = index + 1; otherIndex < projections.length; otherIndex++) {
+            const other = projections[otherIndex];
+            const overlapWidth = Math.min(current.x + current.width, other.x + other.width) - Math.max(current.x, other.x);
+            const overlapHeight = Math.min(current.y + current.height, other.y + other.height) - Math.max(current.y, other.y);
+            if (overlapWidth > 0 && overlapHeight > 0) return false;
+        }
+    }
+    return Math.abs(area - width * height) <= 0.0001;
+}
+
 function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record<string, any>, styleIndex: number): boolean {
-    if (segmentsValue.length !== 4) return false;
     const x = finite(bounds.x, "shape.bounds.x");
     const y = finite(bounds.y, "shape.bounds.y");
     const width = finite(bounds.width, "shape.bounds.width");
     const height = finite(bounds.height, "shape.bounds.height");
     if (width <= 0 || height <= 0) return false;
-    const corners = new Set([`${x},${y}`, `${x + width},${y}`, `${x + width},${y + height}`, `${x},${y + height}`]);
-    const expectedEdges = new Set([
-        canonicalEdge(`${x},${y}`, `${x + width},${y}`),
-        canonicalEdge(`${x + width},${y}`, `${x + width},${y + height}`),
-        canonicalEdge(`${x + width},${y + height}`, `${x},${y + height}`),
-        canonicalEdge(`${x},${y + height}`, `${x},${y}`),
-    ]);
-    const observedEdges = new Set<string>();
+    const top: Array<readonly [number, number]> = [];
+    const right: Array<readonly [number, number]> = [];
+    const bottom: Array<readonly [number, number]> = [];
+    const left: Array<readonly [number, number]> = [];
     for (const value of segmentsValue) {
         const segment = object(value, "shape segment");
         if (segment.kind !== "line"
@@ -1681,18 +1811,42 @@ function isBoundsRectangle(segmentsValue: ReadonlyArray<unknown>, bounds: Record
         const to = array(edge.to, "shape segment.end.to");
         if (from.length !== 2 || to.length !== 2 || !from.every(Number.isFinite) || !to.every(Number.isFinite))
             return false;
-        const fromKey = `${from[0]},${from[1]}`;
-        const toKey = `${to[0]},${to[1]}`;
-        if (!corners.has(fromKey) || !corners.has(toKey)
-            || (from[0] !== to[0] && from[1] !== to[1])) return false;
-        observedEdges.add(canonicalEdge(fromKey, toKey));
+        const [fromX, fromY] = from as [number, number];
+        const [toX, toY] = to as [number, number];
+        if (fromX === toX) {
+            const interval = [Math.min(fromY, toY), Math.max(fromY, toY)] as const;
+            if (interval[0] === interval[1]) return false;
+            if (fromX === x) left.push(interval);
+            else if (fromX === x + width) right.push(interval);
+            else return false;
+        }
+        else if (fromY === toY) {
+            const interval = [Math.min(fromX, toX), Math.max(fromX, toX)] as const;
+            if (interval[0] === interval[1]) return false;
+            if (fromY === y) top.push(interval);
+            else if (fromY === y + height) bottom.push(interval);
+            else return false;
+        }
+        else return false;
     }
-    return observedEdges.size === expectedEdges.size
-        && [...observedEdges].every(value => expectedEdges.has(value));
+    return intervalsCoverExactly(top, x, x + width)
+        && intervalsCoverExactly(right, y, y + height)
+        && intervalsCoverExactly(bottom, x, x + width)
+        && intervalsCoverExactly(left, y, y + height);
 }
 
-function canonicalEdge(from: string, to: string): string {
-    return from < to ? `${from}|${to}` : `${to}|${from}`;
+function intervalsCoverExactly(
+    intervalsValue: ReadonlyArray<readonly [number, number]>,
+    start: number,
+    end: number,
+): boolean {
+    const intervals = [...intervalsValue].sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+    let cursor = start;
+    for (const interval of intervals) {
+        if (interval[0] !== cursor || interval[1] <= interval[0]) return false;
+        cursor = interval[1];
+    }
+    return cursor === end;
 }
 
 function createDisplayState(

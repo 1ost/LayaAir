@@ -830,6 +830,115 @@ async function main(): Promise<void> {
             "native hierarchy lost the exact RGB placement transform");
     });
 
+    await test("Flash library coalesces one exact repeating bitmap mosaic without raster churn", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const line = (styleIndex: number, from: [number, number], to: [number, number]) => ({
+            kind: "line", fillStyle0: 0, fillStyle1: styleIndex, lineStyle: 0,
+            start: { from, to }, end: { from, to },
+        });
+        const rectangle = (styleIndex: number, x: number, y: number, width: number, height: number, splitTop = false) => [
+            ...(splitTop ? [
+                line(styleIndex, [x, y], [x + width / 2, y]),
+                line(styleIndex, [x + width / 2, y], [x + width, y]),
+            ] : [line(styleIndex, [x, y], [x + width, y])]),
+            line(styleIndex, [x + width, y], [x + width, y + height]),
+            line(styleIndex, [x + width, y + height], [x, y + height]),
+            line(styleIndex, [x, y + height], [x, y]),
+        ];
+        const repeatedFill = () => ({
+            kind: "bitmap", bitmapId: 3, repeat: true, smooth: false,
+            startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 },
+        });
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 40, height: 36, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "MosaicRoot", bounds: { x: 0, y: 0, width: 40, height: 36 } },
+                "2": { characterId: 2, kind: "shape", symbolName: "MosaicBitmap", bounds: { x: 0, y: 0, width: 40, height: 36 },
+                    shape: {
+                        fillStyles: [repeatedFill(), repeatedFill(), repeatedFill(), repeatedFill()],
+                        lineStyles: [], usesFillWindingRule: false,
+                        segments: [
+                            ...rectangle(1, 0, 0, 20, 18, true),
+                            ...rectangle(2, 20, 0, 20, 18),
+                            ...rectangle(3, 0, 18, 20, 18),
+                            ...rectangle(4, 20, 18, 20, 18),
+                        ],
+                    } },
+                "3": { characterId: 3, kind: "image", path: "assets/3.png", bitmap: { width: 40, height: 36 } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "MosaicRoot", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const request = {
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.MosaicRoot",
+            resources: new Map([["assets/3.png", {
+                sourcePath: "assets/3.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        };
+        const projection = new FlashLibrarySymbolAdapter().parse(request).root.children[0];
+        assert(projection.kind === "image" && projection.resourceId === "flash-bitmap-3"
+            && projection.width === 40 && projection.height === 36 && projection.children.length === 0,
+        "exact repeating bitmap mosaic did not coalesce to its sole authenticated bitmap");
+
+        const mismatchedMatrix = structuredClone(library);
+        mismatchedMatrix.assets["2"].shape.fillStyles[3].startMatrix.tx = 1;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse({ ...request, library: mismatchedMatrix }),
+            "FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED");
+
+        const missingRegion = structuredClone(library);
+        missingRegion.assets["2"].shape.fillStyles.pop();
+        missingRegion.assets["2"].shape.segments = missingRegion.assets["2"].shape.segments
+            .filter((segment: any) => segment.fillStyle1 !== 4);
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse({ ...request, library: missingRegion }),
+            "FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED");
+    });
+
+    await test("Flash library retains a boundsless named nonvisual anchor tree", () => {
+        const place = (characterId: number, depth: number, name: string) => ({
+            op: "place", characterId, depth, name, move: false, ratio: 0,
+            matrix: { a: 1, b: 0, c: 0, d: 1, tx: 2, ty: 2 },
+        });
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 80, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "AnchorRoot", bounds: { x: 0, y: 0, width: 100, height: 80 } },
+                "2": { characterId: 2, kind: "sprite", symbolName: "HeadContainer" },
+                "3": { characterId: 3, kind: "sprite" },
+            },
+        };
+        const timeline = (symbolId: number, operations: any[]) => ({
+            schema: "flash-timeline@1", symbolId, frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations, labels: [], sounds: [] }],
+        });
+        const timelines = new Map([
+            [1, timeline(1, [place(2, 1, "Head")])],
+            [2, timeline(2, [place(3, 1, "mc_head")])],
+            [3, timeline(3, [])],
+        ]);
+        const request = {
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.AnchorRoot", resources: new Map(),
+        };
+        const head = new FlashLibrarySymbolAdapter().parse(request).root.children[0];
+        assert(head.name === "Head" && head.width === 0 && head.height === 0
+            && head.children[0].name === "mc_head" && head.children[0].width === 0,
+        "boundsless named nonvisual hierarchy did not retain both native lookup anchors");
+
+        const unnamedNestedAnchor = structuredClone([...timelines.entries()]);
+        unnamedNestedAnchor[1][1].frames[0].operations[0].name = undefined;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse({
+            ...request,
+            timelines: new Map(unnamedNestedAnchor),
+        }), "FLASH_LIBRARY_SPRITE_BOUNDS_MISSING");
+    });
+
     await test("Flash static depth masks bind one deterministic local Laya reference", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const library: any = {
