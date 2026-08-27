@@ -971,7 +971,8 @@ export class FlashLibrarySymbolAdapter {
         const placement = placementTransform(operation);
         const html = boolean(textField.html, `library.assets.${characterId}.textField.html`);
         const authoredHtml = html
-            ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color, isEmbedded && !hasLayout)
+            ? parseAuthoredFlashHtml(sourceInitialText, characterId, font, textField, color,
+                !useOutlines || isEmbedded && !hasLayout)
             : undefined;
         const initialText = authoredHtml?.markup ?? sourceInitialText;
         return {

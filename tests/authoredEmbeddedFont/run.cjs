@@ -276,6 +276,22 @@ async function main() {
     assert.equal(noOutlineText.format.embeddedFont.kerning.length, 908,
         "the second real-sized unsorted source kerning table is retained");
 
+    const noOutlineHtmlFixture = fixture();
+    const noOutlineHtmlTextAsset = noOutlineHtmlFixture.library.assets[203];
+    const noOutlineHtmlMarkup = '<p align="center"><font face="Arial" size="12" color="#ffffff" letterSpacing="0.000000" kerning="1">loading</font></p>';
+    noOutlineHtmlTextAsset.initialText = noOutlineHtmlMarkup;
+    noOutlineHtmlTextAsset.textField.html = true;
+    noOutlineHtmlTextAsset.textField.initialText = noOutlineHtmlMarkup;
+    noOutlineHtmlTextAsset.textField.useOutlines = false;
+    delete noOutlineHtmlTextAsset.textRendering;
+    const noOutlineHtmlText = adapter.parse(noOutlineHtmlFixture).root.children[0].textField;
+    assert.equal(noOutlineHtmlText.useOutlines, false);
+    assert.equal(noOutlineHtmlText.format.font, "Arial",
+        "a non-outlined HTML field uses its exact device face even when the SWF also retains an embedded font");
+    assert.equal(noOutlineHtmlText.format.fontMode, "embedded");
+    assert.notEqual(noOutlineHtmlText.format.embeddedFont, undefined,
+        "retained embedded metrics remain available without forcing Flash's outline rendering mode");
+
     const defaultOutlineFixture = fixture();
     delete defaultOutlineFixture.library.assets[203].textRendering;
     const defaultOutlineText = adapter.parse(defaultOutlineFixture).root.children[0].textField;
