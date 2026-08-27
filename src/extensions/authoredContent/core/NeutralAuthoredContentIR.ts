@@ -987,8 +987,9 @@ function normalizeFrameLabels(value: unknown, totalFrames: number): Readonly<Rec
     const source = record(value, "timeline.frameLabels");
     const result: Record<string, number> = {};
     for (const label of Object.keys(source).sort(compareText)) {
-        if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(label))
-            fail("AUTHORED_CONTENT_FRAME_LABEL_INVALID", `Frame label '${label}' is not a stable identifier.`);
+        if (label.length === 0 || label.length > 128 || /[\u0000-\u001f\u007f]/.test(label))
+            fail("AUTHORED_CONTENT_FRAME_LABEL_INVALID",
+                "Frame labels must be nonempty, control-free, and at most 128 UTF-16 units.");
         const frame = requiredFiniteNumber(source[label], `timeline.frameLabels.${label}`);
         if (!Number.isSafeInteger(frame) || frame < 1 || frame > totalFrames)
             fail("AUTHORED_CONTENT_FRAME_LABEL_RANGE", `Frame label '${label}' points outside 1..${totalFrames}.`);

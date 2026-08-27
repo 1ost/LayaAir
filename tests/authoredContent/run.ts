@@ -1883,8 +1883,14 @@ async function main(): Promise<void> {
         assert(Object.prototype.hasOwnProperty.call(prototypeLabels, "__proto__") && prototypeLabels.__proto__ === 1,
             "valid prototype-shaped frame label was not retained as immutable data");
 
+        const printableLabelDocument = structuredClone(labeledMovieClipDocument());
+        Reflect.set(Reflect.get(printableLabelDocument, "timeline"), "frameLabels", { "无活动": 1, "ready state": 1 });
+        assert(JSON.stringify(normalizeNeutralAuthoredContent(printableLabelDocument).timeline.frameLabels)
+            === JSON.stringify({ "ready state": 1, "无活动": 1 }),
+            "printable Flash frame labels were not retained exactly");
+
         for (const [label, frame, code] of [
-            ["invalid label", 1, "AUTHORED_CONTENT_FRAME_LABEL_INVALID"],
+            ["invalid\u0000label", 1, "AUTHORED_CONTENT_FRAME_LABEL_INVALID"],
             ["outside", 5, "AUTHORED_CONTENT_FRAME_LABEL_RANGE"],
         ] as const) {
             const invalid = structuredClone(labeledMovieClipDocument());
