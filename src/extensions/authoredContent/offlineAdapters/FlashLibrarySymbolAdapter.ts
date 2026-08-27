@@ -1523,18 +1523,32 @@ function authoredEmbeddedFont(
             },
         };
     });
-    const kerning = array(font.kerning, `library.assets.${fontId}.font.kerning`).map((candidate, index) => {
+    const sourceKerning = array(font.kerning, `library.assets.${fontId}.font.kerning`).map((candidate, index) => {
         const pair = object(candidate, `font ${fontId} kerning ${index}`);
         exactKeys(pair, FONT_KERNING_FIELDS, `font ${fontId} kerning ${index}`, "FLASH_LIBRARY_FONT_KERNING_FIELD_UNSUPPORTED");
         const leftCodePoint = unicodeScalar(pair.leftCodePoint, `font ${fontId} kerning ${index}.leftCodePoint`);
         const rightCodePoint = unicodeScalar(pair.rightCodePoint, `font ${fontId} kerning ${index}.rightCodePoint`);
         return { leftCodePoint, rightCodePoint, adjustment: finite(pair.adjustment, `font ${fontId} kerning ${index}.adjustment`) };
     }).sort((left, right) => left.leftCodePoint - right.leftCodePoint || left.rightCodePoint - right.rightCodePoint);
-    for (let index = 1; index < kerning.length; index++) {
-        const previous = kerning[index - 1];
-        const current = kerning[index];
-        if (previous.leftCodePoint === current.leftCodePoint && previous.rightCodePoint === current.rightCodePoint)
-            fail("FLASH_LIBRARY_FONT_KERNING_DUPLICATE", `Font ${fontId} kerning pairs must be unique.`);
+    const glyphCodePoints = new Set(glyphs.map(glyph => glyph.codePoint));
+    const kerning: typeof sourceKerning = [];
+    for (let start = 0; start < sourceKerning.length;) {
+        let end = start + 1;
+        while (end < sourceKerning.length
+            && sourceKerning[end].leftCodePoint === sourceKerning[start].leftCodePoint
+            && sourceKerning[end].rightCodePoint === sourceKerning[start].rightCodePoint)
+            end++;
+        if (end - start > 1) {
+            const pair = sourceKerning[start];
+            if (glyphCodePoints.has(pair.leftCodePoint) && glyphCodePoints.has(pair.rightCodePoint))
+                fail("FLASH_LIBRARY_FONT_KERNING_DUPLICATE", `Font ${fontId} kerning pairs must be unique.`);
+            // DefineFont kerning can retain pairs for characters omitted from a
+            // subset font. Such a pair can never participate in this embedded
+            // font's glyph layout. If it is duplicated, discard the entire
+            // unobservable group instead of inventing first/last precedence.
+        }
+        else kerning.push(sourceKerning[start]);
+        start = end;
     }
     const alignZones = authoredFontAlignZones(fontAsset.fontAlignZones, fontId, glyphCount);
     const bold = boolean(font.bold, `library.assets.${fontId}.font.bold`);

@@ -294,6 +294,17 @@ async function main() {
     assert.equal(text.textField.format.embeddedFont.kerning.length, 909,
         "the full unsorted source kerning table is retained after deterministic normalization");
 
+    const unreachableDuplicateFixture = fixture();
+    const unreachableKerning = unreachableDuplicateFixture.library.assets[18].font.kerning;
+    unreachableKerning.push({ ...unreachableKerning[0], adjustment: -9999 });
+    const unreachableDuplicateText = adapter.parse(unreachableDuplicateFixture).root.children[0];
+    const unreachablePair = unreachableKerning[0];
+    assert.equal(unreachableDuplicateText.textField.format.embeddedFont.kerning.length, 908,
+        "a duplicated pair outside the subset glyph set is omitted without selecting invented precedence");
+    assert.equal(unreachableDuplicateText.textField.format.embeddedFont.kerning.some(pair =>
+        pair.leftCodePoint === unreachablePair.leftCodePoint
+        && pair.rightCodePoint === unreachablePair.rightCodePoint), false);
+
     const pixelFixture = fixture();
     pixelFixture.library.assets[203].textRendering.gridFit = 1;
     pixelFixture.library.assets[203].textRendering.gridFitMode = "pixel";
@@ -448,7 +459,10 @@ async function main() {
         ["device authority substitution", value => value.resources.get("assets\/18.ttf").mediaType = "image/png", /FLASH_LIBRARY_FONT_RESOURCE_AUTHORITY_MISSING/],
         ["nonembedded outlined font", value => value.library.assets[18].font.embedded = false, /FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED/],
         ["glyph order drift", value => value.library.assets[18].font.glyphs[1].codePoint = 31, /FLASH_LIBRARY_FONT_GLYPH_ORDER_UNSUPPORTED/],
-        ["duplicate kerning pair", value => value.library.assets[18].font.kerning[1] = { ...value.library.assets[18].font.kerning[0] }, /FLASH_LIBRARY_FONT_KERNING_DUPLICATE/],
+        ["duplicate reachable kerning pair", value => {
+            value.library.assets[18].font.kerning[0] = { adjustment: -10, leftCodePoint: 65, rightCodePoint: 86 };
+            value.library.assets[18].font.kerning[1] = { adjustment: -20, leftCodePoint: 65, rightCodePoint: 86 };
+        }, /FLASH_LIBRARY_FONT_KERNING_DUPLICATE/],
         ["unsupported rasterizer", value => value.library.assets[203].textRendering.renderer = "normal", /FLASH_LIBRARY_TEXT_RENDERER_UNSUPPORTED/],
         ["mismatched pixel grid fit", value => {
             value.library.assets[203].textRendering.gridFit = 1;
