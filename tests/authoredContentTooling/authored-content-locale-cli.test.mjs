@@ -129,7 +129,16 @@ test("derive-locale passes the strict text-map-only request policy to the API", 
         localized.timeline.duration = 7;
         await writeFile(path.join(value.root, "ir/base.json"), JSON.stringify(base));
         await writeFile(path.join(value.root, "ir/fr.json"), JSON.stringify(localized));
-        await writeFile(value.requestPath, JSON.stringify({ ...value.request, mode: "text-map-only" }));
+        await writeFile(path.join(value.root, "ir/base.lh"), JSON.stringify({
+            "_$authoredContent": {
+                nodes: [{ kind: "dynamic-text", animatorOwnerPath: ["character_82"] }]
+            }
+        }));
+        await writeFile(value.requestPath, JSON.stringify({
+            ...value.request,
+            mode: "text-map-only",
+            bundles: [{ ...value.request.bundles[0], baseRuntimeHierarchy: "ir/base.lh" }]
+        }));
         const result = invoke("derive-locale", "--request", value.requestPath, "--output", value.outputPath);
         assert.equal(result.status, 0, result.stderr);
         assert.deepEqual(JSON.parse(result.stdout).overlay.translations, [{ bundle: "lobby", target: "character_82", text: "Pret" }]);

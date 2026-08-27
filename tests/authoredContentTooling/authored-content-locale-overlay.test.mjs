@@ -128,10 +128,14 @@ test("text-map-only derives against exact base paths while ignoring localized no
     localized.root.children[1].children[0].textField.format.font = "Localized Font";
     const overlay = api.deriveAuthoredContentLocaleOverlay({
         ...request(base, localized),
-        mode: "text-map-only"
+        mode: "text-map-only",
+        bundles: [{
+            ...request(base, localized).bundles[0],
+            baseRuntimeTargets: ["panel/character_82"]
+        }]
     });
     assert.deepEqual(overlay.assetOverrides, []);
-    assert.deepEqual(overlay.translations, [{ bundle: "lobby", target: "panel/character_82$d2$f1$i2", text: "Pret" }]);
+    assert.deepEqual(overlay.translations, [{ bundle: "lobby", target: "panel/character_82", text: "Pret" }]);
 });
 
 test("text-map-only fails closed on ambiguous, missing, or extra canonical text targets", () => {
@@ -156,5 +160,18 @@ test("text-map-only fails closed on ambiguous, missing, or extra canonical text 
             mode: "text-map-only"
         }),
         error => error.code === "AUTHORED_CONTENT_LOCALE_MAP_ONLY_IMAGE_BINDINGS"
+    );
+
+    assert.throws(
+        () => api.deriveAuthoredContentLocaleOverlay({
+            ...request(document(), document({ label: "Pret" })),
+            mode: "text-map-only",
+            bundles: [{
+                ...request(document(), document({ label: "Pret" })).bundles[0],
+                baseRuntimeTargets: ["panel/character_1", "panel/character_2"]
+            }]
+        }),
+        error => error.code === "AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS"
+            || error.code === "AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_SET_DIFFERENCE"
     );
 });

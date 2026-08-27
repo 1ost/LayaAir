@@ -30,6 +30,7 @@ interface LocaleDiffBundleDocument {
     readonly bundle: string;
     readonly base: string;
     readonly localized: string;
+    readonly baseRuntimeHierarchy?: string;
     readonly imageBindings?: AuthoredContentLocaleBundleComparison["imageBindings"];
 }
 
@@ -59,7 +60,11 @@ export async function deriveAuthoredContentLocaleOverlayFiles(
     for (const [index, bundle] of document.bundles.entries()) {
         const basePath = await resolveInput(requestRoot, bundle.base, `bundles[${index}].base`);
         const localizedPath = await resolveInput(requestRoot, bundle.localized, `bundles[${index}].localized`);
-        for (const input of [basePath, localizedPath]) {
+        const baseRuntimeHierarchyPath = bundle.baseRuntimeHierarchy === undefined
+            ? undefined
+            : await resolveInput(requestRoot, bundle.baseRuntimeHierarchy, `bundles[${index}].baseRuntimeHierarchy`);
+        for (const input of [basePath, localizedPath, baseRuntimeHierarchyPath]) {
+            if (input === undefined) continue;
             if (samePath(input, outputPath))
                 fail("AUTHORED_CONTENT_LOCALE_OUTPUT_ALIAS", "Locale output must not replace a neutral IR input.");
         }
@@ -67,6 +72,12 @@ export async function deriveAuthoredContentLocaleOverlayFiles(
             bundle: bundle.bundle,
             base: await readStrictJson(basePath, `${bundle.bundle} base neutral IR`),
             localized: await readStrictJson(localizedPath, `${bundle.bundle} localized neutral IR`),
+            ...(baseRuntimeHierarchyPath === undefined ? {} : {
+                baseRuntimeTargets: runtimeHierarchyTextTargets(
+                    await readStrictJson(baseRuntimeHierarchyPath, `${bundle.bundle} base runtime hierarchy`),
+                    `${bundle.bundle} base runtime hierarchy`,
+                ),
+            }),
             ...(bundle.imageBindings === undefined ? {} : { imageBindings: bundle.imageBindings }),
         });
     }
@@ -101,13 +112,16 @@ function validateLocaleDiffDocument(value: unknown): LocaleDiffDocument {
     const bundles = source.bundles.map((value, index): LocaleDiffBundleDocument => {
         const itemPath = `locale diff request.bundles[${index}]`;
         const bundle = plainRecord(value, itemPath);
-        exactKeys(bundle, ["bundle", "base", "localized", "imageBindings"], itemPath, ["imageBindings"]);
+        exactKeys(bundle, ["bundle", "base", "localized", "baseRuntimeHierarchy", "imageBindings"], itemPath, ["baseRuntimeHierarchy", "imageBindings"]);
         if (bundle.imageBindings !== undefined && !Array.isArray(bundle.imageBindings))
             fail("AUTHORED_CONTENT_LOCALE_IMAGE_BINDINGS", `${itemPath}.imageBindings must be an array.`);
         return {
             bundle: requiredString(bundle.bundle, `${itemPath}.bundle`),
             base: relativeInputPath(bundle.base, `${itemPath}.base`),
             localized: relativeInputPath(bundle.localized, `${itemPath}.localized`),
+            ...(bundle.baseRuntimeHierarchy === undefined ? {} : {
+                baseRuntimeHierarchy: relativeInputPath(bundle.baseRuntimeHierarchy, `${itemPath}.baseRuntimeHierarchy`),
+            }),
             ...(bundle.imageBindings === undefined ? {} : {
                 imageBindings: bundle.imageBindings as unknown as AuthoredContentLocaleBundleComparison["imageBindings"],
             }),
@@ -121,6 +135,27 @@ function validateLocaleDiffDocument(value: unknown): LocaleDiffDocument {
         ...(source.mode === undefined ? {} : { mode: derivationMode(source.mode, "locale diff request.mode") }),
         bundles,
     };
+}
+
+function runtimeHierarchyTextTargets(value: unknown, label: string): readonly string[] {
+    const hierarchy = plainRecord(value, label);
+    const authored = plainRecord(hierarchy._$authoredContent, `${label}._$authoredContent`);
+    if (!Array.isArray(authored.nodes))
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_HIERARCHY", `${label}._$authoredContent.nodes must be an array.`);
+    const targets: string[] = [];
+    for (const [index, value] of authored.nodes.entries()) {
+        const node = plainRecord(value, `${label}._$authoredContent.nodes[${index}]`);
+        if (node.kind !== "dynamic-text") continue;
+        if (!Array.isArray(node.animatorOwnerPath) || node.animatorOwnerPath.some(segment => typeof segment !== "string"))
+            fail("AUTHORED_CONTENT_LOCALE_RUNTIME_HIERARCHY", `${label}._$authoredContent.nodes[${index}].animatorOwnerPath must be a string array.`);
+        const path = node.animatorOwnerPath as string[];
+        if (path.some(segment => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\")))
+            fail("AUTHORED_CONTENT_LOCALE_RUNTIME_HIERARCHY", `${label}._$authoredContent.nodes[${index}].animatorOwnerPath is not normalized.`);
+        targets.push(path.length === 0 ? "$" : path.join("/"));
+    }
+    if (new Set(targets).size !== targets.length)
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS", `${label} contains duplicate dynamic-text runtime paths.`);
+    return targets;
 }
 
 function derivationMode(value: unknown, label: string): "strict" | "text-map-only" {

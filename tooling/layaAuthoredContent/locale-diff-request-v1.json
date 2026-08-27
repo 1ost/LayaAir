@@ -22,6 +22,7 @@
           "bundle": { "$ref": "#/$defs/stableString" },
           "base": { "$ref": "#/$defs/relativePath" },
           "localized": { "$ref": "#/$defs/relativePath" },
+          "baseRuntimeHierarchy": { "$ref": "#/$defs/relativePath" },
           "imageBindings": {
             "type": "array",
             "items": {

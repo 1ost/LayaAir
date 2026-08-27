@@ -19,6 +19,8 @@ export interface AuthoredContentLocaleBundleComparison {
     readonly base: unknown;
     /** Normalized neutral IR produced from the locale-specific evidence. */
     readonly localized: unknown;
+    /** Exact TextField paths present in the already-published base runtime hierarchy. */
+    readonly baseRuntimeTargets?: readonly string[];
     /** Explicit catalog/path authority for image resources whose bytes differ. */
     readonly imageBindings?: readonly AuthoredContentLocaleImageBinding[];
 }
@@ -79,16 +81,17 @@ export function deriveAuthoredContentLocaleOverlay(
     for (const [index, value] of source.bundles.entries()) {
         const path = `request.bundles[${index}]`;
         const comparison = plainRecord(value, path);
-        exactKeys(comparison, ["bundle", "base", "localized", "imageBindings"], path, ["imageBindings"]);
+        exactKeys(comparison, ["bundle", "base", "localized", "baseRuntimeTargets", "imageBindings"], path, ["baseRuntimeTargets", "imageBindings"]);
         const bundle = unique(stableText(comparison.bundle, `${path}.bundle`), bundleIds, "AUTHORED_CONTENT_LOCALE_BUNDLE_DUPLICATE", "bundle");
         const base = neutralDocument(comparison.base, `${path}.base`);
         const localized = neutralDocument(comparison.localized, `${path}.localized`);
         const imageBindings = normalizeImageBindings(comparison.imageBindings, `${path}.imageBindings`);
+        const baseRuntimeTargets = normalizeRuntimeTargets(comparison.baseRuntimeTargets, `${path}.baseRuntimeTargets`);
 
         if (mode === "text-map-only") {
             if (imageBindings.size !== 0)
                 fail("AUTHORED_CONTENT_LOCALE_MAP_ONLY_IMAGE_BINDINGS", `${path}.imageBindings is not admitted by text-map-only derivation.`);
-            compareTextMapOnly(base.root, localized.root, bundle, path, translations, translationIds);
+            compareTextMapOnly(base.root, localized.root, baseRuntimeTargets, bundle, path, translations, translationIds);
         }
         else {
             compareTopLevel(base, localized, path);
@@ -128,6 +131,7 @@ interface LocaleTextTarget {
 function compareTextMapOnly(
     baseRoot: JsonRecord,
     localizedRoot: JsonRecord,
+    baseRuntimeTargets: readonly string[] | undefined,
     bundle: string,
     path: string,
     translations: AuthoredContentLocaleTranslation[],
@@ -135,6 +139,9 @@ function compareTextMapOnly(
 ): void {
     const base = collectLocaleTextTargets(baseRoot, `${path}.base.root`);
     const localized = collectLocaleTextTargets(localizedRoot, `${path}.localized.root`);
+    const runtimeTargets = baseRuntimeTargets === undefined
+        ? undefined
+        : reconcileRuntimeTargets(base, baseRuntimeTargets, path);
     const baseKeys = [...base.keys()].sort(compareText);
     const localizedKeys = [...localized.keys()].sort(compareText);
     const missing = baseKeys.filter(key => !localized.has(key));
@@ -145,12 +152,78 @@ function compareTextMapOnly(
         const baseTarget = base.get(key)!;
         const localizedTarget = localized.get(key)!;
         if (baseTarget.text === localizedTarget.text) continue;
-        const identity = `${bundle}\n${baseTarget.target}`;
+        const target = runtimeTargets?.get(key) ?? baseTarget.target;
+        const identity = `${bundle}\n${target}`;
         if (translationIds.has(identity))
-            fail("AUTHORED_CONTENT_LOCALE_TRANSLATION_DUPLICATE", `Translation target '${bundle}/${baseTarget.target}' is ambiguous.`);
+            fail("AUTHORED_CONTENT_LOCALE_TRANSLATION_DUPLICATE", `Translation target '${bundle}/${target}' is ambiguous.`);
         translationIds.add(identity);
-        translations.push({ bundle, target: baseTarget.target, text: localizedTarget.text });
+        translations.push({ bundle, target, text: localizedTarget.text });
     }
+}
+
+function normalizeRuntimeTargets(value: unknown, path: string): readonly string[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value))
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGETS", `${path} must be an array.`);
+    return value.map((target, index) => runtimeTarget(target, `${path}[${index}]`));
+}
+
+function reconcileRuntimeTargets(
+    base: ReadonlyMap<string, LocaleTextTarget>,
+    runtimeTargets: readonly string[],
+    path: string,
+): ReadonlyMap<string, string> {
+    type RuntimeTarget = { readonly target: string; readonly strong: string; readonly relaxed: string; used: boolean };
+    const runtime: RuntimeTarget[] = runtimeTargets.map(target => ({
+        target,
+        strong: canonicalRuntimeTarget(target, false),
+        relaxed: canonicalRuntimeTarget(target, true),
+        used: false,
+    }));
+    if (new Set(runtime.map(value => value.target)).size !== runtime.length)
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS", `${path} base runtime target list contains duplicates.`);
+    const result = new Map<string, string>();
+    const unmatched = new Set(base.keys());
+    const claim = (key: string, candidates: RuntimeTarget[], phase: string): boolean => {
+        if (candidates.length === 0) return false;
+        if (candidates.length !== 1)
+            fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_AMBIGUOUS", `${path} base text target '${base.get(key)!.target}' has ${candidates.length} ${phase} runtime matches.`);
+        candidates[0].used = true;
+        result.set(key, candidates[0].target);
+        unmatched.delete(key);
+        return true;
+    };
+    for (const key of [...unmatched]) {
+        const target = base.get(key)!.target;
+        claim(key, runtime.filter(value => !value.used && value.target === target), "exact");
+    }
+    for (const key of [...unmatched])
+        claim(key, runtime.filter(value => !value.used && value.strong === key), "canonical");
+    for (const key of [...unmatched]) {
+        const relaxed = canonicalRuntimeTarget(base.get(key)!.target, true);
+        claim(key, runtime.filter(value => !value.used && value.relaxed === relaxed), "relaxed canonical");
+    }
+    const extra = runtime.filter(value => !value.used).map(value => value.target);
+    if (unmatched.size || extra.length)
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_SET_DIFFERENCE", `${path} published base runtime text targets do not correspond (missing runtime: ${[...unmatched].map(key => base.get(key)!.target).join(", ") || "none"}; extra runtime: ${extra.join(", ") || "none"}).`);
+    return result;
+}
+
+function runtimeTarget(value: unknown, path: string): string {
+    const target = stableText(value, path);
+    if (target === "$") return target;
+    const segments = target.split("/");
+    if (segments.some(segment => !segment || segment === "." || segment === ".." || segment.includes("\\")))
+        fail("AUTHORED_CONTENT_LOCALE_RUNTIME_TARGET_INVALID", `${path} must be a normalized slash-separated runtime path.`);
+    return segments.join("/");
+}
+
+function canonicalRuntimeTarget(target: string, relaxed: boolean): string {
+    if (target === "$") return target;
+    return target.split("/").map(segment => {
+        const generated = /^character_\d+(\$d\d+\$f\d+\$i\d+)?$/.exec(segment);
+        return generated ? `character_*${relaxed ? "" : generated[1] ?? ""}` : segment;
+    }).join("/");
 }
 
 function collectLocaleTextTargets(root: JsonRecord, path: string): Map<string, LocaleTextTarget> {
