@@ -125,6 +125,8 @@ export interface FlashLibrarySymbolRequest {
     readonly resources: ReadonlyMap<string, FlashLibraryResourceAuthority>;
     /** Import an exported linkage in symbol-local space rather than the SWF document stage. */
     readonly projection?: "document" | "library-symbol";
+    /** Retain authenticated TextField paths/text while replacing non-text shapes with inert placeholders. */
+    readonly textMapOnly?: boolean;
     /** Explicit JPEXS raster authorities for shapes which cannot be projected from vector fill records. */
     readonly rasterizedShapes?: ReadonlyMap<number, FlashLibraryResourceAuthority>;
     /** Explicit full-frame JPEXS raster authorities for symbols whose leaf rendering is intentionally flattened. */
@@ -132,7 +134,12 @@ export interface FlashLibrarySymbolRequest {
 }
 
 export class FlashLibrarySymbolAdapter {
+    private textMapOnly = false;
+
     parse(request: FlashLibrarySymbolRequest): NeutralAuthoredContentIR {
+        if (request.textMapOnly !== undefined && typeof request.textMapOnly !== "boolean")
+            fail("FLASH_LIBRARY_TEXT_MAP_ONLY_INVALID", "textMapOnly must be boolean when provided.");
+        this.textMapOnly = request.textMapOnly === true;
         const library = object(request.library, "library");
         exactSchema(library, "flash-library@1", "library");
         const assets = object(library.assets, "library.assets");
@@ -277,7 +284,7 @@ export class FlashLibrarySymbolAdapter {
             x: placement.x,
             y: placement.y,
             matrix: placement.matrix,
-            ...(operation?.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
+            ...(this.textMapOnly || operation?.filters === undefined ? {} : { filters: authoredFilters(operation.filters, characterId) }),
             width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
             height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
             variable: typeof operation?.name === "string",
@@ -311,7 +318,7 @@ export class FlashLibrarySymbolAdapter {
         const characterId = positiveInteger(operation.characterId, "place.characterId");
         const asset = object(assets[String(characterId)], `library.assets.${characterId}`);
         recordInertPlacementRatio(operation, asset, characterId, evidenceContext, inertPlacementRatios);
-        if (asset.kind !== "input-text" && asset.kind !== "text" && asset.kind !== "sprite" && operation.filters !== undefined)
+        if (!this.textMapOnly && asset.kind !== "input-text" && asset.kind !== "text" && asset.kind !== "sprite" && operation.filters !== undefined)
             fail("FLASH_LIBRARY_FILTER_TARGET_UNSUPPORTED", `Character ${characterId} kind '${String(asset.kind)}' cannot carry authored filters.`);
         let node: NeutralAuthoredNode;
         if (asset.kind === "sprite") {
@@ -720,6 +727,8 @@ export class FlashLibrarySymbolAdapter {
             height: boundsHeight,
             variable: typeof operation.name === "string",
         };
+        if (this.textMapOnly)
+            return { ...common, kind: "container", children: [] };
         if (rasterAuthority !== undefined) {
             const resourceId = `flash-character-${characterId}`;
             registerResource(resources, resourceId, rasterAuthority);
@@ -853,7 +862,7 @@ export class FlashLibrarySymbolAdapter {
                 autoSize: "none",
                 html,
                 useOutlines,
-                filters: authoredFilters(operation.filters, characterId),
+                filters: this.textMapOnly ? [] : authoredFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,
@@ -960,7 +969,7 @@ export class FlashLibrarySymbolAdapter {
                 autoSize: "none",
                 html: false,
                 useOutlines: false,
-                filters: authoredFilters(operation.filters, characterId),
+                filters: this.textMapOnly ? [] : authoredFilters(operation.filters, characterId),
                 gutter: 2,
                 overflow: "hidden",
                 initialText,

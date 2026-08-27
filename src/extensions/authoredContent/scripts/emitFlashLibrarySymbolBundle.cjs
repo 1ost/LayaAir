@@ -32,7 +32,7 @@ async function main() {
     if (!options) return;
     const {
         sourceRoot, outputRoot, entrySymbolId, runtimeLinkage, assetBaseName, projection,
-        neutralOutput, neutralOnly, check,
+        neutralOutput, neutralOnly, textMapOnly, check,
     } = options;
     if (!path.isAbsolute(sourceRoot) || (!neutralOnly && !path.isAbsolute(outputRoot))
         || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage
@@ -72,6 +72,7 @@ async function main() {
         runtimeLinkage,
         resources: authorities,
         projection,
+        textMapOnly,
         rasterizedShapes: rasterAuthorities.shapes,
         rasterizedSprites: rasterAuthorities.sprites,
     });
@@ -184,6 +185,7 @@ function parseOptions(arguments_) {
     }
     let neutralOutput;
     let neutralOnly = false;
+    let textMapOnly = false;
     let check = false;
     for (let index = 0; index < flags.length; index++) {
         const flag = flags[index];
@@ -203,6 +205,10 @@ function parseOptions(arguments_) {
             if (neutralOnly) { usage(); return null; }
             neutralOnly = true;
         }
+        else if (flag === "--text-map-only") {
+            if (textMapOnly) { usage(); return null; }
+            textMapOnly = true;
+        }
         else if (flag === "--check") {
             if (check) { usage(); return null; }
             check = true;
@@ -211,6 +217,7 @@ function parseOptions(arguments_) {
     }
     if ((neutralOnly || check) && neutralOutput === undefined) { usage(); return null; }
     if (check) neutralOnly = true;
+    if (textMapOnly && !neutralOnly) { usage(); return null; }
     const rawSourceRoot = positional[0];
     const rawOutputRoot = positional[1];
     if (!path.isAbsolute(rawSourceRoot) || (!neutralOnly && !path.isAbsolute(rawOutputRoot))) {
@@ -226,13 +233,14 @@ function parseOptions(arguments_) {
         projection: positional[5] || "document",
         neutralOutput,
         neutralOnly,
+        textMapOnly,
         check,
     };
 }
 
 function usage() {
     process.stderr.write(
-        "usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root|-> <symbol-id> <runtime-linkage> [asset-base-name] [document|library-symbol] [--neutral-output <absolute-file>] [--neutral-only] [--check]\n"
+        "usage: node emitFlashLibrarySymbolBundle.cjs <absolute-source-root> <absolute-output-root|-> <symbol-id> <runtime-linkage> [asset-base-name] [document|library-symbol] [--neutral-output <absolute-file>] [--neutral-only] [--text-map-only] [--check]\n"
     );
     process.exitCode = 2;
 }

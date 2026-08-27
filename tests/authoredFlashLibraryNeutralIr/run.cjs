@@ -78,7 +78,34 @@ try {
     assert.equal(invalid.status, 2);
     assert.match(invalid.stderr, /^usage:/);
 
-    process.stdout.write("authored Flash-library neutral IR emitter: 18/18 passed\n");
+    const textMapEvidence = path.join(temporary, "text-map-evidence");
+    fs.cpSync(evidence, textMapEvidence, { recursive: true });
+    const textMapLibrary = JSON.parse(fs.readFileSync(path.join(textMapEvidence, "library.json")));
+    textMapLibrary.assets[42] = {
+        characterId: 42,
+        kind: "shape",
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+        shape: { fillStyles: [], lineStyles: [], segments: [], usesFillWindingRule: false }
+    };
+    fs.writeFileSync(path.join(textMapEvidence, "library.json"), JSON.stringify(textMapLibrary));
+    const textMapTimeline = JSON.parse(fs.readFileSync(path.join(textMapEvidence, "timelines/8.json")));
+    textMapTimeline.frames[0].operations.push({
+        op: "place", characterId: 42, depth: 1, move: false, ratio: 0,
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }
+    });
+    fs.writeFileSync(path.join(textMapEvidence, "timelines/8.json"), JSON.stringify(textMapTimeline));
+    const textMapOutput = path.join(temporary, "neutral", "text-map.neutral.json");
+    const textMapCommon = [textMapEvidence, "-", "8", "Fixture.Root", "fixture-root", "library-symbol", "--neutral-output", textMapOutput, "--neutral-only"];
+    const strictShape = invoke(textMapCommon);
+    assert.equal(strictShape.status, 1);
+    assert.match(strictShape.stderr, /FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED/);
+    const textMapWritten = invoke([...textMapCommon, "--text-map-only"]);
+    assert.equal(textMapWritten.status, 0, textMapWritten.stderr);
+    const textMapContent = JSON.parse(fs.readFileSync(textMapOutput));
+    assert.equal(textMapContent.root.children[0].kind, "container");
+    assert.deepEqual(textMapContent.resources, []);
+
+    process.stdout.write("authored Flash-library neutral IR emitter: 24/24 passed\n");
 }
 finally {
     fs.rmSync(temporary, { recursive: true, force: true });
