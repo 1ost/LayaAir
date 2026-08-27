@@ -116,28 +116,28 @@ test("never invents image deployment identity", () => {
 
 test("text-map-only derives against exact base paths while ignoring localized non-text deltas", () => {
     const base = document();
-    base.root.children[1].children[0].name = "character_82";
-    base.root.children[1].children[0].instanceId = "character_82";
-    base.root.children[1].children[0].linkage = "character_82";
+    base.root.children[1].children[0].name = "character_82$d2$f1$i2";
+    base.root.children[1].children[0].instanceId = "character_82$d2$f1$i2";
+    base.root.children[1].children[0].linkage = "character_82$d2$f1$i2";
     const localized = document({ label: "Pret", sha256: "b".repeat(64), timeline: { duration: 9 } });
     localized.documentId = "localized-document-id";
     localized.root.children[0].text = "Titre";
-    localized.root.children[1].children[0].name = "character_81";
-    localized.root.children[1].children[0].instanceId = "character_81";
-    localized.root.children[1].children[0].linkage = "character_81";
+    localized.root.children[1].children[0].name = "character_81$d2$f1$i2";
+    localized.root.children[1].children[0].instanceId = "character_81$d2$f1$i2";
+    localized.root.children[1].children[0].linkage = "character_81$d2$f1$i2";
     localized.root.children[1].children[0].textField.format.font = "Localized Font";
     const overlay = api.deriveAuthoredContentLocaleOverlay({
         ...request(base, localized),
         mode: "text-map-only"
     });
     assert.deepEqual(overlay.assetOverrides, []);
-    assert.deepEqual(overlay.translations, [{ bundle: "lobby", target: "panel/character_82", text: "Pret" }]);
+    assert.deepEqual(overlay.translations, [{ bundle: "lobby", target: "panel/character_82$d2$f1$i2", text: "Pret" }]);
 });
 
 test("text-map-only fails closed on ambiguous, missing, or extra canonical text targets", () => {
     const base = document();
-    base.root.children[1].children.push(textField("character_81", "Second"));
-    base.root.children[1].children[0].name = "character_82";
+    base.root.children[1].children.push(textField("character_81$d2$f1$i2", "Second"));
+    base.root.children[1].children[0].name = "character_82$d2$f1$i2";
     assert.throws(
         () => api.deriveAuthoredContentLocaleOverlay({ ...request(base, document()), mode: "text-map-only" }),
         error => error.code === "AUTHORED_CONTENT_LOCALE_TEXT_TARGET_AMBIGUOUS"

@@ -180,7 +180,8 @@ function visitLocaleTextTargets(
         const childPath = `${path}.children[${index}]`;
         const child = plainRecord(value, childPath);
         const segment = nodeSegment(child, childPath);
-        const canonicalSegment = /^character_\d+$/.test(segment) ? "character_*" : segment;
+        const generated = /^character_\d+(\$d\d+\$f\d+\$i\d+)?$/.exec(segment);
+        const canonicalSegment = generated ? `character_*${generated[1] ?? ""}` : segment;
         visitLocaleTextTargets(
             child,
             target === "$" ? segment : `${target}/${segment}`,
