@@ -128,6 +128,42 @@ assert.deepEqual(emptyButton.children.map(state => [state.name, state.children.l
 ], "an entirely empty source button must still publish four distinct canonical state roots");
 assert.equal(new Set(emptyButton.children).size, 4);
 
+const offsetButtonFixture = fixture();
+offsetButtonFixture.library.assets["10"].bounds = { x: -5, y: -2, width: 20, height: 20 };
+offsetButtonFixture.timelines.get(20).frames[0].operations[0].matrix = matrix(2, 3, 11, 12);
+const offsetButton = adapter.parse(offsetButtonFixture).root.children[0];
+assert.deepEqual(
+    { x: offsetButton.x, y: offsetButton.y, matrix: offsetButton.matrix },
+    { x: 1, y: 6, matrix: { a: 2, b: 0, c: 0, d: 3 } },
+    "the transformed bounds origin must become the native hit-area origin",
+);
+assert.deepEqual(
+    offsetButton.children.map(state => [state.x, state.y]),
+    [[5, 2], [5, 2], [5, 2], [5, 2]],
+    "state roots must counter-translate their visual children into the rebased button space",
+);
+
+const filteredButtonFixture = fixture();
+filteredButtonFixture.library.assets["10"].button.records[1].filters = [{
+    kind: "glow", sourceType: "GLOWFILTER", compositeSource: true,
+    color: { alpha: 0.75, color: 0x123456 }, blurX: 4, blurY: 5,
+    strength: 2, passes: 1, innerGlow: false, knockout: false,
+}, {
+    kind: "drop-shadow", sourceType: "DROPSHADOWFILTER", compositeSource: true,
+    color: { alpha: 0.5, color: 0x010203 }, distance: 3, angleRadians: Math.PI / 4,
+    blurX: 2, blurY: 3, strength: 1.5, passes: 2, innerShadow: false, knockout: false,
+}];
+const filteredButton = adapter.parse(filteredButtonFixture).root.children[0];
+assert.equal(filteredButton.children[1].children[0].kind, "container");
+assert.deepEqual(filteredButton.children[1].children[0].filters, [{
+    kind: "glow", color: 0x123456, alpha: 0.75, blurX: 4, blurY: 5,
+    strength: 2, quality: 1, inner: false, knockout: false,
+}, {
+    kind: "drop-shadow", distance: 3, angleRadians: Math.PI / 4,
+    color: 0x010203, alpha: 0.5, blurX: 2, blurY: 3, strength: 1.5,
+    quality: 2, inner: false, knockout: false, hideObject: false,
+}], "button-state record filters must be retained on their native state child");
+
 for (const [label, mutate, expected] of [
     ["action records", value => value.library.assets["10"].button.hasActions = true, /FLASH_LIBRARY_BUTTON_ACTIONS_UNSUPPORTED/],
     ["menu tracking", value => value.library.assets["10"].button.trackAsMenu = true, /FLASH_LIBRARY_BUTTON_MENU_UNSUPPORTED/],
@@ -140,11 +176,11 @@ for (const [label, mutate, expected] of [
     ["unknown record field", value => value.library.assets["10"].button.records[0].blendMode = "normal", /FLASH_LIBRARY_BUTTON_RECORD_FIELD_UNSUPPORTED/],
     ["missing record matrix", value => delete value.library.assets["10"].button.records[0].matrix, /FLASH_LIBRARY_OBJECT_REQUIRED/],
     ["RGB color transform", value => value.library.assets["10"].button.records[0].colorTransform.redMultiplier = 0.5, /FLASH_LIBRARY_COLOR_TRANSFORM_UNSUPPORTED/],
-    ["nonzero bounds origin", value => value.library.assets["10"].bounds.x = 1, /FLASH_LIBRARY_BUTTON_BOUNDS_UNSUPPORTED/],
+    ["nonpositive bounds", value => value.library.assets["10"].bounds.width = 0, /FLASH_LIBRARY_BUTTON_BOUNDS_UNSUPPORTED/],
 ]) {
     const value = fixture();
     mutate(value);
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored Flash button projection: 18/18 passed\n");
+process.stdout.write("authored Flash button projection: 21/21 passed\n");

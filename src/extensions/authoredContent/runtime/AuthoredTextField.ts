@@ -1,5 +1,5 @@
 import {
-    AntiAliasType, BitmapFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+    AntiAliasType, BitmapFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { AuthoredFontRegistry, type AuthoredFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
@@ -16,6 +16,21 @@ export interface AuthoredGlowFilterConfiguration {
     readonly quality: number;
     readonly inner: boolean;
     readonly knockout: boolean;
+}
+
+export interface AuthoredDropShadowFilterConfiguration {
+    readonly kind: "drop-shadow";
+    readonly distance: number;
+    readonly angleRadians: number;
+    readonly color: number;
+    readonly alpha: number;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly quality: number;
+    readonly inner: boolean;
+    readonly knockout: boolean;
+    readonly hideObject: boolean;
 }
 
 export interface AuthoredGradientBevelFilterConfiguration {
@@ -38,7 +53,7 @@ export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGr
     readonly kind: "gradient-glow";
 }
 
-export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration
+export type AuthoredFilterConfiguration = AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
     | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration;
 
 class AuthoredGradientGlowFilter extends BitmapFilter {
@@ -178,6 +193,10 @@ const RASTERIZATION_KEYS = Object.freeze(["antiAliasType", "gridFitType", "sharp
 const GLOW_FILTER_KEYS = Object.freeze([
     "alpha", "blurX", "blurY", "color", "inner", "kind", "knockout", "quality", "strength",
 ]);
+const DROP_SHADOW_FILTER_KEYS = Object.freeze([
+    "alpha", "angleRadians", "blurX", "blurY", "color", "distance", "hideObject", "inner",
+    "kind", "knockout", "quality", "strength",
+]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredFontBinding>();
 
 /**
@@ -272,6 +291,10 @@ export function createAuthoredFilters(value: unknown): BitmapFilter[] {
         filter.kind === "glow"
             ? new GlowFilter(filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
                 filter.quality, filter.inner, filter.knockout)
+            : filter.kind === "drop-shadow"
+            ? new DropShadowFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
+                filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
+                filter.quality, filter.inner, filter.knockout, filter.hideObject)
             : filter.kind === "gradient-bevel"
             ? new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
                 filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
@@ -535,7 +558,30 @@ function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterCo
     const kind = value !== null && typeof value === "object" ? Reflect.get(value, "kind") : undefined;
     if (kind === "gradient-bevel" || kind === "gradient-glow")
         return validateGradientFilter(value, label, kind);
+    if (kind === "drop-shadow") return validateDropShadowFilter(value, label);
     return validateGlowFilter(value, label);
+}
+
+function validateDropShadowFilter(value: unknown, label: string): AuthoredDropShadowFilterConfiguration {
+    const record = exactDataObject(value, DROP_SHADOW_FILTER_KEYS, label);
+    equal(record.kind, "drop-shadow", `${label}.kind`);
+    finite(record.distance, `${label}.distance`);
+    finite(record.angleRadians, `${label}.angleRadians`);
+    integerRange(record.color, 0, 0xffffff, `${label}.color`);
+    range(record.alpha, 0, 1, `${label}.alpha`);
+    range(record.blurX, 0, 255, `${label}.blurX`);
+    range(record.blurY, 0, 255, `${label}.blurY`);
+    range(record.strength, 0, 255, `${label}.strength`);
+    integerRange(record.quality, 1, 15, `${label}.quality`);
+    boolean(record.inner, `${label}.inner`);
+    boolean(record.knockout, `${label}.knockout`);
+    boolean(record.hideObject, `${label}.hideObject`);
+    return Object.freeze({
+        kind: "drop-shadow", distance: record.distance, angleRadians: record.angleRadians,
+        color: record.color, alpha: record.alpha, blurX: record.blurX, blurY: record.blurY,
+        strength: record.strength, quality: record.quality, inner: record.inner,
+        knockout: record.knockout, hideObject: record.hideObject,
+    });
 }
 
 function validateGradientFilter(

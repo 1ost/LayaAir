@@ -23,6 +23,7 @@ import { isFlashShape } from "../../../src/layaAir/flash/display/Shape";
 import { isFlashBitmap } from "../../../src/layaAir/flash/display/Bitmap";
 import { isFlashBitmapData, observeBitmapData } from "../../../src/layaAir/flash/display/BitmapData";
 import { isGlowFilter } from "../../../src/layaAir/flash/filters/GlowFilter";
+import { isDropShadowFilter } from "../../../src/layaAir/flash/filters/DropShadowFilter";
 import { isGradientBevelFilter } from "../../../src/layaAir/flash/filters/GradientBevelFilter";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
@@ -2326,6 +2327,22 @@ test("authored gradient-bevel filters retain exact stops and create the native F
         colors: [0, 1], alphas: [1], ratios: [0, 255], blurX: 1, blurY: 1,
         strength: 1, quality: 1, type: "inner", knockout: false, compositeSource: true,
     }]), /matching color, alpha, and ratio arrays/);
+});
+
+test("authored drop-shadow filters retain exact geometry and create the native Flash filter", () => {
+    const filters = createAuthoredFilters([{
+        kind: "drop-shadow", distance: 3, angleRadians: Math.PI / 4,
+        color: 0x010203, alpha: 0.5, blurX: 2, blurY: 3, strength: 1.5,
+        quality: 2, inner: false, knockout: false, hideObject: false,
+    }]);
+    assert.equal(filters.length, 1);
+    assert.equal(isDropShadowFilter(filters[0]), true);
+    if (!isDropShadowFilter(filters[0])) throw new Error("drop-shadow identity was not retained");
+    assert.deepEqual([
+        filters[0].distance, filters[0].angle, filters[0].color, filters[0].alpha,
+        filters[0].blurX, filters[0].blurY, filters[0].strength, filters[0].quality,
+        filters[0].inner, filters[0].knockout, filters[0].hideObject,
+    ], [3, 45, 0x010203, 0.5, 2, 3, 1.5, 2, false, false, false]);
 });
 
 test("canonical hierarchy deserializes a Laya-owned authored dynamic TextField primitive", () => {

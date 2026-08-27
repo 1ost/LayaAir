@@ -29,6 +29,21 @@ export interface NeutralGlowFilter {
     readonly knockout: boolean;
 }
 
+export interface NeutralDropShadowFilter {
+    readonly kind: "drop-shadow";
+    readonly distance: number;
+    readonly angleRadians: number;
+    readonly color: number;
+    readonly alpha: number;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly quality: number;
+    readonly inner: boolean;
+    readonly knockout: boolean;
+    readonly hideObject: boolean;
+}
+
 export interface NeutralGradientBevelFilter {
     readonly kind: "gradient-bevel";
     readonly distance: number;
@@ -49,7 +64,8 @@ export interface NeutralGradientGlowFilter extends Omit<NeutralGradientBevelFilt
     readonly kind: "gradient-glow";
 }
 
-export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralGradientBevelFilter | NeutralGradientGlowFilter;
+export type NeutralAuthoredFilter = NeutralGlowFilter | NeutralDropShadowFilter
+    | NeutralGradientBevelFilter | NeutralGradientGlowFilter;
 
 export interface NeutralScale9Grid {
     readonly x: number;
@@ -752,6 +768,39 @@ function normalizeGlowFilter(value: unknown, path: string, scale: number): Neutr
     };
 }
 
+function normalizeDropShadowFilter(value: unknown, path: string, scale: number): NeutralDropShadowFilter {
+    const source = record(value, path);
+    allowedKeys(source, [
+        "alpha", "angleRadians", "blurX", "blurY", "color", "distance", "hideObject", "inner",
+        "kind", "knockout", "quality", "strength",
+    ], path);
+    const color = requiredFiniteNumber(source.color, `${path}.color`);
+    if (!Number.isInteger(color) || color < 0 || color > 0xffffff)
+        fail("AUTHORED_CONTENT_DROP_SHADOW_COLOR_INVALID", `${path}.color must be an RGB integer.`);
+    const alpha = requiredFiniteNumber(source.alpha, `${path}.alpha`);
+    if (alpha < 0 || alpha > 1)
+        fail("AUTHORED_CONTENT_DROP_SHADOW_ALPHA_INVALID", `${path}.alpha must be between zero and one.`);
+    const blurX = requiredFiniteNumber(source.blurX, `${path}.blurX`);
+    const blurY = requiredFiniteNumber(source.blurY, `${path}.blurY`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("AUTHORED_CONTENT_DROP_SHADOW_BLUR_INVALID", `${path} blur dimensions must be between zero and 255.`);
+    const strength = requiredFiniteNumber(source.strength, `${path}.strength`);
+    if (strength < 0 || strength > 255)
+        fail("AUTHORED_CONTENT_DROP_SHADOW_STRENGTH_INVALID", `${path}.strength must be between zero and 255.`);
+    const quality = requiredFiniteNumber(source.quality, `${path}.quality`);
+    if (!Number.isInteger(quality) || quality < 1 || quality > 15)
+        fail("AUTHORED_CONTENT_DROP_SHADOW_QUALITY_INVALID", `${path}.quality must be an integer from one through 15.`);
+    return {
+        kind: exactLiteral(source.kind, "drop-shadow", `${path}.kind`),
+        distance: requiredFiniteNumber(source.distance, `${path}.distance`) * scale,
+        angleRadians: requiredFiniteNumber(source.angleRadians, `${path}.angleRadians`),
+        color, alpha, blurX: blurX * scale, blurY: blurY * scale, strength, quality,
+        inner: requiredBoolean(source.inner, `${path}.inner`),
+        knockout: requiredBoolean(source.knockout, `${path}.knockout`),
+        hideObject: requiredBoolean(source.hideObject, `${path}.hideObject`),
+    };
+}
+
 function normalizeGradientFilter(
     value: unknown,
     path: string,
@@ -811,6 +860,8 @@ function normalizeAuthoredFilter(value: unknown, path: string, scale: number): N
     const source = record(value, path);
     return source.kind === "gradient-bevel" || source.kind === "gradient-glow"
         ? normalizeGradientFilter(value, path, scale, source.kind)
+        : source.kind === "drop-shadow"
+        ? normalizeDropShadowFilter(value, path, scale)
         : normalizeGlowFilter(value, path, scale);
 }
 

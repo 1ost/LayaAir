@@ -55,6 +55,10 @@ const REMOVE_FIELDS = new Set(["depth", "op"]);
 const FILTER_FIELDS = new Set([
     "blurX", "blurY", "color", "compositeSource", "innerGlow", "kind", "knockout", "passes", "sourceType", "strength",
 ]);
+const DROP_SHADOW_FILTER_FIELDS = new Set([
+    "angleRadians", "blurX", "blurY", "color", "compositeSource", "distance", "innerShadow",
+    "kind", "knockout", "passes", "sourceType", "strength",
+]);
 const GRADIENT_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
     "knockout", "onTop", "passes", "ratios", "sourceType", "strength", "type",
@@ -66,7 +70,7 @@ const COLOR_TRANSFORM_FIELDS = new Set([
     "greenOffset", "redMultiplier", "redOffset",
 ]);
 const BUTTON_FIELDS = new Set(["hasActions", "records", "trackAsMenu"]);
-const BUTTON_RECORD_FIELDS = new Set(["characterId", "colorTransform", "depth", "matrix", "states"]);
+const BUTTON_RECORD_FIELDS = new Set(["characterId", "colorTransform", "depth", "filters", "matrix", "states"]);
 const BOUNDS_FIELDS = new Set(["height", "width", "x", "y"]);
 const BUTTON_STATES = ["up", "over", "down", "hitTest"] as const;
 type ButtonStateName = typeof BUTTON_STATES[number];
@@ -374,8 +378,8 @@ export class FlashLibrarySymbolAdapter {
         const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
         const width = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
         const height = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
-        if (boundsX !== 0 || boundsY !== 0 || width <= 0 || height <= 0)
-            fail("FLASH_LIBRARY_BUTTON_BOUNDS_UNSUPPORTED", `Button ${characterId} requires positive zero-origin bounds.`);
+        if (width <= 0 || height <= 0)
+            fail("FLASH_LIBRARY_BUTTON_BOUNDS_UNSUPPORTED", `Button ${characterId} requires positive bounds.`);
 
         const button = object(asset.button, `library.assets.${characterId}.button`);
         exactKeys(button, BUTTON_FIELDS, `library.assets.${characterId}.button`, "FLASH_LIBRARY_BUTTON_FIELD_UNSUPPORTED");
@@ -426,13 +430,31 @@ export class FlashLibrarySymbolAdapter {
                     };
                     const placedCharacterId = positiveInteger(record.characterId, "button record characterId");
                     const placedAsset = object(assets[String(placedCharacterId)], `library.assets.${placedCharacterId}`);
-                    const child = this.createPlacedNode(
+                    let child = this.createPlacedNode(
                         placed,
                         placementInstanceId(placedAsset, placed, 1, index + 1),
                         assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
                         inertPlacementRatios,
                     );
-                    return alpha === 1 ? child : { ...child, alpha };
+                    const filters = authoredFilters(record.filters, placedCharacterId);
+                    if (filters.length !== 0) {
+                        const { depth, ...visual } = child;
+                        child = {
+                            linkage: `${linkage}_${state}_filtered_${index + 1}`,
+                            instanceId: child.instanceId,
+                            kind: "container",
+                            depth,
+                            ...(alpha === 1 ? {} : { alpha }),
+                            filters,
+                            children: [{
+                                ...visual,
+                                instanceId: `${child.instanceId ?? child.linkage}$filteredVisual`,
+                                variable: false,
+                            }],
+                        };
+                    }
+                    else if (alpha !== 1) child = { ...child, alpha };
+                    return child;
                 });
             const stateName = `${state}State`;
             return {
@@ -440,6 +462,8 @@ export class FlashLibrarySymbolAdapter {
                 instanceId: stateName,
                 name: stateName,
                 kind: "button-state",
+                ...(boundsX === 0 ? {} : { x: -boundsX }),
+                ...(boundsY === 0 ? {} : { y: -boundsY }),
                 children,
             };
         });
@@ -451,8 +475,8 @@ export class FlashLibrarySymbolAdapter {
             ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "button",
             depth: positiveInteger(operation.depth, "place.depth"),
-            x: placement.x,
-            y: placement.y,
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
             matrix: placement.matrix,
             width,
             height,
@@ -1867,6 +1891,8 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
         const filter = object(filterValue, label);
         if (filter.kind === "gradient-bevel" || filter.kind === "gradient-glow")
             return authoredGradientFilter(filter, label);
+        if (filter.kind === "drop-shadow")
+            return authoredDropShadowFilter(filter, label);
         exactKeys(filter, FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
         exactValue(filter.kind, "glow", "FLASH_LIBRARY_FILTER_KIND_UNSUPPORTED", `${label} must be a glow filter.`);
         exactValue(filter.sourceType, "GLOWFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
@@ -1895,6 +1921,43 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
             knockout: boolean(filter.knockout, `${label}.knockout`),
         };
     });
+}
+
+function authoredDropShadowFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
+    exactKeys(filter, DROP_SHADOW_FILTER_FIELDS, label, "FLASH_LIBRARY_DROP_SHADOW_FIELD_UNSUPPORTED");
+    exactValue(filter.sourceType, "DROPSHADOWFILTER", "FLASH_LIBRARY_DROP_SHADOW_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+    const color = object(filter.color, `${label}.color`);
+    exactKeys(color, FILTER_COLOR_FIELDS, `${label}.color`, "FLASH_LIBRARY_DROP_SHADOW_COLOR_FIELD_UNSUPPORTED");
+    const rgb = finite(color.color, `${label}.color.color`);
+    if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff)
+        fail("FLASH_LIBRARY_DROP_SHADOW_COLOR_INVALID", `${label}.color.color must be an RGB integer.`);
+    const alpha = finite(color.alpha, `${label}.color.alpha`);
+    if (alpha < 0 || alpha > 1)
+        fail("FLASH_LIBRARY_DROP_SHADOW_ALPHA_INVALID", `${label}.color.alpha must be between zero and one.`);
+    const blurX = finite(filter.blurX, `${label}.blurX`);
+    const blurY = finite(filter.blurY, `${label}.blurY`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("FLASH_LIBRARY_DROP_SHADOW_BLUR_INVALID", `${label} blur dimensions must be between zero and 255.`);
+    const strength = finite(filter.strength, `${label}.strength`);
+    if (strength < 0 || strength > 255)
+        fail("FLASH_LIBRARY_DROP_SHADOW_STRENGTH_INVALID", `${label}.strength must be between zero and 255.`);
+    const quality = positiveInteger(filter.passes, `${label}.passes`);
+    if (quality > 15)
+        fail("FLASH_LIBRARY_DROP_SHADOW_QUALITY_INVALID", `${label}.passes exceeds the Flash quality range.`);
+    return {
+        kind: "drop-shadow",
+        distance: finite(filter.distance, `${label}.distance`),
+        angleRadians: finite(filter.angleRadians, `${label}.angleRadians`),
+        color: rgb,
+        alpha,
+        blurX,
+        blurY,
+        strength,
+        quality,
+        inner: boolean(filter.innerShadow, `${label}.innerShadow`),
+        knockout: boolean(filter.knockout, `${label}.knockout`),
+        hideObject: !boolean(filter.compositeSource, `${label}.compositeSource`),
+    };
 }
 
 function animatedPlacementInstanceId(
