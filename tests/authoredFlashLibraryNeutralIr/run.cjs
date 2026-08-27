@@ -81,6 +81,10 @@ try {
     const textMapEvidence = path.join(temporary, "text-map-evidence");
     fs.cpSync(evidence, textMapEvidence, { recursive: true });
     const textMapLibrary = JSON.parse(fs.readFileSync(path.join(textMapEvidence, "library.json")));
+    textMapLibrary.assets[8].scalingGrid = {
+        characterId: 8, sourceTag: "DefineScalingGridTag", units: "pixels", valid: true,
+        rect: { x: 10, y: 10, width: 100, height: 80 }, sizeGrid: [10, 210, 110, 10, 0],
+    };
     textMapLibrary.assets[42] = {
         characterId: 42,
         kind: "shape",
@@ -121,6 +125,7 @@ try {
     assert.equal(textMapContent.root.children[0].kind, "container");
     assert.equal(textMapContent.root.children[1].name, "title");
     assert.equal(textMapContent.root.children[1].textField.initialText, "  Localized text\n");
+    assert.equal(textMapContent.root.scale9Grid, undefined);
     assert.deepEqual(textMapContent.resources, []);
 
     process.stdout.write("authored Flash-library neutral IR emitter: 26/26 passed\n");

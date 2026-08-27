@@ -321,7 +321,7 @@ export class FlashLibrarySymbolAdapter {
                 kind: "container",
                 children,
             }),
-            ...(asset.scalingGrid === undefined ? {} : {
+            ...(this.textMapOnly || asset.scalingGrid === undefined ? {} : {
                 scale9Grid: authoredScale9Grid(asset.scalingGrid, characterId, bounds, sourceTimeline, children),
             }),
         };
