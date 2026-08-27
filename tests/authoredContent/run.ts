@@ -944,7 +944,7 @@ async function main(): Promise<void> {
             "FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED");
     });
 
-    await test("Flash library retains a boundsless named nonvisual anchor tree", () => {
+    await test("Flash library retains boundsless named anchors and one-frame empty placeholders", () => {
         const place = (characterId: number, depth: number, name: string) => ({
             op: "place", characterId, depth, name, move: false, ratio: 0,
             matrix: { a: 1, b: 0, c: 0, d: 1, tx: 2, ty: 2 },
@@ -956,6 +956,7 @@ async function main(): Promise<void> {
                 "1": { characterId: 1, kind: "sprite", symbolName: "AnchorRoot", bounds: { x: 0, y: 0, width: 100, height: 80 } },
                 "2": { characterId: 2, kind: "sprite", symbolName: "HeadContainer" },
                 "3": { characterId: 3, kind: "sprite" },
+                "4": { characterId: 4, kind: "sprite" },
             },
         };
         const timeline = (symbolId: number, operations: any[]) => ({
@@ -963,9 +964,10 @@ async function main(): Promise<void> {
             frames: [{ index: 1, operations, labels: [], sounds: [] }],
         });
         const timelines = new Map([
-            [1, timeline(1, [place(2, 1, "Head")])],
+            [1, timeline(1, [place(2, 1, "Head"), { ...place(4, 2, "unused"), name: undefined }])],
             [2, timeline(2, [place(3, 1, "mc_head")])],
             [3, timeline(3, [])],
+            [4, timeline(4, [])],
         ]);
         const request = {
             library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.AnchorRoot", resources: new Map(),
@@ -974,12 +976,24 @@ async function main(): Promise<void> {
         assert(head.name === "Head" && head.width === 0 && head.height === 0
             && head.children[0].name === "mc_head" && head.children[0].width === 0,
         "boundsless named nonvisual hierarchy did not retain both native lookup anchors");
+        const placeholder = new FlashLibrarySymbolAdapter().parse(request).root.children[1];
+        assert(placeholder.name === undefined && placeholder.width === 0 && placeholder.height === 0
+            && placeholder.children.length === 0,
+        "boundsless unnamed one-frame empty sprite did not retain its display-list placeholder");
 
         const unnamedNestedAnchor = structuredClone([...timelines.entries()]);
         unnamedNestedAnchor[1][1].frames[0].operations[0].name = undefined;
         assertThrows(() => new FlashLibrarySymbolAdapter().parse({
             ...request,
             timelines: new Map(unnamedNestedAnchor),
+        }), "FLASH_LIBRARY_SPRITE_BOUNDS_MISSING");
+
+        const animatedEmptyPlaceholder = structuredClone([...timelines.entries()]);
+        animatedEmptyPlaceholder[3][1].frameCount = 2;
+        animatedEmptyPlaceholder[3][1].frames.push({ index: 2, operations: [], labels: [], sounds: [] });
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse({
+            ...request,
+            timelines: new Map(animatedEmptyPlaceholder),
         }), "FLASH_LIBRARY_SPRITE_BOUNDS_MISSING");
     });
 

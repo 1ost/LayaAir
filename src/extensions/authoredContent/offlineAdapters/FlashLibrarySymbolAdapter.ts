@@ -254,9 +254,10 @@ export class FlashLibrarySymbolAdapter {
         const firstFrame = frame(sourceTimeline, 0);
         validateFrame(firstFrame, characterId);
         const initialPlacements = indexedDisplayOperations(firstFrame, characterId);
-        const boundslessNamedAnchor = asset.bounds === undefined
-            && isBoundslessNamedAnchorTree(operation, sourceTimeline, assets, timelines, new Set([characterId]));
-        const bounds = spriteBounds(asset, characterId, boundslessNamedAnchor);
+        const boundslessNonvisualSprite = asset.bounds === undefined
+            && (isBoundslessEmptyPlaceholder(operation, sourceTimeline)
+                || isBoundslessNamedAnchorTree(operation, sourceTimeline, assets, timelines, new Set([characterId])));
+        const bounds = spriteBounds(asset, characterId, boundslessNonvisualSprite);
         // Text remains semantic authored content. A diagnostic full-frame
         // raster may authenticate visual evidence, but it must never replace
         // a reachable DefineText/DefineEditText node in production output.
@@ -266,7 +267,7 @@ export class FlashLibrarySymbolAdapter {
         if (rasterFrames !== undefined)
             recordRasterizedTimelineInertPlacementRatios(sourceTimeline, assets, inertPlacementRatios);
         const animated = rasterFrames === undefined
-            ? sourceTimeline.frameCount === 1 || boundslessNamedAnchor ? undefined : this.createAnimatedDisplayList(
+            ? sourceTimeline.frameCount === 1 || boundslessNonvisualSprite ? undefined : this.createAnimatedDisplayList(
                 sourceTimeline, assets, timelines, resourceAuthorities, rasterizedShapes, rasterizedSprites, resources,
                 inertPlacementRatios, root ? linkage : instanceId!,
             )
@@ -1489,13 +1490,31 @@ function authoredScale9Grid(
 function spriteBounds(
     asset: Record<string, any>,
     characterId: number,
-    boundslessNamedAnchor: boolean,
+    boundslessNonvisualSprite: boolean,
 ): Record<string, any> {
     if (asset.bounds !== undefined)
         return object(asset.bounds, `library.assets.${characterId}.bounds`);
-    if (!boundslessNamedAnchor)
-        fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is a named nonvisual anchor tree.`);
+    if (!boundslessNonvisualSprite)
+        fail("FLASH_LIBRARY_SPRITE_BOUNDS_MISSING", `Sprite ${characterId} requires bounds unless it is an authenticated nonvisual placeholder or named anchor tree.`);
     return { x: 0, y: 0, width: 0, height: 0 };
+}
+
+function isBoundslessEmptyPlaceholder(
+    operation: Record<string, any> | undefined,
+    sourceTimeline: Record<string, any>,
+): boolean {
+    // Flash libraries can retain an unnamed placed DefineSprite whose sole
+    // frame is exactly empty. It has no visual extent to infer, but remains a
+    // real display-list placeholder and must survive as a zero-size container.
+    // Root symbols and animated/labeled placeholders remain fail-closed.
+    if (operation === undefined)
+        return false;
+    const frames = validatedTimelineFrames(sourceTimeline);
+    if (frames.length !== 1)
+        return false;
+    const current = object(frames[0], `timeline ${sourceTimeline.symbolId} frame 1`);
+    return current.label === undefined
+        && indexedDisplayOperations(current, positiveInteger(sourceTimeline.symbolId, "placeholder symbolId")).length === 0;
 }
 
 function isBoundslessNamedAnchorTree(
