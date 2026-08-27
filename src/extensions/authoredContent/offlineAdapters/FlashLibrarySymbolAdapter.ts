@@ -1032,16 +1032,13 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "text.characterId");
-        if (this.textMapOnly)
-            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         const staticText = object(asset.staticText, `library.assets.${characterId}.staticText`);
         exactKeys(staticText, new Set(["exactGlyphs", "issues", "matrix", "runs"]),
             `library.assets.${characterId}.staticText`, "FLASH_LIBRARY_STATIC_TEXT_UNSUPPORTED");
         const initialText = text(asset.initialText, `library.assets.${characterId}.initialText`);
         const issues = array(staticText.issues, `library.assets.${characterId}.staticText.issues`);
         const runs = array(staticText.runs, `library.assets.${characterId}.staticText.runs`);
-        if (initialText === "" && staticText.exactGlyphs === false && runs.length === 0
-            && issues.length === 1 && issues[0] === "SWF text records are missing") {
+        if (admitMissingStaticTextPlaceholder(asset, staticText, initialText, issues, runs, characterId)) {
             const placement = placementTransform(operation);
             return {
                 linkage: flashLibraryAssetName(asset, characterId), instanceId,
@@ -1050,6 +1047,8 @@ export class FlashLibrarySymbolAdapter {
                 width: 0, height: 0, children: [],
             };
         }
+        if (this.textMapOnly)
+            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         exactValue(staticText.exactGlyphs, true, "FLASH_LIBRARY_STATIC_TEXT_GLYPHS_REQUIRED",
             `Text ${characterId} lacks exact glyph evidence.`);
         if (issues.length !== 0)
@@ -2304,6 +2303,36 @@ function admitNonvisualFontAuthorityPlacement(
         || placement.x !== 0 || placement.y !== 0)
         fail("FLASH_LIBRARY_NONVISUAL_FONT_PLACEMENT_UNSUPPORTED",
             `Font ${characterId} at reserved depth zero must be an inert identity authority reference.`);
+    return true;
+}
+
+function admitMissingStaticTextPlaceholder(
+    asset: Record<string, any>,
+    staticText: Record<string, any>,
+    initialText: string,
+    issues: any[],
+    runs: any[],
+    characterId: number,
+): boolean {
+    if (staticText.exactGlyphs !== false
+        || issues.length !== 1 || issues[0] !== "SWF text records are missing")
+        return false;
+    if (asset.bounds !== undefined)
+        fail("FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_BOUNDS_UNSUPPORTED",
+            `Text ${characterId} has missing records but still declares display bounds.`);
+    if (runs.length > 1)
+        fail("FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_RUNS_UNSUPPORTED",
+            `Text ${characterId} has missing records with multiple diagnostic runs.`);
+    if (runs.length === 1) {
+        const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);
+        exactKeys(run, new Set(["text"]), `library.assets.${characterId}.staticText.runs[0]`,
+            "FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_RUN_UNSUPPORTED");
+        if (text(run.text, `library.assets.${characterId}.staticText.runs[0].text`) !== initialText)
+            fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} diagnostic authorities disagree.`);
+    }
+    if (initialText !== "" && !/^\[\r?\nxmin -?\d+(?:\.\d+)?\r?\nymin -?\d+(?:\.\d+)?\r?\nxmax -?\d+(?:\.\d+)?\r?\nymax -?\d+(?:\.\d+)?\r?\ntranslatey -?\d+(?:\.\d+)?\r?\nscalexf -?\d+(?:\.\d+)?\r?\nscaleyf -?\d+(?:\.\d+)?\r?\nrotateskew0f -?\d+(?:\.\d+)?\r?\nrotateskew1f -?\d+(?:\.\d+)?\r?\n\]$/.test(initialText))
+        fail("FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_DIAGNOSTIC_UNSUPPORTED",
+            `Text ${characterId} has missing records with an unrecognized diagnostic payload.`);
     return true;
 }
 

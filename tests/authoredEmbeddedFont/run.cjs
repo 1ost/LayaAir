@@ -190,6 +190,27 @@ async function main() {
     assert.throws(() => adapter.parse(transformedFontAuthorityFixture),
         /FLASH_LIBRARY_NONVISUAL_FONT_PLACEMENT_UNSUPPORTED/,
         "a depth-zero font reference with display state remains fail-closed");
+    const missingStaticTextFixture = fixture();
+    missingStaticTextFixture.library.assets[204] = {
+        characterId: 204, kind: "text", initialText: "[\nxmin -180\nymin 29\nxmax 100\nymax 1340\ntranslatey -280\nscalexf 0.0\nscaleyf 0.0\nrotateskew0f 1.0\nrotateskew1f -1.0\n]",
+        staticText: {
+            exactGlyphs: false, issues: ["SWF text records are missing"], matrix: {},
+            runs: [{ text: "[\nxmin -180\nymin 29\nxmax 100\nymax 1340\ntranslatey -280\nscalexf 0.0\nscaleyf 0.0\nrotateskew0f 1.0\nrotateskew1f -1.0\n]" }],
+        },
+    };
+    missingStaticTextFixture.timelines.get(385).frames[0].operations.push({
+        op: "place", characterId: 204, depth: 2, move: false, ratio: 0,
+        matrix: { a: 1, b: 0, c: 0, d: 1, tx: 4, ty: 5 },
+    });
+    const missingStaticText = adapter.parse(missingStaticTextFixture).root.children[1];
+    assert.deepEqual({ kind: missingStaticText.kind, width: missingStaticText.width, height: missingStaticText.height },
+        { kind: "container", width: 0, height: 0 },
+        "a boundsless missing-records transform diagnostic remains a nonvisual placeholder");
+    const missingStaticTextMapFixture = structuredClone(missingStaticTextFixture);
+    missingStaticTextMapFixture.timelines = new Map(missingStaticTextFixture.timelines);
+    missingStaticTextMapFixture.textMapOnly = true;
+    assert.equal(adapter.parse(missingStaticTextMapFixture).root.children[1].kind, "container",
+        "text-map-only projection does not invent a locale target from missing text records");
     for (const [gridFit, gridFitMode] of [[0, "none"], [1, "pixel"]]) {
         const gridFixture = fixture();
         gridFixture.library.assets[203].textRendering.gridFit = gridFit;
