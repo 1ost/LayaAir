@@ -413,7 +413,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
         }
       ],
       "evidence": [
@@ -425,8 +425,8 @@
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
           ]
         },
         {
@@ -437,8 +437,8 @@
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
           ]
         },
         {
@@ -449,8 +449,8 @@
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
           ]
         }
       ]
@@ -472,7 +472,7 @@
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
           "export": "DisplayObject",
-          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
         }
       ],
       "evidence": [
@@ -482,8 +482,8 @@
           "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
           "capability": "rendering.color-transform",
           "covers": [
-            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
           ]
         }
@@ -5692,7 +5692,7 @@
             "new (): DisplayObject"
           ],
           "indexSignatures": [],
-          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
           "heritage": [
             {
               "kind": "extends",
@@ -19901,7 +19901,7 @@
           "export": "isFlashDisplayObject",
           "kind": "function",
           "signature": "(value: unknown) => value is DisplayObject",
-          "sha256": "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0"
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObjectContainer.ts",
@@ -23660,10 +23660,10 @@
             "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95",
             "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
-            "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352",
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
             "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
             "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
             "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
@@ -39469,7 +39469,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2300",
+              "name": "__@iterator@2303",
               "scope": "instance",
               "optional": false,
               "readonly": false,
