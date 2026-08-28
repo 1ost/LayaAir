@@ -1,13 +1,12 @@
 import {
-    AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
+    AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GradientGlowFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
 import { flashDisplayObjectNativeHost } from "../../../layaAir/flash/display/DisplayObject";
 import { Filter } from "../../../layaAir/laya/filters/Filter";
 import { AuthoredFontRegistry, type AuthoredTextFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import {
-    createFlashAuthoredBevelFilter, FlashBevelEffect2D, type FlashAuthoredBevelFilterOptions,
+    createFlashAuthoredBevelFilter, type FlashAuthoredBevelFilterOptions,
 } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
-import { PostProcess2DEffect } from "../../../layaAir/laya/display/PostProcess2DEffect";
 import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
 
 export interface AuthoredGlowFilterConfiguration {
@@ -71,36 +70,6 @@ export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGr
 export type AuthoredFilterConfiguration = AuthoredBlurFilterConfiguration | AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
     | AuthoredBevelFilterConfiguration | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration
     | AuthoredColorMatrixFilterConfiguration;
-
-class AuthoredGradientGlowFilter extends BitmapFilter {
-    constructor(private readonly configuration: AuthoredGradientGlowFilterConfiguration) { super(); }
-    clone(): BitmapFilter { return new AuthoredGradientGlowFilter(this.configuration); }
-    equals(other: BitmapFilter | null): boolean {
-        if (!(other instanceof AuthoredGradientGlowFilter)) return false;
-        const left = this.configuration;
-        const right = other.configuration;
-        return left.distance === right.distance && left.angleRadians === right.angleRadians
-            && left.blurX === right.blurX && left.blurY === right.blurY
-            && left.strength === right.strength && left.quality === right.quality
-            && left.type === right.type && left.knockout === right.knockout
-            && left.compositeSource === right.compositeSource
-            && left.colors.length === right.colors.length
-            && left.colors.every((value, index) => value === right.colors[index])
-            && left.alphas.length === right.alphas.length
-            && left.alphas.every((value, index) => value === right.alphas[index])
-            && left.ratios.length === right.ratios.length
-            && left.ratios.every((value, index) => value === right.ratios[index]);
-    }
-    getEffect(): PostProcess2DEffect {
-        const filter = this.configuration;
-        return new FlashBevelEffect2D({
-            mode: "gradient-glow", distance: filter.distance, angleRadians: filter.angleRadians,
-            colors: filter.colors, alphas: filter.alphas, ratios: filter.ratios,
-            blurX: filter.blurX, blurY: filter.blurY, strength: filter.strength, quality: filter.quality,
-            type: filter.type, knockout: filter.knockout, compositeSource: filter.compositeSource,
-        });
-    }
-}
 
 export interface AuthoredColorMatrixFilterConfiguration {
     readonly kind: "color-matrix";
@@ -362,7 +331,9 @@ export function createAuthoredFilters(value: unknown): Filter[] {
             ? new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
                 filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
                 filter.strength, filter.quality, filter.type, filter.knockout)
-            : new AuthoredGradientGlowFilter(filter));
+            : new GradientGlowFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
+                filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
+                filter.strength, filter.quality, filter.type, filter.knockout));
 }
 
 export function applyAuthoredFilters(target: import("../../../layaAir/flash").DisplayObject, filters: Filter[]): void {

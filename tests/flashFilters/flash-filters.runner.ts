@@ -15,6 +15,7 @@ import { FilterProxy } from "../../src/layaAir/flash/filters/FilterProxy";
 import { bitmapFilterEquals, isBitmapFilter } from "../../src/layaAir/flash/filters/FilterRegistry";
 import { GlowFilter, isGlowFilter } from "../../src/layaAir/flash/filters/GlowFilter";
 import { GradientBevelFilter, isGradientBevelFilter } from "../../src/layaAir/flash/filters/GradientBevelFilter";
+import { GradientGlowFilter, isGradientGlowFilter } from "../../src/layaAir/flash/filters/GradientGlowFilter";
 import {
     createFlashAuthoredBevelFilter, FlashBevelEffect2D,
 } from "../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
@@ -161,6 +162,30 @@ test("GradientBevelFilter matches the Pepper constructor, array, scalar, type, a
     assert.throws(() => { gradient.colors = new Uint32Array(2) as unknown as number[]; }, /non-null Array/);
 });
 
+test("GradientGlowFilter preserves Flash values and owns the native gradient-glow effect", () => {
+    const gradient = new GradientGlowFilter(
+        6, 177, [0xffffff, 0xffcc33, 0xffcc00], [0, 1, 1], [0, 139, 255],
+        5, 5, 3.2773438, 1, "inner", false,
+    );
+    assert.deepEqual([
+        gradient.distance, gradient.angle, gradient.colors, gradient.alphas, gradient.ratios,
+        gradient.blurX, gradient.blurY, gradient.strength, gradient.quality, gradient.type, gradient.knockout,
+    ], [6, 177, [0xffffff, 0xffcc33, 0xffcc00], [0, 1, 1], [0, 139, 255], 5, 5, 3.2773438, 1, "inner", false]);
+    const clone = gradient.clone();
+    assert.equal(isGradientGlowFilter(clone), true);
+    assert.equal(bitmapFilterEquals(gradient, clone), true);
+    const effect = gradient.getEffect();
+    assert.equal(effect instanceof FlashBevelEffect2D, true);
+    assert.equal((effect as FlashBevelEffect2D).options.mode, "gradient-glow");
+
+    const owner = new DetachedFilterDisplayObject();
+    owner.filters = [gradient];
+    assert.equal(isGradientGlowFilter(owner.filters[0]), true,
+        "DisplayObject.filters accepts and detaches the public GradientGlowFilter");
+    assert.notEqual(owner.filters[0], gradient);
+    assert.equal(bitmapFilterEquals(owner.filters[0], gradient), true);
+});
+
 test("BitmapData filter rectangles use Flash write margins and directional offsets", () => {
     const bitmap = new BitmapData(100, 100, true, 0);
     const source = new Rectangle(10, 10, 40, 10);
@@ -171,6 +196,9 @@ test("BitmapData filter rectangles use Flash write margins and directional offse
     assert.deepEqual(bitmap.generateFilterRect(source,
         new GradientBevelFilter(4, 0, [0, 0xffffff], [1, 1], [0, 255], 4, 4)),
     new Rectangle(4, 8, 52, 14));
+    assert.deepEqual(bitmap.generateFilterRect(source,
+        new GradientGlowFilter(4, 0, [0, 0xffffff], [1, 1], [0, 255], 4, 4)),
+    new Rectangle(8, 8, 48, 14));
     assert.throws(() => bitmap.generateFilterRect(source, {} as BitmapFilter), /BitmapFilter/);
 });
 
@@ -210,6 +238,11 @@ test("BitmapData.applyFilter covers color matrix, shadow, glow, and gradient bev
     bevelDestination.applyFilter(alphaSource, alphaSource.rect, new Point(),
         new GradientBevelFilter(0, 0, [0, 0xffffff], [1, 1], [0, 255], 1, 1, 1, 1, "inner"));
     assert.ok(bevelDestination.getPixel32(0, 0) >>> 24 > 0);
+
+    const gradientGlowDestination = new BitmapData(1, 1, true, 0);
+    gradientGlowDestination.applyFilter(alphaSource, alphaSource.rect, new Point(),
+        new GradientGlowFilter(0, 0, [0, 0xffffff], [1, 1], [0, 255], 1, 1, 1, 1, "inner"));
+    assert.ok(gradientGlowDestination.getPixel32(0, 0) >>> 24 > 0);
 
     const opaque = new BitmapData(2, 2, false, 0);
     assert.throws(() => opaque.applyFilter(shadowSource, shadowSource.rect, new Point(), new GlowFilter()),
@@ -345,6 +378,7 @@ test("filter and display brands reject prototype, Proxy, and Symbol.hasInstance 
     assert.equal(isDropShadowFilter(new DropShadowFilter()), true);
     assert.equal(isColorMatrixFilter(new ColorMatrixFilter()), true);
     assert.equal(isGradientBevelFilter(new GradientBevelFilter()), true);
+    assert.equal(isGradientGlowFilter(new GradientGlowFilter()), true);
     for (const value of [prototypeSpoof, hostile, wrappedReal]) {
         assert.equal(isBitmapFilter(value), false);
         assert.equal(bitmapFilterEquals(blur, value as BitmapFilter), false);
@@ -380,7 +414,7 @@ test("filter and display brands reject prototype, Proxy, and Symbol.hasInstance 
 test("filter nominal authority exposes no generic or deep-importable mint seam", () => {
     const root = process.cwd();
     assert.equal(existsSync(join(root, "src/layaAir/laya/display/effect2d/FlashFilterBrands.ts")), false);
-    for (const file of ["BlurFilter.ts", "ColorMatrixFilter.ts", "DropShadowFilter.ts", "GlowFilter.ts", "GradientBevelFilter.ts"]) {
+    for (const file of ["BlurFilter.ts", "ColorMatrixFilter.ts", "DropShadowFilter.ts", "GlowFilter.ts", "GradientBevelFilter.ts", "GradientGlowFilter.ts"]) {
         const source = readFileSync(join(root, "src/layaAir/flash/filters", file), "utf8");
         assert.doesNotMatch(source, /export\s+function\s+(?:brand|register)/i, `${file} must expose only a read-only predicate`);
         assert.match(source, /new WeakMap<object,/, `${file} must own private nominal state`);
@@ -433,11 +467,13 @@ test("concrete filter constructors reject branded hostile subclasses before virt
     class HostileGlowFilter extends GlowFilter {}
     class HostileDropShadowFilter extends DropShadowFilter {}
     class HostileGradientBevelFilter extends GradientBevelFilter {}
+    class HostileGradientGlowFilter extends GradientGlowFilter {}
     assert.throws(() => new HostileBlurFilter(), /not extensible/);
     assert.throws(() => new HostileColorMatrixFilter(), /not extensible/);
     assert.throws(() => new HostileGlowFilter(), /not extensible/);
     assert.throws(() => new HostileDropShadowFilter(), /not extensible/);
     assert.throws(() => new HostileGradientBevelFilter(), /not extensible/);
+    assert.throws(() => new HostileGradientGlowFilter(), /not extensible/);
     assert.equal(hostileCalls, 0);
     for (const [value, prototype] of [
         [new BlurFilter(), BlurFilter.prototype],
@@ -445,6 +481,7 @@ test("concrete filter constructors reject branded hostile subclasses before virt
         [new GlowFilter(), GlowFilter.prototype],
         [new DropShadowFilter(), DropShadowFilter.prototype],
         [new GradientBevelFilter(), GradientBevelFilter.prototype],
+        [new GradientGlowFilter(), GradientGlowFilter.prototype],
     ] as const) {
         assert.equal(Object.getPrototypeOf(value), prototype);
         assert.equal(Object.isSealed(value), true);

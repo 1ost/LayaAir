@@ -25,6 +25,7 @@ import { isFlashBitmapData, observeBitmapData } from "../../../src/layaAir/flash
 import { isGlowFilter } from "../../../src/layaAir/flash/filters/GlowFilter";
 import { isDropShadowFilter } from "../../../src/layaAir/flash/filters/DropShadowFilter";
 import { isGradientBevelFilter } from "../../../src/layaAir/flash/filters/GradientBevelFilter";
+import { isGradientGlowFilter } from "../../../src/layaAir/flash/filters/GradientGlowFilter";
 import { isFlashEvent } from "../../../src/layaAir/flash/events/Event";
 import { isFlashEventDispatcher } from "../../../src/layaAir/flash/events/EventDispatcher";
 import { isFlashFocusEvent } from "../../../src/layaAir/flash/events/FocusEvent";
@@ -2328,6 +2329,24 @@ test("authored gradient-bevel filters retain exact stops and create the native F
         colors: [0, 1], alphas: [1], ratios: [0, 255], blurX: 1, blurY: 1,
         strength: 1, quality: 1, type: "inner", knockout: false, compositeSource: true,
     }]), /matching color, alpha, and ratio arrays/);
+});
+
+test("authored gradient-glow activation creates the public native GradientGlowFilter", () => {
+    const [filter] = createAuthoredFilters([{
+        kind: "gradient-glow", distance: 6, angleRadians: Math.PI,
+        colors: [0xffffff, 0xffcc33, 0xffcc00], alphas: [0, 1, 1], ratios: [0, 139, 255],
+        blurX: 5, blurY: 5, strength: 3.2773438, quality: 1,
+        type: "inner", knockout: false, compositeSource: true,
+    }]);
+    assert.equal(isGradientGlowFilter(filter), true);
+    if (!isGradientGlowFilter(filter)) throw new Error("authored gradient-glow identity was not retained");
+    assert.deepEqual([
+        filter.distance, filter.angle, filter.colors, filter.alphas, filter.ratios,
+        filter.blurX, filter.blurY, filter.strength, filter.quality, filter.type, filter.knockout,
+    ], [6, 180, [0xffffff, 0xffcc33, 0xffcc00], [0, 1, 1], [0, 139, 255], 5, 5, 3.2773438, 1, "inner", false]);
+    const effect = filter.getEffect();
+    assert.equal(effect instanceof FlashBevelEffect2D, true);
+    assert.equal((effect as FlashBevelEffect2D).options.mode, "gradient-glow");
 });
 
 test("authored solid bevel filters create the Laya effect and remain distinct from glow", () => {

@@ -19,6 +19,7 @@ import { isColorMatrixFilter } from "../filters/ColorMatrixFilter";
 import { isDropShadowFilter } from "../filters/DropShadowFilter";
 import { isGlowFilter } from "../filters/GlowFilter";
 import { isGradientBevelFilter } from "../filters/GradientBevelFilter";
+import { isGradientGlowFilter } from "../filters/GradientGlowFilter";
 import { ConcreteBitmapFilter, isBitmapFilter } from "../filters/FilterRegistry";
 
 type InvalidationListener = () => void;
@@ -238,7 +239,7 @@ function filterMargins(filter: ConcreteBitmapFilter): FilterMargins {
     const radians = filter.angle * Math.PI / 180;
     const dx = filter.distance * Math.cos(radians), dy = filter.distance * Math.sin(radians);
     addFilterOffset(margins, dx, dy);
-    addFilterOffset(margins, -dx, -dy);
+    if (isGradientBevelFilter(filter)) addFilterOffset(margins, -dx, -dy);
     return margins;
 }
 
@@ -363,7 +364,8 @@ function applyShadowRaster(original: Uint32Array, width: number, height: number,
     return output;
 }
 
-function normalizedGradient(filter: import("../filters/GradientBevelFilter").GradientBevelFilter):
+function normalizedGradient(filter: import("../filters/GradientBevelFilter").GradientBevelFilter
+    | import("../filters/GradientGlowFilter").GradientGlowFilter):
     ReadonlyArray<{ color: number; alpha: number; ratio: number }> {
     const colors = filter.colors, alphas = filter.alphas, ratios = filter.ratios;
     if (!colors || !alphas || !ratios) return [{ color: 0, alpha: 0, ratio: 0 }];
@@ -435,6 +437,36 @@ function applyGradientBevelRaster(original: Uint32Array, width: number, height: 
     return output;
 }
 
+function applyGradientGlowRaster(original: Uint32Array, width: number, height: number,
+    filter: import("../filters/GradientGlowFilter").GradientGlowFilter): Uint32Array {
+    const radians = filter.angle * Math.PI / 180;
+    const offsetX = filter.distance * Math.cos(radians), offsetY = filter.distance * Math.sin(radians);
+    const seed = new Uint32Array(original.length);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        const center = (original[y * width + x] >>> 24) / 255;
+        const shifted = sampleAlpha(original, width, height, x - offsetX, y - offsetY);
+        seed[y * width + x] = packChannels((1 - shifted) * center * 255, 0, shifted * (1 - center) * 255, 255);
+    }
+    const field = boxBlur(seed, width, height, filter.blurX, filter.blurY, filter.quality);
+    const stops = normalizedGradient(filter), output = new Uint32Array(original.length);
+    for (let index = 0; index < output.length; index++) {
+        const source = original[index], sourceAlpha = (source >>> 24) / 255;
+        const inner = (field[index] >>> 16 & 0xff) / 255;
+        const outer = (field[index] & 0xff) / 255;
+        const level = filter.type === "inner" ? inner : filter.type === "outer" ? outer : inner + outer;
+        const glow = gradientPixel(stops, Math.max(0, Math.min(1, level * filter.strength)));
+        const glowAlpha = (glow >>> 24) / 255;
+        if (filter.type === "inner") output[index] = filter.knockout
+            ? multiplyPremultiplied(glow, sourceAlpha)
+            : addPremultiplied(multiplyPremultiplied(glow, sourceAlpha), source, 1 - glowAlpha);
+        else if (filter.type === "outer") output[index] = filter.knockout
+            ? multiplyPremultiplied(glow, 1 - sourceAlpha)
+            : addPremultiplied(source, glow, 1 - sourceAlpha);
+        else output[index] = filter.knockout ? glow : addPremultiplied(glow, source, 1 - glowAlpha);
+    }
+    return output;
+}
+
 function applyColorMatrixRaster(original: Uint32Array, matrix: readonly number[]): Uint32Array {
     const output = new Uint32Array(original.length);
     const clamp = (value: number): number => Math.max(0, Math.min(255, value));
@@ -475,6 +507,7 @@ function filterRaster(source: BitmapDataState, rect: { x: number; y: number; wid
     if (isBlurFilter(filter)) pixels = boxBlur(original, width, height, filter.blurX, filter.blurY, filter.quality);
     else if (isColorMatrixFilter(filter)) pixels = applyColorMatrixRaster(original, filter.matrix);
     else if (isGradientBevelFilter(filter)) pixels = applyGradientBevelRaster(original, width, height, filter);
+    else if (isGradientGlowFilter(filter)) pixels = applyGradientGlowRaster(original, width, height, filter);
     else pixels = applyShadowRaster(original, width, height, filter);
     return {
         pixels, width, height,
@@ -668,7 +701,8 @@ export class BitmapData {
         const rect = sourceRectangle(rectangleValue(sourceRect, "sourceRect"));
         const point = pointValue(destPoint, "destPoint");
         if (!isBitmapFilter(filter)) throw new TypeError("filter must be a BitmapFilter");
-        if (!destination.transparent && (isGlowFilter(filter) || isDropShadowFilter(filter) || isGradientBevelFilter(filter)))
+        if (!destination.transparent && (isGlowFilter(filter) || isDropShadowFilter(filter)
+            || isGradientBevelFilter(filter) || isGradientGlowFilter(filter)))
             throw new TypeError("Glow, shadow, and bevel filters require a transparent destination BitmapData");
         const margins = filterMargins(filter);
         if (rect.width + margins.left + margins.right <= 0 || rect.height + margins.top + margins.bottom <= 0) return;
