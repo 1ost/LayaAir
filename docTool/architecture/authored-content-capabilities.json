@@ -518,7 +518,7 @@
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "1d953b57cba89d8bb025f9bd0e1415466abcd6a8fb874659e2a621b6e2766242",
+          "sha256": "d9d4593eba95a181889645b43692d2d7454a9ee08445bd9ec2c0e546255ba31f",
           "capability": "rendering.filter",
           "covers": [
             "223c592bb5d58b647d729eceeae2615144ff580d4a43663333586f43937d87e2",
@@ -19609,7 +19609,7 @@
             "new (width: number, height: number, transparent?: boolean, fillColor?: number): BitmapData"
           ],
           "indexSignatures": [],
-          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
+          "sha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352",
           "heritage": []
         },
         {
@@ -19880,21 +19880,21 @@
           "export": "acquireBitmapDataTexture",
           "kind": "function",
           "signature": "(value: BitmapData, smoothing: boolean) => Texture | null",
-          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
+          "sha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "isFlashBitmapData",
           "kind": "function",
           "signature": "(value: unknown) => value is BitmapData",
-          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
+          "sha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
           "export": "observeBitmapData",
           "kind": "function",
           "signature": "(value: BitmapData, listener: InvalidationListener) => () => void",
-          "sha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
+          "sha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352"
         },
         {
           "module": "src/layaAir/flash/display/DisplayObject.ts",
@@ -23663,11 +23663,11 @@
             "47619514c6f1e88a4417d60a8320ac132e3339feed4a56709239756a413a24a0",
             "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
+            "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352",
             "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
             "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
             "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
-            "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
@@ -39469,7 +39469,7 @@
             {
               "abstract": false,
               "kind": "method",
-              "name": "__@iterator@2272",
+              "name": "__@iterator@2300",
               "scope": "instance",
               "optional": false,
               "readonly": false,
@@ -40536,21 +40536,21 @@
           "export": "bitmapFilterEquals",
           "kind": "function",
           "signature": "(left: BitmapFilter | null, right: BitmapFilter | null) => boolean",
-          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
+          "sha256": "f51a4fdd0d36f0f3b9f06ad94ba0d1488cbe9f9479200fca7ae17abc49609323"
         },
         {
           "module": "src/layaAir/flash/filters/FilterRegistry.ts",
           "export": "isBitmapFilter",
           "kind": "function",
           "signature": "(value: unknown) => value is ConcreteBitmapFilter",
-          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
+          "sha256": "f51a4fdd0d36f0f3b9f06ad94ba0d1488cbe9f9479200fca7ae17abc49609323"
         },
         {
           "module": "src/layaAir/flash/filters/FilterRegistry.ts",
           "export": "ConcreteBitmapFilter",
           "kind": "type",
           "signature": "any",
-          "sha256": "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15"
+          "sha256": "f51a4fdd0d36f0f3b9f06ad94ba0d1488cbe9f9479200fca7ae17abc49609323"
         },
         {
           "module": "src/layaAir/flash/filters/GlowFilter.ts",
@@ -40954,23 +40954,239 @@
           "kind": "function",
           "signature": "(value: unknown) => value is GradientBevelFilter",
           "sha256": "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d"
+        },
+        {
+          "module": "src/layaAir/flash/filters/GradientGlowFilter.ts",
+          "export": "GradientGlowFilter",
+          "kind": "class",
+          "signature": "typeof GradientGlowFilter",
+          "members": [
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "alphas",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "angle",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurX",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "blurY",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "clone",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => GradientGlowFilter"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "colors",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "distance",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "equals",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(other: BitmapFilter | null) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "event",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string, data?: any) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "getEffect",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => PostProcess2DEffect"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "hasListener",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type: string) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "knockout",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "off",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener?: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAll",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(type?: string) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "offAllCaller",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(caller: any) => EventDispatcher"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "on",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "once",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "{ (type: string, listener: Function): EventDispatcher; (type: string, caller: any, listener: Function, args?: any[]): EventDispatcher; }"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "quality",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "ratios",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number[]"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "strength",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "number"
+            },
+            {
+              "abstract": false,
+              "kind": "get+set",
+              "name": "type",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "string"
+            }
+          ],
+          "constructors": [
+            "new (distance?: number, angle?: number, colors?: readonly number[] | null, alphas?: readonly number[] | null, ratios?: readonly number[] | null, blurX?: number, blurY?: number, strength?: number, quality?: number, type?: string, knockout?: boolean): GradientGlowFilter"
+          ],
+          "indexSignatures": [],
+          "sha256": "99c31a1a4cf0a263196ae83e213f667609bbf8462530c7e59baac0921f4a8650",
+          "heritage": [
+            {
+              "kind": "extends",
+              "signature": "BitmapFilter"
+            }
+          ]
+        },
+        {
+          "module": "src/layaAir/flash/filters/GradientGlowFilter.ts",
+          "export": "isGradientGlowFilter",
+          "kind": "function",
+          "signature": "(value: unknown) => value is GradientGlowFilter",
+          "sha256": "99c31a1a4cf0a263196ae83e213f667609bbf8462530c7e59baac0921f4a8650"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashFiltersBridgeEvidence.test.ts",
           "test": "Flash filter bridge compiler surface and native effect ownership",
-          "sha256": "1d953b57cba89d8bb025f9bd0e1415466abcd6a8fb874659e2a621b6e2766242",
+          "sha256": "d9d4593eba95a181889645b43692d2d7454a9ee08445bd9ec2c0e546255ba31f",
           "capability": "api.flash.filters",
           "covers": [
             "086bb327d3c0c29c72b6a6694ad53da7803613c44899aba54e2deaae969d2072",
-            "15a643723af2ccea962196b1e542ae2df5f6a9f65dd72fd6856a39b9a3f9cc15",
             "257ea177c3ed151f11632dc774cf464d8fb3643a61663954cc76ef2a86a70bef",
             "2793115c547c6afeac7e6d4f1bbfd40c6e821226e7fa8ef3cc485fd2bb66bbe0",
+            "99c31a1a4cf0a263196ae83e213f667609bbf8462530c7e59baac0921f4a8650",
             "a456cd4c496155bd41f09e8e1426aa38ca100c03a4ed8f321113b7825bc186f0",
             "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d",
             "c349b67d21a1b9a1493cee5ef5e79d00f87771e65b78f9707854a97dec7dbd3d",
-            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538"
+            "c670505b96d8a8311a28db4411b68cc208e15c64a5b2281e37e40b95cc05b538",
+            "f51a4fdd0d36f0f3b9f06ad94ba0d1488cbe9f9479200fca7ae17abc49609323"
           ]
         }
       ]
@@ -42352,21 +42568,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         }
       ],
       "evidence": [
@@ -42376,7 +42592,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+            "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
           ]
         }
       ]
@@ -44739,28 +44955,28 @@
           "export": "AuthoredEmbeddedFontConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredFontAlignZonesConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredAdvancedTextRasterizationConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
@@ -44890,10 +45106,10 @@
           "sha256": "91de7099bb70ff97cadb35b15e7787029a303be7b5e6cc9428b9d032df4c507d",
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
-            "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d",
             "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
             "b0074173d4e3f21f609a2d9e7662b1b5869fbd8b67646510ef470c7f39843cec",
-            "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
+            "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee",
+            "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
           ]
         }
       ]
@@ -44921,14 +45137,14 @@
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+          "sha256": "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
         }
       ],
       "evidence": [
@@ -44939,7 +45155,7 @@
           "capability": "text.authored-restricted-html-field",
           "covers": [
             "192307f17a5037a8c54e98a6fb6b44f85e153d0b10a17aec4e9f7803f37a5147",
-            "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d"
+            "f269b92c3cceea42b963782789b1848686d2d35b82dbe6a81d338eee05a831fc"
           ]
         }
       ]

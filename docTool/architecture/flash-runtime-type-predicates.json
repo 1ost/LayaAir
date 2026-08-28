@@ -44,7 +44,7 @@
       "predicateExport": "isFlashBitmapData",
       "predicateSignature": "(value: unknown) => value is BitmapData",
       "heritageClosure": [],
-      "moduleSha256": "77809ac05691325b6559aa0e8c008d8f8f90a2c74923a237c986ec80695b5dd9"
+      "moduleSha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352"
     },
     {
       "sourceQName": "flash.display.DisplayObject",
@@ -521,6 +521,20 @@
       "predicateSignature": "(value: unknown) => value is GradientBevelFilter",
       "heritageClosure": [],
       "moduleSha256": "b968f8117a432c6a78fdaf1be74fb82f2741044d87dbdabae0b674acbee3640d"
+    },
+    {
+      "sourceQName": "flash.filters.GradientGlowFilter",
+      "targetCapabilityId": "api.flash.filters",
+      "targetModule": "src/layaAir/flash/filters/GradientGlowFilter.ts",
+      "constructorExport": "GradientGlowFilter",
+      "constructorSignature": "typeof GradientGlowFilter",
+      "constructSignatures": [
+        "new (distance?: number, angle?: number, colors?: readonly number[] | null, alphas?: readonly number[] | null, ratios?: readonly number[] | null, blurX?: number, blurY?: number, strength?: number, quality?: number, type?: string, knockout?: boolean): GradientGlowFilter"
+      ],
+      "predicateExport": "isGradientGlowFilter",
+      "predicateSignature": "(value: unknown) => value is GradientGlowFilter",
+      "heritageClosure": [],
+      "moduleSha256": "99c31a1a4cf0a263196ae83e213f667609bbf8462530c7e59baac0921f4a8650"
     },
     {
       "sourceQName": "flash.geom.ColorTransform",

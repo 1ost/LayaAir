@@ -63,6 +63,7 @@ const ADMITTED_BITMAP_FILTER_SUBCLASSES = new Set([
     "src/layaAir/flash/filters/DropShadowFilter.ts",
     "src/layaAir/flash/filters/GlowFilter.ts",
     "src/layaAir/flash/filters/GradientBevelFilter.ts",
+    "src/layaAir/flash/filters/GradientGlowFilter.ts",
 ]);
 
 function normalize(value) {

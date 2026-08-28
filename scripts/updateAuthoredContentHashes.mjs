@@ -720,6 +720,8 @@ const filterSubjects = [
     ["src/layaAir/flash/filters/GlowFilter.ts", "isGlowFilter", "function"],
     ["src/layaAir/flash/filters/GradientBevelFilter.ts", "GradientBevelFilter", "class"],
     ["src/layaAir/flash/filters/GradientBevelFilter.ts", "isGradientBevelFilter", "function"],
+    ["src/layaAir/flash/filters/GradientGlowFilter.ts", "GradientGlowFilter", "class"],
+    ["src/layaAir/flash/filters/GradientGlowFilter.ts", "isGradientGlowFilter", "function"],
 ];
 filterCapability.obligations = filterSubjects.map(([module, exported, kind]) =>
     filterCapability.obligations.find(item => item.module === module && item.export === exported)
@@ -961,6 +963,20 @@ if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters
         constructorSignature: "",
         constructSignatures: [],
         predicateExport: "isGradientBevelFilter",
+        predicateSignature: "",
+        heritageClosure: [],
+        moduleSha256: "",
+    });
+}
+if (!runtimeTypeAuthority.types.some(item => item.sourceQName === "flash.filters.GradientGlowFilter")) {
+    runtimeTypeAuthority.types.push({
+        sourceQName: "flash.filters.GradientGlowFilter",
+        targetCapabilityId: "api.flash.filters",
+        targetModule: "src/layaAir/flash/filters/GradientGlowFilter.ts",
+        constructorExport: "GradientGlowFilter",
+        constructorSignature: "",
+        constructSignatures: [],
+        predicateExport: "isGradientGlowFilter",
         predicateSignature: "",
         heritageClosure: [],
         moduleSha256: "",
