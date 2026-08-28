@@ -218,6 +218,50 @@ assert.deepEqual(textureContent.root.scale9Grid, {
     x: 12, y: 12, width: 18, height: 12, sizeGrid: [12, 10, 12, 12, 0], target: "character_3$d1$f1$i1",
 });
 
+const negativeOriginTexture = fixture();
+negativeOriginTexture.library.stage.width = 53;
+negativeOriginTexture.library.stage.height = 53;
+negativeOriginTexture.library.assets[3].bounds = { x: -26, y: -23.5, width: 53, height: 53 };
+negativeOriginTexture.library.assets[20].bounds = { x: -26, y: -23.5, width: 53, height: 53 };
+negativeOriginTexture.library.assets[20].scalingGrid.rect = { x: -20, y: -19, width: 42, height: 43 };
+negativeOriginTexture.library.assets[20].scalingGrid.sizeGrid = [4.5, 5, 5.5, 6, 0];
+const negativeOriginTextureContent = adapter.parse({
+    ...negativeOriginTexture,
+    entrySymbolId: 20,
+    runtimeLinkage: "fixtures.NegativeOriginTextureRoot",
+    rasterizedShapes: new Map([[3, authority("shapes/negative-origin.png", 2)]]),
+});
+assert.deepEqual(
+    [negativeOriginTextureContent.root.children[0].x, negativeOriginTextureContent.root.children[0].y,
+        negativeOriginTextureContent.root.children[0].width, negativeOriginTextureContent.root.children[0].height],
+    [-26, -23.5, 53, 53],
+);
+assert.deepEqual(negativeOriginTextureContent.root.scale9Grid, {
+    x: 6, y: 4.5, width: 42, height: 43, sizeGrid: [4.5, 5, 5.5, 6, 0], target: "character_3$d1$f1$i1",
+});
+
+const shiftedNegativeOriginRaster = structuredClone(negativeOriginTexture);
+shiftedNegativeOriginRaster.timelines = new Map(negativeOriginTexture.timelines);
+shiftedNegativeOriginRaster.library.assets[3].bounds.x = -25;
+assert.throws(() => adapter.parse({
+    ...shiftedNegativeOriginRaster,
+    entrySymbolId: 20,
+    runtimeLinkage: "fixtures.ShiftedNegativeOriginRaster",
+    rasterizedShapes: new Map([[3, authority("shapes/shifted-negative-origin.png", 2)]]),
+}), /FLASH_LIBRARY_SCALING_GRID_RASTER_BOUNDS_MISMATCH/);
+
+const outOfBoundsNegativeOriginGrid = structuredClone(negativeOriginTexture);
+outOfBoundsNegativeOriginGrid.timelines = new Map(negativeOriginTexture.timelines);
+outOfBoundsNegativeOriginGrid.library.assets[20].scalingGrid.rect.x = -27;
+outOfBoundsNegativeOriginGrid.library.assets[20].scalingGrid.rect.width = 49;
+outOfBoundsNegativeOriginGrid.library.assets[20].scalingGrid.sizeGrid = [4.5, 5, 5.5, -1, 0];
+assert.throws(() => adapter.parse({
+    ...outOfBoundsNegativeOriginGrid,
+    entrySymbolId: 20,
+    runtimeLinkage: "fixtures.OutOfBoundsNegativeOriginGrid",
+    rasterizedShapes: new Map([[3, authority("shapes/out-of-bounds-negative-origin.png", 2)]]),
+}), /FLASH_LIBRARY_SCALING_GRID_RECT_INVALID/);
+
 const missingBounds = fixture();
 missingBounds.library.stage.width = 40;
 missingBounds.library.stage.height = 36;
@@ -479,4 +523,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 24/24 passed\n");
+process.stdout.write("authored popup-menu admission: 27/27 passed\n");

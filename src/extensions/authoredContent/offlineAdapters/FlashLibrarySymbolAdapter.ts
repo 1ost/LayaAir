@@ -1667,9 +1667,12 @@ function authoredScale9Grid(
     if (children.length !== 1 || children[0].kind !== "image")
         fail("FLASH_LIBRARY_SCALING_GRID_RASTER_TARGET_REQUIRED", `Scaling grid ${characterId} requires exactly one direct image child.`);
     const child = children[0];
+    const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+    const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
     const boundsWidth = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
     const boundsHeight = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
-    if ((child.x ?? 0) !== 0 || (child.y ?? 0) !== 0 || child.width !== boundsWidth || child.height !== boundsHeight)
+    if ((child.x ?? 0) !== boundsX || (child.y ?? 0) !== boundsY
+        || child.width !== boundsWidth || child.height !== boundsHeight)
         fail("FLASH_LIBRARY_SCALING_GRID_RASTER_BOUNDS_MISMATCH", `Scaling grid ${characterId} image child does not cover the authored bounds.`);
     const rect = object(source.rect, `library.assets.${characterId}.scalingGrid.rect`);
     exactKeys(rect, SCALING_GRID_RECT_FIELDS, `library.assets.${characterId}.scalingGrid.rect`, "FLASH_LIBRARY_SCALING_GRID_RECT_FIELD_UNSUPPORTED");
@@ -1677,18 +1680,21 @@ function authoredScale9Grid(
     const y = finite(rect.y, `library.assets.${characterId}.scalingGrid.rect.y`);
     const width = finite(rect.width, `library.assets.${characterId}.scalingGrid.rect.width`);
     const height = finite(rect.height, `library.assets.${characterId}.scalingGrid.rect.height`);
-    if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > boundsWidth || y + height > boundsHeight)
+    if (x < boundsX || y < boundsY || width <= 0 || height <= 0
+        || x + width > boundsX + boundsWidth || y + height > boundsY + boundsHeight)
         fail("FLASH_LIBRARY_SCALING_GRID_RECT_INVALID", `Scaling grid ${characterId} lies outside the authored bounds.`);
     const values = array(source.sizeGrid, `library.assets.${characterId}.scalingGrid.sizeGrid`);
     if (values.length !== 5)
         fail("FLASH_LIBRARY_SCALING_GRID_SIZE_INVALID", `Scaling grid ${characterId} sizeGrid must contain five values.`);
     const sizeGrid = values.map((item, index) => finite(item, `library.assets.${characterId}.scalingGrid.sizeGrid[${index}]`));
-    const expected = [y, boundsWidth - x - width, boundsHeight - y - height, x, 0];
+    const localX = x - boundsX;
+    const localY = y - boundsY;
+    const expected = [localY, boundsX + boundsWidth - x - width, boundsY + boundsHeight - y - height, localX, 0];
     if (sizeGrid.some((item, index) => item !== expected[index]))
         fail("FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH", `Scaling grid ${characterId} insets disagree with its rectangle.`);
     return {
-        x,
-        y,
+        x: localX,
+        y: localY,
         width,
         height,
         sizeGrid: sizeGrid as [number, number, number, number, 0],
