@@ -106,6 +106,45 @@ test("HierarchyParser activates the Flash overlay compositor from emitted blendM
     root.destroy(true);
 });
 
+test("Flash layer creates and retains an owned transparency-group boundary", () => {
+    const sprite = new LayaSprite();
+    assert.equal(sprite.cacheAs, "none");
+    sprite.blendMode = "layer";
+    assert.equal(sprite.blendMode, "layer");
+    assert.equal(sprite.cacheAs, "bitmap", "layer must isolate the subtree in one off-screen target");
+    assert.throws(() => sprite.cacheAs = "none", /FLASH_LAYER_ISOLATION_REQUIRED/);
+    sprite.blendMode = "normal";
+    assert.equal(sprite.cacheAs, "none", "leaving layer must release only the cache it owned");
+
+    const preCached = new LayaSprite();
+    preCached.cacheAs = "bitmap";
+    preCached.blendMode = "layer";
+    preCached.blendMode = "normal";
+    assert.equal(preCached.cacheAs, "bitmap", "layer must not release an application-owned cache");
+    sprite.destroy();
+    preCached.destroy();
+});
+
+test("HierarchyParser activates Flash layer isolation from emitted blendMode", () => {
+    const errors: Array<{ message: string }> = [];
+    const root = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "root",
+        "_$type": "Sprite",
+        "_$child": [{
+            "_$id": "isolated",
+            "_$type": "Sprite",
+            name: "MC_Layer",
+            blendMode: "layer",
+        }],
+    }).create({}, errors) as LayaSprite;
+    assert.deepEqual(errors, []);
+    const isolated = root.getChildByName("MC_Layer") as LayaSprite;
+    assert.equal(isolated.blendMode, "layer");
+    assert.equal(isolated.cacheAs, "bitmap");
+    root.destroy(true);
+});
+
 test("BitmapData.setVector installs clipped ARGB pixels atomically", () => {
     const bitmapData = new BitmapData(3, 2, true, 0);
     bitmapData.setVector(new Rectangle(-1, 0, 3, 2), new Uint32Array([

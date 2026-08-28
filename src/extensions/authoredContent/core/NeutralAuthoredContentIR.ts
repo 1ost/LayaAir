@@ -151,7 +151,7 @@ export interface NeutralAuthoredNode {
     readonly alpha?: number;
     readonly visible?: boolean;
     /** Closed native compositing set admitted from authored Flash placements. */
-    readonly blendMode?: "add" | "overlay";
+    readonly blendMode?: "add" | "layer" | "overlay";
     readonly matrix?: NeutralAuthoredMatrix;
     readonly colorTransform?: NeutralAuthoredColorTransform;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
@@ -1317,8 +1317,8 @@ function exactLiteral<T extends string | number | boolean>(value: unknown, expec
     return expected;
 }
 
-function normalizeBlendMode(value: unknown, path: string): "add" | "overlay" {
-    if (value === "add" || value === "overlay")
+function normalizeBlendMode(value: unknown, path: string): "add" | "layer" | "overlay" {
+    if (value === "add" || value === "layer" || value === "overlay")
         return value;
     fail("AUTHORED_CONTENT_BLEND_MODE_UNSUPPORTED", `${path} must be an admitted authored blend mode.`);
 }

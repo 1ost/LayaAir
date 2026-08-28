@@ -373,6 +373,12 @@ function validateHierarchyNode(
     validateEffectiveNodeField(source, value, path, "height", 0);
     validateEffectiveNodeField(source, value, path, "alpha", 1);
     validateEffectiveNodeField(source, value, path, "visible", true);
+    // IDE 3.4's reflected Sprite schema predates the authenticated Flash
+    // `layer` marker and therefore omits it even though the live node retained
+    // it. Restore that already-admitted marker at the .lh boundary; the
+    // HierarchyParser setter activates the native off-screen group.
+    if (source.blendMode === "layer" && value.blendMode === undefined)
+        value.blendMode = "layer";
     if (source.blendMode !== undefined && value.blendMode !== source.blendMode)
         fail("AUTHORED_CONTENT_NATIVE_BLEND_MODE_MISMATCH", `${path} expected blendMode '${source.blendMode}'; received ${String(value.blendMode)}.`);
     if (!root) {

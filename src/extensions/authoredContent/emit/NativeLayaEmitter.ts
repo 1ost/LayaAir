@@ -149,7 +149,9 @@ export class NativeLayaEmitter {
         if (source.height !== undefined) node.height = source.height;
         if (source.alpha !== undefined) node.alpha = source.alpha;
         if (source.visible !== undefined) node.visible = source.visible;
-        if (source.blendMode !== undefined) node.blendMode = source.blendMode;
+        // Installed IDE 3.4 declarations predate authenticated Flash `layer`;
+        // the runtime Sprite setter owns and activates the isolation marker.
+        if (source.blendMode !== undefined) (node as any).blendMode = source.blendMode;
         if (source.kind === "text" && node instanceof Laya.Text) {
             node.text = source.text!;
             if (source.fontSize !== undefined) node.fontSize = source.fontSize;

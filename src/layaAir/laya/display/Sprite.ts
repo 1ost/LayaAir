@@ -45,6 +45,7 @@ import { StatElement } from "../layagl/StatisticsContext";
 import { ShaderDefines2D } from "../webgl/shader/d2/ShaderDefines2D";
 
 const hiddenBits = NodeFlags.NOT_IN_PAGE;
+const flashLayerIsolation = new WeakMap<Sprite, { ownsCache: boolean }>();
 
 /**
  * @en Sprite is a basic display list node for displaying graphical content. By default, Sprite does not accept mouse events. Through the graphics API, images or vector graphics can be drawn, supporting operations like rotation, scaling, translation, and more. Sprite also functions as a container class, allowing the addition of multiple child nodes.
@@ -710,19 +711,32 @@ export class Sprite extends Node {
      * @en Specifies the blending mode to be used. 
      * @zh 指定要使用的混合模式.
      */
-    get blendMode(): keyof typeof BlendMode | null {
+    get blendMode(): keyof typeof BlendMode | "layer" | null {
+        if (flashLayerIsolation.has(this)) return "layer";
         return this._blendMode === 0 ? null : <any>BlendMode[this._blendMode];
     }
 
-    set blendMode(value: keyof typeof BlendMode | null) {
-        let t = BlendMode[value];
+    set blendMode(value: keyof typeof BlendMode | "layer" | null) {
+        const flashLayer = value === "layer";
+        let t = BlendMode[value as keyof typeof BlendMode];
+        if (flashLayer) t = BlendMode.normal;
         if (typeof (t) !== "number")
             t = (value as any) === "destination-out" ? BlendMode.destinationOut : 0;
-        if (this._blendMode != t) {
+        if (this._blendMode != t || flashLayerIsolation.has(this) !== flashLayer) {
             const ownedOverlay = this._textureCompositor instanceof FlashOverlayCompositor2D;
             if (t === BlendMode.overlay && this._textureCompositor && !ownedOverlay)
                 throw new Error("FLASH_OVERLAY_COMPOSITOR_CONFLICT");
+            if (flashLayerIsolation.has(this) && !flashLayer) {
+                const ownsCache = flashLayerIsolation.get(this)!.ownsCache;
+                flashLayerIsolation.delete(this);
+                if (ownsCache) this.cacheAs = "none";
+            }
             this._blendMode = t;
+            if (flashLayer && !flashLayerIsolation.has(this)) {
+                const ownsCache = !this._cacheAsBmp;
+                flashLayerIsolation.set(this, { ownsCache });
+                if (ownsCache) this.cacheAs = "bitmap";
+            }
             if (t === BlendMode.overlay && !this._textureCompositor)
                 this.textureCompositor = new FlashOverlayCompositor2D();
             else if (t !== BlendMode.overlay && ownedOverlay)
@@ -928,6 +942,8 @@ export class Sprite extends Node {
 
     set cacheAs(value: string) {
         let b = value === "bitmap";
+        if (flashLayerIsolation.has(this) && !b)
+            throw new Error("FLASH_LAYER_ISOLATION_REQUIRED");
         if (b === this._cacheAsBmp)
             return;
 

@@ -18,14 +18,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -35,8 +35,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "library.symbol-linkage",
           "covers": [
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -57,7 +57,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -68,7 +68,7 @@
           "capability": "library.imported-assets",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -82,14 +82,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -99,8 +99,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.hierarchy",
           "covers": [
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -114,7 +114,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "4164ff02d9da89ee5f0e3d2e7e1b82f7e371e44bd3ddf1b23c022bad896351dc",
+          "sha256": "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
           "members": [
             {
               "abstract": false,
@@ -140,7 +140,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "display.place-remove-depth",
           "covers": [
-            "4164ff02d9da89ee5f0e3d2e7e1b82f7e371e44bd3ddf1b23c022bad896351dc"
+            "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740"
           ]
         }
       ]
@@ -154,14 +154,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -171,8 +171,8 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "display.instance-name",
           "covers": [
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -213,7 +213,7 @@
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -224,7 +224,7 @@
           "capability": "media.bitmap",
           "covers": [
             "3dc98eb76184e2a6654e7258697966fcb6c5761ab7b24df4b6f2cfe89c764134",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -283,14 +283,14 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/offlineAdapters/FlashLibrarySymbolAdapter.ts",
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "4164ff02d9da89ee5f0e3d2e7e1b82f7e371e44bd3ddf1b23c022bad896351dc",
+          "sha256": "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
           "members": [
             {
               "abstract": false,
@@ -313,7 +313,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
@@ -330,10 +330,10 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.button-states",
           "covers": [
-            "4164ff02d9da89ee5f0e3d2e7e1b82f7e371e44bd3ddf1b23c022bad896351dc",
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
-            "d2402bd4c9f80bd1c09c7fd8d786f071b6454c08683002bb6804953067e2b8bf",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6",
+            "d2402bd4c9f80bd1c09c7fd8d786f071b6454c08683002bb6804953067e2b8bf"
           ]
         }
       ]
@@ -444,7 +444,7 @@
         {
           "path": "tests/authoredContent/run.ts",
           "test": "Neutral affine components round-trip through native timeline transform bindings",
-          "sha256": "fb42b4c8a63e70467e386fc6c57e6061379a83f42df5489014c87f8f4b16c068",
+          "sha256": "27b993059cfca87e258b6888da312d7facb5749b67115135ef085f0974665845",
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
@@ -546,7 +546,7 @@
           "export": "normalizeNeutralAuthoredContent",
           "kind": "function",
           "signature": "(input: unknown, scale?: number) => NeutralAuthoredContentIR",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
@@ -563,7 +563,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.frames-labels",
           "covers": [
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
             "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
           ]
         }
@@ -578,7 +578,7 @@
           "export": "NativeLayaEmitter",
           "kind": "class",
           "signature": "typeof NativeLayaEmitter",
-          "sha256": "e39380de96e213862c1e765adce7677647e1a901603e04e78082693adf470b1b",
+          "sha256": "49b33dd980fc02d3246a112ee4dea704b7f4fb3dac615c84efdc512b414c5eb0",
           "members": [
             {
               "abstract": false,
@@ -664,7 +664,7 @@
           "capability": "timeline.property-track",
           "covers": [
             "10a06837473eaadef5eaf61f58da3e68ccd19a406634421815220e508b340ed0",
-            "e39380de96e213862c1e765adce7677647e1a901603e04e78082693adf470b1b"
+            "49b33dd980fc02d3246a112ee4dea704b7f4fb3dac615c84efdc512b414c5eb0"
           ]
         }
       ]
@@ -678,7 +678,7 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredRuntimePrimitives.ts",
@@ -695,8 +695,8 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.nested-symbol",
           "covers": [
-            "d2402bd4c9f80bd1c09c7fd8d786f071b6454c08683002bb6804953067e2b8bf",
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6",
+            "d2402bd4c9f80bd1c09c7fd8d786f071b6454c08683002bb6804953067e2b8bf"
           ]
         }
       ]
@@ -765,28 +765,28 @@
           "export": "prepareNativeLayaHierarchy",
           "kind": "function",
           "signature": "(content: NeutralAuthoredContentIR, hierarchyValue: Record<string, unknown>, timelineAssetId: string, resourceAssetIds: ReadonlyMap<string, string>, nestedTimelineAssetIds?: ReadonlyMap<string, string>) => Record<string, unknown>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "canonicalLayaHierarchyBytes",
           "kind": "function",
           "signature": "(hierarchy: Record<string, unknown>) => Uint8Array",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "prepareNativeLayaAuthoredContentBundle",
           "kind": "function",
           "signature": "(preparation: NativeLayaBundlePreparation) => Promise<NativeAuthoredContentBundle>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeLayaHierarchyWriter.ts",
           "export": "writeNativeLayaAuthoredContentTransaction",
           "kind": "function",
           "signature": "(bundle: NativeAuthoredContentBundle, transaction: NativeAuthoredContentTransaction) => Promise<void>",
-          "sha256": "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+          "sha256": "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
         }
       ],
       "evidence": [
@@ -796,7 +796,7 @@
           "sha256": "2a7089a805a0d04204b10c00e9645fd37a4507e5f67d822dfe32bb86cf9db80a",
           "capability": "native.prefab",
           "covers": [
-            "e8a8014e32fcc28e6cae3cc4b5aad279af4f74c602d0cd167e3e574ea7ded3ba"
+            "b7f42e1fca6fabc2ce0f527087cbef15502927ea0a0f585b34c0984622a377b6"
           ]
         }
       ]
@@ -2183,7 +2183,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -4362,7 +4362,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -6545,7 +6545,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -8778,7 +8778,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -11056,7 +11056,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -13497,7 +13497,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -15793,7 +15793,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -18053,7 +18053,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -21548,7 +21548,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -32112,7 +32112,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -35603,7 +35603,7 @@
               "scope": "instance",
               "optional": false,
               "readonly": false,
-              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\""
+              "signature": "\"normal\" | \"invalid\" | \"add\" | \"multiply\" | \"screen\" | \"overlay\" | \"light\" | \"lighter\" | \"mask\" | \"destinationOut\" | \"addOld\" | \"lighterOld\" | \"sourceAlpha\" | \"layer\""
             },
             {
               "abstract": false,
@@ -44697,28 +44697,28 @@
           "export": "NeutralFontMediaType",
           "kind": "type",
           "signature": "any",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralEmbeddedFont",
           "kind": "interface",
           "signature": "any",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralFontAlignZones",
           "kind": "interface",
           "signature": "any",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/core/NeutralAuthoredContentIR.ts",
           "export": "NeutralAdvancedTextRasterization",
           "kind": "interface",
           "signature": "any",
-          "sha256": "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a"
+          "sha256": "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38"
         },
         {
           "module": "src/extensions/authoredContent/emit/NativeAuthoredFontCatalog.ts",
@@ -44890,8 +44890,8 @@
           "sha256": "91de7099bb70ff97cadb35b15e7787029a303be7b5e6cc9428b9d032df4c507d",
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
-            "672f46a73beff7cb156652183da4efa5e4b034bb28d653394e6a3edf575bdf2a",
             "6d28f76b5c4d47ba3eb2feb2fc9c5d4748c7f501033dc882c5481ec62ada429d",
+            "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
             "b0074173d4e3f21f609a2d9e7662b1b5869fbd8b67646510ef470c7f39843cec",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
           ]
