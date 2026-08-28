@@ -382,8 +382,8 @@ positionedStaticText.library.assets[5] = {
         matrix: { a: 1, b: 0, c: 0, d: 1, tx: -14, ty: 0 },
         runs: [{
             color: { alpha: 1, color: 0xb3b3b3 }, fontId: 7, fontSize: 6,
-            glyphs: [{ character: "A", glyphIndex: 1, x: 10, advance: 0 }],
-            text: "A", width: 0, x: 10, y: 10,
+            glyphs: [{ character: "A", glyphIndex: 1, x: 10, advance: -12.5 }],
+            text: "A", width: -12.5, x: 10, y: 10,
         }, {
             color: { alpha: 1, color: 0xb3b3b3 }, fontId: 7, fontSize: 6,
             glyphs: [{ character: "B", glyphIndex: 2, x: 5, advance: 0 }],
@@ -411,11 +411,12 @@ assert.deepEqual(positioned.children.map(child => ({
     kind: child.kind,
     x: child.x,
     y: child.y,
+    width: child.width,
     text: child.textField.initialText,
     font: child.textField.format.font,
     color: child.textField.format.color,
-})), [{ kind: "dynamic-text", x: 5, y: 2.5, text: "A", font: "Arial", color: 0xb3b3b3 },
-    { kind: "dynamic-text", x: 0, y: 8.5, text: "B", font: "Arial", color: 0xb3b3b3 }]);
+})), [{ kind: "dynamic-text", x: 5, y: 2.5, width: 16.5, text: "A", font: "Arial", color: 0xb3b3b3 },
+    { kind: "dynamic-text", x: 0, y: 8.5, width: 10, text: "B", font: "Arial", color: 0xb3b3b3 }]);
 assert.equal(new Set(positioned.children.map(child => child.instanceId)).size, 2);
 const positionedTextMap = adapter.parse({
     ...positionedStaticText,
@@ -440,6 +441,24 @@ assert.throws(() => adapter.parse({
     runtimeLinkage: "fixtures.PositionedGlyphDrift",
 }), /FLASH_LIBRARY_STATIC_TEXT_GLYPH_TEXT_MISMATCH/);
 
+const nonFinitePositionedRunWidth = structuredClone(positionedStaticText);
+nonFinitePositionedRunWidth.timelines = new Map(positionedStaticText.timelines);
+nonFinitePositionedRunWidth.library.assets[5].staticText.runs[0].width = Number.NaN;
+assert.throws(() => adapter.parse({
+    ...nonFinitePositionedRunWidth,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.NonFinitePositionedRunWidth",
+}), /FLASH_LIBRARY_NUMBER_REQUIRED/);
+
+const nonFinitePositionedGlyphAdvance = structuredClone(positionedStaticText);
+nonFinitePositionedGlyphAdvance.timelines = new Map(positionedStaticText.timelines);
+nonFinitePositionedGlyphAdvance.library.assets[5].staticText.runs[0].glyphs[0].advance = Number.NEGATIVE_INFINITY;
+assert.throws(() => adapter.parse({
+    ...nonFinitePositionedGlyphAdvance,
+    entrySymbolId: 40,
+    runtimeLinkage: "fixtures.NonFinitePositionedGlyphAdvance",
+}), /FLASH_LIBRARY_NUMBER_REQUIRED/);
+
 const namedPositionedStaticText = structuredClone(positionedStaticText);
 namedPositionedStaticText.timelines = new Map(positionedStaticText.timelines);
 namedPositionedStaticText.timelines.get(40).frames[0].operations[0].name = "label";
@@ -460,4 +479,4 @@ assert.throws(() => adapter.parse({
     rasterizedShapes: new Map([[3, authority("shapes/3.png", 2)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_INSETS_MISMATCH/);
 
-process.stdout.write("authored popup-menu admission: 22/22 passed\n");
+process.stdout.write("authored popup-menu admission: 24/24 passed\n");

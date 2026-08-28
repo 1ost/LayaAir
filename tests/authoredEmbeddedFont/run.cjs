@@ -191,11 +191,12 @@ async function main() {
         /FLASH_LIBRARY_NONVISUAL_FONT_PLACEMENT_UNSUPPORTED/,
         "a depth-zero font reference with display state remains fail-closed");
     const missingStaticTextFixture = fixture();
+    const missingStaticTextDiagnostic = "[\nxmin -180\nymin 29\nxmax 100\nymax 1340\ntranslatex 1890\ntranslatey -280\nscalexf 0.0\nscaleyf 0.0\nrotateskew0f 1.0\nrotateskew1f -1.0\n]";
     missingStaticTextFixture.library.assets[204] = {
-        characterId: 204, kind: "text", initialText: "[\nxmin -180\nymin 29\nxmax 100\nymax 1340\ntranslatey -280\nscalexf 0.0\nscaleyf 0.0\nrotateskew0f 1.0\nrotateskew1f -1.0\n]",
+        characterId: 204, kind: "text", initialText: missingStaticTextDiagnostic,
         staticText: {
             exactGlyphs: false, issues: ["SWF text records are missing"], matrix: {},
-            runs: [{ text: "[\nxmin -180\nymin 29\nxmax 100\nymax 1340\ntranslatey -280\nscalexf 0.0\nscaleyf 0.0\nrotateskew0f 1.0\nrotateskew1f -1.0\n]" }],
+            runs: [{ text: missingStaticTextDiagnostic }],
         },
     };
     missingStaticTextFixture.timelines.get(385).frames[0].operations.push({
@@ -211,6 +212,15 @@ async function main() {
     missingStaticTextMapFixture.textMapOnly = true;
     assert.equal(adapter.parse(missingStaticTextMapFixture).root.children[1].kind, "container",
         "text-map-only projection does not invent a locale target from missing text records");
+    const malformedMissingStaticTextFixture = structuredClone(missingStaticTextFixture);
+    malformedMissingStaticTextFixture.timelines = new Map(missingStaticTextFixture.timelines);
+    const malformedDiagnostic = missingStaticTextDiagnostic.replace(
+        "translatex 1890\ntranslatey -280", "translatey -280\ntranslatex 1890");
+    malformedMissingStaticTextFixture.library.assets[204].initialText = malformedDiagnostic;
+    malformedMissingStaticTextFixture.library.assets[204].staticText.runs[0].text = malformedDiagnostic;
+    assert.throws(() => adapter.parse(malformedMissingStaticTextFixture),
+        /FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_DIAGNOSTIC_UNSUPPORTED/,
+        "a missing-records diagnostic with translatex outside the exact source sequence remains fail-closed");
     for (const [gridFit, gridFitMode] of [[0, "none"], [1, "pixel"]]) {
         const gridFixture = fixture();
         gridFixture.library.assets[203].textRendering.gridFit = gridFit;
@@ -513,7 +523,7 @@ async function main() {
         }),
         /AUTHORED_CONTENT_FONT_RESOURCE_FORMAT_MISMATCH/,
     );
-    process.stdout.write("authored embedded font: 35/35 passed\n");
+    process.stdout.write("authored embedded font: 36/36 passed\n");
 }
 
 function sha(bytes) {

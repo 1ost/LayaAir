@@ -1167,7 +1167,14 @@ export class FlashLibrarySymbolAdapter {
             const runText = string(run.text, `${runPath}.text`);
             const runX = finite(run.x, `${runPath}.x`);
             const runY = finite(run.y, `${runPath}.y`);
-            nonnegativeFinite(run.width, `${runPath}.width`);
+            // DefineText glyph advances are signed. Positioned-run evidence can
+            // therefore have a negative aggregate width when the authored pen
+            // moves backwards (for example, exact quarter-turn labels). The
+            // per-glyph x positions below remain the runtime layout authority;
+            // validate this redundant aggregate as finite without rewriting its
+            // sign. Bounds and every other geometric extent remain subject to
+            // their existing nonnegative validators.
+            finite(run.width, `${runPath}.width`);
             const fontSize = positive(run.fontSize, `${runPath}.fontSize`);
             const fontId = positiveInteger(run.fontId, `${runPath}.fontId`);
             const fontAsset = object(assets[String(fontId)], `library.assets.${fontId}`);
@@ -2330,7 +2337,7 @@ function admitMissingStaticTextPlaceholder(
         if (text(run.text, `library.assets.${characterId}.staticText.runs[0].text`) !== initialText)
             fail("FLASH_LIBRARY_TEXT_INITIAL_VALUE_MISMATCH", `Text ${characterId} diagnostic authorities disagree.`);
     }
-    if (initialText !== "" && !/^\[\r?\nxmin -?\d+(?:\.\d+)?\r?\nymin -?\d+(?:\.\d+)?\r?\nxmax -?\d+(?:\.\d+)?\r?\nymax -?\d+(?:\.\d+)?\r?\ntranslatey -?\d+(?:\.\d+)?\r?\nscalexf -?\d+(?:\.\d+)?\r?\nscaleyf -?\d+(?:\.\d+)?\r?\nrotateskew0f -?\d+(?:\.\d+)?\r?\nrotateskew1f -?\d+(?:\.\d+)?\r?\n\]$/.test(initialText))
+    if (initialText !== "" && !/^\[\r?\nxmin -?\d+(?:\.\d+)?\r?\nymin -?\d+(?:\.\d+)?\r?\nxmax -?\d+(?:\.\d+)?\r?\nymax -?\d+(?:\.\d+)?\r?\n(?:translatex -?\d+(?:\.\d+)?\r?\n)?translatey -?\d+(?:\.\d+)?\r?\nscalexf -?\d+(?:\.\d+)?\r?\nscaleyf -?\d+(?:\.\d+)?\r?\nrotateskew0f -?\d+(?:\.\d+)?\r?\nrotateskew1f -?\d+(?:\.\d+)?\r?\n\]$/.test(initialText))
         fail("FLASH_LIBRARY_STATIC_TEXT_MISSING_RECORDS_DIAGNOSTIC_UNSUPPORTED",
             `Text ${characterId} has missing records with an unrecognized diagnostic payload.`);
     return true;
