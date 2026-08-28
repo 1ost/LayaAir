@@ -35,6 +35,7 @@ import { PostProcess2D } from "./PostProcess2D";
 import { Render2DProcessor } from "./Render2DProcessor";
 import { Color } from "../maths/Color";
 import { ITextureCompositor2D } from "./ITextureCompositor2D";
+import { FlashOverlayCompositor2D } from "./effect2d/FlashOverlayCompositor2D";
 import { ShaderFeatureType } from "../RenderEngine/RenderShader/Shader3D";
 import { Config } from "../../Config";
 import { MathUtil } from "../maths/MathUtil";
@@ -718,7 +719,14 @@ export class Sprite extends Node {
         if (typeof (t) !== "number")
             t = (value as any) === "destination-out" ? BlendMode.destinationOut : 0;
         if (this._blendMode != t) {
+            const ownedOverlay = this._textureCompositor instanceof FlashOverlayCompositor2D;
+            if (t === BlendMode.overlay && this._textureCompositor && !ownedOverlay)
+                throw new Error("FLASH_OVERLAY_COMPOSITOR_CONFLICT");
             this._blendMode = t;
+            if (t === BlendMode.overlay && !this._textureCompositor)
+                this.textureCompositor = new FlashOverlayCompositor2D();
+            else if (t !== BlendMode.overlay && ownedOverlay)
+                this.textureCompositor = null;
             this._initShaderData();
             this._struct.blendMode = this._blendMode;
             this.repaint(RepaintFlag.Graphics);
@@ -845,6 +853,8 @@ export class Sprite extends Node {
 
     set textureCompositor(value: ITextureCompositor2D) {
         if (this._textureCompositor === value) return;
+        if (this._blendMode === BlendMode.overlay && !(value instanceof FlashOverlayCompositor2D))
+            throw new Error("FLASH_OVERLAY_COMPOSITOR_CONFLICT");
         if (value && this._manualRender) this._setManualRender(false);
         this._textureCompositor?.destroy?.();
         this._textureCompositor = value;

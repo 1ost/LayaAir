@@ -2565,16 +2565,20 @@ function exactPlace(operation: Record<string, any>, mode: "static" | "replacemen
     }
 }
 
-function authoredBlendMode(operation: Record<string, any>): "add" | undefined {
+function authoredBlendMode(operation: Record<string, any>): "add" | "overlay" | undefined {
     const hasMode = operation.blendMode !== undefined;
     const hasCode = operation.blendModeCode !== undefined;
     if (hasMode !== hasCode)
         fail("FLASH_LIBRARY_BLEND_MODE_AUTHORITY_INCOMPLETE", "Authored blendMode and blendModeCode must be retained together.");
     if (!hasMode)
         return undefined;
-    exactValue(operation.blendMode, "add", "FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED", `Blend mode '${String(operation.blendMode)}' is unsupported.`);
-    exactValue(operation.blendModeCode, 8, "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH", `Blend mode '${String(operation.blendMode)}' requires code 8.`);
-    return "add";
+    const mode = operation.blendMode;
+    const expectedCode = mode === "add" ? 8 : mode === "overlay" ? 13 : undefined;
+    if (expectedCode === undefined)
+        fail("FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED", `Blend mode '${String(mode)}' is unsupported.`);
+    exactValue(operation.blendModeCode, expectedCode, "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH",
+        `Blend mode '${String(mode)}' requires code ${expectedCode}.`);
+    return mode;
 }
 
 interface PlacementTransform {

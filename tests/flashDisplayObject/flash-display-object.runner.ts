@@ -7,9 +7,15 @@ import { NodeFlags } from "../../src/layaAir/laya/Const";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { SpriteConst } from "../../src/layaAir/laya/display/SpriteConst";
+import {
+    FlashOverlayCompositor2D,
+    flashOverlayPremultipliedPixel,
+} from "../../src/layaAir/laya/display/effect2d/FlashOverlayCompositor2D";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
+import { HierarchyParser } from "../../src/layaAir/laya/loaders/HierarchyParser";
 import { Rectangle as LayaRectangle } from "../../src/layaAir/laya/maths/Rectangle";
+import { PrefabImpl } from "../../src/layaAir/laya/resource/PrefabImpl";
 import {
     DisplayObject,
     flashDisplayObjectNativeHost,
@@ -38,6 +44,67 @@ ILaya.systemTimer = {
     callLater: (): void => undefined,
     runCallLater: (): void => undefined,
 } as any;
+
+test("Flash overlay installs the destination-sampling compositor and matches exact premultiplied pixels", () => {
+    const opaque = flashOverlayPremultipliedPixel(
+        [192 / 255, 64 / 255, 1, 1],
+        [64 / 255, 192 / 255, 128 / 255, 1],
+    );
+    assert.deepEqual(opaque, [
+        0.3779469434832757,
+        0.6298961937716263,
+        1,
+        1,
+    ]);
+    const translucent = flashOverlayPremultipliedPixel(
+        [0.3, 0.1, 0.2, 0.5],
+        [0.08, 0.32, 0.16, 0.8],
+    );
+    assert.deepEqual(translucent, [0.14799999999999996, 0.244, 0.184, 0.9]);
+
+    const sprite = new LayaSprite();
+    sprite.blendMode = "overlay";
+    assert.equal(sprite.blendMode, "overlay");
+    assert.ok(sprite.textureCompositor instanceof FlashOverlayCompositor2D,
+        "overlay must use the active-target destination-sampling compositor");
+    const compositor = sprite.textureCompositor;
+    assert.throws(() => sprite.textureCompositor = null, /FLASH_OVERLAY_COMPOSITOR_CONFLICT/);
+    assert.throws(() => sprite.textureCompositor = { material: null } as any, /FLASH_OVERLAY_COMPOSITOR_CONFLICT/);
+    assert.equal(sprite.textureCompositor, compositor, "a compositor conflict must preserve the Flash overlay compositor");
+    sprite.blendMode = "normal";
+    assert.equal(sprite.textureCompositor, null);
+    sprite.destroy();
+
+    const conflicting = new LayaSprite();
+    const custom = { material: null } as any;
+    conflicting.textureCompositor = custom;
+    assert.throws(() => conflicting.blendMode = "overlay", /FLASH_OVERLAY_COMPOSITOR_CONFLICT/);
+    assert.equal(conflicting.blendMode, null);
+    assert.equal(conflicting.textureCompositor, custom);
+    conflicting.textureCompositor = null;
+    conflicting.destroy();
+});
+
+test("HierarchyParser activates the Flash overlay compositor from emitted blendMode", () => {
+    const errors: Array<{ message: string }> = [];
+    const root = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "root",
+        "_$type": "Sprite",
+        "_$child": [{
+            "_$id": "effect",
+            "_$type": "Sprite",
+            name: "MC_EffectBG",
+            blendMode: "overlay",
+        }],
+    }).create({}, errors) as LayaSprite;
+    assert.deepEqual(errors, []);
+    const effect = root.getChildByName("MC_EffectBG") as LayaSprite;
+    assert.equal(effect.blendMode, "overlay");
+    assert.ok(effect.textureCompositor instanceof FlashOverlayCompositor2D,
+        "emitted overlay must activate the destination-sampling compositor during hierarchy construction");
+    root.destroy(true);
+});
 
 test("BitmapData.setVector installs clipped ARGB pixels atomically", () => {
     const bitmapData = new BitmapData(3, 2, true, 0);

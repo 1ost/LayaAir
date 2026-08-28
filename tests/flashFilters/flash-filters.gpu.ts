@@ -53,6 +53,10 @@ async function main(): Promise<unknown> {
     const baseline = await render(null, 0xffffff);
     assert(alphaMass(baseline) > 1000, `unfiltered Laya GPU baseline was empty: ${alphaMass(baseline)}`);
 
+    const overlay = await renderOverlayStage();
+    assertPixelNear("Flash overlay over low/high backdrop", pixelAt(overlay, 32, 56), [96, 161, 255, 255], 1);
+    assertPixelNear("Flash overlay over high/low backdrop", pixelAt(overlay, 32, 8), [224, 32, 64, 255], 1);
+
     const blurHorizontal = await render(new BlurFilter(16, 2, 1), 0xffffff);
     const blurVertical = await render(new BlurFilter(2, 16, 1), 0xffffff);
     const horizontalBounds = alphaBounds(blurHorizontal);
@@ -207,6 +211,11 @@ async function main(): Promise<unknown> {
 
     return {
         renderer: document.querySelector("canvas")?.getContext("webgl2") ? "WebGL" : "unknown",
+        overlay: {
+            upper: pixelAt(overlay, 32, 56),
+            lower: pixelAt(overlay, 32, 8),
+            fingerprint: fingerprint(overlay),
+        },
         blur: { horizontalBounds, verticalBounds, stageQualityOne, stageQualityBounds,
             qualityMass: [alphaMass(blurQualityOne), alphaMass(blurQualityThree)] },
         glow: { weak: redOutsideSource(glowWeak), strong: redOutsideSource(glowStrong) },
@@ -217,6 +226,26 @@ async function main(): Promise<unknown> {
             stageOwnerAlphaZero: stageOffsetPixel, stageOwnerAlphaHalf: fractionalPixel,
             stageOwnerAlphaTwoMatrices: twoMatrixPixel },
     };
+}
+
+async function renderOverlayStage(): Promise<Readback> {
+    const backdrop = new LayaSprite();
+    backdrop.graphics.drawRect(0, 0, 64, 32, "#40c080");
+    backdrop.graphics.drawRect(0, 32, 64, 32, "#c04020");
+    const source = new LayaSprite();
+    source.graphics.drawRect(0, 0, 64, 64, "#c040ff");
+    source.blendMode = "overlay";
+    Laya.stage.addChild(backdrop);
+    Laya.stage.addChild(source);
+    Laya.stage.render(performance.now());
+    const canvas = document.querySelector("canvas");
+    const gl = canvas?.getContext("webgl2") || canvas?.getContext("webgl");
+    if (!gl) throw new Error("Laya stage WebGL context was not found");
+    const pixels = new Uint8Array(64 * 64 * 4);
+    gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    source.destroy();
+    backdrop.destroy();
+    return { width: 64, height: 64, pixels };
 }
 
 async function renderStage(filter: BitmapFilter | readonly BitmapFilter[] | null, color: number, ownerAlpha: number): Promise<Readback> {
@@ -302,6 +331,11 @@ function fingerprint(image: Readback) {
 function assertFingerprint(label: string, actual: ReturnType<typeof fingerprint>, expected: ReturnType<typeof fingerprint>): void {
     assert(JSON.stringify(actual) === JSON.stringify(expected),
         `${label} GPU pixels drifted: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)} logs=${gpuLogs.join(" | ")}`);
+}
+
+function assertPixelNear(label: string, actual: Pixel, expected: Pixel, tolerance: number): void {
+    assert(actual.every((value, index) => Math.abs(value - expected[index]) <= tolerance),
+        `${label} GPU pixel drifted: actual=${actual} expected=${expected} tolerance=${tolerance} logs=${gpuLogs.join(" | ")}`);
 }
 
 function redOutsideSource(image: Readback): number {

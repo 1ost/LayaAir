@@ -667,6 +667,10 @@ async function main(): Promise<void> {
             }, {
                 op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [gradientGlow, glow],
                 matrix: { a: 0.5, b: 0, c: 0, d: 2, tx: 11, ty: 12 },
+            }, {
+                op: "place", characterId: 2, depth: 3, move: false, ratio: 0, name: "OverlayImage",
+                blendMode: "overlay", blendModeCode: 13,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 20, ty: 21 },
             }], labels: [], sounds: [] }],
         }]]);
         const request = {
@@ -681,6 +685,8 @@ async function main(): Promise<void> {
             "static affine matrix drifted");
         assert(image.x === 7.5 && image.y === 16.5, "affine image-bounds closure drifted");
         assert(image.blendMode === "add", "authenticated additive blend mode drifted");
+        assert(content.root.children[2].blendMode === "overlay",
+            "authenticated overlay blend mode drifted");
         assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "gradient-glow"
             && field.textField.filters[0].strength === 1.359375 && field.textField.filters[0].quality === 3
             && field.textField.filters[1].kind === "glow" && field.textField.filters[1].strength === 5,
@@ -703,6 +709,8 @@ async function main(): Promise<void> {
         const serializedField = (hierarchy._$child as any[])[1];
         assert((hierarchy._$child as any[])[0].blendMode === "add",
             "hierarchy writer lost the authenticated additive blend mode");
+        assert((hierarchy._$child as any[])[2].blendMode === "overlay",
+            "hierarchy writer lost the authenticated overlay blend mode");
         const serializedFilters = serializedField.authoredConfiguration.filters;
         assert(Array.isArray(serializedFilters) && serializedFilters.length === 2,
             "hierarchy writer lost the authored filter closure");
@@ -727,6 +735,8 @@ async function main(): Promise<void> {
             const matrix = (root.getChildAt(0) as any).transform as Matrix;
             assert(matrix.a === 2 && matrix.b === 0.25 && matrix.c === -0.5 && matrix.d === 3,
                 "native Laya affine transform drifted");
+            assert((root.getChildAt(2) as any).blendMode === "overlay",
+                "native Laya sprite lost the authenticated overlay blend mode");
         }
         finally {
             root.destroy();
@@ -736,6 +746,16 @@ async function main(): Promise<void> {
         malformed.compositeSource = false;
         timelines.get(1).frames[0].operations[1].filters = [malformed];
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_FILTER_COMPOSITE_SOURCE_UNSUPPORTED");
+        timelines.get(1).frames[0].operations[1].filters = [gradientGlow, glow];
+        timelines.get(1).frames[0].operations[2].blendModeCode = 8;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH");
+        timelines.get(1).frames[0].operations[2].blendMode = "multiply";
+        timelines.get(1).frames[0].operations[2].blendModeCode = 3;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED");
+
+        const invalidNeutralBlend = sourceDocument();
+        (invalidNeutralBlend.root as any).children[0].blendMode = "multiply";
+        assertThrows(() => normalizeNeutralAuthoredContent(invalidNeutralBlend), "AUTHORED_CONTENT_BLEND_MODE_UNSUPPORTED");
     });
 
     await test("Flash library signed axis-aligned bitmap fills preserve exact authored mirroring", () => {

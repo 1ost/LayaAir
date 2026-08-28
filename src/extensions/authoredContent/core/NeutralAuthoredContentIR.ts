@@ -132,7 +132,7 @@ export interface NeutralAuthoredNode {
     readonly alpha?: number;
     readonly visible?: boolean;
     /** Closed native compositing set admitted from authored Flash placements. */
-    readonly blendMode?: "add";
+    readonly blendMode?: "add" | "overlay";
     readonly matrix?: NeutralAuthoredMatrix;
     readonly colorTransform?: NeutralAuthoredColorTransform;
     /** Closed authored display filter set applied by the native MovieClip primitive. */
@@ -463,7 +463,7 @@ function normalizeNode(
         visible: optionalBoolean(source.visible, `${path}.visible`),
         blendMode: source.blendMode === undefined
             ? undefined
-            : exactLiteral(source.blendMode, "add", `${path}.blendMode`),
+            : normalizeBlendMode(source.blendMode, `${path}.blendMode`),
         matrix: source.matrix === undefined ? undefined : normalizeMatrix(source.matrix, `${path}.matrix`),
         colorTransform: source.colorTransform === undefined
             ? undefined
@@ -1255,6 +1255,12 @@ function exactLiteral<T extends string | number | boolean>(value: unknown, expec
     if (value !== expected)
         fail("AUTHORED_CONTENT_LITERAL_REQUIRED", `${path} must be ${String(expected)}.`);
     return expected;
+}
+
+function normalizeBlendMode(value: unknown, path: string): "add" | "overlay" {
+    if (value === "add" || value === "overlay")
+        return value;
+    fail("AUTHORED_CONTENT_BLEND_MODE_UNSUPPORTED", `${path} must be an admitted authored blend mode.`);
 }
 
 function requiredGridFitType(value: unknown, path: string): "none" | "pixel" | "subpixel" {
