@@ -2,6 +2,7 @@ import { Sprite as LayaSprite } from "../../laya/display/Sprite";
 import { runAdmittedNodeMutation } from "../../laya/display/NodeMutationTransaction";
 import { Point as LayaPoint } from "../../laya/maths/Point";
 import { Rectangle as LayaRectangle } from "../../laya/maths/Rectangle";
+import { registerHierarchyNodeReferenceReceiver } from "../../laya/loaders/HierarchyNodeReferenceRegistry";
 import {
     sourceDisplayObjectContainerForNativeParent,
     sourceStageViewForDisplayObject,
@@ -48,6 +49,12 @@ const DISPLAY_EVENTS = new WeakMap<DisplayObject, FlashEventRouter>();
 const DISPLAY_OBJECT_VALUES = new WeakSet<object>();
 const DISPLAY_LOADER_INFOS = new WeakMap<DisplayObject, LoaderInfo>();
 const destroyCanonicalDisplayObject = LayaSprite.prototype.destroy;
+const nativeMaskDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "mask");
+if (!nativeMaskDescriptor?.get || !nativeMaskDescriptor.set)
+    throw new Error("Laya Sprite native mask descriptor is unavailable");
+const nativeMaskOf = (value: LayaSprite): LayaSprite | null => nativeMaskDescriptor.get!.call(value) ?? null;
+const setNativeMask = (owner: LayaSprite, value: LayaSprite | null): void =>
+    nativeMaskDescriptor.set!.call(owner, value);
 
 export type DisplayObjectLoaderInfo = LoaderInfo;
 
@@ -98,6 +105,8 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
         // Flash requires an unattached DisplayObject to expose an explicit null parent.
         this._$parent = null;
         DISPLAY_OBJECT_VALUES.add(this);
+        registerHierarchyNodeReferenceReceiver(this, (key, value) =>
+            this._assignHierarchyNodeReference(key, value));
     }
 
     /**
@@ -222,6 +231,39 @@ export class DisplayObject extends NativeDisplayObjectHost implements IEventDisp
         if (previousOwner && previousOwner !== nativeSelf && previousOwner.mask === nativeMask)
             previousOwner.mask = null;
         super.mask = nativeMask;
+    }
+
+    /**
+     * HierarchyParser-only native-reference seam. Authored hierarchies retain
+     * image and shape masks as canonical Laya nodes, while the public Flash
+     * setter continues to admit only authenticated source DisplayObjects.
+     */
+    private _assignHierarchyNodeReference(key: string, value: unknown): boolean {
+        if (key !== "mask") return false;
+        let nativeMask: LayaSprite | null;
+        if (value === null)
+            nativeMask = null;
+        else if (value instanceof LayaSprite)
+            nativeMask = value;
+        else
+            throw new TypeError("Authored DisplayObject.mask reference must resolve to a native Laya Sprite or null");
+        if (this.destroyed) throw new Error("Cannot set mask on a destroyed DisplayObject");
+        if (nativeMask?.destroyed) throw new Error("DisplayObject.mask cannot use a destroyed native mask");
+        const nativeSelf = flashDisplayObjectNativeHost(this);
+        if (nativeMask === nativeSelf
+            || (nativeMask && super.mask === nativeMask && nativeMask._maskParent === nativeSelf))
+            return true;
+        if (nativeMask && nativeMask.isAncestorOf(nativeSelf))
+            throw new Error("Mask cannot be ancestor of the masked object");
+
+        // This path receives an authenticated node-map result, not a public
+        // structural value. Transfer native ownership without routing the
+        // Laya node back through a source-shaped Flash setter.
+        const previousOwner = nativeMask?._maskParent;
+        if (previousOwner && previousOwner !== nativeSelf && nativeMaskOf(previousOwner) === nativeMask)
+            setNativeMask(previousOwner, null);
+        super.mask = nativeMask;
+        return true;
     }
 
     /** Flash returns detached arrays containing detached filter values. */

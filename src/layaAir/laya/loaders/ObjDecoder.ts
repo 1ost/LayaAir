@@ -6,6 +6,7 @@ import { URL } from "../net/URL";
 import { PrefabImpl } from "../resource/PrefabImpl";
 import { GWidget } from "../ui2/GWidget";
 import { ClassUtils } from "../utils/ClassUtils";
+import { assignHierarchyNodeReference } from "./HierarchyNodeReferenceRegistry";
 import { SerializeUtil, TypedArrayClasses } from "./SerializeUtil";
 
 export class ObjDecoder {
@@ -148,7 +149,10 @@ export class ObjDecoder {
                     || v._$type || v._$uuid || v._$ref) {
                     try {
                         let v2 = this._decode(v);
-                        obj[key] = v2;
+                        const referenceAssigned = v != null && typeof v === "object" && v._$ref != null
+                            && assignHierarchyNodeReference(obj, key, v2);
+                        if (!referenceAssigned)
+                            obj[key] = v2;
 
                         if (v2 != null && v != null && v._$tmpl)
                             obj[v._$tmpl] = new PrefabImpl(null, this.getNodeData(v2));

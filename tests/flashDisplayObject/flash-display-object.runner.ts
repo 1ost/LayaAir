@@ -13,9 +13,11 @@ import {
 } from "../../src/layaAir/laya/display/effect2d/FlashOverlayCompositor2D";
 import { Event as LayaEvent } from "../../src/layaAir/laya/events/Event";
 import { Sprite as LayaSprite } from "../../src/layaAir/laya/display/Sprite";
+import { Image } from "../../src/layaAir/laya/ui/Image";
 import { HierarchyParser } from "../../src/layaAir/laya/loaders/HierarchyParser";
 import { Rectangle as LayaRectangle } from "../../src/layaAir/laya/maths/Rectangle";
 import { PrefabImpl } from "../../src/layaAir/laya/resource/PrefabImpl";
+import { ClassUtils } from "../../src/layaAir/laya/utils/ClassUtils";
 import {
     DisplayObject,
     flashDisplayObjectNativeHost,
@@ -30,6 +32,7 @@ import { TextEvent } from "../../src/layaAir/flash/events/TextEvent";
 import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
 import { TextField } from "../../src/layaAir/flash/text/TextField";
 import "../../src/layaAir/laya/ModuleDef";
+import "../../src/layaAir/laya/ui/ModuleDef";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -377,6 +380,81 @@ test("DisplayObject.mask preserves canonical Flash identity over native clipping
     assert.equal(subpassQueue.has(flashDisplayObjectNativeHost(secondMask)), true,
         "clearing queues prior-mask cache clearing");
     assert.equal(subpassQueue.has(clippedHost), true, "clearing keeps native owner invalidation");
+});
+
+test("HierarchyParser resolves nested authored native mask references without widening the Flash setter", () => {
+    class AuthoredMaskOwner extends MovieClip { }
+    const runtimeId = "fixtures.AuthoredMaskOwner";
+    ClassUtils.regClass(runtimeId, AuthoredMaskOwner);
+    const errors: unknown[] = [];
+    const root = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "root",
+        "_$type": "Sprite",
+        "_$child": [{
+            "_$id": "nested",
+            "_$type": "Sprite",
+            name: "nested",
+            "_$child": [{
+                "_$id": "character-123",
+                "_$type": "Image",
+                name: "character_123$d1$f1$i1",
+                width: 171,
+                height: 322,
+            }, {
+                "_$id": "masked-clip",
+                "_$type": "Sprite",
+                "_$runtime": runtimeId,
+                name: "mc_list",
+                mask: { "_$ref": "character-123" },
+            }],
+        }],
+    }).create({}, errors) as LayaSprite;
+
+    assert.deepEqual(errors, [], "a resolved authored native child must not reach the public Flash mask setter");
+    const nested = root.getChildByName("nested") as LayaSprite;
+    const nativeMask = nested.getChildByName("character_123$d1$f1$i1") as Image;
+    const owner = nested.getChildByName("mc_list") as AuthoredMaskOwner;
+    const maskDescriptor = Object.getOwnPropertyDescriptor(LayaSprite.prototype, "mask")!;
+    assert.ok(nativeMask instanceof Image);
+    assert.ok(owner instanceof AuthoredMaskOwner);
+    assert.equal(maskDescriptor.get!.call(owner), nativeMask,
+        "the canonical Flash host retains the exact hierarchy Image as its native mask");
+    assert.equal(nativeMask._maskParent, flashDisplayObjectNativeHost(owner));
+    assert.notEqual(owner._renderType & SpriteConst.MASK, 0);
+    assert.throws(() => Reflect.set(owner, "mask", new LayaSprite()),
+        /requires a canonical DisplayObject or null/,
+        "the parser-only reference seam must not admit arbitrary native values through the public API");
+
+    owner.destroy(false);
+    assert.deepEqual([nativeMask._maskParent, nativeMask.cacheAs], [null, "none"],
+        "destroying the Flash owner releases the hierarchy-native mask");
+    root.destroy(true);
+});
+
+test("HierarchyParser preserves ordinary native-to-native mask references", () => {
+    const errors: unknown[] = [];
+    const root = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1,
+        "_$id": "root-native-mask",
+        "_$type": "Sprite",
+        "_$child": [{
+            "_$id": "native-mask",
+            "_$type": "Sprite",
+            name: "nativeMask",
+        }, {
+            "_$id": "native-owner",
+            "_$type": "Sprite",
+            name: "nativeOwner",
+            mask: { "_$ref": "native-mask" },
+        }],
+    }).create({}, errors) as LayaSprite;
+    assert.deepEqual(errors, []);
+    const mask = root.getChildByName("nativeMask") as LayaSprite;
+    const owner = root.getChildByName("nativeOwner") as LayaSprite;
+    assert.equal(owner.mask, mask, "non-facade hierarchy properties retain the ordinary decoder path");
+    assert.equal(mask._maskParent, owner);
+    root.destroy(true);
 });
 
 test("DisplayObject.mask accepts the canonical Flash display family and transfers one owner atomically", () => {
