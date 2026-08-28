@@ -1,8 +1,12 @@
 import {
     AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
+import { flashDisplayObjectNativeHost } from "../../../layaAir/flash/display/DisplayObject";
+import { Filter } from "../../../layaAir/laya/filters/Filter";
 import { AuthoredFontRegistry, type AuthoredTextFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
-import { FlashBevelEffect2D } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
+import {
+    createFlashAuthoredBevelFilter, FlashBevelEffect2D, type FlashAuthoredBevelFilterOptions,
+} from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
 import { PostProcess2DEffect } from "../../../layaAir/laya/display/PostProcess2DEffect";
 import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
 
@@ -33,6 +37,10 @@ export interface AuthoredDropShadowFilterConfiguration {
     readonly hideObject: boolean;
 }
 
+export interface AuthoredBevelFilterConfiguration extends FlashAuthoredBevelFilterOptions {
+    readonly kind: "bevel";
+}
+
 export interface AuthoredBlurFilterConfiguration {
     readonly kind: "blur";
     readonly blurX: number;
@@ -61,7 +69,7 @@ export interface AuthoredGradientGlowFilterConfiguration extends Omit<AuthoredGr
 }
 
 export type AuthoredFilterConfiguration = AuthoredBlurFilterConfiguration | AuthoredGlowFilterConfiguration | AuthoredDropShadowFilterConfiguration
-    | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration
+    | AuthoredBevelFilterConfiguration | AuthoredGradientBevelFilterConfiguration | AuthoredGradientGlowFilterConfiguration
     | AuthoredColorMatrixFilterConfiguration;
 
 class AuthoredGradientGlowFilter extends BitmapFilter {
@@ -211,6 +219,11 @@ const DROP_SHADOW_FILTER_KEYS = Object.freeze([
     "alpha", "angleRadians", "blurX", "blurY", "color", "distance", "hideObject", "inner",
     "kind", "knockout", "quality", "strength",
 ]);
+const BEVEL_FILTER_KEYS = Object.freeze([
+    "angleRadians", "blurX", "blurY", "compositeSource", "distance", "highlightAlpha",
+    "highlightColor", "innerShadow", "kind", "knockout", "onTop", "passes", "shadowAlpha",
+    "shadowColor", "sourceType", "strength",
+]);
 const COLOR_MATRIX_FILTER_KEYS = Object.freeze(["kind", "matrix"]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredTextFontBinding>();
 const authoredHtmlFields = new WeakSet<TextField>();
@@ -284,7 +297,7 @@ export function configureAuthoredTextField(
     textFormat.letterSpacing = value.format.letterSpacing ?? 0;
     textFormat.kerning = value.format.kerning ?? false;
     field.defaultTextFormat = textFormat;
-    field.filters = createAuthoredFilters(value.filters ?? []);
+    applyAuthoredFilters(field, createAuthoredFilters(value.filters ?? []));
     if (value.html) field.htmlText = value.initialText;
     else field.text = value.initialText;
     return field;
@@ -329,7 +342,7 @@ export function createAuthoredGlowFilters(value: unknown): GlowFilter[] {
     ));
 }
 
-export function createAuthoredFilters(value: unknown): BitmapFilter[] {
+export function createAuthoredFilters(value: unknown): Filter[] {
     if (!Array.isArray(value)) throw new TypeError("Authored filters must be an array");
     return value.map((candidate, index) => validateAuthoredFilter(candidate, `filters[${index}]`)).map(filter =>
         filter.kind === "blur"
@@ -343,11 +356,21 @@ export function createAuthoredFilters(value: unknown): BitmapFilter[] {
             ? new DropShadowFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
                 filter.color, filter.alpha, filter.blurX, filter.blurY, filter.strength,
                 filter.quality, filter.inner, filter.knockout, filter.hideObject)
+            : filter.kind === "bevel"
+            ? createFlashAuthoredBevelFilter(filter)
             : filter.kind === "gradient-bevel"
             ? new GradientBevelFilter(filter.distance, filter.angleRadians * 180 / Math.PI,
                 filter.colors, filter.alphas, filter.ratios, filter.blurX, filter.blurY,
                 filter.strength, filter.quality, filter.type, filter.knockout)
             : new AuthoredGradientGlowFilter(filter));
+}
+
+export function applyAuthoredFilters(target: import("../../../layaAir/flash").DisplayObject, filters: Filter[]): void {
+    if (filters.every((filter): filter is BitmapFilter => filter instanceof BitmapFilter)) {
+        target.filters = filters;
+        return;
+    }
+    flashDisplayObjectNativeHost(target).filters = filters;
 }
 
 function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
@@ -624,10 +647,39 @@ function validateAuthoredFilter(value: unknown, label: string): AuthoredFilterCo
     }
     if (kind === "color-matrix")
         return validateColorMatrixFilter(value, label);
+    if (kind === "bevel") return validateBevelFilter(value, label);
     if (kind === "gradient-bevel" || kind === "gradient-glow")
         return validateGradientFilter(value, label, kind);
     if (kind === "drop-shadow") return validateDropShadowFilter(value, label);
     return validateGlowFilter(value, label);
+}
+
+function validateBevelFilter(value: unknown, label: string): AuthoredBevelFilterConfiguration {
+    const record = exactDataObject(value, BEVEL_FILTER_KEYS, label);
+    equal(record.kind, "bevel", `${label}.kind`);
+    equal(record.sourceType, "BEVELFILTER", `${label}.sourceType`);
+    range(record.distance, -32768, 32767.99998474121, `${label}.distance`);
+    range(record.angleRadians, -32768, 32767.99998474121, `${label}.angleRadians`);
+    integerRange(record.highlightColor, 0, 0xffffff, `${label}.highlightColor`);
+    range(record.highlightAlpha, 0, 1, `${label}.highlightAlpha`);
+    integerRange(record.shadowColor, 0, 0xffffff, `${label}.shadowColor`);
+    range(record.shadowAlpha, 0, 1, `${label}.shadowAlpha`);
+    range(record.blurX, 0, 255, `${label}.blurX`);
+    range(record.blurY, 0, 255, `${label}.blurY`);
+    range(record.strength, 0, 255.99609375, `${label}.strength`);
+    integerRange(record.passes, 0, 15, `${label}.passes`);
+    boolean(record.innerShadow, `${label}.innerShadow`);
+    boolean(record.onTop, `${label}.onTop`);
+    boolean(record.knockout, `${label}.knockout`);
+    boolean(record.compositeSource, `${label}.compositeSource`);
+    return Object.freeze({
+        kind: "bevel", sourceType: "BEVELFILTER", distance: record.distance,
+        angleRadians: record.angleRadians, highlightColor: record.highlightColor,
+        highlightAlpha: record.highlightAlpha, shadowColor: record.shadowColor,
+        shadowAlpha: record.shadowAlpha, blurX: record.blurX, blurY: record.blurY,
+        strength: record.strength, passes: record.passes, innerShadow: record.innerShadow,
+        onTop: record.onTop, knockout: record.knockout, compositeSource: record.compositeSource,
+    });
 }
 
 function validateDropShadowFilter(value: unknown, label: string): AuthoredDropShadowFilterConfiguration {

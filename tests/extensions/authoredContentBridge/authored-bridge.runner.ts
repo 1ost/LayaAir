@@ -46,6 +46,7 @@ import { isFlashStaticText } from "../../../src/layaAir/flash/text/StaticText";
 import { beginNodeMutationTransaction } from "../../../src/layaAir/laya/display/NodeMutationTransaction";
 import { Sprite as LayaSprite } from "../../../src/layaAir/laya/display/Sprite";
 import { Render2DProcessor } from "../../../src/layaAir/laya/display/Render2DProcessor";
+import { FlashBevelEffect2D } from "../../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
 import { Stage } from "../../../src/layaAir/laya/display/Stage";
 import { Panel } from "../../../src/layaAir/laya/ui/Panel";
 import { Image } from "../../../src/layaAir/laya/ui/Image";
@@ -2327,6 +2328,24 @@ test("authored gradient-bevel filters retain exact stops and create the native F
         colors: [0, 1], alphas: [1], ratios: [0, 255], blurX: 1, blurY: 1,
         strength: 1, quality: 1, type: "inner", knockout: false, compositeSource: true,
     }]), /matching color, alpha, and ratio arrays/);
+});
+
+test("authored solid bevel filters create the Laya effect and remain distinct from glow", () => {
+    const tactical = {
+        kind: "bevel", sourceType: "BEVELFILTER", distance: 4,
+        angleRadians: 1.5707855224609375, highlightColor: 0xffffff, highlightAlpha: 1,
+        shadowColor: 0x00c4c4, shadowAlpha: 1, blurX: 6, blurY: 17, strength: 1,
+        passes: 1, innerShadow: true, onTop: false, knockout: false, compositeSource: true,
+    } as const;
+    const filters = createAuthoredFilters([tactical]);
+    assert.equal(filters.length, 1);
+    assert.equal(isGlowFilter(filters[0] as any), false, "solid bevel must not collapse into a glow filter");
+    assert.equal(filters[0].getEffect() instanceof FlashBevelEffect2D, true);
+    assert.throws(() => createAuthoredFilters([{ ...tactical, sourceType: "GLOWFILTER" }]), /sourceType/);
+    assert.throws(() => createAuthoredFilters([{ ...tactical, passes: 16 }]), /passes/);
+    assert.throws(() => createAuthoredFilters([{ ...tactical, highlightColor: 0x1000000 }]), /highlightColor/);
+    assert.throws(() => createAuthoredFilters([{ ...tactical, blurY: Number.NaN }]), /blurY/);
+    assert.throws(() => createAuthoredFilters([{ ...tactical, unexpected: true }]), /unexpected/);
 });
 
 test("authored drop-shadow filters retain exact geometry and create the native Flash filter", () => {

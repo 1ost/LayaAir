@@ -6,6 +6,7 @@ import type { TextGlyphAlignmentZone } from "../../../layaAir/laya/webgl/text/Te
 import { AUTHORED_CONTENT_RUNTIME_IDS } from "../core/AuthoredRuntimeIds";
 import {
     AuthoredTextFieldConfiguration,
+    applyAuthoredFilters,
     configureAuthoredTextField,
     createAuthoredFilters,
     releaseAuthoredTextFieldFontBinding,
@@ -55,7 +56,7 @@ export class AuthoredMovieClip extends MovieClip {
         const nativeColorTransform = createNativeColorTransform(value.colorTransform);
         this._authoredFilters = value.filters;
         this._authoredColorTransform = value.colorTransform;
-        this.filters = nativeFilters;
+        applyAuthoredFilters(this, nativeFilters);
         this.transform.colorTransform = nativeColorTransform;
     }
 
@@ -73,7 +74,7 @@ export class AuthoredMovieClip extends MovieClip {
 
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
-        this.filters = createAuthoredFilters(this._authoredFilters);
+        applyAuthoredFilters(this, createAuthoredFilters(this._authoredFilters));
         this._configureAuthoredColorTransform();
         this._configureAuthoredScale9Grid();
     }

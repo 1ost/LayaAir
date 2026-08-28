@@ -76,6 +76,10 @@ const DROP_SHADOW_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "color", "compositeSource", "distance", "innerShadow",
     "kind", "knockout", "passes", "sourceType", "strength",
 ]);
+const BEVEL_FILTER_FIELDS = new Set([
+    "angleRadians", "blurX", "blurY", "compositeSource", "distance", "highlightColor", "innerShadow",
+    "kind", "knockout", "onTop", "passes", "shadowColor", "sourceType", "strength", "type",
+]);
 const BLUR_FILTER_FIELDS = new Set(["blurX", "blurY", "kind", "passes", "sourceType"]);
 const GRADIENT_FILTER_FIELDS = new Set([
     "angleRadians", "blurX", "blurY", "colors", "compositeSource", "distance", "innerShadow", "kind",
@@ -2763,6 +2767,8 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
         }
         if (filter.kind === "gradient-bevel" || filter.kind === "gradient-glow")
             return authoredGradientFilter(filter, label);
+        if (filter.kind === "bevel")
+            return authoredBevelFilter(filter, label);
         if (filter.kind === "drop-shadow")
             return authoredDropShadowFilter(filter, label);
         if (filter.kind === "color-matrix") {
@@ -2802,6 +2808,49 @@ function authoredFilters(value: unknown, characterId: number): ReadonlyArray<Neu
             knockout: boolean(filter.knockout, `${label}.knockout`),
         };
     });
+}
+
+function authoredBevelFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {
+    exactKeys(filter, BEVEL_FILTER_FIELDS, label, "FLASH_LIBRARY_FILTER_FIELD_UNSUPPORTED");
+    exactValue(filter.sourceType, "BEVELFILTER", "FLASH_LIBRARY_FILTER_SOURCE_TYPE_UNSUPPORTED", `${label}.sourceType is unsupported.`);
+    const highlight = authoredFilterColor(filter.highlightColor, `${label}.highlightColor`);
+    const shadow = authoredFilterColor(filter.shadowColor, `${label}.shadowColor`);
+    const innerShadow = boolean(filter.innerShadow, `${label}.innerShadow`);
+    const onTop = boolean(filter.onTop, `${label}.onTop`);
+    const type = onTop && !innerShadow ? "full" : innerShadow ? "inner" : "outer";
+    exactValue(filter.type, type, "FLASH_LIBRARY_FILTER_TYPE_MISMATCH", `${label}.type disagrees with its serialized flags.`);
+    const blurX = finite(filter.blurX, `${label}.blurX`);
+    const blurY = finite(filter.blurY, `${label}.blurY`);
+    const strength = finite(filter.strength, `${label}.strength`);
+    const passes = positiveInteger(filter.passes, `${label}.passes`);
+    if (blurX < 0 || blurX > 255 || blurY < 0 || blurY > 255)
+        fail("FLASH_LIBRARY_FILTER_BLUR_INVALID", `${label} blur dimensions must be between zero and 255.`);
+    if (strength < 0 || strength > 255.99609375)
+        fail("FLASH_LIBRARY_FILTER_STRENGTH_INVALID", `${label}.strength is outside the Flash range.`);
+    if (passes > 15)
+        fail("FLASH_LIBRARY_FILTER_QUALITY_INVALID", `${label}.passes exceeds the Flash quality range.`);
+    return {
+        kind: "bevel", sourceType: "BEVELFILTER",
+        distance: finite(filter.distance, `${label}.distance`),
+        angleRadians: finite(filter.angleRadians, `${label}.angleRadians`),
+        highlightColor: highlight.color, highlightAlpha: highlight.alpha,
+        shadowColor: shadow.color, shadowAlpha: shadow.alpha,
+        blurX, blurY, strength, passes, innerShadow, onTop,
+        knockout: boolean(filter.knockout, `${label}.knockout`),
+        compositeSource: boolean(filter.compositeSource, `${label}.compositeSource`),
+    };
+}
+
+function authoredFilterColor(value: unknown, label: string): { readonly color: number; readonly alpha: number } {
+    const color = object(value, label);
+    exactKeys(color, FILTER_COLOR_FIELDS, label, "FLASH_LIBRARY_FILTER_COLOR_FIELD_UNSUPPORTED");
+    const rgb = finite(color.color, `${label}.color`);
+    const alpha = finite(color.alpha, `${label}.alpha`);
+    if (!Number.isInteger(rgb) || rgb < 0 || rgb > 0xffffff)
+        fail("FLASH_LIBRARY_FILTER_COLOR_INVALID", `${label}.color must be an RGB integer.`);
+    if (alpha < 0 || alpha > 1)
+        fail("FLASH_LIBRARY_FILTER_ALPHA_INVALID", `${label}.alpha must be between zero and one.`);
+    return { color: rgb, alpha };
 }
 
 function authoredDropShadowFilter(filter: Record<string, any>, label: string): NeutralAuthoredFilter {

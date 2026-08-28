@@ -70,6 +70,25 @@ export interface NeutralDropShadowFilter {
     readonly hideObject: boolean;
 }
 
+export interface NeutralBevelFilter {
+    readonly kind: "bevel";
+    readonly sourceType: "BEVELFILTER";
+    readonly distance: number;
+    readonly angleRadians: number;
+    readonly highlightColor: number;
+    readonly highlightAlpha: number;
+    readonly shadowColor: number;
+    readonly shadowAlpha: number;
+    readonly blurX: number;
+    readonly blurY: number;
+    readonly strength: number;
+    readonly passes: number;
+    readonly innerShadow: boolean;
+    readonly onTop: boolean;
+    readonly knockout: boolean;
+    readonly compositeSource: boolean;
+}
+
 export interface NeutralGradientBevelFilter {
     readonly kind: "gradient-bevel";
     readonly distance: number;
@@ -96,7 +115,7 @@ export interface NeutralColorMatrixFilter {
 }
 
 export type NeutralAuthoredFilter = NeutralBlurFilter | NeutralGlowFilter | NeutralDropShadowFilter
-    | NeutralGradientBevelFilter | NeutralGradientGlowFilter | NeutralColorMatrixFilter;
+    | NeutralBevelFilter | NeutralGradientBevelFilter | NeutralGradientGlowFilter | NeutralColorMatrixFilter;
 
 export interface NeutralScale9Grid {
     readonly x: number;
@@ -943,13 +962,54 @@ function normalizeAuthoredFilter(value: unknown, path: string, scale: number): N
             fail("AUTHORED_CONTENT_COLOR_MATRIX_LENGTH", `${path}.matrix must contain exactly 20 values.`);
         return { kind: "color-matrix", matrix };
     }
-    return source.kind === "blur"
+    return source.kind === "bevel"
+        ? normalizeBevelFilter(value, path, scale)
+        : source.kind === "blur"
         ? normalizeBlurFilter(value, path, scale)
         : source.kind === "gradient-bevel" || source.kind === "gradient-glow"
         ? normalizeGradientFilter(value, path, scale, source.kind)
         : source.kind === "drop-shadow"
         ? normalizeDropShadowFilter(value, path, scale)
         : normalizeGlowFilter(value, path, scale);
+}
+
+function normalizeBevelFilter(value: unknown, path: string, scale: number): NeutralBevelFilter {
+    const source = record(value, path);
+    allowedKeys(source, [
+        "angleRadians", "blurX", "blurY", "compositeSource", "distance", "highlightAlpha",
+        "highlightColor", "innerShadow", "kind", "knockout", "onTop", "passes", "shadowAlpha",
+        "shadowColor", "sourceType", "strength",
+    ], path);
+    const ranged = (key: string, minimum: number, maximum: number): number => {
+        const result = requiredFiniteNumber(source[key], `${path}.${key}`);
+        if (result < minimum || result > maximum)
+            fail("AUTHORED_CONTENT_BEVEL_FILTER_VALUE_INVALID", `${path}.${key} is outside its serialized range.`);
+        return result;
+    };
+    const integer = (key: string, maximum: number): number => {
+        const result = ranged(key, 0, maximum);
+        if (!Number.isInteger(result))
+            fail("AUTHORED_CONTENT_BEVEL_FILTER_VALUE_INVALID", `${path}.${key} must be an integer.`);
+        return result;
+    };
+    return {
+        kind: exactLiteral(source.kind, "bevel", `${path}.kind`),
+        sourceType: exactLiteral(source.sourceType, "BEVELFILTER", `${path}.sourceType`),
+        distance: ranged("distance", -32768, 32767.99998474121) * scale,
+        angleRadians: ranged("angleRadians", -32768, 32767.99998474121),
+        highlightColor: integer("highlightColor", 0xffffff),
+        highlightAlpha: ranged("highlightAlpha", 0, 1),
+        shadowColor: integer("shadowColor", 0xffffff),
+        shadowAlpha: ranged("shadowAlpha", 0, 1),
+        blurX: ranged("blurX", 0, 255) * scale,
+        blurY: ranged("blurY", 0, 255) * scale,
+        strength: ranged("strength", 0, 255.99609375),
+        passes: integer("passes", 15),
+        innerShadow: requiredBoolean(source.innerShadow, `${path}.innerShadow`),
+        onTop: requiredBoolean(source.onTop, `${path}.onTop`),
+        knockout: requiredBoolean(source.knockout, `${path}.knockout`),
+        compositeSource: requiredBoolean(source.compositeSource, `${path}.compositeSource`),
+    };
 }
 
 function normalizeSiblings(values: ReadonlyArray<unknown>, path: string, scale: number): ReadonlyArray<NeutralAuthoredNode> {
