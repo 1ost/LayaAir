@@ -605,6 +605,9 @@ test("published embedded prefab fields bind one exact active font identity witho
     assert.throws(() => AuthoredFontRegistry.bindPublishedText(new TextField(), {
         ...keyOf(authored), fontName: authored.fontName,
     }), /No active authored font/);
+    assert.throws(() => AuthoredFontRegistry.resolvePublishedFont({
+        ...keyOf(authored), fontName: authored.fontName,
+    }), /No active authored font/);
     const bridge = registry.activateFlashBridge();
     const field = new TextField();
     try {
@@ -700,6 +703,14 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
         },
         digest: webcrypto.subtle,
     });
+    assert.throws(() => AuthoredFontRegistry.resolvePublishedFont({
+        ...keyOf(authored), fontName: authored.fontName, sourceSha256: "0".repeat(64),
+    }), /No active authored font/);
+    const publishedAuthority = AuthoredFontRegistry.resolvePublishedFont({
+        ...keyOf(authored), fontName: authored.fontName,
+    });
+    assert.equal(Reflect.ownKeys(publishedAuthority).includes("receipt"), false);
+    assert.equal(Reflect.ownKeys(publishedAuthority).includes("runtimeFamily"), false);
     registerAuthoredContentPrimitives();
     const errors: unknown[] = [];
     const configuration = {
@@ -715,10 +726,9 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
             bold: true, italic: false, underline: false, align: "center", leftMargin: 0,
             rightMargin: 0, indent: 0, leading: 0, letterSpacing: 0, kerning: true,
             embeddedFont: { _$type: "any", value: {
-                documentId: authored.documentId, resourceId: "flash-font-24", sourceSha256: authored.sourceSha256,
-                fontId: authored.fontId, fontType: "embedded", fontStyle: authored.fontStyle,
-                unitsPerEm: authored.unitsPerEm, ascent: authored.ascent, descent: authored.descent,
-                leading: authored.leading, glyphs, kerning: authored.kerning, alignZones: authored.alignZones,
+                kind: "published-font-reference@1", documentId: authored.documentId,
+                resourceId: "flash-font-24", sourceSha256: authored.sourceSha256,
+                fontId: authored.fontId, fontStyle: authored.fontStyle,
             } },
         },
     };
@@ -736,6 +746,10 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
     assert.equal(field.fontFamilyResolver(authored.fontName, true, false), runtimeFamily);
     assert.deepEqual(field.fontMetricsProvider(authored.fontName, 12, true, false), { ascent: 9.6, descent: 2.4 });
     assert.deepEqual(field.textAdvanceProvider("AV", authored.fontName, 12, true, false, true), [6.24, 7.44]);
+    assert.equal(
+        field.authoredConfiguration.format.embeddedFont?.glyphs,
+        activation.registry.manifest.fonts[0].glyphs,
+        "compact hierarchy references must reuse the retained manifest glyph authority");
     const settings = (field.children[0] as LayaInput).rasterizationSettings;
     assert.equal(settings?.alignmentZones?.[String(0x56)]?.x?.coordinate, 0.1);
     assert.equal(settings?.alignmentZones?.[String(0x41)]?.y?.range, 1);

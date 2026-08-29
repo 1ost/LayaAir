@@ -14,8 +14,10 @@ import type {
 import type {
     AuthoredAdvancedTextRasterizationConfiguration,
     AuthoredEmbeddedFontConfiguration,
+    AuthoredEmbeddedFontReference,
     AuthoredFontAlignZonesConfiguration,
     configureAuthoredTextField,
+    normalizeAuthoredTextFieldConfiguration,
 } from "../../src/extensions/authoredContent/runtime/AuthoredTextField.ts";
 import type {
     AuthoredFontRegistry,
@@ -31,9 +33,11 @@ test("Authenticated embedded TTF dynamic-field compiler surface", () => {
         NativeAuthoredFontCatalogDescription,
         typeof describeNativeAuthoredFontCatalog,
         AuthoredEmbeddedFontConfiguration,
+        AuthoredEmbeddedFontReference,
         AuthoredFontAlignZonesConfiguration,
         AuthoredAdvancedTextRasterizationConfiguration,
         typeof configureAuthoredTextField,
+        typeof normalizeAuthoredTextFieldConfiguration,
         AuthoredPublishedFontSelection,
         typeof AuthoredFontRegistry,
     ] extends readonly unknown[] ? boolean : never));

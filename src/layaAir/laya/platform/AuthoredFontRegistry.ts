@@ -45,6 +45,19 @@ export interface AuthoredPublishedFontSelection extends AuthoredFontKey {
     readonly fontName: string;
 }
 
+/**
+ * Full immutable font authority retained by one active authenticated catalog.
+ * Native prefabs may refer to this record by identity instead of repeating its
+ * glyph, kerning, and alignment-zone tables at every text placement.
+ */
+export interface AuthoredPublishedFontAuthority extends AuthoredFontManifestEntry {
+    readonly fontType: "embedded";
+    readonly leading: number;
+    readonly kerning: readonly AuthoredKerningMetric[];
+    readonly alignZones: AuthoredFontAlignZones;
+    readonly glyphs: ReadonlyArray<Required<AuthoredGlyphMetric>>;
+}
+
 export interface AuthoredGlyphMetric {
     readonly index?: number;
     readonly codePoint: number;
@@ -140,6 +153,7 @@ export interface FlashFontRecordView {
 }
 
 const activeFlashRegistries = new Map<AuthoredFontRegistry, readonly ActiveFlashFontRecord[]>();
+const publishedFontAuthorities = new WeakMap<ActiveFlashFontRecord, AuthoredPublishedFontAuthority>();
 const FONT_TRANSACTION_PERMIT = Symbol("Laya font transaction permit");
 const fontTransactionPermits = new WeakSet<object>();
 const authenticatedFontReceipts = new WeakSet<object>();
@@ -204,6 +218,34 @@ export class AuthoredFontRegistry {
             })));
     }
 
+    /** Resolves one exact already-authenticated extended embedded-font record. */
+    static resolvePublishedFont(selectionValue: AuthoredPublishedFontSelection): AuthoredPublishedFontAuthority {
+        const { record } = resolvePublishedFontOwner(selectionValue);
+        if (record.fontType !== "embedded" || record.leading === undefined
+            || record.kerning === undefined || record.alignZones === undefined)
+            throw new Error(`Published authored font ${printKey(record)} lacks extended embedded-font authority`);
+        const cached = publishedFontAuthorities.get(record);
+        if (cached) return cached;
+        const authority = Object.freeze({
+            documentId: record.documentId,
+            fontId: record.fontId,
+            fontName: record.fontName,
+            fontStyle: record.fontStyle,
+            fontType: record.fontType,
+            sourceSha256: record.sourceSha256,
+            sourceUrl: record.sourceUrl,
+            unitsPerEm: record.unitsPerEm,
+            ascent: record.ascent,
+            descent: record.descent,
+            leading: record.leading,
+            glyphs: record.glyphs,
+            kerning: record.kerning,
+            alignZones: record.alignZones,
+        }) as AuthoredPublishedFontAuthority;
+        publishedFontAuthorities.set(record, authority);
+        return authority;
+    }
+
     /**
      * Binds a prefab-created field to one exact, already-authenticated font
      * catalog entry. A field cannot fall back to a device font while claiming
@@ -213,22 +255,8 @@ export class AuthoredFontRegistry {
         consumer: AuthoredTextProviderConsumer,
         selectionValue: AuthoredPublishedFontSelection,
     ): AuthoredTextFontBinding {
-        const selectionRecord = exactDataObject(selectionValue, [...KEY_KEYS, "fontName"], "Published authored font selection");
-        const selection = {
-            ...normalizeKey(selectionRecord, "Published authored font selection"),
-            fontName: requireNonemptyString(selectionRecord.fontName, "Published authored font selection.fontName"),
-        };
-        const matches = [...activeFlashRegistries].filter(([, records]) => records.some(record =>
-            record.documentId === selection.documentId
-            && record.fontId === selection.fontId
-            && record.fontStyle === selection.fontStyle
-            && record.sourceSha256 === selection.sourceSha256
-            && record.fontName === selection.fontName));
-        if (matches.length !== 1)
-            throw new Error(matches.length === 0
-                ? `No active authored font for ${printKey(selection)}`
-                : `Ambiguous active authored font for ${printKey(selection)}`);
-        return matches[0][0].bindText(consumer, selection.documentId);
+        const { registry, record } = resolvePublishedFontOwner(selectionValue);
+        return registry.bindText(consumer, record.documentId);
     }
 
     private readonly entriesByDocument = new Map<string, readonly FrozenEntry[]>();
@@ -597,6 +625,34 @@ export class AuthoredFontRegistry {
         if (this.bindings.get(consumer) === state) this.bindings.delete(consumer);
         this.bindingStates.delete(state);
     }
+}
+
+function resolvePublishedFontOwner(selectionValue: AuthoredPublishedFontSelection): {
+    readonly registry: AuthoredFontRegistry;
+    readonly record: ActiveFlashFontRecord;
+} {
+    const selectionRecord = exactDataObject(
+        selectionValue,
+        [...KEY_KEYS, "fontName"],
+        "Published authored font selection",
+    );
+    const selection = {
+        ...normalizeKey(selectionRecord, "Published authored font selection"),
+        fontName: requireNonemptyString(selectionRecord.fontName, "Published authored font selection.fontName"),
+    };
+    const matches = [...activeFlashRegistries].flatMap(([registry, records]) => records
+        .filter(record => record.receipt.committed && !record.receipt.disposed
+            && record.documentId === selection.documentId
+            && record.fontId === selection.fontId
+            && record.fontStyle === selection.fontStyle
+            && record.sourceSha256 === selection.sourceSha256
+            && record.fontName === selection.fontName)
+        .map(record => ({ registry, record })));
+    if (matches.length !== 1)
+        throw new Error(matches.length === 0
+            ? `No active authored font for ${printKey(selection)}`
+            : `Ambiguous active authored font for ${printKey(selection)}`);
+    return matches[0];
 }
 
 /** Platform font adapter. Authenticated receipt branding remains private to this module. */

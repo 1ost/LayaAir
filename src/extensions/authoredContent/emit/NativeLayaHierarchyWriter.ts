@@ -471,8 +471,12 @@ function decorateAuthoredRuntime(
             format: source.textField!.format.embeddedFont === undefined ? source.textField!.format : {
                 ...source.textField!.format,
                 embeddedFont: { _$type: "any", value: {
-                    ...source.textField!.format.embeddedFont,
+                    kind: "published-font-reference@1",
                     documentId,
+                    resourceId: source.textField!.format.embeddedFont.resourceId,
+                    sourceSha256: source.textField!.format.embeddedFont.sourceSha256,
+                    fontId: source.textField!.format.embeddedFont.fontId,
+                    fontStyle: source.textField!.format.embeddedFont.fontStyle,
                 } },
             },
         };

@@ -118,6 +118,16 @@ export interface AuthoredEmbeddedFontConfiguration {
     readonly alignZones: AuthoredFontAlignZonesConfiguration;
 }
 
+/** Compact native-prefab reference to the full active font-manifest record. */
+export interface AuthoredEmbeddedFontReference {
+    readonly kind: "published-font-reference@1";
+    readonly documentId: string;
+    readonly resourceId: string;
+    readonly sourceSha256: string;
+    readonly fontId: number;
+    readonly fontStyle: "regular" | "bold" | "italic" | "boldItalic";
+}
+
 export interface AuthoredFontAlignZonesConfiguration {
     readonly tableHint: 0 | 1 | 2;
     readonly tableHintName: "thin" | "medium" | "thick";
@@ -177,6 +187,9 @@ const EMBEDDED_FONT_KEYS = Object.freeze([
     "alignZones", "ascent", "descent", "documentId", "fontId", "fontStyle", "fontType", "glyphs", "kerning", "leading",
     "resourceId", "sourceSha256", "unitsPerEm",
 ]);
+const EMBEDDED_FONT_REFERENCE_KEYS = Object.freeze([
+    "documentId", "fontId", "fontStyle", "kind", "resourceId", "sourceSha256",
+]);
 const EMBEDDED_GLYPH_KEYS = Object.freeze(["advance", "bounds", "codePoint", "index"]);
 const EMBEDDED_GLYPH_BOUNDS_KEYS = Object.freeze(["xmax", "xmin", "ymax", "ymin"]);
 const EMBEDDED_KERNING_KEYS = Object.freeze(["adjustment", "leftCodePoint", "rightCodePoint"]);
@@ -196,6 +209,7 @@ const BEVEL_FILTER_KEYS = Object.freeze([
 const COLOR_MATRIX_FILTER_KEYS = Object.freeze(["kind", "matrix"]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredTextFontBinding>();
 const authoredHtmlFields = new WeakSet<TextField>();
+const normalizedAuthoredTextConfigurations = new WeakSet<object>();
 
 /**
  * Validates neutral authored metadata completely before constructing the public
@@ -213,7 +227,7 @@ export function configureAuthoredTextField(
 ): TextField {
     if (!(field instanceof TextField) || field.destroyed)
         throw new TypeError("Authored TextField target must be a live TextField");
-    const value = validateConfiguration(configuration);
+    const value = normalizeAuthoredTextFieldConfiguration(configuration);
     if (value.html) authoredHtmlFields.add(field);
     else authoredHtmlFields.delete(field);
     const previousBinding = authoredFontBindings.get(field);
@@ -344,7 +358,11 @@ export function applyAuthoredFilters(target: import("../../../layaAir/flash").Di
     flashDisplayObjectNativeHost(target).filters = filters;
 }
 
-function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredTextFieldConfiguration {
+export function normalizeAuthoredTextFieldConfiguration(
+    value: AuthoredTextFieldConfiguration,
+): AuthoredTextFieldConfiguration {
+    if (typeof value === "object" && value !== null && normalizedAuthoredTextConfigurations.has(value))
+        return value;
     const hasFilters = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "filters");
     const hasRasterization = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "rasterization");
     const hasUseOutlines = value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "useOutlines");
@@ -396,7 +414,9 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
     finite(format.leading, "format.leading");
     if (hasLetterSpacing) finite(format.letterSpacing, "format.letterSpacing");
     if (hasKerning) boolean(format.kerning, "format.kerning");
-    const embeddedFont = format.embeddedFont === undefined ? undefined : validateEmbeddedFont(format.embeddedFont);
+    const embeddedFont = format.embeddedFont === undefined
+        ? undefined
+        : validateEmbeddedFont(format.embeddedFont, format.font);
     const rasterization = record.rasterization === undefined ? undefined : validateRasterization(record.rasterization);
     const useOutlines = hasUseOutlines ? record.useOutlines as boolean : format.fontMode === "embedded";
     if (format.fontMode === "device" && (embeddedFont !== undefined || rasterization !== undefined || useOutlines))
@@ -445,7 +465,7 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         ...(hasKerning ? { kerning: format.kerning as boolean } : {}),
         ...(embeddedFont === undefined ? {} : { embeddedFont }),
     });
-    return Object.freeze({
+    const normalized = Object.freeze({
         sourceId: record.sourceId,
         x: record.x,
         y: record.y,
@@ -466,9 +486,47 @@ function validateConfiguration(value: AuthoredTextFieldConfiguration): AuthoredT
         filters: Object.freeze(filters),
         ...(rasterization === undefined ? {} : { rasterization }),
     });
+    normalizedAuthoredTextConfigurations.add(normalized);
+    return normalized;
 }
 
-function validateEmbeddedFont(value: unknown): AuthoredEmbeddedFontConfiguration {
+function validateEmbeddedFont(value: unknown, fontName: unknown): AuthoredEmbeddedFontConfiguration {
+    if (hasOwnDataProperty(value, "kind")) {
+        const reference = exactDataObject(value, EMBEDDED_FONT_REFERENCE_KEYS, "Authored embedded font reference");
+        equal(reference.kind, "published-font-reference@1", "embeddedFont.kind");
+        nonemptyString(reference.documentId, "embeddedFont.documentId");
+        nonemptyString(reference.resourceId, "embeddedFont.resourceId");
+        sha256(reference.sourceSha256, "embeddedFont.sourceSha256");
+        positiveInteger(reference.fontId, "embeddedFont.fontId");
+        const fontStyle = oneOfValue(
+            reference.fontStyle,
+            ["regular", "bold", "italic", "boldItalic"] as const,
+            "embeddedFont.fontStyle",
+        );
+        nonemptyString(fontName, "format.font");
+        const authority = AuthoredFontRegistry.resolvePublishedFont({
+            documentId: reference.documentId,
+            fontId: reference.fontId,
+            fontName,
+            fontStyle,
+            sourceSha256: reference.sourceSha256,
+        });
+        return Object.freeze({
+            documentId: authority.documentId,
+            resourceId: reference.resourceId,
+            sourceSha256: authority.sourceSha256,
+            fontId: authority.fontId,
+            fontType: "embedded",
+            fontStyle: authority.fontStyle,
+            unitsPerEm: authority.unitsPerEm,
+            ascent: authority.ascent,
+            descent: authority.descent,
+            leading: authority.leading,
+            glyphs: authority.glyphs,
+            kerning: authority.kerning,
+            alignZones: authority.alignZones,
+        });
+    }
     const record = exactDataObject(value, EMBEDDED_FONT_KEYS, "Authored embedded font");
     nonemptyString(record.documentId, "embeddedFont.documentId");
     nonemptyString(record.resourceId, "embeddedFont.resourceId");

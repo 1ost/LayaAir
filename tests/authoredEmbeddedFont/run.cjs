@@ -448,8 +448,16 @@ async function main() {
         "embedded font metadata is sealed for ObjDecoder");
     assert.equal(configuration.rasterization._$type, "any",
         "advanced rasterization metadata is sealed for ObjDecoder");
-    assert.equal(configuration.format.embeddedFont.value.documentId, "flash-library-symbol-385");
-    assert.equal(configuration.format.embeddedFont.value.sourceSha256, FONT_SHA);
+    assert.deepEqual(configuration.format.embeddedFont.value, {
+        kind: "published-font-reference@1",
+        documentId: "flash-library-symbol-385",
+        resourceId: "flash-font-18",
+        sourceSha256: FONT_SHA,
+        fontId: 18,
+        fontStyle: "bold",
+    });
+    assert.equal("glyphs" in configuration.format.embeddedFont.value, false,
+        "prefab fields must not repeat retained font tables");
     assert.deepEqual(hierarchy._$authoredContent.resources, [{
         id: "flash-font-18",
         assetId: "pet-house/resources/flash-font-18.ttf",
@@ -462,6 +470,8 @@ async function main() {
     const manifest = JSON.parse(Buffer.from(first.files.find(file => file.kind === "font-manifest").bytes));
     const startup = JSON.parse(Buffer.from(first.files.find(file => file.kind === "font-startup").bytes));
     assert.equal(manifest.fonts[0].sourceUrl, "resources/flash-font-18.ttf");
+    assert.equal(manifest.fonts[0].glyphs.length, 3,
+        "the authenticated manifest remains the single full font authority");
     assert.equal(startup.manifest.url, "pet-house.font-manifest.json");
     assert.equal(startup.manifest.sha256, sha(first.files.find(file => file.kind === "font-manifest").bytes));
 

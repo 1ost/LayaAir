@@ -9,6 +9,7 @@ import {
     applyAuthoredFilters,
     configureAuthoredTextField,
     createAuthoredFilters,
+    normalizeAuthoredTextFieldConfiguration,
     releaseAuthoredTextFieldFontBinding,
 } from "./AuthoredTextField";
 
@@ -241,6 +242,9 @@ export class AuthoredDynamicTextField extends TextField {
 
     override onAfterDeserialize(): void {
         super.onAfterDeserialize();
+        this._authoredConfiguration = normalizeAuthoredTextFieldConfiguration(
+            this._authoredConfiguration,
+        );
         configureAuthoredTextField(this, this._authoredConfiguration);
         this._applyAuthoredAlignmentZones();
     }
