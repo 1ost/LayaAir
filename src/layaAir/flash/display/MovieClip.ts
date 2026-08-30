@@ -78,15 +78,28 @@ export class MovieClip extends Sprite {
         const frame = this.currentFrame;
         return Object.keys(this._flashFrameLabels).find(label => this._flashFrameLabels[label] === frame) ?? null;
     }
-    play(): void { const timeline = this._requireTimeline(); timeline.play(timeline.currentFrame); }
-    stop(): void { this._requireTimeline().stop(); }
+    play(): void {
+        const timeline = this._requireTimeline();
+        timeline.play(timeline.currentFrame);
+        if (this._nativeAnimator) this._nativeAnimator.autoPlay = true;
+    }
+    stop(): void {
+        this._requireTimeline().stop();
+        if (this._nativeAnimator) this._nativeAnimator.autoPlay = false;
+    }
     gotoAndPlay(frame: FlashFrameReference, scene: string | null = null): void {
         this._rejectScene(scene); const timeline = this._requireTimeline();
-        const resolved = this._resolveFrame(frame, timeline); timeline.play(resolved); this._runFrameScript(resolved);
+        const resolved = this._resolveFrame(frame, timeline);
+        timeline.play(resolved);
+        if (this._nativeAnimator) this._nativeAnimator.autoPlay = true;
+        this._runFrameScript(resolved);
     }
     gotoAndStop(frame: FlashFrameReference, scene: string | null = null): void {
         this._rejectScene(scene); const timeline = this._requireTimeline();
-        const resolved = this._resolveFrame(frame, timeline); timeline.gotoAndStop(resolved); this._runFrameScript(resolved);
+        const resolved = this._resolveFrame(frame, timeline);
+        timeline.gotoAndStop(resolved);
+        if (this._nativeAnimator) this._nativeAnimator.autoPlay = false;
+        this._runFrameScript(resolved);
     }
     nextFrame(): void { this.gotoAndStop(Math.min(this.currentFrame + 1, this.totalFrames)); }
     prevFrame(): void { this.gotoAndStop(Math.max(this.currentFrame - 1, 1)); }

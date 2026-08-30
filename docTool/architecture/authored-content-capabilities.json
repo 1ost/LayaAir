@@ -553,7 +553,7 @@
           "export": "validateAuthoredMovieClipFrameLabels",
           "kind": "function",
           "signature": "(value: Record<string, number>, totalFrames?: number) => Readonly<Record<string, number>>",
-          "sha256": "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
+          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
         }
       ],
       "evidence": [
@@ -564,7 +564,7 @@
           "capability": "timeline.frames-labels",
           "covers": [
             "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
-            "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
+            "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
           ]
         }
       ]
@@ -12575,7 +12575,7 @@
             "new (): MovieClip"
           ],
           "indexSignatures": [],
-          "sha256": "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf",
+          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54",
           "heritage": [
             {
               "kind": "extends",
@@ -19957,14 +19957,14 @@
           "export": "FlashFrameReference",
           "kind": "type",
           "signature": "any",
-          "sha256": "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
+          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
           "export": "isFlashMovieClip",
           "kind": "function",
           "signature": "(value: unknown) => value is MovieClip",
-          "sha256": "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
+          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
         },
         {
           "module": "src/layaAir/flash/display/NativeMovieClipTimeline.ts",
@@ -23641,7 +23641,7 @@
           "export": "FlashFrameScript",
           "kind": "type",
           "signature": "any",
-          "sha256": "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf"
+          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
         }
       ],
       "evidence": [
@@ -23671,7 +23671,7 @@
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
-            "f1e91d2daf7d7ae9c6902f16996eb7c80e55dc90cab07887424ab8ee05d47caf",
+            "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54",
             "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]

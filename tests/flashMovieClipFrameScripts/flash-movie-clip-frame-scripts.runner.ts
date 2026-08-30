@@ -133,6 +133,28 @@ test("serialized authored frame labels bind exact native MovieClip navigation an
     );
 });
 
+test("Flash playback commands persist across native animator enable", () => {
+    const movie = new MovieClip();
+    const animator = movie.addComponent(AnimatorClip2D);
+    animator.clip = authoredClip("enable-timeline", 4, 24);
+    movie._onAnimatorClip2DReady(animator);
+
+    movie.stop();
+    assert.deepEqual([animator.autoPlay, movie.isPlaying], [false, false]);
+    animator.onEnable();
+    assert.equal(movie.isPlaying, false, "native enable restarted a stopped Flash timeline");
+
+    movie.gotoAndPlay(3);
+    assert.deepEqual([animator.autoPlay, movie.currentFrame, movie.isPlaying], [true, 3, true]);
+    movie.gotoAndStop(2);
+    assert.deepEqual([animator.autoPlay, movie.currentFrame, movie.isPlaying], [false, 2, false]);
+    animator.onEnable();
+    assert.deepEqual([movie.currentFrame, movie.isPlaying], [2, false]);
+
+    movie.play();
+    assert.deepEqual([animator.autoPlay, movie.currentFrame, movie.isPlaying], [true, 2, true]);
+});
+
 test("real authored hierarchy deserialization preserves root and nested labels with independent clocks", () => {
     registerAuthoredContentPrimitives();
     const rootClip = authoredClip("root-timeline", 3, 24);
