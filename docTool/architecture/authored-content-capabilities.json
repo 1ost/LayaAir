@@ -23618,13 +23618,76 @@
           "kind": "type",
           "signature": "any",
           "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+        },
+        {
+          "module": "src/layaAir/flash/display/BitmapData.ts",
+          "export": "bitmapDataDimensions",
+          "kind": "function",
+          "signature": "(value: BitmapData) => { width: number; height: number;} | null",
+          "sha256": "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "DisplayObjectLoaderInfo",
+          "kind": "type",
+          "signature": "any",
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "bindDisplayObjectLoaderInfo",
+          "kind": "function",
+          "signature": "(value: DisplayObject, info: LoaderInfo) => void",
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "flashDisplayObjectNativeHost",
+          "kind": "function",
+          "signature": "(value: unknown) => LayaSprite",
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
+        },
+        {
+          "module": "src/layaAir/flash/display/DisplayObject.ts",
+          "export": "unbindDisplayObjectLoaderInfo",
+          "kind": "function",
+          "signature": "(value: DisplayObject, info: LoaderInfo) => void",
+          "sha256": "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "NativeLoaderImageHost",
+          "kind": "class",
+          "signature": "typeof NativeLoaderImageHost",
+          "members": [
+            {
+              "abstract": true,
+              "kind": "method",
+              "name": "decode",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "(bytes: Uint8Array, contentType: string) => Promise<BitmapData>"
+            }
+          ],
+          "constructors": [],
+          "indexSignatures": [],
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
+          "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/display/Loader.ts",
+          "export": "isNativeLoaderImageHost",
+          "kind": "function",
+          "signature": "(value: unknown) => value is NativeLoaderImageHost",
+          "sha256": "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashDisplayBridgeEvidence.test.ts",
           "test": "Flash display bridge compiler surface",
-          "sha256": "383a7db576d084a26dd11cd1ad583b318dce7441ce9ab6605a10fa188d3d8c76",
+          "sha256": "d8b4ad70c5d5737e1cc23608a06d5461c96fefdce25e031cba65a993a160e653",
           "capability": "api.flash.display",
           "covers": [
             "004edd85cd5f47e82539a4e507fe4ae59da09240cda571ea14db0ecbebf31ed6",
@@ -39596,6 +39659,20 @@
         },
         {
           "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
+          "export": "getRegisteredDefinitionNames",
+          "kind": "function",
+          "signature": "() => string[]",
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
+        },
+        {
+          "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
+          "export": "hasDefinitionByName",
+          "kind": "function",
+          "signature": "(name: string) => boolean",
+          "sha256": "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b"
+        },
+        {
+          "module": "src/layaAir/flash/utils/DefinitionRegistry.ts",
           "export": "registerDefinitionByName",
           "kind": "function",
           "signature": "(name: string, definition: NativeDefinition) => void",
@@ -39669,7 +39746,7 @@
         {
           "path": "tests/architecture/flashUtilsBridgeEvidence.test.ts",
           "test": "Flash utils compiler and runtime surface",
-          "sha256": "88565f166639352900ae75f2dc4a03f93f1bd1743aa1bc26df33875c8cc7622e",
+          "sha256": "a0d71be797725a903654eaa68d7c65b6bc7a7d924ae96d8186372387b300b6c6",
           "capability": "api.flash.utils",
           "covers": [
             "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
@@ -43510,6 +43587,27 @@
           "heritage": []
         },
         {
+          "module": "src/layaAir/flash/system/LoaderContext.ts",
+          "export": "NativeLoaderContextSnapshot",
+          "kind": "interface",
+          "signature": "any",
+          "sha256": "986fb4584605bb1d11d78d578ddd2117e73770d898e77e5e81c89c83efb72450"
+        },
+        {
+          "module": "src/layaAir/flash/system/LoaderContext.ts",
+          "export": "isFlashLoaderContext",
+          "kind": "function",
+          "signature": "(value: unknown) => value is LoaderContext",
+          "sha256": "986fb4584605bb1d11d78d578ddd2117e73770d898e77e5e81c89c83efb72450"
+        },
+        {
+          "module": "src/layaAir/flash/system/LoaderContext.ts",
+          "export": "snapshotNativeLoaderContext",
+          "kind": "function",
+          "signature": "(context: LoaderContext) => NativeLoaderContextSnapshot",
+          "sha256": "986fb4584605bb1d11d78d578ddd2117e73770d898e77e5e81c89c83efb72450"
+        },
+        {
           "module": "src/layaAir/flash/system/Security.ts",
           "export": "Security",
           "kind": "class",
@@ -43699,7 +43797,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash system bridge compiler surface and clean-break dispositions",
-          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
+          "sha256": "165c77db0eb278a3bfec0460fe8b9b1ef422d8574e377ee30519374fa12acae6",
           "capability": "api.flash.system",
           "covers": [
             "05bce833420c23d3a6cb5c38913e626dffcdbe561f56cbdfc48c5439f12928a9",
@@ -43820,7 +43918,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash external call-only bridge compiler surface",
-          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
+          "sha256": "165c77db0eb278a3bfec0460fe8b9b1ef422d8574e377ee30519374fa12acae6",
           "capability": "api.flash.external",
           "covers": [
             "62437fb30ac0327c5bff90c7ba3817c35dde8b4bfb0ae6b8f72b2923408675a1"
@@ -43919,7 +44017,7 @@
         {
           "path": "tests/architecture/flashSystemHostBridgeEvidence.test.ts",
           "test": "Flash native illegal-operation error compiler surface",
-          "sha256": "fc37effcfeb960e34533bf5f7002178a46d5d551ef0c7f6ec69ca6d5208b1f20",
+          "sha256": "165c77db0eb278a3bfec0460fe8b9b1ef422d8574e377ee30519374fa12acae6",
           "capability": "api.flash.errors",
           "covers": [
             "e831eba5f3c368543dffce1687de6c00f3a7ce61f9d640d7865d4cdd608cd4e8"
@@ -44497,6 +44595,13 @@
           ]
         },
         {
+          "module": "src/layaAir/flash/media/Sound.ts",
+          "export": "isFlashSound",
+          "kind": "function",
+          "signature": "(value: unknown) => value is Sound",
+          "sha256": "1a23ec893dbed187ecbf6d7affcac0e03dd2874b2e537a8e5169fd5d99d91716"
+        },
+        {
           "module": "src/layaAir/flash/media/SoundChannel.ts",
           "export": "SoundChannel",
           "kind": "class",
@@ -44705,6 +44810,20 @@
           ]
         },
         {
+          "module": "src/layaAir/flash/media/SoundChannel.ts",
+          "export": "createFlashSoundChannel",
+          "kind": "function",
+          "signature": "(native: LayaSoundChannel) => SoundChannel",
+          "sha256": "00759be91c9d962263b76ce44dd438055a6213fb7d062b0602eb218c74c32ec5"
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundChannel.ts",
+          "export": "isFlashSoundChannel",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SoundChannel",
+          "sha256": "00759be91c9d962263b76ce44dd438055a6213fb7d062b0602eb218c74c32ec5"
+        },
+        {
           "module": "src/layaAir/flash/media/SoundLoaderContext.ts",
           "export": "SoundLoaderContext",
           "kind": "class",
@@ -44735,6 +44854,13 @@
           "indexSignatures": [],
           "sha256": "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundLoaderContext.ts",
+          "export": "isFlashSoundLoaderContext",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SoundLoaderContext",
+          "sha256": "f6d5482ef382255fab105e7ce9ad2458d50b70213c65e3d20cea449f1b36afa0"
         },
         {
           "module": "src/layaAir/flash/media/SoundTransform.ts",
@@ -44812,13 +44938,20 @@
           "indexSignatures": [],
           "sha256": "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25",
           "heritage": []
+        },
+        {
+          "module": "src/layaAir/flash/media/SoundTransform.ts",
+          "export": "isFlashSoundTransform",
+          "kind": "function",
+          "signature": "(value: unknown) => value is SoundTransform",
+          "sha256": "384c762f6120aaa73c839b9b30a2cb8b0bdda55c11aa0a74376fac75de90fb25"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashMediaBridgeEvidence.test.ts",
           "test": "Flash media bridge compiler surface",
-          "sha256": "ef15366af0b67f3d71b1fc15fa233d39a11a8a1d5f94f8f5f4ee1ba3c6f04912",
+          "sha256": "bf79666ed1fe177ef2b08aefdc0730ba023ca1169a63037874e85fe16535455e",
           "capability": "api.flash.media",
           "covers": [
             "00759be91c9d962263b76ce44dd438055a6213fb7d062b0602eb218c74c32ec5",

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DisplayObject, isFlashDisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
+import type {
+    bindDisplayObjectLoaderInfo, DisplayObject, DisplayObjectLoaderInfo,
+    flashDisplayObjectNativeHost, isFlashDisplayObject, unbindDisplayObjectLoaderInfo
+} from "../../src/layaAir/flash/display/DisplayObject.ts";
 import type { DisplayObjectContainer, isFlashDisplayObjectContainer } from "../../src/layaAir/flash/display/DisplayObjectContainer.ts";
 import type {
     FlashStageBootstrap, FlashStageBootstrapOptions, FlashStageBoundary,
@@ -23,7 +26,9 @@ import type { Shape, isFlashShape } from "../../src/layaAir/flash/display/Shape.
 import type { Sprite, isFlashSprite } from "../../src/layaAir/flash/display/Sprite.ts";
 import type { Stage, FlashStageLoaderInfo, isFlashStage } from "../../src/layaAir/flash/display/Stage.ts";
 import type { Bitmap, isFlashBitmap } from "../../src/layaAir/flash/display/Bitmap.ts";
-import type { BitmapData, acquireBitmapDataTexture, isFlashBitmapData, observeBitmapData } from "../../src/layaAir/flash/display/BitmapData.ts";
+import type {
+    BitmapData, acquireBitmapDataTexture, bitmapDataDimensions, isFlashBitmapData, observeBitmapData
+} from "../../src/layaAir/flash/display/BitmapData.ts";
 import type { BitmapDataChannel } from "../../src/layaAir/flash/display/BitmapDataChannel.ts";
 import type { PixelSnapping } from "../../src/layaAir/flash/display/PixelSnapping.ts";
 import type { StageAlign } from "../../src/layaAir/flash/display/StageAlign.ts";
@@ -33,8 +38,8 @@ import type { StageQuality } from "../../src/layaAir/flash/display/StageQuality.
 import type { StageScaleMode } from "../../src/layaAir/flash/display/StageScaleMode.ts";
 import type {
     Loader, isFlashLoader, LoaderInfo, isFlashLoaderInfo,
-    NativeLoaderContentHost, NativeLoaderContentSource, installNativeLoaderContentHost,
-    isNativeLoaderContentHost
+    NativeLoaderContentHost, NativeLoaderContentSource, NativeLoaderImageHost,
+    installNativeLoaderContentHost, isNativeLoaderContentHost, isNativeLoaderImageHost
 } from "../../src/layaAir/flash/display/Loader.ts";
 
 test("Flash display bridge compiler surface", () => {
@@ -48,9 +53,13 @@ test("Flash display bridge compiler surface", () => {
         typeof BitmapDataChannel, typeof PixelSnapping,
         typeof StageAlign, typeof GradientType, typeof BlendMode, typeof StageQuality, typeof StageScaleMode,
         typeof Loader, typeof LoaderInfo, typeof NativeLoaderContentHost, typeof NativeLoaderContentSource,
-        typeof installNativeLoaderContentHost, typeof isNativeLoaderContentHost,
-        typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof isFlashBitmapData, typeof observeBitmapData,
-        typeof isFlashDisplayObject, typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
+        typeof NativeLoaderImageHost, typeof installNativeLoaderContentHost, typeof isNativeLoaderContentHost,
+        typeof isNativeLoaderImageHost,
+        typeof isFlashBitmap, typeof acquireBitmapDataTexture, typeof bitmapDataDimensions,
+        typeof isFlashBitmapData, typeof observeBitmapData,
+        DisplayObjectLoaderInfo, typeof bindDisplayObjectLoaderInfo, typeof flashDisplayObjectNativeHost,
+        typeof isFlashDisplayObject, typeof unbindDisplayObjectLoaderInfo,
+        typeof isFlashDisplayObjectContainer, FlashStageBootstrap, FlashStageBootstrapOptions,
         FlashGraphicsRasterCommand, typeof flashGraphicsRasterCommands,
         typeof isFlashGraphics, typeof sampleFlashGraphicsFill,
         typeof isFlashInteractiveObject, typeof resolveFlashFocusOwner,

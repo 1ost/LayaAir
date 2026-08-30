@@ -15,6 +15,8 @@ import type { getQualifiedClassName } from "../../src/layaAir/flash/utils/getQua
 import type { getQualifiedSuperclassName } from "../../src/layaAir/flash/utils/getQualifiedSuperclassName.ts";
 import type {
     getDefinitionByName,
+    getRegisteredDefinitionNames,
+    hasDefinitionByName,
     NativeDefinition,
     registerDefinitionByName,
     registerObservedDefinition,
@@ -57,6 +59,8 @@ test("Flash utils compiler and runtime surface", () => {
         typeof getQualifiedClassName,
         typeof getQualifiedSuperclassName,
         typeof getDefinitionByName,
+        typeof getRegisteredDefinitionNames,
+        typeof hasDefinitionByName,
         typeof registerDefinitionByName,
         typeof registerObservedDefinition,
         NativeDefinition,
