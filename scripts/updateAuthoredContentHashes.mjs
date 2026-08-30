@@ -404,20 +404,6 @@ Object.assign(renderingTransformCapability, {
             capability: "rendering.transform",
             covers: [],
         },
-        {
-            path: "tests/authoredFlashDisplayListTimeline/run.cjs",
-            test: "Authored Flash animated affine projection and replacement continuity",
-            sha256: "",
-            capability: "rendering.transform",
-            covers: [],
-        },
-        {
-            path: "tests/authoredContent/run.ts",
-            test: "Neutral affine components round-trip through native timeline transform bindings",
-            sha256: "",
-            capability: "rendering.transform",
-            covers: [],
-        },
     ],
 });
 delete renderingTransformCapability.blockingReason;
@@ -550,24 +536,6 @@ Object.assign(utilsCapability, {
     evidence: [{
         path: "tests/architecture/flashUtilsBridgeEvidence.test.ts",
         test: "Flash utils compiler and runtime surface",
-        sha256: "",
-        capability: "api.flash.utils",
-        covers: [],
-    }, {
-        path: "tests/flashXml/flash-xml.runner.ts",
-        test: "Mutable Flash XML and XMLList behavior",
-        sha256: "",
-        capability: "api.flash.utils",
-        covers: [],
-    }, {
-        path: "tests/flashByteArray/flash-byte-array.runner.ts",
-        test: "Flash ByteArray binary and synchronous zlib behavior",
-        sha256: "",
-        capability: "api.flash.utils",
-        covers: [],
-    }, {
-        path: "tests/flashByteArray/flash-byte-array.browser.ts",
-        test: "Flash ByteArray browser zlib behavior",
         sha256: "",
         capability: "api.flash.utils",
         covers: [],

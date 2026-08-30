@@ -428,30 +428,6 @@
             "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
           ]
-        },
-        {
-          "path": "tests/authoredFlashDisplayListTimeline/run.cjs",
-          "test": "Authored Flash animated affine projection and replacement continuity",
-          "sha256": "4f6fec50409092acc67f5b13ca8b04ecc69a190bcef750362aa2251c58c530cd",
-          "capability": "rendering.transform",
-          "covers": [
-            "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
-            "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
-          ]
-        },
-        {
-          "path": "tests/authoredContent/run.ts",
-          "test": "Neutral affine components round-trip through native timeline transform bindings",
-          "sha256": "4993360efd61b08bc36cd5f00b167b67a620fdce25a14eb17f8f6ca4c2020089",
-          "capability": "rendering.transform",
-          "covers": [
-            "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
-            "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
-          ]
         }
       ]
     },
@@ -39709,66 +39685,6 @@
             "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
             "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
           ]
-        },
-        {
-          "path": "tests/flashXml/flash-xml.runner.ts",
-          "test": "Mutable Flash XML and XMLList behavior",
-          "sha256": "391d62218c39b73278a781816fb1c072e64bfc527dc6bd49ac3de247862d6411",
-          "capability": "api.flash.utils",
-          "covers": [
-            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
-            "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
-            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
-            "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
-            "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
-            "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
-            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
-            "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
-            "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
-            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
-          ]
-        },
-        {
-          "path": "tests/flashByteArray/flash-byte-array.runner.ts",
-          "test": "Flash ByteArray binary and synchronous zlib behavior",
-          "sha256": "0d27ed6543f4f170dcdd67299caeed1866a6fb3097137ae04fdea126167df6be",
-          "capability": "api.flash.utils",
-          "covers": [
-            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
-            "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
-            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
-            "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
-            "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
-            "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
-            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
-            "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
-            "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
-            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
-          ]
-        },
-        {
-          "path": "tests/flashByteArray/flash-byte-array.browser.ts",
-          "test": "Flash ByteArray browser zlib behavior",
-          "sha256": "9c7268b7e02308f1e41b9b7877684f600f8b347381e90ac3303b94090419032b",
-          "capability": "api.flash.utils",
-          "covers": [
-            "0de98abb5e92cd46a82f1d69285e8cc5aeb7bd632886971ac992f415dc64c66d",
-            "2fec8d20eb97635a81244967c013fc4578d4b12f87627abe78ece188f770af6b",
-            "4e9779af0d1f4eaec32a7282b07ccf3390b6b41f4e031071817554382ad379aa",
-            "5b122ad5218defcc7bc093d4fed79fd6252d8c27b595c224216b71a01945926b",
-            "81d2989fb4a9438a6725b6bf0c03543a0763d507f4adc149bf4e4b5ec17d126e",
-            "992eb078a5400354cb4abcdd3da99c2106649388a38e37fb0ad943b448eb3c05",
-            "b13d01fdaafdb30abe2ce0f7a7868062d63c5bdc49b41d7566dc43b81a30f31c",
-            "c13804dd790b815be5602e062ade8d6a788dea864a790d05b28f455438b2d11e",
-            "de6522cfc7c99cb799be6e49e249c7f896627d61ea3c8cadf1fbcacf3ea0ccf2",
-            "e975ee1e04d162c44475662d49eee2036e60a9105b808964605bbf3f951baf03",
-            "ea8b57c4c55e72185a22635817fea43aae57828a96445858c60ba88a232f5a60",
-            "ebd27db12e1fdc3a6aa323c9e2f55254ece2662e9a2b347e6b5439417c462025"
-          ]
         }
       ]
     },
@@ -43072,7 +42988,7 @@
         {
           "path": "tests/architecture/flashXmlBridgeEvidence.test.ts",
           "test": "Strict immutable XML resource compiler surface",
-          "sha256": "742d2da8007d8343c6cba4032b2329a7b77faf226fddc46871d2aab1e0ca923f",
+          "sha256": "7ffb447b1109827eee64452daa326db763c8e5c049a6af2cb49dc6d8993753e2",
           "capability": "api.flash.xml",
           "covers": [
             "6490b087e5ca5f24740b8ede1f41d40f8fe7473bc7d07db6720db2e9f475429e",
