@@ -2,7 +2,10 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { logicalCompilerSignature } from "./checkAuthoredContentAdmission.mjs";
+import {
+    logicalCompilerMemberName,
+    logicalCompilerSignature,
+} from "./checkAuthoredContentAdmission.mjs";
 
 const supportedArguments = new Set(["--check"]);
 for (const argument of process.argv.slice(2)) {
@@ -1136,7 +1139,7 @@ function updateSurface(obligation) {
             abstract: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword),
             kind: accessorKinds.length ? accessorKinds.join("+")
                 : ts.isMethodDeclaration(memberDeclaration) || ts.isMethodSignature(memberDeclaration) ? "method" : "property",
-            name: member.name, scope,
+            name: logicalCompilerMemberName(member.name), scope,
             optional: Boolean(member.flags & ts.SymbolFlags.Optional || memberDeclaration.questionToken),
             readonly: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ReadonlyKeyword),
             signature,

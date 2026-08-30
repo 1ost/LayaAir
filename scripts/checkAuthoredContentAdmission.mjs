@@ -257,6 +257,10 @@ export function logicalCompilerSignature(root, value) {
         .trim();
 }
 
+export function logicalCompilerMemberName(value) {
+    return value.replace(/^(__@[A-Za-z_$][\w$]*)@\d+$/, "$1");
+}
+
 function compilerOptions(root, failures) {
     const fallback = {
         allowJs: true,
@@ -1250,7 +1254,7 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
                 abstract: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.AbstractKeyword),
                 kind: accessorKinds.length > 0 ? accessorKinds.join("+")
                     : ts.isMethodDeclaration(memberDeclaration) || ts.isMethodSignature(memberDeclaration) ? "method" : "property",
-                name: member.name,
+                name: logicalCompilerMemberName(member.name),
                 scope,
                 optional: Boolean(member.flags & ts.SymbolFlags.Optional || memberDeclaration.questionToken),
                 readonly: modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ReadonlyKeyword),
@@ -1263,7 +1267,8 @@ function inspectObligation(root, obligation, label, code, failures, requiredRoot
             ? obligation.members.map(member => ({
                 abstract: member?.abstract,
                 kind: member?.kind,
-                name: member?.name,
+                name: typeof member?.name === "string"
+                    ? logicalCompilerMemberName(member.name) : member?.name,
                 scope: member?.scope,
                 optional: member?.optional,
                 readonly: member?.readonly,

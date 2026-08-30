@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import {
     assertAuthoredContentAdmission,
     inspectAuthoredContentAdmission,
+    logicalCompilerMemberName,
     logicalCompilerSignature,
 } from "../../scripts/checkAuthoredContentAdmission.mjs";
 
@@ -338,6 +339,19 @@ test("admitted dispositions require concrete artifacts, symbols, and evidence", 
         const second = logicalCompilerSignature("E:/detached/second", `() => import("E:/detached/second${suffix}`);
         assert.equal(first, '() => import("repo:/src/extensions/index").TextField');
         assert.equal(second, first);
+    });
+    await t.test("computed well-known member names discard compiler-local symbol IDs", () => {
+        assert.equal(logicalCompilerMemberName("__@iterator@2305"), "__@iterator");
+        assert.equal(logicalCompilerMemberName("__@iterator@6635"), "__@iterator");
+        assert.equal(logicalCompilerMemberName("__@asyncIterator@42"), "__@asyncIterator");
+        assert.equal(logicalCompilerMemberName("iterator"), "iterator");
+        assert.equal(logicalCompilerMemberName("__@iterator@suffix"), "__@iterator@suffix");
+
+        const updater = fs.readFileSync(
+            path.join(repositoryRoot, "scripts/updateAuthoredContentHashes.mjs"),
+            "utf8",
+        );
+        assert.match(updater, /name: logicalCompilerMemberName\(member\.name\)/);
     });
     await t.test("canonical LF hashes admit equivalent CRLF source and evidence", t => {
         const artifactLf = "export const transformEvidence = true;\n";
