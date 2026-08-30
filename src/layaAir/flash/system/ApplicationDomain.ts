@@ -55,42 +55,42 @@ export class ApplicationDomain {
     hasDefinition(name: string): boolean {
         if (name == null)
             return false;
-        const qualifiedName = normalizeDefinitionName(name);
-        if (this.definitions.has(qualifiedName))
+        const definitionKey = normalizeDefinitionName(name);
+        if (this.definitions.has(definitionKey))
             return true;
-        if (this.projectsNativeRegistry && hasDefinitionByName(qualifiedName))
+        if (this.projectsNativeRegistry && hasDefinitionByName(definitionKey))
             return true;
-        return this._parentDomain?.hasDefinition(qualifiedName) ?? false;
+        return this._parentDomain?.hasDefinition(definitionKey) ?? false;
     }
 
     getDefinition(name: string): NativeDefinition {
-        const qualifiedName = requireDefinitionName(name);
-        const local = this.definitions.get(qualifiedName);
+        const definitionKey = requireDefinitionName(name);
+        const local = this.definitions.get(definitionKey);
         if (local != null)
             return local;
-        if (this.projectsNativeRegistry && hasDefinitionByName(qualifiedName))
-            return getDefinitionByName(qualifiedName);
+        if (this.projectsNativeRegistry && hasDefinitionByName(definitionKey))
+            return getDefinitionByName(definitionKey);
         if (this._parentDomain != null)
-            return this._parentDomain.getDefinition(qualifiedName);
-        throw new ReferenceError(`Definition ${qualifiedName} could not be found.`);
+            return this._parentDomain.getDefinition(definitionKey);
+        throw new ReferenceError(`Definition ${definitionKey} could not be found.`);
     }
 
     /** Loader/authored-content integration seam for native linkage classes. */
     registerDefinition(name: string, definition: NativeDefinition): void {
-        const qualifiedName = requireDefinitionName(name);
+        const definitionKey = requireDefinitionName(name);
         if (typeof definition !== "function")
             throw new TypeError("definition must be a constructor or function");
 
-        const previous = this.definitions.get(qualifiedName);
+        const previous = this.definitions.get(definitionKey);
         if (previous != null && previous !== definition)
-            throw new Error(`Definition ${qualifiedName} already has a different identity.`);
+            throw new Error(`Definition ${definitionKey} already has a different identity.`);
         if (previous === definition)
             return;
 
-        this.definitions.set(qualifiedName, definition);
-        this.definitionNames.add(qualifiedName);
+        this.definitions.set(definitionKey, definition);
+        this.definitionNames.add(definitionKey);
         if (this.projectsNativeRegistry)
-            registerDefinitionByName(qualifiedName, definition);
+            registerDefinitionByName(definitionKey, definition);
     }
 
     getQualifiedDefinitionNames(): string[] {
