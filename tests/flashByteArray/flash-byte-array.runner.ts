@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { constants, deflateSync } from "node:zlib";
 import { OutOfRangeError } from "../../src/layaAir/laya/utils/Error";
+import { inflateZlibSync } from "../../src/layaAir/laya/utils/Zlib";
 import { ByteArray, ZlibDecompressionHost } from "../../src/layaAir/flash/utils/ByteArray";
 import { Endian } from "../../src/layaAir/flash/utils/Endian";
 import { Dictionary } from "../../src/layaAir/flash/utils/Dictionary";
@@ -386,6 +387,27 @@ test("the default browser host decodes a zlib-wrapped version manifest atomicall
     assert.equal(compressed.readUnsignedShort(), 1);
     assert.equal(compressed.readUTFBytes(compressed.readUnsignedShort()), "TApplication.swf");
     assert.equal(compressed.readUTFBytes(compressed.readUnsignedShort()), "2013070522");
+});
+
+test("native zlib utility directly decodes stored, fixed, and dynamic blocks", () => {
+    const fixtures = [
+        new Uint8Array([0, 1, 2, 3, 4, 5, 0, 255]),
+        new TextEncoder().encode("Bleach map ".repeat(64)),
+        new Uint8Array(Array.from({ length: 4096 }, (_, index) => (index * 37 + (index >>> 3)) & 0xff)),
+    ];
+    const options = [
+        { level: 0 },
+        { level: 9, strategy: constants.Z_FIXED },
+        { level: 6 },
+    ];
+    for (let index = 0; index < fixtures.length; index++) {
+        const inflated = inflateZlibSync(deflateSync(fixtures[index], options[index]));
+        assert.deepEqual([...inflated], [...fixtures[index]]);
+    }
+
+    const corrupted = new Uint8Array(deflateSync(new TextEncoder().encode("map payload")));
+    corrupted[corrupted.length - 1] ^= 1;
+    assert.throws(() => inflateZlibSync(corrupted), /Invalid zlib Adler-32 checksum/);
 });
 
 test("synchronous Flash uncompress decodes stored, fixed, and dynamic zlib blocks", () => {

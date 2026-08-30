@@ -11,9 +11,13 @@ test("Flash API keeps qualified-name machinery out of production exports", () =>
     assert.doesNotMatch(publicRoot, /utils\/QName|export\s*\{\s*QName\s*\}/);
 });
 
-test("ByteArray DEFLATE support has no authored symbol-decoder surface", () => {
-    const source = readFileSync(`${root}src/layaAir/flash/utils/ByteArray.ts`, "utf8");
-    assert.doesNotMatch(source, /decodeHuffmanSymbol/);
-    assert.match(source, /function readDeflateCode\(/);
-    assert.equal(source.match(/readDeflateCode\(/g)?.length, 4);
+test("ByteArray delegates synchronous inflation to the native engine utility", () => {
+    const byteArraySource = readFileSync(`${root}src/layaAir/flash/utils/ByteArray.ts`, "utf8");
+    assert.match(byteArraySource, /import \{ inflateZlibSync \} from "\.\.\/\.\.\/laya\/utils\/Zlib";/);
+    assert.match(byteArraySource, /inflateZlibSync\(new Uint8Array\(this\.buffer\)\)/);
+    assert.doesNotMatch(byteArraySource, /DeflateBitReader|InflateOutput|HuffmanTable|readDeflateCode|function inflateZlibSync/);
+
+    const utilitySource = readFileSync(`${root}src/layaAir/laya/utils/Zlib.ts`, "utf8");
+    assert.match(utilitySource, /export function inflateZlibSync\(input: Uint8Array\): Uint8Array/);
+    assert.doesNotMatch(utilitySource, /flash\/|ByteArrayInput|ZlibDecompressionHost/);
 });
