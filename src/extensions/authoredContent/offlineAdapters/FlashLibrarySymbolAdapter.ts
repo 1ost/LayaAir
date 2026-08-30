@@ -973,6 +973,10 @@ export class FlashLibrarySymbolAdapter {
         exactKeys(color, new Set(["alpha", "color"]), `library.assets.${characterId}.textField.color`, "FLASH_LIBRARY_TEXT_COLOR_UNSUPPORTED");
         exactValue(color.alpha, 1, "FLASH_LIBRARY_TEXT_COLOR_ALPHA_UNSUPPORTED", `Text ${characterId} color alpha is unsupported.`);
         const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
+        const boundsX = finite(bounds.x, `library.assets.${characterId}.bounds.x`);
+        const boundsY = finite(bounds.y, `library.assets.${characterId}.bounds.y`);
+        const boundsWidth = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
+        const boundsHeight = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
         const placement = placementTransform(operation);
         const html = boolean(textField.html, `library.assets.${characterId}.textField.html`);
         const authoredHtml = html
@@ -986,11 +990,11 @@ export class FlashLibrarySymbolAdapter {
             ...(operation.name === undefined ? {} : { name: operation.name }),
             kind: "dynamic-text",
             depth: positiveInteger(operation.depth, "place.depth"),
-            x: placement.x,
-            y: placement.y,
+            x: placement.x + placement.a * boundsX + placement.c * boundsY,
+            y: placement.y + placement.b * boundsX + placement.d * boundsY,
             matrix: placement.matrix,
-            width: finite(bounds.width, `library.assets.${characterId}.bounds.width`),
-            height: finite(bounds.height, `library.assets.${characterId}.bounds.height`),
+            width: boundsWidth,
+            height: boundsHeight,
             variable: typeof operation.name === "string",
             textField: {
                 sourceId: characterId,

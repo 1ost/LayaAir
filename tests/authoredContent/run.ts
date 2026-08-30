@@ -630,6 +630,48 @@ async function main(): Promise<void> {
             "FLASH_LIBRARY_TEXT_OUTLINES_FONT_REQUIRED");
     });
 
+    await test("Flash animated dynamic TextField tracks retain the DefineEditText bounds origin", () => {
+        const textField = {
+            align: "center", autoSize: false, border: false, color: { alpha: 1, color: 0xffffff },
+            fieldType: "dynamic", fontId: 3, fontSize: 12, html: false, indent: 0, initialText: "Open Egg\r",
+            leading: 2, leftMargin: 0, multiline: true, password: false, rightMargin: 0,
+            selectable: false, useOutlines: false, variableName: "", wordWrap: false,
+        };
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 100, height: 40, frameRate: 24, frameCount: 2, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": {
+                    characterId: 1, kind: "sprite", symbolName: "Root",
+                    bounds: { x: 0, y: 0, width: 100, height: 40 },
+                },
+                "2": { characterId: 2, kind: "input-text", initialText: "Open Egg\r",
+                    bounds: { x: 44.4, y: -2, width: 85.55, height: 19.9 }, textField },
+                "3": { characterId: 3, kind: "font", font: { family: "Arial", bold: false, italic: false } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 2,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: -39.15, ty: 13 },
+            }], labels: [], sounds: [] }, {
+                index: 2, operations: [], labels: [], sounds: [],
+            }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Root", resources: new Map(),
+        });
+        const child = content.root.children[0];
+        const xTrack = content.timeline.tracks.find(track => track.property === "x");
+        const yTrack = content.timeline.tracks.find(track => track.property === "y");
+        assert(child.x === 44.4 && child.y === -2, "animated TextField placeholder lost its local bounds origin");
+        assert(xTrack?.keyframes.every(key => key.value === 5.25),
+            "animated TextField x keys lost placement plus local bounds");
+        assert(yTrack?.keyframes.every(key => key.value === 11),
+            "animated TextField y keys lost placement plus local bounds");
+    });
+
     await test("Flash library static affine placements and GlowFilter emit through authenticated native seams", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const glow = {
@@ -649,7 +691,9 @@ async function main(): Promise<void> {
             assets: {
                 "1": { characterId: 1, kind: "sprite", symbolName: "Role_Affine", bounds: { x: 0, y: 0, width: 100, height: 80 } },
                 "2": { characterId: 2, kind: "shape", symbolName: "symbol2", path: "assets/2.png", bounds: { x: 2, y: 3, width: 8, height: 9 } },
-                "3": { characterId: 3, kind: "input-text", initialText: "Name", bounds: { x: 0, y: 0, width: 60, height: 16 }, textField: {
+                "3": {
+                    characterId: 3, kind: "input-text", initialText: "Name",
+                    bounds: { x: 4, y: -3, width: 60, height: 16 }, textField: {
                     align: "center", autoSize: false, border: false, color: { alpha: 1, color: 0xcc0000 },
                     fieldType: "dynamic", fontId: 4, fontSize: 12, html: false, indent: 0, initialText: "Name",
                     leading: 2, leftMargin: 0, multiline: false, password: false, rightMargin: 0,
@@ -666,7 +710,7 @@ async function main(): Promise<void> {
                 matrix: { a: 2, b: 0.25, c: -0.5, d: 3, tx: 5, ty: 7 },
             }, {
                 op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "TF_Name", filters: [gradientGlow, glow],
-                matrix: { a: 0.5, b: 0, c: 0, d: 2, tx: 11, ty: 12 },
+                matrix: { a: 0.5, b: 0.25, c: -0.5, d: 2, tx: 11, ty: 12 },
             }, {
                 op: "place", characterId: 2, depth: 3, move: false, ratio: 0, name: "OverlayImage",
                 blendMode: "overlay", blendModeCode: 13,
@@ -688,6 +732,11 @@ async function main(): Promise<void> {
         assert(image.matrix?.a === 2 && image.matrix.b === 0.25 && image.matrix.c === -0.5 && image.matrix.d === 3,
             "static affine matrix drifted");
         assert(image.x === 7.5 && image.y === 16.5, "affine image-bounds closure drifted");
+        assert(field.matrix?.a === 0.5 && field.matrix.b === 0.25
+            && field.matrix.c === -0.5 && field.matrix.d === 2,
+            "affine dynamic TextField matrix drifted");
+        assert(field.x === 14.5 && field.y === 7,
+            "affine dynamic TextField placement lost its local bounds origin");
         assert(image.blendMode === "add", "authenticated additive blend mode drifted");
         assert(content.root.children[2].blendMode === "overlay",
             "authenticated overlay blend mode drifted");

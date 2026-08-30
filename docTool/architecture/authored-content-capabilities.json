@@ -114,7 +114,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
+          "sha256": "58377766c34414615a94c83f63c2679984ab617e2186d10a9e7a0ffe460345d6",
           "members": [
             {
               "abstract": false,
@@ -140,7 +140,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "display.place-remove-depth",
           "covers": [
-            "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740"
+            "58377766c34414615a94c83f63c2679984ab617e2186d10a9e7a0ffe460345d6"
           ]
         }
       ]
@@ -290,7 +290,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
+          "sha256": "58377766c34414615a94c83f63c2679984ab617e2186d10a9e7a0ffe460345d6",
           "members": [
             {
               "abstract": false,
@@ -330,7 +330,7 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.button-states",
           "covers": [
-            "536e235f18388057b4cf3b76c65bd925210cc060a10a2c4fdbcc19901e678740",
+            "58377766c34414615a94c83f63c2679984ab617e2186d10a9e7a0ffe460345d6",
             "7c6d933c28e8e464fc77f484f9deeb133cbd57f3920c7164b27f84e0d9678c38",
             "9ec383cd3c3d309a17ea768d2a70e19eba9b18f887f05dc1b68432bce805a82e",
             "dd757182a9f8fd0955651c6feae0743cea479e7092ed8e8a4593183bd0e5caec"
@@ -444,7 +444,7 @@
         {
           "path": "tests/authoredContent/run.ts",
           "test": "Neutral affine components round-trip through native timeline transform bindings",
-          "sha256": "27b993059cfca87e258b6888da312d7facb5749b67115135ef085f0974665845",
+          "sha256": "5f40a567593d8ad00c8a392bdf3a00286e680a2cf4c51f29d522934159e84bed",
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
