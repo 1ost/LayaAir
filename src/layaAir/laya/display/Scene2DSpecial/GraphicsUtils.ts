@@ -410,6 +410,7 @@ export class SubStructRender {
    private _needUpdateVertexSize: boolean = true;
    private _postProcessOffsetX: number = 0;
    private _postProcessOffsetY: number = 0;
+   private readonly _vertexSize = new Vector4();
    private _textureCompositor: unknown = null;
 
    private _renderElements: IPrimitiveRenderElement2D[] = [];
@@ -560,7 +561,7 @@ export class SubStructRender {
       }
 
       let rtRect = this._rtRect;
-      let vSize = Vector4.TEMP;
+      let vSize = this._vertexSize;
       vSize.x = (rtRect.x + offsetX) / this._scaleX;
       vSize.y = (rtRect.y + offsetY) / this._scaleY;
 

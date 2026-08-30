@@ -49,6 +49,7 @@ void main().then(result => {
 async function main(): Promise<unknown> {
     await Laya.init(64, 64);
     Laya.stage.bgColor = "#000000";
+    assertFilteredCompositeVertexIsolation();
 
     const baseline = await render(null, 0xffffff);
     assert(alphaMass(baseline) > 1000, `unfiltered Laya GPU baseline was empty: ${alphaMass(baseline)}`);
@@ -226,6 +227,29 @@ async function main(): Promise<unknown> {
             stageOwnerAlphaZero: stageOffsetPixel, stageOwnerAlphaHalf: fractionalPixel,
             stageOwnerAlphaTwoMatrices: twoMatrixPixel },
     };
+}
+
+function assertFilteredCompositeVertexIsolation(): void {
+    type FilteredHost = {
+        _subStructRender: { _internalInfo: { vertexSize: object } };
+    };
+    const first = new DisplayObject();
+    first.pos(5, 6);
+    first.graphics.drawRect(0, 0, 8, 7, "#ffffff");
+    first.filters = [new GlowFilter(0xff0000, 1, 4, 4, 1, 1)];
+    const second = new DisplayObject();
+    second.pos(35, 39);
+    second.graphics.drawRect(0, 0, 13, 9, "#ffffff");
+    second.filters = [new GlowFilter(0x00ff00, 1, 8, 6, 1, 1)];
+    Laya.stage.addChild(first);
+    Laya.stage.addChild(second);
+    Laya.stage.render(performance.now());
+    const firstVertex = (first as unknown as FilteredHost)._subStructRender._internalInfo.vertexSize;
+    const secondVertex = (second as unknown as FilteredHost)._subStructRender._internalInfo.vertexSize;
+    assert(firstVertex !== secondVertex,
+        "filtered composites must not retain the shared Vector4 temporary as persistent vertex state");
+    first.destroy();
+    second.destroy();
 }
 
 async function renderOverlayStage(): Promise<Readback> {
