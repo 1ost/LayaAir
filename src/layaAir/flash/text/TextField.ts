@@ -107,29 +107,55 @@ class NativeFlashTextInput extends LayaInput {
 
     protected override renderText(): void {
         let renderHeight: number | null = null;
+        let expandedLineIndex = -1;
         if (!this.autoSize && this.overflow !== LayaText.VISIBLE) {
             const topPadding = this.padding[0] ?? 0;
             const bottomPadding = this.padding[2] ?? 0;
             const viewport = Math.max(0, this._height - topPadding - bottomPadding);
-            let flashLineTop = 0;
-            const incomplete = this.lines.find(line => {
+            const scrollY = this._scrollPos?.y ?? 0;
+            for (let lineIndex = 0; lineIndex < this.lines.length; lineIndex++) {
+                const line = this.lines[lineIndex];
+                const lineTop = line.y - scrollY;
+                if (lineTop + line.height <= 0) continue;
+                if (lineTop >= viewport) break;
                 let fontSize = this.fontSize;
                 for (let command = line.cmd; command; command = command.next)
                     fontSize = Math.max(fontSize, command.fontSize || 0);
-                const doesNotFit = flashLineTop + fontSize + 4 > viewport;
-                flashLineTop += fontSize + (line.leading ?? this.leading);
-                return doesNotFit;
-            });
-            if (incomplete) renderHeight = topPadding + incomplete.y + bottomPadding;
+                const lineHeight = fontSize + 4;
+                if (lineTop + lineHeight > viewport) {
+                    // Flash counts its four-pixel gutter in the line extent. Laya's content viewport
+                    // already removed that padding, so use the full authored height for admission.
+                    const fitsFlashBounds = lineTop + lineHeight <= this._height;
+                    renderHeight = fitsFlashBounds
+                        ? topPadding + lineTop + lineHeight + bottomPadding
+                        : topPadding + lineTop + bottomPadding;
+                    if (fitsFlashBounds) expandedLineIndex = lineIndex;
+                    break;
+                }
+            }
         }
-        if (renderHeight == null || renderHeight >= this._height) {
+        if (renderHeight == null) {
             super.renderText();
             return;
         }
         const authoredHeight = this._height;
+        const firstHiddenLine = expandedLineIndex + 1;
+        const hiddenLineY = expandedLineIndex < 0
+            ? [] : this._lines.slice(firstHiddenLine).map(line => line.y);
         this._height = renderHeight;
+        if (expandedLineIndex >= 0) {
+            const hiddenY = renderHeight + (this._scrollPos?.y ?? 0);
+            for (let index = firstHiddenLine; index < this._lines.length; index++)
+                this._lines[index].y = hiddenY;
+        }
         try { super.renderText(); }
-        finally { this._height = authoredHeight; }
+        finally {
+            this._height = authoredHeight;
+            if (expandedLineIndex >= 0) {
+                for (let index = firstHiddenLine; index < this._lines.length; index++)
+                    this._lines[index].y = hiddenLineY[index - firstHiddenLine];
+            }
+        }
     }
 
     private assignLayoutText(value: string): void {

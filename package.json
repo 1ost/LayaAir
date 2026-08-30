@@ -58,6 +58,8 @@
     "test:authored-content-locale-cli": "npm run build:authored-content-tooling && node --test tests/authoredContentTooling/authored-content-locale-cli.test.mjs",
     "test:authored-bridge": "node --max-old-space-size=768 scripts/testAuthoredContentBridge.mjs",
     "test:authored-bridge:types": "tsc -p tests/extensions/authoredContentBridge/tsconfig.json --pretty false",
+    "test:flash-text-field-clipping": "node scripts/testFlashTextFieldClipping.mjs",
+    "test:flash-text-field-clipping:types": "tsc -p tests/flashTextFieldClipping/tsconfig.json --pretty false",
     "test:authored-font-registry": "node scripts/testAuthoredFontRegistry.mjs",
     "test:authored-embedded-font": "node --max-old-space-size=512 tests/authoredEmbeddedFont/run.cjs",
     "test:authored-restricted-html": "node scripts/testAuthoredRestrictedHtmlText.mjs",
