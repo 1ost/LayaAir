@@ -2579,7 +2579,7 @@ function exactPlace(operation: Record<string, any>, mode: "static" | "replacemen
     }
 }
 
-function authoredBlendMode(operation: Record<string, any>): "add" | "layer" | "overlay" | undefined {
+function authoredBlendMode(operation: Record<string, any>): "add" | "layer" | "mask" | "overlay" | undefined {
     const hasMode = operation.blendMode !== undefined;
     const hasCode = operation.blendModeCode !== undefined;
     if (hasMode !== hasCode)
@@ -2587,12 +2587,16 @@ function authoredBlendMode(operation: Record<string, any>): "add" | "layer" | "o
     if (!hasMode)
         return undefined;
     const mode = operation.blendMode;
-    const expectedCode = mode === "add" ? 8 : mode === "layer" ? 2 : mode === "overlay" ? 13 : undefined;
+    const expectedCode = mode === "add" ? 8 : mode === "alpha" ? 11 : mode === "layer" ? 2 : mode === "overlay" ? 13 : undefined;
     if (expectedCode === undefined)
         fail("FLASH_LIBRARY_BLEND_MODE_UNSUPPORTED", `Blend mode '${String(mode)}' is unsupported.`);
     exactValue(operation.blendModeCode, expectedCode, "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH",
         `Blend mode '${String(mode)}' requires code ${expectedCode}.`);
-    return mode;
+    // Flash alpha compositing retains the destination only where the source
+    // has coverage. Laya's native mask blend is the same ZERO/SRC_ALPHA
+    // equation, so the neutral/native seam carries the render operation rather
+    // than a Flash-only spelling.
+    return mode === "alpha" ? "mask" : mode;
 }
 
 interface PlacementTransform {

@@ -719,6 +719,10 @@ async function main(): Promise<void> {
                 op: "place", characterId: 2, depth: 4, move: false, ratio: 0, name: "LayerImage",
                 blendMode: "layer", blendModeCode: 2,
                 matrix: { a: 1, b: 0, c: 0, d: 1, tx: 30, ty: 31 },
+            }, {
+                op: "place", characterId: 2, depth: 5, move: false, ratio: 0, name: "AlphaMaskImage",
+                blendMode: "alpha", blendModeCode: 11,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 40, ty: 41 },
             }], labels: [], sounds: [] }],
         }]]);
         const request = {
@@ -742,6 +746,8 @@ async function main(): Promise<void> {
             "authenticated overlay blend mode drifted");
         assert(content.root.children[3].blendMode === "layer",
             "authenticated layer isolation drifted");
+        assert(content.root.children[4].blendMode === "mask",
+            "authenticated Flash alpha blend did not project to native destination masking");
         assert(field.name === "TF_Name" && field.textField?.filters[0].kind === "gradient-glow"
             && field.textField.filters[0].strength === 1.359375 && field.textField.filters[0].quality === 3
             && field.textField.filters[1].kind === "glow" && field.textField.filters[1].strength === 5,
@@ -768,6 +774,8 @@ async function main(): Promise<void> {
             "hierarchy writer lost the authenticated overlay blend mode");
         assert((hierarchy._$child as any[])[3].blendMode === "layer",
             "hierarchy writer lost the authenticated layer isolation");
+        assert((hierarchy._$child as any[])[4].blendMode === "mask",
+            "hierarchy writer lost the authenticated Flash alpha destination mask");
         const serializedFilters = serializedField.authoredConfiguration.filters;
         assert(Array.isArray(serializedFilters) && serializedFilters.length === 2,
             "hierarchy writer lost the authored filter closure");
@@ -796,6 +804,8 @@ async function main(): Promise<void> {
                 "native Laya sprite lost the authenticated overlay blend mode");
             assert((root.getChildAt(3) as any).blendMode === "layer",
                 "native Laya sprite lost the authenticated layer isolation marker");
+            assert((root.getChildAt(4) as any).blendMode === "mask",
+                "native Laya sprite lost the authenticated Flash alpha destination mask");
         }
         finally {
             root.destroy();
@@ -814,6 +824,9 @@ async function main(): Promise<void> {
         timelines.get(1).frames[0].operations[2].blendMode = "overlay";
         timelines.get(1).frames[0].operations[2].blendModeCode = 13;
         timelines.get(1).frames[0].operations[3].blendModeCode = 13;
+        assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH");
+        timelines.get(1).frames[0].operations[3].blendModeCode = 2;
+        timelines.get(1).frames[0].operations[4].blendModeCode = 8;
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_BLEND_MODE_CODE_MISMATCH");
 
         const invalidNeutralBlend = sourceDocument();
