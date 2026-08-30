@@ -141,7 +141,7 @@ function buildHuffmanTable(lengths: readonly number[]): HuffmanTable {
     return { entries, maximumLength };
 }
 
-function decodeHuffmanSymbol(reader: DeflateBitReader, table: HuffmanTable): number {
+function readDeflateCode(reader: DeflateBitReader, table: HuffmanTable): number {
     let code = 0;
     for (let length = 1; length <= table.maximumLength; length++) {
         code |= reader.readBits(1) << (length - 1);
@@ -177,7 +177,7 @@ function dynamicHuffmanTables(reader: DeflateBitReader): readonly [HuffmanTable,
     const lengths: number[] = [];
     const total = literalCount + distanceCount;
     while (lengths.length < total) {
-        const symbol = decodeHuffmanSymbol(reader, codeLengthTable);
+        const symbol = readDeflateCode(reader, codeLengthTable);
         if (symbol <= 15) {
             lengths.push(symbol);
             continue;
@@ -210,7 +210,7 @@ function dynamicHuffmanTables(reader: DeflateBitReader): readonly [HuffmanTable,
 
 function decodeCompressedBlock(reader: DeflateBitReader, output: InflateOutput, literals: HuffmanTable, distances: HuffmanTable): void {
     for (;;) {
-        const symbol = decodeHuffmanSymbol(reader, literals);
+        const symbol = readDeflateCode(reader, literals);
         if (symbol < 256) {
             output.write(symbol);
             continue;
@@ -221,7 +221,7 @@ function decodeCompressedBlock(reader: DeflateBitReader, output: InflateOutput, 
             throw new TypeError("Invalid DEFLATE length symbol");
         if (distances.maximumLength === 0) throw new TypeError("DEFLATE distance table is empty");
         const length = LENGTH_BASE[lengthIndex] + reader.readBits(LENGTH_EXTRA[lengthIndex]);
-        const distanceSymbol = decodeHuffmanSymbol(reader, distances);
+        const distanceSymbol = readDeflateCode(reader, distances);
         if (distanceSymbol >= DISTANCE_BASE.length) throw new TypeError("Invalid DEFLATE distance symbol");
         const distance = DISTANCE_BASE[distanceSymbol] + reader.readBits(DISTANCE_EXTRA[distanceSymbol]);
         output.copy(distance, length);

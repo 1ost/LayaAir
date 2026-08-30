@@ -91,7 +91,6 @@ export type { ByteArrayInput, ZlibDecompressionHost } from "./utils/ByteArray";
 export { Dictionary } from "./utils/Dictionary";
 export { XML, XMLList } from "./utils/XML";
 export type { FlashXmlInput, FlashXmlChild } from "./utils/XML";
-export { QName } from "./utils/QName";
 export { MouseCursor } from "./ui/MouseCursor";
 export * from "./events/UnsupportedFlashFeatureError";
 export { BitmapFilter } from "./filters/BitmapFilter";
