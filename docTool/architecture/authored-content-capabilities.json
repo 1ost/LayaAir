@@ -12648,7 +12648,7 @@
             "new (_animator: AnimatorClip2D): AnimatorClip2DTimeline"
           ],
           "indexSignatures": [],
-          "sha256": "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
+          "sha256": "7fa40b57c8c366760bcae2616fdf66fe6ce7d3e48e4f49bc00c561a3625cd8dd",
           "heritage": [
             {
               "kind": "implements",
@@ -19971,7 +19971,7 @@
           "export": "NativeMovieClipTimeline",
           "kind": "interface",
           "signature": "any",
-          "sha256": "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a"
+          "sha256": "7fa40b57c8c366760bcae2616fdf66fe6ce7d3e48e4f49bc00c561a3625cd8dd"
         },
         {
           "module": "src/layaAir/flash/display/Shape.ts",
@@ -23660,7 +23660,6 @@
             "378eaf58d8d40b1543e55b39c06bd03b0cbb216f1a6d6984f40708af9d19ff95",
             "41fbc57fa437c7528027996f5570b1a9f815abf45bfd7fd8252dfd6435a7f206",
             "421d255faafe25040ada35303b0d4147a3f221fdf40d6283b3ab011912081735",
-            "4c51b0a3d7916afff1be25026d3f6cc1884c004e6fef1473c5539c3a8d12058a",
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352",
             "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
@@ -23669,6 +23668,7 @@
             "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
             "7764e5deae338164cbd0957bfb0a2ab3a197156aee26e87571785aa864789110",
             "7e478df40bb437ac441fb2e79c87bef9f80da4c6f8d4dc423518343ad88222d9",
+            "7fa40b57c8c366760bcae2616fdf66fe6ce7d3e48e4f49bc00c561a3625cd8dd",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
             "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54",

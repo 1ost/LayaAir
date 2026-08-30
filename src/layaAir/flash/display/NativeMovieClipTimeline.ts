@@ -34,7 +34,7 @@ export class AnimatorClip2DTimeline implements NativeMovieClipTimeline {
     }
     get playing(): boolean { return this._animator.isPlaying; }
     play(frame: number): void { this._animator.play(this._normalizedFrame(this._validateFrame(frame))); }
-    stop(): void { this._animator.stop(); }
+    stop(): void { this._animator.gotoAndStopByFrame(this.currentFrame); }
     gotoAndStop(frame: number): void { this._animator.gotoAndStopByFrame(this._validateFrame(frame)); }
     private _validateFrame(frame: number): number {
         if (!Number.isSafeInteger(frame) || frame < 0 || frame >= this.totalFrames)

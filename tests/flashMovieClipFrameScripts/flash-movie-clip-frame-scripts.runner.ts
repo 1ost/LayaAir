@@ -138,9 +138,16 @@ test("Flash playback commands persist across native animator enable", () => {
     const animator = movie.addComponent(AnimatorClip2D);
     animator.clip = authoredClip("enable-timeline", 4, 24);
     movie._onAnimatorClip2DReady(animator);
+    const poseApplications: number[] = [];
+    const gotoAndStopByFrame = animator.gotoAndStopByFrame.bind(animator);
+    animator.gotoAndStopByFrame = (frame: number): void => {
+        poseApplications.push(frame);
+        gotoAndStopByFrame(frame);
+    };
 
     movie.stop();
     assert.deepEqual([animator.autoPlay, movie.isPlaying], [false, false]);
+    assert.deepEqual(poseApplications, [0], "stop must apply the initial native pose before stage attachment");
     animator.onEnable();
     assert.equal(movie.isPlaying, false, "native enable restarted a stopped Flash timeline");
 
