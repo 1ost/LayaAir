@@ -18,6 +18,14 @@ export interface TextRasterizationSettings {
 
 export type TextGridFitMode = "none" | "pixel" | "subpixel";
 
+/** @internal */
+export function textRasterizationScale(settings: TextRasterizationSettings, configuredScale: number): number {
+    const scale = Number.isFinite(configuredScale) ? configuredScale : 1;
+    // Flash CSM samples an outline distance field before applying its cutoffs.
+    // Oversampling the native outline mask preserves that ordering at small sizes.
+    return settings?.coverageMode === "linear-cutoff" ? Math.max(scale, 2) : scale;
+}
+
 export interface TextAlignmentZoneAxis {
     /** Start of the strong feature in EM-square units. */
     coordinate: number;

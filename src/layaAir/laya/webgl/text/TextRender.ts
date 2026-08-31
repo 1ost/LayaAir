@@ -17,6 +17,7 @@ import {
     remapTextCoverage,
     textAlignmentZoneCacheKey,
     textRasterizationCacheKey,
+    textRasterizationScale,
     type TextGlyphAlignmentZone,
     type TextRasterizationSettings,
 } from "./TextRasterizationSettings";
@@ -72,7 +73,7 @@ export class TextRender {
         emojiAdjustY = hasEmoji ? Math.ceil(info.eoff * k) : 0;
         fontSizeOffY = Math.ceil(info.yoff * k) + emojiAdjustY;
         fontSizeH = Math.ceil((hasEmoji ? info.ebbxh : info.bbxh) * k);
-        fontScale = TextRenderConfig.fontScale;
+        fontScale = textRasterizationScale(rasterization, TextRenderConfig.fontScale);
         let italicDeg = italic ? ITALIC_ANGLE : 0;
         let cacheKey = (curFont.id * 10000) + fontSize + (bold ? "b" : "") + (italic ? "i" : "") + "_";
         if (!kerning)

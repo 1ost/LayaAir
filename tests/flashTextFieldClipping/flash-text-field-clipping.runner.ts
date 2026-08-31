@@ -12,6 +12,7 @@ import { NoRender2DProcess } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
+import { textRasterizationScale } from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -42,6 +43,12 @@ ILaya.systemTimer = {
 class ProbeTextField extends TextField {
     get nativeInput(): LayaInput { return this._nativeTextInput; }
 }
+
+test("advanced CSM oversamples small embedded glyph masks before applying cutoffs", () => {
+    assert.equal(textRasterizationScale(null, 1), 1);
+    assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 1), 2);
+    assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 3), 3);
+});
 
 function fieldAtHeight(height: number): ProbeTextField {
     const field = new ProbeTextField();
