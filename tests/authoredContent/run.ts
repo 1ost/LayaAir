@@ -918,6 +918,37 @@ async function main(): Promise<void> {
         "reverse-wound Flash fillStyle0 geometry did not preserve its exact vertical mirroring");
     });
 
+    await test("Flash rasterized shapes retain authenticated covered-edge pixel extents", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 20, height: 20, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 20, height: 20 } },
+                "2": { characterId: 2, kind: "shape", bounds: { x: 2, y: 3, width: 8, height: 9 } },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 4, ty: 5 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.Root", resources: new Map(),
+            rasterizedShapes: new Map([[2, {
+                sourcePath: "evidence/shapes/2.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload), pixelWidth: 9, pixelHeight: 10,
+            }]]),
+        });
+        const shape = content.root.children[0];
+        assert(shape.x === 6 && shape.y === 8,
+            "rasterized shape lost its logical Flash bounds origin");
+        assert(shape.width === 9 && shape.height === 10,
+            "rasterized shape was resampled into its smaller logical bounds");
+    });
+
     await test("Flash library RGB placement transforms emit exact native MovieClip configuration", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const colorTransform = {

@@ -132,6 +132,12 @@ export interface FlashLibraryResourceAuthority {
     readonly sha256: string;
 }
 
+export interface FlashLibraryRasterizedShapeAuthority extends FlashLibraryResourceAuthority {
+    /** Exact pixel extent of the authenticated raster, including Flash's covered terminal edge. */
+    readonly pixelWidth: number;
+    readonly pixelHeight: number;
+}
+
 export interface FlashLibraryRasterizedFrameAuthority extends FlashLibraryResourceAuthority {
     /** Pixel-space placement of the authenticated raster relative to the authored sprite origin. */
     readonly x: number;
@@ -151,7 +157,7 @@ export interface FlashLibrarySymbolRequest {
     /** Retain authenticated TextField paths/text while replacing non-text shapes with inert placeholders. */
     readonly textMapOnly?: boolean;
     /** Explicit JPEXS raster authorities for shapes which cannot be projected from vector fill records. */
-    readonly rasterizedShapes?: ReadonlyMap<number, FlashLibraryResourceAuthority>;
+    readonly rasterizedShapes?: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>;
     /** Explicit full-frame JPEXS raster authorities for symbols whose leaf rendering is intentionally flattened. */
     readonly rasterizedSprites?: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>;
 }
@@ -244,7 +250,7 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
-        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
         inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
@@ -342,7 +348,7 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
-        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
         inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
@@ -409,7 +415,7 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
-        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
         inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
@@ -534,7 +540,7 @@ export class FlashLibrarySymbolAdapter {
         assets: Record<string, any>,
         timelines: ReadonlyMap<number, unknown>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
-        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>,
         rasterizedSprites: ReadonlyMap<number, ReadonlyArray<FlashLibraryRasterizedFrameAuthority>>,
         resources: Map<string, NeutralResourceInput>,
         inertPlacementRatios: Map<string, NeutralInertPlacementRatio>,
@@ -820,7 +826,7 @@ export class FlashLibrarySymbolAdapter {
         instanceId: string,
         assets: Record<string, any>,
         resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
-        rasterizedShapes: ReadonlyMap<number, FlashLibraryResourceAuthority>,
+        rasterizedShapes: ReadonlyMap<number, FlashLibraryRasterizedShapeAuthority>,
         resources: Map<string, NeutralResourceInput>,
     ): NeutralAuthoredNode {
         const characterId = positiveInteger(asset.characterId, "shape.characterId");
@@ -849,7 +855,18 @@ export class FlashLibrarySymbolAdapter {
         if (rasterAuthority !== undefined) {
             const resourceId = `flash-character-${characterId}`;
             registerResource(resources, resourceId, rasterAuthority);
-            return { ...common, kind: "image", resourceId, children: [] };
+            return {
+                ...common,
+                kind: "image",
+                resourceId,
+                // Flash logical bounds end on a covered pixel edge. JPEXS
+                // therefore exports an N+1 pixel raster for an N-unit shape;
+                // drawing it back into the logical bounds resamples every
+                // pixel. Retain the authenticated raster's native extent.
+                width: positiveInteger(rasterAuthority.pixelWidth, `${resourceId}.pixelWidth`),
+                height: positiveInteger(rasterAuthority.pixelHeight, `${resourceId}.pixelHeight`),
+                children: [],
+            };
         }
 
         if (asset.path !== undefined) {

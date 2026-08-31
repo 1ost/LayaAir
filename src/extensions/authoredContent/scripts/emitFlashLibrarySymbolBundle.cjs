@@ -318,7 +318,15 @@ function readRasterAuthorities(sourceRoot) {
     for (const [idText, value] of Object.entries(shapeRecords)) {
         const id = characterId(idText, "rasterized shape");
         const record = exactObject(value, ["path"], `rasterized shape ${id}`);
-        shapes.set(id, resourceAuthority(sourceRoot, record.path));
+        const authority = resourceAuthority(sourceRoot, record.path);
+        if (authority.mediaType !== "image/png")
+            throw new Error(`FLASH_LIBRARY_RASTERIZED_SHAPE_PNG_REQUIRED: ${id}`);
+        const dimensions = pngDimensions(fs.readFileSync(resolveInside(sourceRoot, record.path)), record.path);
+        shapes.set(id, {
+            ...authority,
+            pixelWidth: dimensions.width,
+            pixelHeight: dimensions.height,
+        });
     }
     const sprites = new Map();
     for (const [idText, value] of Object.entries(spriteRecords)) {
