@@ -190,6 +190,9 @@ const EMBEDDED_FONT_KEYS = Object.freeze([
 const EMBEDDED_FONT_REFERENCE_KEYS = Object.freeze([
     "documentId", "fontId", "fontStyle", "kind", "resourceId", "sourceSha256",
 ]);
+const LEGACY_EMBEDDED_FONT_REFERENCE_KEYS = Object.freeze([
+    "documentId", "fontId", "fontStyle", "sourceSha256",
+]);
 const EMBEDDED_GLYPH_KEYS = Object.freeze(["advance", "bounds", "codePoint", "index"]);
 const EMBEDDED_GLYPH_BOUNDS_KEYS = Object.freeze(["xmax", "xmin", "ymax", "ymin"]);
 const EMBEDDED_KERNING_KEYS = Object.freeze(["adjustment", "leftCodePoint", "rightCodePoint"]);
@@ -515,6 +518,40 @@ function validateEmbeddedFont(value: unknown, fontName: unknown): AuthoredEmbedd
         return Object.freeze({
             documentId: authority.documentId,
             resourceId: reference.resourceId,
+            sourceSha256: authority.sourceSha256,
+            fontId: authority.fontId,
+            fontType: "embedded",
+            fontStyle: authority.fontStyle,
+            unitsPerEm: authority.unitsPerEm,
+            ascent: authority.ascent,
+            descent: authority.descent,
+            leading: authority.leading,
+            glyphs: authority.glyphs,
+            kerning: authority.kerning,
+            alignZones: authority.alignZones,
+        });
+    }
+    if (hasOwnDataProperty(value, "documentId") && !hasOwnDataProperty(value, "fontType")) {
+        const reference = exactDataObject(value, LEGACY_EMBEDDED_FONT_REFERENCE_KEYS, "Legacy authored embedded font reference");
+        nonemptyString(reference.documentId, "embeddedFont.documentId");
+        sha256(reference.sourceSha256, "embeddedFont.sourceSha256");
+        positiveInteger(reference.fontId, "embeddedFont.fontId");
+        const fontStyle = oneOfValue(
+            reference.fontStyle,
+            ["regular", "bold", "italic", "boldItalic"] as const,
+            "embeddedFont.fontStyle",
+        );
+        nonemptyString(fontName, "format.font");
+        const authority = AuthoredFontRegistry.resolvePublishedFont({
+            documentId: reference.documentId,
+            fontId: reference.fontId,
+            fontName,
+            fontStyle,
+            sourceSha256: reference.sourceSha256,
+        });
+        return Object.freeze({
+            documentId: authority.documentId,
+            resourceId: authority.sourceUrl,
             sourceSha256: authority.sourceSha256,
             fontId: authority.fontId,
             fontType: "embedded",

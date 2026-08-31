@@ -750,6 +750,28 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
         field.authoredConfiguration.format.embeddedFont?.glyphs,
         activation.registry.manifest.fonts[0].glyphs,
         "compact hierarchy references must reuse the retained manifest glyph authority");
+    const legacyErrors: unknown[] = [];
+    const legacyPrefab = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1, "_$id": "legacySymbol25", "_$type": "Sprite",
+        "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.textField,
+        authoredConfiguration: {
+            ...configuration,
+            format: {
+                ...configuration.format,
+                embeddedFont: { _$type: "any", value: {
+                    documentId: authored.documentId, fontId: authored.fontId,
+                    fontStyle: authored.fontStyle, sourceSha256: authored.sourceSha256,
+                } },
+            },
+        },
+        name: "TF_LegacyPopTips", x: 0, y: 0, width: 160, height: 20,
+    });
+    const legacyField = legacyPrefab.create({}, legacyErrors) as AuthoredDynamicTextField;
+    assert.deepEqual(legacyErrors, [], "legacy compact font identities must resolve through active authenticated authority");
+    assert.equal(legacyField.authoredConfiguration.format.embeddedFont?.resourceId,
+        activation.registry.manifest.fonts[0].sourceUrl);
+    assert.equal(legacyField.authoredConfiguration.format.embeddedFont?.glyphs, activation.registry.manifest.fonts[0].glyphs);
+    legacyField.destroy(true);
     const settings = (field.children[0] as LayaInput).rasterizationSettings;
     assert.equal(settings?.alignmentZones?.[String(0x56)]?.x?.coordinate, 0.1);
     assert.equal(settings?.alignmentZones?.[String(0x41)]?.y?.range, 1);
