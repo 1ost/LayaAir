@@ -643,12 +643,11 @@ export class FlashLibrarySymbolAdapter {
                     }
                     if (operation.filters !== undefined) {
                         const filters = authoredFilters(operation.filters, replacementId);
-                        if (!this.textMapOnly && typeof prior.operation.name === "string"
-                            && !sameAuthoredFilters(filters, prior.filters)) {
+                        if (!this.textMapOnly && !sameAuthoredFilters(filters, prior.filters)) {
                             const placedAsset = object(assets[String(prior.characterId)], `library.assets.${prior.characterId}`);
                             if (placedAsset.kind !== "sprite")
                                 fail("FLASH_LIBRARY_NAMED_DYNAMIC_FILTER_UNSUPPORTED",
-                                    `Timeline ${String(sourceTimeline.symbolId)} depth ${depth} placement '${prior.operation.name}' `
+                                    `Timeline ${String(sourceTimeline.symbolId)} depth ${depth} placement `
                                     + "changes filters on a non-sprite target.");
                             prior.animatedVisualState = true;
                         }

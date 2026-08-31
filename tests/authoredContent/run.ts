@@ -672,6 +672,52 @@ async function main(): Promise<void> {
             "animated TextField y keys lost placement plus local bounds");
     });
 
+    await test("unnamed sprite placements retain frame-authored filter changes", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const glow = (color: number) => ({
+            kind: "glow", sourceType: "GLOWFILTER", color: { alpha: 1, color },
+            blurX: 4, blurY: 4, strength: 3, passes: 1, innerGlow: false,
+            knockout: false, compositeSource: true,
+        });
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 40, height: 40, frameRate: 24, frameCount: 2, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 40, height: 40 } },
+                "2": { characterId: 2, kind: "sprite", bounds: { x: 0, y: 0, width: 20, height: 20 } },
+                "3": { characterId: 3, kind: "shape", path: "assets/3.png", bounds: { x: 0, y: 0, width: 20, height: 20 } },
+            },
+        };
+        const identity = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 2,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                filters: [glow(0x623582)], matrix: identity,
+            }], labels: [], sounds: [] }, { index: 2, operations: [{
+                op: "place", depth: 1, move: true, ratio: 0, filters: [glow(0x333333)],
+            }], labels: [], sounds: [] }],
+        }], [2, {
+            schema: "flash-timeline@1", symbolId: 2, frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 3, depth: 1, move: false, ratio: 0, matrix: identity,
+            }], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Root",
+            resources: new Map([["assets/3.png", {
+                sourcePath: "assets/3.png", mediaType: "image/png" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        });
+        const track = content.timeline.tracks.find(value => value.property === "authoredVisualState");
+        assert(track !== undefined, "unnamed sprite filter change did not emit a visual-state track");
+        assert(track.keyframes.length === 2
+            && (track.keyframes[0].value as any).filters[0].color === 0x623582
+            && (track.keyframes[1].value as any).filters[0].color === 0x333333,
+        "unnamed sprite visual-state track lost the exact frame filter colors");
+    });
+
     await test("Flash library static affine placements and GlowFilter emit through authenticated native seams", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const glow = {
