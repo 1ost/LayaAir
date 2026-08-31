@@ -6,6 +6,7 @@ import { ColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFi
 import { DropShadowFilter } from "../../src/layaAir/flash/filters/DropShadowFilter";
 import { GlowFilter } from "../../src/layaAir/flash/filters/GlowFilter";
 import { GradientBevelFilter } from "../../src/layaAir/flash/filters/GradientBevelFilter";
+import { setDisplayObjectNativeFilters } from "../../src/layaAir/flash/geom/Transform";
 import { createFlashAuthoredBevelFilter } from "../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
 import { Filter } from "../../src/layaAir/laya/filters/Filter";
 import { PostProcess2D } from "../../src/layaAir/laya/display/PostProcess2D";
@@ -74,6 +75,24 @@ async function main(): Promise<unknown> {
     const glowWeak = await render(new GlowFilter(0xff0000, 0.5, 12, 12, 0.5, 1), 0xffffff);
     const glowStrong = await render(new GlowFilter(0xff0000, 0.5, 12, 12, 4, 2), 0xffffff);
     assert(redOutsideSource(glowStrong) > redOutsideSource(glowWeak), "Glow alpha/strength/quality did not increase the red halo");
+
+    const evenGlow = new GlowFilter(0x622e02, 1, 4, 4, 3, 1);
+    const normalEvenGlow = await renderPlacedStage(evenGlow, false, false);
+    const reflectedEvenGlow = await renderPlacedStage(evenGlow, true, false);
+    assertPixelsEqual("reflected authored glow retains the screen-space even-kernel orientation", normalEvenGlow, reflectedEvenGlow);
+    assertPixelsEqual("vertically reflected authored glow retains the screen-space even-kernel orientation",
+        normalEvenGlow, await renderPlacedStage(evenGlow, false, true));
+    const directedShadow = new DropShadowFilter(5, 0, 0x00ff00, 0.75, 4, 4, 2, 1, false, false, true);
+    assertPixelsEqual("reflected authored shadow retains its screen-space displacement",
+        await renderPlacedStage(directedShadow, false, false), await renderPlacedStage(directedShadow, true, false));
+    const directedBevel = createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 3, angleRadians: 0,
+        highlightColor: 0xff8822, highlightAlpha: 1, shadowColor: 0x251a70, shadowAlpha: 1,
+        blurX: 4, blurY: 4, strength: 1, passes: 1,
+        innerShadow: false, onTop: true, knockout: false, compositeSource: true,
+    });
+    assertPixelsEqual("reflected authored bevel retains its screen-space fields",
+        await renderPlacedStage(directedBevel, false, false), await renderPlacedStage(directedBevel, true, false));
 
     const shadow = await render(new DropShadowFilter(10, 0, 0x00ff00, 0.75, 4, 4, 2, 2, false, false, true), 0xffffff);
     const shadowBounds = colorBounds(shadow, ([r, g, b, a]) => a > 4 && g > r * 1.5 && g > b * 1.5);
@@ -272,6 +291,24 @@ async function renderOverlayStage(): Promise<Readback> {
     return { width: 64, height: 64, pixels };
 }
 
+async function renderPlacedStage(filter: Filter, reflectedX: boolean, reflectedY: boolean): Promise<Readback> {
+    const sprite = new DisplayObject();
+    sprite.graphics.drawRect(0, 0, 8, 8, "#ffffff");
+    sprite.pos(reflectedX ? 32 : 24, reflectedY ? 32 : 24);
+    sprite.scaleX = reflectedX ? -1 : 1;
+    sprite.scaleY = reflectedY ? -1 : 1;
+    setDisplayObjectNativeFilters(sprite, [filter]);
+    Laya.stage.addChild(sprite);
+    Laya.stage.render(performance.now());
+    const canvas = document.querySelector("canvas");
+    const gl = canvas?.getContext("webgl2") || canvas?.getContext("webgl");
+    if (!gl) throw new Error("Laya stage WebGL context was not found");
+    const pixels = new Uint8Array(64 * 64 * 4);
+    gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    sprite.destroy();
+    return { width: 64, height: 64, pixels };
+}
+
 async function renderStage(filter: BitmapFilter | readonly BitmapFilter[] | null, color: number, ownerAlpha: number): Promise<Readback> {
     const sprite = new DisplayObject();
     sprite.graphics.drawRect(24, 24, 8, 8, `#${color.toString(16).padStart(6, "0")}`);
@@ -360,6 +397,17 @@ function assertFingerprint(label: string, actual: ReturnType<typeof fingerprint>
 function assertPixelNear(label: string, actual: Pixel, expected: Pixel, tolerance: number): void {
     assert(actual.every((value, index) => Math.abs(value - expected[index]) <= tolerance),
         `${label} GPU pixel drifted: actual=${actual} expected=${expected} tolerance=${tolerance} logs=${gpuLogs.join(" | ")}`);
+}
+
+function assertPixelsEqual(label: string, actual: Readback, expected: Readback): void {
+    assert(actual.width === expected.width && actual.height === expected.height && actual.pixels.length === expected.pixels.length,
+        `${label} dimensions drifted: actual=${actual.width}x${actual.height} expected=${expected.width}x${expected.height}`);
+    for (let index = 0; index < actual.pixels.length; index++) {
+        if (actual.pixels[index] === expected.pixels[index]) continue;
+        const pixel = Math.floor(index / 4);
+        throw new Error(`${label} at (${pixel % actual.width}, ${Math.floor(pixel / actual.width)}) channel ${index & 3}: `
+            + `actual=${actual.pixels[index]} expected=${expected.pixels[index]}`);
+    }
 }
 
 function redOutsideSource(image: Readback): number {

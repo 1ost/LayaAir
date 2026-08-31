@@ -570,6 +570,7 @@ test("CPU pixel oracle covers alpha cross-terms, offsets, premultiply inputs, an
     assert.deepEqual(flashBoxKernelOffsets(4), [-2, -1, 0, 1]);
     assert.deepEqual(flashBoxKernelOffsets(5), [-2, -1, 0, 1, 2]);
     assert.deepEqual(flashBoxKernelMargins(4, 1), { before: 1, after: 2 });
+    assert.deepEqual(flashBoxKernelMargins(4, 1, -1), { before: 2, after: 1 });
     assert.deepEqual(flashBoxKernelMargins(12, 3), { before: 15, after: 18 });
 });
 

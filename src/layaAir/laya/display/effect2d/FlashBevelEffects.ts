@@ -370,10 +370,12 @@ export class FlashBevelEffect2D extends PostProcess2DEffect {
 
     render(context: PostProcessRenderContext2D): void {
         const source = context.indirectTarget;
-        const offsetX = this.options.distance * Math.cos(this.options.angleRadians);
-        const offsetY = this.options.distance * Math.sin(this.options.angleRadians);
-        const horizontal = flashBoxKernelMargins(this.options.blurX, this.options.quality);
-        const vertical = flashBoxKernelMargins(this.options.blurY, this.options.quality);
+        const horizontalDirection = context.owner?.globalTrans.scaleX < 0 ? -1 : 1;
+        const verticalDirection = context.owner?.globalTrans.scaleY < 0 ? -1 : 1;
+        const offsetX = this.options.distance * Math.cos(this.options.angleRadians) * horizontalDirection;
+        const offsetY = this.options.distance * Math.sin(this.options.angleRadians) * verticalDirection;
+        const horizontal = flashBoxKernelMargins(this.options.blurX, this.options.quality, horizontalDirection);
+        const vertical = flashBoxKernelMargins(this.options.blurY, this.options.quality, verticalDirection);
         const expanded = context.expandOutputBounds(
             horizontal.before + Math.abs(offsetX), vertical.before + Math.abs(offsetY),
             horizontal.after + Math.abs(offsetX), vertical.after + Math.abs(offsetY),
@@ -399,9 +401,9 @@ export class FlashBevelEffect2D extends PostProcess2DEffect {
         context.command.drawRenderElement(this.seedElement, Matrix.EMPTY);
 
         this.horizontalMaterial.setTexture("u_MainTex", primary);
-        this.horizontalMaterial.setVector2("u_Direction", new Vector2(1 / expanded.width, 0));
+        this.horizontalMaterial.setVector2("u_Direction", new Vector2(horizontalDirection / expanded.width, 0));
         this.verticalMaterial.setTexture("u_MainTex", secondary);
-        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -1 / expanded.height));
+        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -verticalDirection / expanded.height));
         for (let pass = 0; pass < this.options.quality; pass++) {
             context.command.setRenderTarget(secondary, true, Color.CLEAR);
             context.command.drawRenderElement(this.horizontalElement, Matrix.EMPTY);

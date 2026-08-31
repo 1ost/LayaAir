@@ -482,12 +482,12 @@
         {
           "path": "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
           "export": "FlashBlurEffect2D",
-          "sha256": "89cfb6eb7399b497d1f3f2e26145b6069a0ba7f2347936bbdda779965b699f08"
+          "sha256": "65112d3b572ab25180e9cbf18dc21a8f1cbb5c1d5b27be9a00e385eb6ab61c99"
         },
         {
           "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
           "export": "FlashBevelEffect2D",
-          "sha256": "223c592bb5d58b647d729eceeae2615144ff580d4a43663333586f43937d87e2"
+          "sha256": "48b0acdb01be9964146fe4d718780ebe54096d57666af60e4d936e6622e10386"
         }
       ],
       "evidence": [
@@ -497,8 +497,8 @@
           "sha256": "d9d4593eba95a181889645b43692d2d7454a9ee08445bd9ec2c0e546255ba31f",
           "capability": "rendering.filter",
           "covers": [
-            "223c592bb5d58b647d729eceeae2615144ff580d4a43663333586f43937d87e2",
-            "89cfb6eb7399b497d1f3f2e26145b6069a0ba7f2347936bbdda779965b699f08"
+            "48b0acdb01be9964146fe4d718780ebe54096d57666af60e4d936e6622e10386",
+            "65112d3b572ab25180e9cbf18dc21a8f1cbb5c1d5b27be9a00e385eb6ab61c99"
           ]
         }
       ]

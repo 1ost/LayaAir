@@ -88,13 +88,20 @@ function effectiveOffset(distance: number, angleRadians: number): { x: number; y
     return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : { x: 0, y: 0 };
 }
 
-export function flashBoxKernelMargins(blur: number, quality: number): { before: number; after: number } {
+export function flashBoxKernelMargins(blur: number, quality: number, axisDirection = 1): { before: number; after: number } {
     const taps = Math.max(1, Math.round(effectiveBlurDimension(blur)));
     const passes = Number.isFinite(quality) ? Math.max(0, Math.min(15, Math.trunc(quality))) : 0;
     const negativeSampleReach = Math.floor(taps / 2) * passes;
     const positiveSampleReach = (taps - 1 - Math.floor(taps / 2)) * passes;
     // Sampling displacement and impulse/output displacement have opposite signs.
-    return { before: positiveSampleReach, after: negativeSampleReach };
+    return axisDirection < 0
+        ? { before: negativeSampleReach, after: positiveSampleReach }
+        : { before: positiveSampleReach, after: negativeSampleReach };
+}
+
+function filterAxisDirection(context: PostProcessRenderContext2D, axis: "x" | "y"): number {
+    const transform = context.owner?.globalTrans;
+    return transform && (axis === "x" ? transform.scaleX : transform.scaleY) < 0 ? -1 : 1;
 }
 
 const COPY_VERTEX = `
@@ -252,8 +259,10 @@ export class FlashBlurEffect2D extends FlashRenderTextureEffect {
 
     render(context: PostProcessRenderContext2D): void {
         const source = context.indirectTarget;
-        const horizontalMargins = flashBoxKernelMargins(this.options.blurX, this.options.quality);
-        const verticalMargins = flashBoxKernelMargins(this.options.blurY, this.options.quality);
+        const horizontalDirection = filterAxisDirection(context, "x");
+        const verticalDirection = filterAxisDirection(context, "y");
+        const horizontalMargins = flashBoxKernelMargins(this.options.blurX, this.options.quality, horizontalDirection);
+        const verticalMargins = flashBoxKernelMargins(this.options.blurY, this.options.quality, verticalDirection);
         const expanded = context.expandOutputBounds(
             horizontalMargins.before, verticalMargins.before,
             horizontalMargins.after, verticalMargins.after,
@@ -272,10 +281,10 @@ export class FlashBlurEffect2D extends FlashRenderTextureEffect {
         context.command.drawRenderElement(this.copyElement, Matrix.EMPTY);
 
         this.horizontalMaterial.setTexture("u_MainTex", primary);
-        this.horizontalMaterial.setVector2("u_Direction", new Vector2(1 / expanded.width, 0));
+        this.horizontalMaterial.setVector2("u_Direction", new Vector2(horizontalDirection / expanded.width, 0));
         this.verticalMaterial.setTexture("u_MainTex", secondary);
         // Texture Y is inverted. This sign also preserves even-kernel placement.
-        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -1 / expanded.height));
+        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -verticalDirection / expanded.height));
         for (let pass = 0; pass < this.options.quality; pass++) {
             context.command.setRenderTarget(secondary, true, Color.CLEAR);
             context.command.drawRenderElement(this.horizontalElement, Matrix.EMPTY);
@@ -447,11 +456,13 @@ export class FlashShadowEffect2D extends FlashRenderTextureEffect {
 
     render(context: PostProcessRenderContext2D): void {
         const source = context.indirectTarget;
+        const horizontalDirection = filterAxisDirection(context, "x");
+        const verticalDirection = filterAxisDirection(context, "y");
         const offset = effectiveOffset(this.options.distance, this.options.angleRadians);
-        const offsetX = offset.x;
-        const offsetY = offset.y;
-        const horizontalMargins = flashBoxKernelMargins(this.options.blurX, this.options.quality);
-        const verticalMargins = flashBoxKernelMargins(this.options.blurY, this.options.quality);
+        const offsetX = offset.x * horizontalDirection;
+        const offsetY = offset.y * verticalDirection;
+        const horizontalMargins = flashBoxKernelMargins(this.options.blurX, this.options.quality, horizontalDirection);
+        const verticalMargins = flashBoxKernelMargins(this.options.blurY, this.options.quality, verticalDirection);
         const expanded = context.expandOutputBounds(
             horizontalMargins.before + Math.max(0, -offsetX),
             verticalMargins.before + Math.max(0, -offsetY),
@@ -477,9 +488,9 @@ export class FlashShadowEffect2D extends FlashRenderTextureEffect {
         context.command.setRenderTarget(primary, true, Color.CLEAR);
         context.command.drawRenderElement(this.seedElement, Matrix.EMPTY);
         this.horizontalMaterial.setTexture("u_MainTex", primary);
-        this.horizontalMaterial.setVector2("u_Direction", new Vector2(1 / expanded.width, 0));
+        this.horizontalMaterial.setVector2("u_Direction", new Vector2(horizontalDirection / expanded.width, 0));
         this.verticalMaterial.setTexture("u_MainTex", secondary);
-        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -1 / expanded.height));
+        this.verticalMaterial.setVector2("u_Direction", new Vector2(0, -verticalDirection / expanded.height));
         for (let pass = 0; pass < this.options.quality; pass++) {
             context.command.setRenderTarget(secondary, true, Color.CLEAR);
             context.command.drawRenderElement(this.horizontalElement, Matrix.EMPTY);
