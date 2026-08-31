@@ -865,6 +865,10 @@ export class FlashLibrarySymbolAdapter {
                 // pixel. Retain the authenticated raster's native extent.
                 width: positiveInteger(rasterAuthority.pixelWidth, `${resourceId}.pixelWidth`),
                 height: positiveInteger(rasterAuthority.pixelHeight, `${resourceId}.pixelHeight`),
+                // JPEXS shape rasters are authenticated pixel projections, not
+                // smoothed source artwork. Point sampling preserves their exact
+                // covered-edge pixels when Laya applies placement transforms.
+                smoothing: false,
                 children: [],
             };
         }

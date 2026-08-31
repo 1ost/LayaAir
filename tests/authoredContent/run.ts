@@ -947,6 +947,20 @@ async function main(): Promise<void> {
             "rasterized shape lost its logical Flash bounds origin");
         assert(shape.width === 9 && shape.height === 10,
             "rasterized shape was resampled into its smaller logical bounds");
+        assert(shape.smoothing === false,
+            "rasterized shape did not retain point-sampled pixel authority");
+        const clip = NativeLayaEmitter.createTimeline(content);
+        const root = NativeLayaEmitter.createPrefabRoot(content, "rasterized-shape.mc", clip,
+            new Map([["flash-character-2", "shape-2.png"]]));
+        try {
+            const nativeShape = root.getChildAt(0) as Laya.Image;
+            assert(nativeShape.smoothing === false,
+                "rasterized shape point sampling did not survive native Laya emission");
+        }
+        finally {
+            root.destroy();
+            clip.destroy();
+        }
     });
 
     await test("Flash library RGB placement transforms emit exact native MovieClip configuration", () => {
