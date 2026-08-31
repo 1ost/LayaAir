@@ -604,7 +604,7 @@
       "predicateExport": "isFlashTransform",
       "predicateSignature": "(value: unknown) => value is Transform",
       "heritageClosure": [],
-      "moduleSha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+      "moduleSha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
     },
     {
       "sourceQName": "flash.net.FileReference",

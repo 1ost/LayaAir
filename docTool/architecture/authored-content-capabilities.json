@@ -408,7 +408,7 @@
         {
           "path": "src/layaAir/flash/geom/Transform.ts",
           "export": "Transform",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
@@ -420,13 +420,13 @@
         {
           "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
           "test": "Flash native transform synchronization surface",
-          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
+          "sha256": "d091d67ed176279f98d861ef06d4ea35367e570bab443bea2113a4cae67c1a57",
           "capability": "rendering.transform",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
             "3f143586cda5efcb2fe4ac86c6cae4768634ca0b39d454dff1bbe2a1266b922b",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
-            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2"
+            "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
+            "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
           ]
         }
       ]
@@ -443,7 +443,7 @@
         {
           "path": "src/layaAir/flash/geom/Transform.ts",
           "export": "Transform",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "path": "src/layaAir/flash/display/DisplayObject.ts",
@@ -455,12 +455,12 @@
         {
           "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
           "test": "Flash native color-transform browser oracle surface",
-          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
+          "sha256": "d091d67ed176279f98d861ef06d4ea35367e570bab443bea2113a4cae67c1a57",
           "capability": "rendering.color-transform",
           "covers": [
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
-            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333"
+            "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
+            "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
           ]
         }
       ]
@@ -24598,7 +24598,7 @@
             "new (displayObject: DisplayObject): Transform"
           ],
           "indexSignatures": [],
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54",
           "heritage": []
         },
         {
@@ -24634,56 +24634,63 @@
           "export": "isFlashTransform",
           "kind": "function",
           "signature": "(value: unknown) => value is Transform",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "module": "src/layaAir/flash/geom/Transform.ts",
           "export": "synchronizeDisplayObjectAlpha",
           "kind": "function",
           "signature": "(target: DisplayObject) => void",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "module": "src/layaAir/flash/geom/Transform.ts",
           "export": "transformForDisplayObject",
           "kind": "function",
           "signature": "(target: DisplayObject) => Transform",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "module": "src/layaAir/flash/geom/Transform.ts",
           "export": "applyTransformToDisplayObject",
           "kind": "function",
           "signature": "(target: DisplayObject, value: Transform) => void",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "module": "src/layaAir/flash/geom/Transform.ts",
           "export": "getDisplayObjectFilters",
           "kind": "function",
           "signature": "(target: DisplayObject) => BitmapFilter[]",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         },
         {
           "module": "src/layaAir/flash/geom/Transform.ts",
           "export": "setDisplayObjectFilters",
           "kind": "function",
           "signature": "(target: DisplayObject, value: BitmapFilter[] | null) => void",
-          "sha256": "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f"
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
+        },
+        {
+          "module": "src/layaAir/flash/geom/Transform.ts",
+          "export": "setDisplayObjectNativeFilters",
+          "kind": "function",
+          "signature": "(target: DisplayObject, value: Filter[] | null) => void",
+          "sha256": "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
         }
       ],
       "evidence": [
         {
           "path": "tests/architecture/flashGeometryBridgeEvidence.test.ts",
           "test": "Flash geometry bridge compiler surface",
-          "sha256": "10111f2099982472b0aa191cbcb7a89105bd8e14d205443dd6d40b1543d2a5fc",
+          "sha256": "d091d67ed176279f98d861ef06d4ea35367e570bab443bea2113a4cae67c1a57",
           "capability": "api.flash.geom",
           "covers": [
             "286f5f355609b172c60ca7bc214237e67f9b23a12643223ab405fa1719b79535",
-            "4baa378b2780b28fdf237f4e11fa383e9f380199f53efa2abe5265e1b482e49f",
             "8c98593c933e534a8e606909f058bcac1d75d75e5f32ead64833d903368d35c6",
             "c25610214b6f59d28ca43b30b55adc8b8607bc387ac6bcaf3f97d524cf79d333",
-            "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2"
+            "c3e54b03c657468b05e10c5273f6345fdf99c0a37f832926c2aec57579d1d2b2",
+            "db1d3272eaa2ae76e4d5698be95288acbefc40a55c19a40b3fc339aa6141cb54"
           ]
         }
       ],
@@ -42660,21 +42667,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         }
       ],
       "evidence": [
@@ -42684,7 +42691,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+            "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
           ]
         }
       ]
@@ -45112,28 +45119,28 @@
           "export": "AuthoredEmbeddedFontConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredFontAlignZonesConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredAdvancedTextRasterizationConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
@@ -45272,8 +45279,8 @@
           "sha256": "648c144918ff959883c47c5240c8786fb29994ffaedf07bd3aa89a38faf9143a",
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
+            "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec",
             "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
-            "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0",
             "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
           ]
@@ -45303,14 +45310,14 @@
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+          "sha256": "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
         }
       ],
       "evidence": [
@@ -45321,7 +45328,7 @@
           "capability": "text.authored-restricted-html-field",
           "covers": [
             "192307f17a5037a8c54e98a6fb6b44f85e153d0b10a17aec4e9f7803f37a5147",
-            "7e66ffcb61f6a05bca26b8b795b5c92232201a302bcaaddc916a98b0df8471c0"
+            "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec"
           ]
         }
       ]

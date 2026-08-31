@@ -7,6 +7,7 @@ import { BitmapData } from "../../src/layaAir/flash/display/BitmapData";
 import { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject";
 import { Point } from "../../src/layaAir/flash/geom/Point";
 import { Rectangle } from "../../src/layaAir/flash/geom/Rectangle";
+import { setDisplayObjectNativeFilters } from "../../src/layaAir/flash/geom/Transform";
 import { BitmapFilter } from "../../src/layaAir/flash/filters/BitmapFilter";
 import { BlurFilter, isBlurFilter } from "../../src/layaAir/flash/filters/BlurFilter";
 import { ColorMatrixFilter, isColorMatrixFilter } from "../../src/layaAir/flash/filters/ColorMatrixFilter";
@@ -184,6 +185,20 @@ test("GradientGlowFilter preserves Flash values and owns the native gradient-glo
         "DisplayObject.filters accepts and detaches the public GradientGlowFilter");
     assert.notEqual(owner.filters[0], gradient);
     assert.equal(bitmapFilterEquals(owner.filters[0], gradient), true);
+});
+
+test("engine-authored filters bypass the source Flash setter while preserving mixed native effects", () => {
+    const owner = new DetachedFilterDisplayObject();
+    const nativeBevel = createFlashAuthoredBevelFilter({
+        sourceType: "BEVELFILTER", distance: 4, angleRadians: Math.PI / 2,
+        highlightColor: 0xffffff, highlightAlpha: 1, shadowColor: 0x00c4c4, shadowAlpha: 1,
+        blurX: 6, blurY: 17, strength: 1, passes: 1, innerShadow: true, onTop: false,
+        knockout: false, compositeSource: true,
+    });
+    assert.doesNotThrow(() => setDisplayObjectNativeFilters(owner, [new GlowFilter(), nativeBevel]));
+    assert.throws(() => owner.filters, /non-Flash filter/,
+        "the public Flash getter must not fabricate a BevelFilter for an engine-internal effect");
+    owner.destroy(true);
 });
 
 test("BitmapData filter rectangles use Flash write margins and directional offsets", () => {

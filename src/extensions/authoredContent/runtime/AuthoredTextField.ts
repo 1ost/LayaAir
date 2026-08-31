@@ -1,7 +1,8 @@
 import {
     AntiAliasType, BitmapFilter, BlurFilter, ColorMatrixFilter, DropShadowFilter, GlowFilter, GradientBevelFilter, GradientGlowFilter, GridFitType, TextField, TextFieldAutoSize, TextFieldType, TextFormat, TextFormatAlign,
 } from "../../../layaAir/flash";
-import { flashDisplayObjectNativeHost } from "../../../layaAir/flash/display/DisplayObject";
+import { isBitmapFilter } from "../../../layaAir/flash/filters/FilterRegistry";
+import { setDisplayObjectNativeFilters } from "../../../layaAir/flash/geom/Transform";
 import { Filter } from "../../../layaAir/laya/filters/Filter";
 import { AuthoredFontRegistry, type AuthoredTextFontBinding } from "../../../layaAir/laya/platform/AuthoredFontRegistry";
 import {
@@ -357,11 +358,11 @@ export function createAuthoredFilters(value: unknown): Filter[] {
 }
 
 export function applyAuthoredFilters(target: import("../../../layaAir/flash").DisplayObject, filters: Filter[]): void {
-    if (filters.every((filter): filter is BitmapFilter => filter instanceof BitmapFilter)) {
+    if (filters.every((filter): filter is BitmapFilter => isBitmapFilter(filter))) {
         target.filters = filters;
         return;
     }
-    flashDisplayObjectNativeHost(target).filters = filters;
+    setDisplayObjectNativeFilters(target, filters);
 }
 
 export function normalizeAuthoredTextFieldConfiguration(

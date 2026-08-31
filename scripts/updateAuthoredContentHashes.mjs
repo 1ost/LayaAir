@@ -372,6 +372,7 @@ const geometrySubjects = [
     ["src/layaAir/flash/geom/Transform.ts", "applyTransformToDisplayObject", "function"],
     ["src/layaAir/flash/geom/Transform.ts", "getDisplayObjectFilters", "function"],
     ["src/layaAir/flash/geom/Transform.ts", "setDisplayObjectFilters", "function"],
+    ["src/layaAir/flash/geom/Transform.ts", "setDisplayObjectNativeFilters", "function"],
 ];
 Object.assign(geometryCapability, {
     status: "typescript-obligation",

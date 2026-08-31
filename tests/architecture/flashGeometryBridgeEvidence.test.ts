@@ -7,7 +7,7 @@ import type { Matrix, isFlashMatrix } from "../../src/layaAir/flash/geom/Matrix.
 import type { ColorTransform, isFlashColorTransform } from "../../src/layaAir/flash/geom/ColorTransform.ts";
 import type {
     Transform, isFlashTransform, synchronizeDisplayObjectAlpha, transformForDisplayObject,
-    applyTransformToDisplayObject, getDisplayObjectFilters, setDisplayObjectFilters,
+    applyTransformToDisplayObject, getDisplayObjectFilters, setDisplayObjectFilters, setDisplayObjectNativeFilters,
 } from "../../src/layaAir/flash/geom/Transform.ts";
 import type { DisplayObject } from "../../src/layaAir/flash/display/DisplayObject.ts";
 import type { Matrix as LayaMatrix } from "../../src/layaAir/laya/maths/Matrix.ts";
@@ -18,7 +18,7 @@ test("Flash geometry bridge compiler surface", () => {
         typeof isFlashColorTransform, typeof Transform, typeof isFlashTransform,
         typeof synchronizeDisplayObjectAlpha, typeof transformForDisplayObject,
         typeof applyTransformToDisplayObject, typeof getDisplayObjectFilters,
-        typeof setDisplayObjectFilters] extends readonly unknown[] ? boolean : never));
+        typeof setDisplayObjectFilters, typeof setDisplayObjectNativeFilters] extends readonly unknown[] ? boolean : never));
 });
 
 test("Flash native transform synchronization surface", () => {

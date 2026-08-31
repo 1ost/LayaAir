@@ -4,6 +4,7 @@ import { ColorMatrixFilter } from "../filters/ColorMatrixFilter";
 import { BitmapFilter } from "../filters/BitmapFilter";
 import { isBitmapFilter } from "../filters/FilterRegistry";
 import { Sprite as LayaSprite } from "../../laya/display/Sprite";
+import { Filter } from "../../laya/filters/Filter";
 import { Matrix as LayaMatrix } from "../../laya/maths/Matrix";
 import { ColorTransform, isFlashColorTransform } from "./ColorTransform";
 import { isFlashMatrix, Matrix } from "./Matrix";
@@ -45,12 +46,22 @@ function setNativeMatrix(target: DisplayObject, value: LayaMatrix): void {
     nativeHost(target)._setNativeTransform(value);
 }
 
-function nativeFilters(target: DisplayObject): BitmapFilter[] {
-    return (NATIVE_FILTERS.get!.call(target) as BitmapFilter[] | null) ?? [];
+function nativeFilters(target: DisplayObject): Filter[] {
+    return (NATIVE_FILTERS.get!.call(target) as Filter[] | null) ?? [];
 }
 
-function setNativeFilters(target: DisplayObject, value: BitmapFilter[] | null): void {
+function setNativeFilters(target: DisplayObject, value: Filter[] | null): void {
     NATIVE_FILTERS.set!.call(target, value);
+}
+
+/** @internal Installs engine-owned filters without re-entering the source-shaped Flash setter. */
+export function setDisplayObjectNativeFilters(target: DisplayObject, value: Filter[] | null): void {
+    if (!isFlashDisplayObject(target)) throw new TypeError("target must be a DisplayObject");
+    if (value !== null && !Array.isArray(value)) throw new TypeError("native filters must be an Array or null");
+    const filters = value === null ? [] : Array.from(value);
+    const internal = DISPLAY_COLOR_FILTERS.get(target);
+    if (internal && !filters.includes(internal)) filters.unshift(internal);
+    setNativeFilters(target, filters.length ? filters : null);
 }
 
 function localMatrix(target: DisplayObject): Matrix {
