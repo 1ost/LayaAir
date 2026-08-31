@@ -120,15 +120,29 @@ test("serialized authored frame labels bind exact native MovieClip navigation an
             "rejected frame navigation must not mutate the current frame or playback state");
     }
 
-    assert.throws(() => {
-        movie.authoredFrameLabels = { "not a label": 1 };
-    }, /stable identifiers/);
+    const printableLabels = Object.create(null) as Record<string, number>;
+    Object.defineProperties(printableLabels, {
+        "1": { enumerable: true, value: 1 },
+        "ready state": { enumerable: true, value: 2 },
+        "無活動": { enumerable: true, value: 3 },
+        "__proto__": { enumerable: true, value: 4 },
+    });
+    movie.authoredFrameLabels = printableLabels;
+    for (const [label, frame] of Object.entries(printableLabels)) {
+        movie.gotoAndStop(label);
+        assert.equal(movie.currentFrame, frame, `printable Flash frame label '${label}' did not navigate exactly`);
+    }
+    for (const invalid of ["", "invalid\u0000label", "x".repeat(129)]) {
+        assert.throws(() => {
+            movie.authoredFrameLabels = { [invalid]: 1 };
+        }, /nonempty, control-free, and at most 128 UTF-16 units/);
+    }
     assert.throws(() => {
         movie.authoredFrameLabels = { outside: 5 };
     }, /outside 1\.\.4/);
     assert.deepEqual(
         { ...movie.flashFrameLabels },
-        { start: 1, end: 4 },
+        Object.fromEntries(Object.entries(printableLabels)),
         "rejected serialized labels corrupted the prior native label map",
     );
 });

@@ -5,7 +5,6 @@ import { Sprite } from "./Sprite";
 
 export type FlashFrameReference = number | string;
 export type FlashFrameScript = (() => void) | null;
-const LABEL = /^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/;
 const MOVIE_CLIP_VALUES = new WeakSet<object>();
 
 /** @internal Read-only nominal proof for canonical Flash movie clips. */
@@ -28,7 +27,8 @@ export function validateAuthoredMovieClipFrameLabels(value: Record<string, numbe
     if (prototype !== Object.prototype && prototype !== null) throw new TypeError("MovieClip labels must be a plain object");
     const result: Record<string, number> = Object.create(null) as Record<string, number>;
     for (const key of Reflect.ownKeys(value)) {
-        if (typeof key !== "string" || !LABEL.test(key)) throw new TypeError("MovieClip label names must be stable identifiers");
+        if (typeof key !== "string" || key.length === 0 || key.length > 128 || /[\u0000-\u001f\u007f]/.test(key))
+            throw new TypeError("MovieClip label names must be nonempty, control-free, and at most 128 UTF-16 units");
         const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
         if (!descriptor.enumerable || !("value" in descriptor)) throw new TypeError(`MovieClip label '${key}' must be an enumerable data property`);
         const frame = descriptor.value;

@@ -529,7 +529,7 @@
           "export": "validateAuthoredMovieClipFrameLabels",
           "kind": "function",
           "signature": "(value: Record<string, number>, totalFrames?: number) => Readonly<Record<string, number>>",
-          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+          "sha256": "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7"
         }
       ],
       "evidence": [
@@ -539,8 +539,8 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "timeline.frames-labels",
           "covers": [
-            "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87",
-            "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+            "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7",
+            "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87"
           ]
         }
       ]
@@ -12551,7 +12551,7 @@
             "new (): MovieClip"
           ],
           "indexSignatures": [],
-          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54",
+          "sha256": "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7",
           "heritage": [
             {
               "kind": "extends",
@@ -19933,14 +19933,14 @@
           "export": "FlashFrameReference",
           "kind": "type",
           "signature": "any",
-          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+          "sha256": "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7"
         },
         {
           "module": "src/layaAir/flash/display/MovieClip.ts",
           "export": "isFlashMovieClip",
           "kind": "function",
           "signature": "(value: unknown) => value is MovieClip",
-          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+          "sha256": "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7"
         },
         {
           "module": "src/layaAir/flash/display/NativeMovieClipTimeline.ts",
@@ -23617,7 +23617,7 @@
           "export": "FlashFrameScript",
           "kind": "type",
           "signature": "any",
-          "sha256": "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54"
+          "sha256": "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7"
         },
         {
           "module": "src/layaAir/flash/display/BitmapData.ts",
@@ -23702,6 +23702,7 @@
             "4e69cc28b2b72509fb41545792c3be407c1fcb6f919f6b46905a762e96471573",
             "51325a7f3cbaf07ccabb7fd112f64c0d95bf812701456af708612fb2fd4c4352",
             "6598cd4ebb17b74e1782b8b496cd62573447beb0a960bcad84ec89b3adc22dc2",
+            "6d8e92a89d17f7a4f6e9c1a3f2407441c1a80f5f256991d1f2dbd4ef1b04cfd7",
             "70c64bbf72cd9180cf80df24da0db38cf14513b1d7c1b3b6aa2a23ececb1e852",
             "71bae990a7c05d9da562a149ecbbf4ead79fd93f17c14986e25e357f4d37902a",
             "7644c026a83f3cb58cd3a01e6ad171b32d12704b641789d73d3e55af7ebb1f3a",
@@ -23710,7 +23711,6 @@
             "7fa40b57c8c366760bcae2616fdf66fe6ce7d3e48e4f49bc00c561a3625cd8dd",
             "92619018bd9d808d5a1f209a3ea41be5c6fb85265230a9767ab6d6e07ea97ca8",
             "ad19e9f375d873d9be886945b51cab007177a9aaaa73f0fd893b8f20c7bc14ff",
-            "ae2e5c94d4e57740678d27dd98377241cd318ecd6ea2f5d09c4a84b6d66c6c54",
             "f292c16ecce893ec6d366eed5ec3e4e7cf2b8702c8a9cd65768f06816f392f15",
             "f549df71b13c3744bb86b8f98577587d2debee5063bf2a4eb1d8822b417d513c"
           ]
