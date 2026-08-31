@@ -430,8 +430,6 @@ export function normalizeAuthoredTextFieldConfiguration(
     if (embeddedFont !== undefined && embeddedFont.fontStyle !== expectedStyle)
         throw new TypeError("embedded font style does not match authored bold/italic state");
     if (record.html) {
-        if (record.type !== TextFieldType.DYNAMIC)
-            throw new TypeError("authored HTML is admitted only for dynamic fields");
         const layout = parseRestrictedFlashHtmlText(record.initialText, {
             align: oneOfValue(format.align,
                 [TextFormatAlign.LEFT, TextFormatAlign.CENTER, TextFormatAlign.RIGHT, TextFormatAlign.JUSTIFY] as const,

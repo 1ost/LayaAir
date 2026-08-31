@@ -472,8 +472,9 @@ export class SubStructRender {
 
       let sprite = this._sprite;
       //rect 为 mask 逻辑父节点世界坐标系下
-      if (sprite.mask) {
-         this._updateLogicMatrix(sprite.mask, sprite.globalTrans.getMatrix(), rect.x, rect.y, matrix);
+      const nativeMask = sprite._getNativeMask();
+      if (nativeMask) {
+         this._updateLogicMatrix(nativeMask, sprite.globalTrans.getMatrix(), rect.x, rect.y, matrix);
       }
       else if (sprite._maskParent && (sprite as unknown as { _getNativeTransform(): Matrix })._getNativeTransform()) {
          this._updateLogicMatrix(sprite, sprite.globalTrans.getMatrix(), rect.x, rect.y, matrix);
@@ -525,7 +526,7 @@ export class SubStructRender {
     * @param destRT 
     */
    _updateRenderTexture(oriRT: RenderTexture2D, destRT: RenderTexture2D, outputOffset?: { x: number, y: number }) {
-      this._handle.mask = this._sprite.mask?._struct;
+      this._handle.mask = this._sprite._getNativeMask()?._struct;
 
       if (this._submit._key.blendShader !== this._subStruct.blendMode) {
          this._submit._key.blendShader = this._subStruct.blendMode;

@@ -140,6 +140,17 @@ test("restricted Flash HTML preserves authenticated nested face and mixed bold r
     }).htmlText, markup);
 });
 
+test("restricted Flash HTML preserves authored input fields", () => {
+    const field = createAuthoredTextField({ ...configuration(), type: "input" });
+    try {
+        const native = field.children[0] as LayaInput;
+        assert.equal(field.type, "input");
+        assert.equal(field.htmlText, MARKUP);
+        assert.equal(field.text, "\u2026\u2026");
+        assert.equal(native.html, true);
+    } finally { field.destroy(true); }
+});
+
 test("restricted Flash HTML preserves authenticated nested letter-spacing runs", () => {
     assert.deepEqual(parseRestrictedFlashHtmlText(LETTER_SPACING_RUN_MARKUP), {
         markup: LETTER_SPACING_RUN_MARKUP, plainText: "Hueco Mundo \rShinigami", align: "left", font: "Arial", size: 14,
@@ -201,5 +212,4 @@ test("restricted Flash HTML fails closed before TextField publication", () => {
         '<p align="center" onclick="x"><font face="TestSans" size="10" color="#fff7c5" letterSpacing="0.000000" kerning="1">bad</font></p>',
     ]) assert.throws(() => parseRestrictedFlashHtmlText(markup), /AUTHORED_CONTENT_HTML_TEXT/);
     assert.throws(() => createAuthoredTextField({ ...configuration(), format: { ...configuration().format, color: 0xffffff } }), /must match its exact format/);
-    assert.throws(() => createAuthoredTextField({ ...configuration(), type: "input" }), /admitted only for dynamic fields/);
 });

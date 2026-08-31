@@ -969,6 +969,11 @@ export class Sprite extends Node {
         return this._mask;
     }
 
+    /** @internal Returns the engine-owned mask without invoking a source facade override. */
+    _getNativeMask(): Sprite | null {
+        return this._mask ?? null;
+    }
+
     set mask(value: Sprite) {
         if (value == this || (value && this._mask == value && value._maskParent == this))
             return;
@@ -1861,8 +1866,9 @@ export class Sprite extends Node {
                         let destrt = sprite._drawOriRT;
                         if (destrt) {
                             sprite._oriRenderPass.renderTexture = destrt;
-                            if (sprite.mask) {
-                                sprite._oriRenderPass.mask = sprite.mask._struct;
+                            const nativeMask = sprite._getNativeMask();
+                            if (nativeMask) {
+                                sprite._oriRenderPass.mask = nativeMask._struct;
                             } else
                                 sprite._oriRenderPass.mask = null;
 

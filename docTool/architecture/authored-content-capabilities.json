@@ -1497,6 +1497,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
+            },
+            {
+              "abstract": false,
               "kind": "property",
               "name": "_globalTrans",
               "scope": "instance",
@@ -3673,6 +3682,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -5856,6 +5874,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -8089,6 +8116,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -10331,6 +10367,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -12811,6 +12856,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
+            },
+            {
+              "abstract": false,
               "kind": "property",
               "name": "_globalTrans",
               "scope": "instance",
@@ -15107,6 +15161,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
+            },
+            {
+              "abstract": false,
               "kind": "property",
               "name": "_globalTrans",
               "scope": "instance",
@@ -17355,6 +17418,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -20598,6 +20670,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -31453,6 +31534,15 @@
             },
             {
               "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
+            },
+            {
+              "abstract": false,
               "kind": "property",
               "name": "_globalTrans",
               "scope": "instance",
@@ -34977,6 +35067,15 @@
               "optional": false,
               "readonly": false,
               "signature": "(bit: number) => boolean"
+            },
+            {
+              "abstract": false,
+              "kind": "method",
+              "name": "_getNativeMask",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "() => Sprite | null"
             },
             {
               "abstract": false,
@@ -42561,21 +42660,21 @@
           "export": "AuthoredTextFormatConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "createAuthoredTextField",
           "kind": "function",
           "signature": "(configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         }
       ],
       "evidence": [
@@ -42585,7 +42684,7 @@
           "sha256": "eb6dbf0a97a36f484f48c45c0254c84de4ac72ab5b7c3f9c98c7b90846ae1e9b",
           "capability": "text.authored-device-field-configuration",
           "covers": [
-            "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+            "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
           ]
         }
       ]
@@ -45013,28 +45112,28 @@
           "export": "AuthoredEmbeddedFontConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredFontAlignZonesConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "AuthoredAdvancedTextRasterizationConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
@@ -45174,8 +45273,8 @@
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
             "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
+            "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db",
             "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87",
-            "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
           ]
         }
@@ -45204,14 +45303,14 @@
           "export": "AuthoredTextFieldConfiguration",
           "kind": "interface",
           "signature": "any",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         },
         {
           "module": "src/extensions/authoredContent/runtime/AuthoredTextField.ts",
           "export": "configureAuthoredTextField",
           "kind": "function",
           "signature": "(field: TextField, configuration: AuthoredTextFieldConfiguration) => TextField",
-          "sha256": "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+          "sha256": "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
         }
       ],
       "evidence": [
@@ -45222,7 +45321,7 @@
           "capability": "text.authored-restricted-html-field",
           "covers": [
             "192307f17a5037a8c54e98a6fb6b44f85e153d0b10a17aec4e9f7803f37a5147",
-            "c6f85ee694d1def8f54d1ca3adf438e96f12d085cf97978f9bb3f5d958f2ef9b"
+            "5477f8a1f1d45035569a7867b3825630ed8b30fbf9a2e207b39ff3644a8124db"
           ]
         }
       ]

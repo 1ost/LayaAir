@@ -420,6 +420,10 @@ test("HierarchyParser resolves nested authored native mask references without wi
     assert.ok(owner instanceof AuthoredMaskOwner);
     assert.equal(maskDescriptor.get!.call(owner), nativeMask,
         "the canonical Flash host retains the exact hierarchy Image as its native mask");
+    assert.equal(owner._getNativeMask(), nativeMask,
+        "engine render paths obtain the hierarchy-native mask without invoking the Flash facade getter");
+    assert.throws(() => owner.mask, /contains a non-canonical native mask/,
+        "the public Flash getter remains fail-closed for hierarchy-native masks");
     assert.equal(nativeMask._maskParent, flashDisplayObjectNativeHost(owner));
     assert.notEqual(owner._renderType & SpriteConst.MASK, 0);
     assert.throws(() => Reflect.set(owner, "mask", new LayaSprite()),
