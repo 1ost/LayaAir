@@ -88,12 +88,18 @@ export class Animator2DBase extends Component {
             } else if ("number" === typeof data) {
                 pro.ower[pro.key] = weight * data;
                 this._commitAnimatedProperty(pro);
-            } else if ("object" === typeof data) {
-                if (data.pos) {
-                    pro.ower.x = data.pos.x;
-                    pro.ower.y = data.pos.y;
+            } else if (data !== null && "object" === typeof data) {
+                const structured = data as { pos?: Vector3, rotation?: Vector3 };
+                if (structured.pos !== undefined || structured.rotation !== undefined) {
+                    if (structured.pos) {
+                        pro.ower.x = structured.pos.x;
+                        pro.ower.y = structured.pos.y;
+                    }
+                    if (structured.rotation != null) pro.ower.rotation = structured.rotation.z;
+                } else {
+                    pro.ower[pro.key] = data;
+                    this._commitAnimatedProperty(pro);
                 }
-                if (null != data.rotation) pro.ower.rotation = data.rotation.z;
             } else {
                 if ("string" === typeof data) {
                     if (data.startsWith("tres://")) {

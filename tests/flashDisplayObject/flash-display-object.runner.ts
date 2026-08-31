@@ -696,3 +696,29 @@ test("native animator matrix tracks bypass the sealed Flash transform facade", (
     assert.equal(display.scaleX, 0.5);
     assert.equal(Object.isExtensible(display.transform), false);
 });
+
+test("native animator structured tracks assign through the authored runtime setter", () => {
+    class StructuredDisplay extends DisplayObject {
+        private _visualState: object | null = null;
+        setterCalls = 0;
+
+        get authoredVisualState(): object | null { return this._visualState; }
+        set authoredVisualState(value: object | null) {
+            this.setterCalls += 1;
+            this._visualState = value;
+        }
+    }
+
+    const display = new StructuredDisplay();
+    const animator = Object.create(Animator2DBase.prototype) as Animator2DBase & {
+        _applyAniData(owner: unknown, additive: boolean, weight: number, data: object): void;
+    };
+    const visualState = Object.freeze({ colorTransform: Object.freeze({ alphaMultiplier: 1 }), filters: Object.freeze([]) });
+    animator._applyAniData({
+        ower: display,
+        pro: { defVal: null, key: "authoredVisualState", ower: display },
+    }, false, 1, visualState);
+
+    assert.equal(display.setterCalls, 1);
+    assert.equal(display.authoredVisualState, visualState);
+});
