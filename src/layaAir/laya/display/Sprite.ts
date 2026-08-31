@@ -566,7 +566,7 @@ export class Sprite extends Node {
     /** @internal Engine-owned matrix seam for source-shaped facades that override `transform`. */
     protected _getNativeTransform(): Matrix {
         if (!this._tfChanged)
-            return this._transform;
+            return this._transform || (this._transform = new Matrix());
 
         this._tfChanged = false;
         let m = this._transform || (this._transform = new Matrix());

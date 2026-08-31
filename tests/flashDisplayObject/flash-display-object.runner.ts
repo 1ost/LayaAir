@@ -7,6 +7,7 @@ import { NodeFlags } from "../../src/layaAir/laya/Const";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { SpriteConst } from "../../src/layaAir/laya/display/SpriteConst";
+import { Animator2DBase } from "../../src/layaAir/laya/components/Animator2DBase";
 import {
     FlashOverlayCompositor2D,
     flashOverlayPremultipliedPixel,
@@ -655,4 +656,43 @@ test("native HTML links project to source-shaped TextEvent.LINK", () => {
     assert.equal(received.bubbles, true);
     assert.equal(received.cancelable, false);
     assert.equal(received.target, field);
+});
+
+test("native animator matrix tracks bypass the sealed Flash transform facade", () => {
+    const direct = new DisplayObject();
+    const directHost = direct as unknown as {
+        _getNativeTransform(): import("../../src/layaAir/laya/maths/Matrix").Matrix;
+        _setNativeTransform(value: import("../../src/layaAir/laya/maths/Matrix").Matrix): void;
+    };
+    const directMatrix = directHost._getNativeTransform().clone();
+    directMatrix.a = 0.25;
+    directHost._setNativeTransform(directMatrix);
+    assert.equal(direct.scaleX, 0.25);
+
+    const display = new DisplayObject();
+    const animator = Object.create(Animator2DBase.prototype) as Animator2DBase & {
+        _ownerMap: unknown;
+        _applyAniData(owner: unknown, additive: boolean, weight: number, data: number): void;
+        getOwner(node: unknown): unknown;
+        owner: DisplayObject;
+    };
+    animator.owner = display;
+    animator._ownerMap = null;
+    const node = {
+        getPropertyByIndex: (index: number): string => ["transform", "a"][index],
+        ownerPathCount: 0,
+        propertyCount: 2,
+    };
+
+    const owner = animator.getOwner(node);
+    const displayHost = display as unknown as { _getNativeTransform(): import("../../src/layaAir/laya/maths/Matrix").Matrix };
+    assert.equal(typeof displayHost._getNativeTransform, "function");
+    assert.equal((owner as any).pro.ower, displayHost._getNativeTransform());
+    assert.equal((owner as any).pro.parentOwer, display);
+    assert.equal((owner as any).pro.parentKey, "transform");
+    animator._applyAniData(owner, false, 1, 0.5);
+
+    assert.equal(displayHost._getNativeTransform().a, 0.5);
+    assert.equal(display.scaleX, 0.5);
+    assert.equal(Object.isExtensible(display.transform), false);
 });

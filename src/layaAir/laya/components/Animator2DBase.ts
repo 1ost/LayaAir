@@ -84,10 +84,10 @@ export class Animator2DBase extends Component {
             }
             if (additive && "number" === typeof data) {
                 pro.ower[pro.key] = pro.defVal + weight * data;
-                if (pro.parentOwer && pro.parentKey != null) pro.parentOwer[pro.parentKey] = pro.ower;
+                this._commitAnimatedProperty(pro);
             } else if ("number" === typeof data) {
                 pro.ower[pro.key] = weight * data;
-                if (pro.parentOwer && pro.parentKey != null) pro.parentOwer[pro.parentKey] = pro.ower;
+                this._commitAnimatedProperty(pro);
             } else if ("object" === typeof data) {
                 if (data.pos) {
                     pro.ower.x = data.pos.x;
@@ -105,7 +105,7 @@ export class Animator2DBase extends Component {
                             ILaya.loader.load(url, { type: Loader.IMAGE }).then(tex => {
                                 if (!this.destroyed) {
                                     pro.ower[pro.key] = tex;
-                                    if (pro.parentOwer && pro.parentKey != null) pro.parentOwer[pro.parentKey] = pro.ower;
+                                    this._commitAnimatedProperty(pro);
                                 }
                             });
                             return;
@@ -113,9 +113,19 @@ export class Animator2DBase extends Component {
                     }
                 }
                 pro.ower[pro.key] = data;
-                if (pro.parentOwer && pro.parentKey != null) pro.parentOwer[pro.parentKey] = pro.ower;
+                this._commitAnimatedProperty(pro);
             }
         }
+    }
+
+    /** @internal Commits nested animation values through native engine seams when a source facade overrides the public property. */
+    private _commitAnimatedProperty(pro: { ower: any, parentOwer?: any, parentKey?: string }): void {
+        if (!pro.parentOwer || pro.parentKey == null) return;
+        if (pro.parentKey === "transform" && typeof pro.parentOwer._setNativeTransform === "function") {
+            pro.parentOwer._setNativeTransform(pro.ower);
+            return;
+        }
+        pro.parentOwer[pro.parentKey] = pro.ower;
     }
 
     /**
@@ -178,7 +188,10 @@ export class Animator2DBase extends Component {
                         pro.defVal = m.getFloat(pro.key);
                     }
                 } else if (pro.parentOwer && pro.parentKey != null) {
-                    pro.ower = pro.parentOwer[pro.parentKey];
+                    pro.ower = pro.parentKey === "transform"
+                        && typeof pro.parentOwer._getNativeTransform === "function"
+                        ? pro.parentOwer._getNativeTransform()
+                        : pro.parentOwer[pro.parentKey];
                     pro.defVal = pro.ower ? pro.ower[pro.key] : null;
                 } else {
                     pro.defVal = pro.ower[pro.key];
@@ -239,6 +252,13 @@ export class Animator2DBase extends Component {
                         };
                         break;
                     }
+                    if (i < propertyCount - 1 && pname === "transform"
+                        && typeof pobj?._getNativeTransform === "function") {
+                        prevPobj = pobj;
+                        prevPname = pname;
+                        pobj = pobj._getNativeTransform();
+                        continue;
+                    }
                     if (i == propertyCount - 1 || null == pobj) {
                         ret.pro = { ower: pobj, key: pname, defVal: pobj ? pobj[pname] : null, parentOwer: prevPobj, parentKey: prevPname };
                         break;
@@ -254,11 +274,14 @@ export class Animator2DBase extends Component {
                         pobj = null;
                         var classObj = ClassUtils.getClass(pname);
                         if (classObj) pobj = property.getComponent(classObj);
-                    } else {
-                        pobj = pobj[pname];
-                    }
+                    } else pobj = pobj[pname];
                 }
             }
+        }
+        if (ret.pro?.parentKey === "transform"
+            && typeof ret.pro.parentOwer?._getNativeTransform === "function") {
+            ret.pro.ower = ret.pro.parentOwer._getNativeTransform();
+            ret.pro.defVal = ret.pro.ower?.[ret.pro.key];
         }
         if (null == this._ownerMap) this._ownerMap = new Map();
         this._ownerMap.set(node, ret);
