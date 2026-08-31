@@ -281,8 +281,11 @@ export function configureAuthoredTextField(
     textFormat.kerning = value.format.kerning ?? false;
     field.defaultTextFormat = textFormat;
     applyAuthoredFilters(field, createAuthoredFilters(value.filters ?? []));
-    if (value.html) field.htmlText = value.initialText;
-    else field.text = value.initialText;
+    // Initial authored text obeys the same subset-font boundary as a locale
+    // update. A non-outlined DefineEditText can retain embedded metrics for
+    // covered glyphs while relying on the device/browser face for a missing
+    // glyph already present in its source markup.
+    applyAuthoredLocaleText(field, value.initialText);
     return field;
 }
 

@@ -760,6 +760,28 @@ test("font activation precedes real hierarchy decoding and owns embedded metrics
     assert.equal(field.text, "Aü");
     assert.equal(field.embedFonts, false, "an uncovered locale glyph selects device/browser fallback");
     assert.notEqual(field.fontFamilyResolver, boundFamilyResolver);
+
+    const sourceFallbackErrors: unknown[] = [];
+    const sourceFallbackMarkup = `<p align="center"><font face="${authored.fontName}" size="12" `
+        + 'color="#ffffff" letterSpacing="0.000000" kerning="1"><b>A\uFF1A</b></font></p>';
+    const sourceFallbackPrefab = new PrefabImpl(HierarchyParser, {
+        "_$ver": 1, "_$id": "sourceFallback", "_$type": "Sprite",
+        "_$runtime": AUTHORED_CONTENT_RUNTIME_IDS.textField,
+        authoredConfiguration: {
+            ...configuration,
+            html: true,
+            useOutlines: false,
+            initialText: sourceFallbackMarkup,
+        },
+        name: "TF_SourceFallback", x: 0, y: 0, width: 160, height: 20,
+    });
+    const sourceFallbackField = sourceFallbackPrefab.create({}, sourceFallbackErrors) as AuthoredDynamicTextField;
+    assert.deepEqual(sourceFallbackErrors, [],
+        "a missing initial HTML glyph must select device fallback instead of failing construction");
+    assert.equal(sourceFallbackField.text, "A\uFF1A");
+    assert.equal(sourceFallbackField.embedFonts, false);
+    assert.notEqual(sourceFallbackField.fontFamilyResolver, boundFamilyResolver);
+    sourceFallbackField.destroy(true);
     field.destroy(true);
     assert.notEqual(field.fontFamilyResolver, boundFamilyResolver,
         "destroy releases the authenticated field binding before native input teardown");
