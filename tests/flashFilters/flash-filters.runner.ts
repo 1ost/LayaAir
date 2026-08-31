@@ -22,7 +22,7 @@ import {
 } from "../../src/layaAir/laya/display/effect2d/FlashBevelEffects";
 import {
     FLASH_IDENTITY_COLOR_MATRIX, FlashBlurEffect2D, FlashColorMatrixEffect2D, FlashShadowEffect2D,
-    applyFlashColorMatrixPixel, flashBoxKernelMargins, flashBoxKernelOffsets,
+    applyFlashColorMatrixPixel, applyFlashShadowStrength, flashBoxKernelMargins, flashBoxKernelOffsets,
 } from "../../src/layaAir/laya/display/effect2d/FlashFilterEffects";
 import { PostProcess2D } from "../../src/layaAir/laya/display/PostProcess2D";
 import { NoRender2DProcess } from "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
@@ -571,4 +571,12 @@ test("CPU pixel oracle covers alpha cross-terms, offsets, premultiply inputs, an
     assert.deepEqual(flashBoxKernelOffsets(5), [-2, -1, 0, 1, 2]);
     assert.deepEqual(flashBoxKernelMargins(4, 1), { before: 1, after: 2 });
     assert.deepEqual(flashBoxKernelMargins(12, 3), { before: 15, after: 18 });
+});
+
+test("Flash shadow strength clamps alpha before re-premultiplying its constant color", () => {
+    const shadow = applyFlashShadowStrength(0.5, 0x622e02, 3);
+    assert.deepEqual(shadow, { r: 98 / 255, g: 46 / 255, b: 2 / 255, a: 1 });
+    assert.deepEqual(applyFlashShadowStrength(0.25, 0x804020, 2), {
+        r: 64 / 255, g: 32 / 255, b: 16 / 255, a: 0.5,
+    });
 });

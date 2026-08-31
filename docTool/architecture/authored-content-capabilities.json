@@ -482,7 +482,7 @@
         {
           "path": "src/layaAir/laya/display/effect2d/FlashFilterEffects.ts",
           "export": "FlashBlurEffect2D",
-          "sha256": "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+          "sha256": "89cfb6eb7399b497d1f3f2e26145b6069a0ba7f2347936bbdda779965b699f08"
         },
         {
           "path": "src/layaAir/laya/display/effect2d/FlashBevelEffects.ts",
@@ -498,7 +498,7 @@
           "capability": "rendering.filter",
           "covers": [
             "223c592bb5d58b647d729eceeae2615144ff580d4a43663333586f43937d87e2",
-            "676b69f1de5e6d8bfbe43fa7a199092e16226493a6dffd440f4c28d1d283a872"
+            "89cfb6eb7399b497d1f3f2e26145b6069a0ba7f2347936bbdda779965b699f08"
           ]
         }
       ]

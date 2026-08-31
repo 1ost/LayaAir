@@ -324,7 +324,8 @@ ${FLASH_TEXTURE_SAMPLING}
 varying vec2 v_Texcoord0;
 void main() {
   vec4 source = FLASH_TEXTURE_2D(u_SourceTex, v_Texcoord0);
-  vec4 shadow = clamp(FLASH_TEXTURE_2D(u_ShadowTex, v_Texcoord0) * u_Strength, 0.0, 1.0);
+  float shadowAlpha = clamp(FLASH_TEXTURE_2D(u_ShadowTex, v_Texcoord0).a * u_Strength, 0.0, 1.0);
+  vec4 shadow = vec4(u_Color.rgb * shadowAlpha, shadowAlpha);
   vec4 result = shadow;
   if (u_Inner == 1) {
     if (u_Knockout == 1 || u_HideObject == 1) result = shadow * source.a;
@@ -356,6 +357,7 @@ function registerShadowShaders(): void {
         u_centerScale: ShaderDataType.Vector2,
         u_SourceTex: ShaderDataType.Texture2D,
         u_ShadowTex: ShaderDataType.Texture2D,
+        u_Color: ShaderDataType.Vector4,
         u_Strength: ShaderDataType.Float,
         u_Inner: ShaderDataType.Int,
         u_Knockout: ShaderDataType.Int,
@@ -429,6 +431,12 @@ export class FlashShadowEffect2D extends FlashRenderTextureEffect {
         this.composeMaterial = new Material();
         this.composeMaterial.setShaderName("FlashShadowCompose2D");
         this.composeMaterial.setVector2("u_centerScale", new Vector2(1, 1));
+        this.composeMaterial.setVector4("u_Color", new Vector4(
+            (this.options.color >> 16 & 255) / 255,
+            (this.options.color >> 8 & 255) / 255,
+            (this.options.color & 255) / 255,
+            this.options.alpha,
+        ));
         this.composeMaterial.setFloat("u_Strength", this.options.strength);
         this.composeMaterial.setInt("u_Inner", this.options.inner ? 1 : 0);
         this.composeMaterial.setInt("u_Knockout", this.options.knockout ? 1 : 0);
@@ -590,6 +598,17 @@ export class FlashColorMatrixEffect2D extends FlashRenderTextureEffect {
 
 export interface FlashRgba { r: number; g: number; b: number; a: number; }
 function clamp01(value: number): number { return Math.max(0, Math.min(1, value)); }
+
+/** Premultiplied constant-color shadow after Flash scales and clamps only the blurred alpha. */
+export function applyFlashShadowStrength(blurredAlpha: number, color: number, strength: number): FlashRgba {
+    const alpha = clamp01(blurredAlpha * strength);
+    return {
+        r: (color >> 16 & 255) / 255 * alpha,
+        g: (color >> 8 & 255) / 255 * alpha,
+        b: (color & 255) / 255 * alpha,
+        a: alpha,
+    };
+}
 
 /** Straight-RGBA CPU oracle for the exact 4x5 shader, including alpha terms. */
 export function applyFlashColorMatrixPixel(pixel: Readonly<FlashRgba>, matrix: readonly number[]): FlashRgba {
