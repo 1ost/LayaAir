@@ -180,6 +180,7 @@ test("authored catalogs own asset loading and ApplicationDomain publication", as
             prefab: "native/pet-house.lh",
             assets: [
                 { id: "catalog/images/root", path: "native/images/root.png", kind: "image" },
+                { id: "catalog/fonts/root", path: "native/fonts/root.ttf", kind: "font" },
                 { id: "catalog/timelines/root", path: "native/root.mc", kind: "timeline" },
             ],
         }],
@@ -202,10 +203,12 @@ test("authored catalogs own asset loading and ApplicationDomain publication", as
 
     assert.deepEqual(calls, [
         ["/fixtures/catalog/native/images/root.png", Loader.IMAGE],
+        ["/fixtures/catalog/native/fonts/root.ttf", Loader.BUFFER],
         ["/fixtures/catalog/native/root.mc", undefined],
         ["/fixtures/catalog/native/pet-house.lh", Loader.HIERARCHY],
     ]);
     assert.equal(AssetDb.inst.uuidMap["catalog/images/root"], "/fixtures/catalog/native/images/root.png");
+    assert.equal(AssetDb.inst.uuidMap["catalog/fonts/root"], "/fixtures/catalog/native/fonts/root.ttf");
     assert.equal(AssetDb.inst.uuidMap["catalog/timelines/root"], "/fixtures/catalog/native/root.mc");
     assert.equal(validationCount, 1);
     assert.equal(domain.hasDefinition("MC_CatalogPetHouse"), true);
@@ -224,7 +227,7 @@ test("authored catalogs own asset loading and ApplicationDomain publication", as
         runtimeBindings: [catalogBinding],
     });
     assert.equal(second, first);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 4);
 });
 
 test("authored catalogs activate embedded-font startup before loading or constructing prefabs", async () => {
@@ -301,6 +304,20 @@ test("authored catalogs reject data drift, path escape and asset collisions", as
         loader,
         applicationDomain: new ApplicationDomain(),
     }), /normalized relative asset path/);
+    assert.throws(() => activateAuthoredContentCatalog({
+        ...manifest,
+        id: "fixtures.asset-kind",
+        bundles: [{
+            ...manifest.bundles[0],
+            runtimeId: "fixtures.catalog.AssetKind",
+            linkage: "MC_AssetKind",
+            assets: [{ id: "fixtures/asset-kind", path: "native/entry.bin", kind: "binary" }],
+        }],
+    } as never, {
+        baseUrl: "/fixtures/asset-kind/",
+        loader,
+        applicationDomain: new ApplicationDomain(),
+    }), /kind must be font, image or timeline/);
 });
 
 test("authored catalog URL loading derives one manifest-relative asset root", async () => {

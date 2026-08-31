@@ -26,7 +26,7 @@ export const AUTHORED_CONTENT_LOCALE_SCHEMA = "laya-authored-content-locale@1" a
 export const AUTHORED_CONTENT_CATALOG_SUFFIX = ".runtime-catalog.json" as const;
 export const AUTHORED_CONTENT_BASE_LOCALE = "en_Eu" as const;
 
-export type AuthoredCatalogAssetKind = "image" | "timeline";
+export type AuthoredCatalogAssetKind = "font" | "image" | "timeline";
 
 export interface AuthoredCatalogAsset {
     readonly id: string;
@@ -310,7 +310,7 @@ async function activate(
                 const assetUrl = localizedAssetUrls.get(asset.id) ?? URL.join(baseUrl, asset.path);
                 assetLoads.push(loader.load(
                     assetUrl,
-                    asset.kind === "image" ? Loader.IMAGE : undefined,
+                    asset.kind === "image" ? Loader.IMAGE : asset.kind === "font" ? Loader.BUFFER : undefined,
                 ));
             }
         }
@@ -466,8 +466,8 @@ function normalizeCatalog(value: unknown): NormalizedCatalog {
             requireExactKeys(asset, ["id", "path", "kind"], assetPath);
             const assetId = requireUnique(asset.id, `${assetPath}.id`, assetIds);
             const outputPath = requireRelativePath(asset.path, `${assetPath}.path`);
-            if (asset.kind !== "image" && asset.kind !== "timeline")
-                throw new TypeError(`${assetPath}.kind must be image or timeline`);
+            if (asset.kind !== "font" && asset.kind !== "image" && asset.kind !== "timeline")
+                throw new TypeError(`${assetPath}.kind must be font, image or timeline`);
             return Object.freeze({ id: assetId, path: outputPath, kind: asset.kind });
         });
         return Object.freeze({
