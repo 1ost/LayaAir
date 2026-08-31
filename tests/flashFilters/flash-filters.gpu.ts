@@ -78,6 +78,8 @@ async function main(): Promise<unknown> {
 
     const evenGlow = new GlowFilter(0x622e02, 1, 4, 4, 3, 1);
     const normalEvenGlow = await renderPlacedStage(evenGlow, false, false);
+    assertFingerprint("FFDec straight-RGBA directional glow", fingerprint(normalEvenGlow),
+        { width: 64, height: 64, hash: "f7812deb", channels: [20171, 18114, 16387, 1044480], alpha: 1044480 });
     const reflectedEvenGlow = await renderPlacedStage(evenGlow, true, false);
     assertPixelsEqual("reflected authored glow retains the screen-space even-kernel orientation", normalEvenGlow, reflectedEvenGlow);
     assertPixelsEqual("vertically reflected authored glow retains the screen-space even-kernel orientation",
@@ -238,7 +240,7 @@ async function main(): Promise<unknown> {
         },
         blur: { horizontalBounds, verticalBounds, stageQualityOne, stageQualityBounds,
             qualityMass: [alphaMass(blurQualityOne), alphaMass(blurQualityThree)] },
-        glow: { weak: redOutsideSource(glowWeak), strong: redOutsideSource(glowStrong) },
+        glow: { weak: redOutsideSource(glowWeak), strong: redOutsideSource(glowStrong), even: fingerprint(normalEvenGlow) },
         shadow: { raw: shadowBounds, stage: stageShadowBounds, chained: stageChained },
         bevel: { gradient: gradientBevelFingerprint, authored: authoredBevelFingerprint,
             outerKnockout: outerKnockoutFingerprint, authoredRepeat: authoredBevelRepeatFingerprint },
@@ -402,12 +404,26 @@ function assertPixelNear(label: string, actual: Pixel, expected: Pixel, toleranc
 function assertPixelsEqual(label: string, actual: Readback, expected: Readback): void {
     assert(actual.width === expected.width && actual.height === expected.height && actual.pixels.length === expected.pixels.length,
         `${label} dimensions drifted: actual=${actual.width}x${actual.height} expected=${expected.width}x${expected.height}`);
+    let first = -1, mismatchChannels = 0, maximumError = 0;
+    const examples: string[] = [];
     for (let index = 0; index < actual.pixels.length; index++) {
-        if (actual.pixels[index] === expected.pixels[index]) continue;
-        const pixel = Math.floor(index / 4);
-        throw new Error(`${label} at (${pixel % actual.width}, ${Math.floor(pixel / actual.width)}) channel ${index & 3}: `
-            + `actual=${actual.pixels[index]} expected=${expected.pixels[index]}`);
+        const error = Math.abs(actual.pixels[index] - expected.pixels[index]);
+        if (error === 0) continue;
+        if (first < 0) first = index;
+        mismatchChannels++;
+        maximumError = Math.max(maximumError, error);
+        if (examples.length < 8) {
+            const mismatchPixel = Math.floor(index / 4);
+            examples.push(`(${mismatchPixel % actual.width},${Math.floor(mismatchPixel / actual.width)},${index & 3}):`
+                + `${actual.pixels[index]}/${expected.pixels[index]}`);
+        }
     }
+    if (first < 0) return;
+    const pixel = Math.floor(first / 4);
+    throw new Error(`${label} at (${pixel % actual.width}, ${Math.floor(pixel / actual.width)}) channel ${first & 3}: `
+        + `actual=${actual.pixels[first]} expected=${expected.pixels[first]} mismatches=${mismatchChannels} max=${maximumError} `
+        + `examples=${examples.join(",")} `
+        + `actualFingerprint=${JSON.stringify(fingerprint(actual))} expectedFingerprint=${JSON.stringify(fingerprint(expected))}`);
 }
 
 function redOutsideSource(image: Readback): number {

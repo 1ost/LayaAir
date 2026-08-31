@@ -324,7 +324,7 @@ float sourceAlpha(vec2 uv) {
 void main() {
   float source = sourceAlpha(v_Texcoord0 - u_Offset);
   float alpha = (u_Inner == 1 ? 1.0 - source : source) * u_Color.a;
-  gl_FragColor = vec4(u_Color.rgb * alpha, alpha);
+  gl_FragColor = vec4(u_Color.rgb, alpha);
 }`;
 
 const SHADOW_COMPOSE_FRAGMENT = `
@@ -333,8 +333,10 @@ ${FLASH_TEXTURE_SAMPLING}
 varying vec2 v_Texcoord0;
 void main() {
   vec4 source = FLASH_TEXTURE_2D(u_SourceTex, v_Texcoord0);
-  float shadowAlpha = clamp(FLASH_TEXTURE_2D(u_ShadowTex, v_Texcoord0).a * u_Strength, 0.0, 1.0);
-  vec4 shadow = vec4(u_Color.rgb * shadowAlpha, shadowAlpha);
+  vec4 blurredShadow = FLASH_TEXTURE_2D(u_ShadowTex, v_Texcoord0);
+  float shadowAlpha = clamp(floor(blurredShadow.a * u_Strength * 255.0 + 0.5) / 255.0, 0.0, 1.0);
+  vec3 shadowColor = blurredShadow.a > 0.000001 ? blurredShadow.rgb : u_Color.rgb;
+  vec4 shadow = vec4(shadowColor * shadowAlpha, shadowAlpha);
   vec4 result = shadow;
   if (u_Inner == 1) {
     if (u_Knockout == 1 || u_HideObject == 1) result = shadow * source.a;
@@ -428,12 +430,12 @@ export class FlashShadowEffect2D extends FlashRenderTextureEffect {
         this.seedMaterial.lock = true;
         this.seedElement = renderElement(this.seedMaterial);
         this.horizontalMaterial = new Material();
-        this.horizontalMaterial.setShaderName(registerFlashBoxBlurShader(Math.max(1, Math.round(this.options.blurX))));
+        this.horizontalMaterial.setShaderName(registerFlashStraightBoxBlurShader(Math.max(1, Math.round(this.options.blurX))));
         this.horizontalMaterial.setVector2("u_centerScale", new Vector2(1, 1));
         this.horizontalMaterial.lock = true;
         this.horizontalElement = renderElement(this.horizontalMaterial);
         this.verticalMaterial = new Material();
-        this.verticalMaterial.setShaderName(registerFlashBoxBlurShader(Math.max(1, Math.round(this.options.blurY))));
+        this.verticalMaterial.setShaderName(registerFlashStraightBoxBlurShader(Math.max(1, Math.round(this.options.blurY))));
         this.verticalMaterial.setVector2("u_centerScale", new Vector2(1, 1));
         this.verticalMaterial.lock = true;
         this.verticalElement = renderElement(this.verticalMaterial);
@@ -619,6 +621,53 @@ export function applyFlashShadowStrength(blurredAlpha: number, color: number, st
         b: (color & 255) / 255 * alpha,
         a: alpha,
     };
+}
+
+const registeredStraightBlurTaps = new Set<number>();
+
+/** FFDec quantizes straight RGB after each box-blur direction before the next direction premultiplies it again. */
+function registerFlashStraightBoxBlurShader(taps: number): string {
+    const name = `FlashStraightBoxBlur${taps}Tap2D`;
+    if (registeredStraightBlurTaps.has(taps)) return name;
+    registeredStraightBlurTaps.add(taps);
+    const first = -Math.floor(taps / 2);
+    const samples = Array.from({ length: taps }, (_, index) => {
+        const offset = first + index;
+        return `vec4 sample${index} = sampleTransparent(v_Texcoord0 + u_Direction * ${offset}.0);\n`
+            + `  sumAlpha += sample${index}.a;\n`
+            + `  sumPremultiplied += sample${index}.rgb * sample${index}.a;`;
+    });
+    const fragment = `
+#define SHADER_NAME ${name}
+${FLASH_TEXTURE_SAMPLING}
+varying vec2 v_Texcoord0;
+vec4 sampleTransparent(vec2 uv) {
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
+  return FLASH_TEXTURE_2D(u_MainTex, uv);
+}
+void main() {
+  float sumAlpha = 0.0;
+  vec3 sumPremultiplied = vec3(0.0);
+  ${samples.join("\n  ")}
+  float alpha = floor(sumAlpha / ${taps}.0 * 255.0 + 0.001) / 255.0;
+  vec3 straight = alpha > 0.000001
+    ? floor(sumPremultiplied / ${taps}.0 / alpha * 255.0 + 0.001) / 255.0
+    : vec3(0.0);
+  gl_FragColor = vec4(straight, alpha);
+}`;
+    const shader = Shader3D.add(name);
+    shader.shaderType = ShaderFeatureType.PostProcess;
+    const subShader = new SubShader(
+        { a_PositionTexcoord: [0, ShaderDataType.Vector4] },
+        {
+            u_centerScale: ShaderDataType.Vector2,
+            u_MainTex: ShaderDataType.Texture2D,
+            u_Direction: ShaderDataType.Vector2,
+        },
+    );
+    shader.addSubShader(subShader);
+    configurePass(subShader.addShaderPass(FILTER_VERTEX, fragment));
+    return name;
 }
 
 /** Straight-RGBA CPU oracle for the exact 4x5 shader, including alpha terms. */
