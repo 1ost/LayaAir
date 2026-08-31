@@ -1,3 +1,5 @@
+import type { TrueTypeGlyphOutline } from "./TrueTypeOutline";
+
 /**
  * Controls how platform text coverage is converted into a glyph texture.
  * Imported runtimes can use this hook to reproduce an authored text renderer
@@ -14,6 +16,8 @@ export interface TextRasterizationSettings {
     gridFit?: TextGridFitMode;
     /** Optional EM-square alignment zones keyed by Unicode code point. */
     alignmentZones?: Readonly<Record<string, TextGlyphAlignmentZone>>;
+    /** Authenticated native outline lookup. A null result keeps the platform renderer. */
+    outlineProvider?: (codePoint: number) => TrueTypeGlyphOutline | null;
 }
 
 export type TextGridFitMode = "none" | "pixel" | "subpixel";
@@ -46,7 +50,8 @@ export function textRasterizationCacheKey(settings: TextRasterizationSettings): 
 
     const outside = finite(settings.outsideCutoff, 0);
     const inside = finite(settings.insideCutoff, 1);
-    return `rc_${settings.coverageMode}_${numberKey(outside)}_${numberKey(inside)}_${settings.gridFit ?? "none"}_`;
+    const outline = settings.outlineProvider ? "outline_" : "";
+    return `rc_${settings.coverageMode}_${numberKey(outside)}_${numberKey(inside)}_${settings.gridFit ?? "none"}_${outline}`;
 }
 
 /** @internal */

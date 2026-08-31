@@ -32630,6 +32630,15 @@
             },
             {
               "abstract": false,
+              "kind": "get+set",
+              "name": "fontOutlineProvider",
+              "scope": "instance",
+              "optional": false,
+              "readonly": false,
+              "signature": "TextGlyphOutlineProvider"
+            },
+            {
+              "abstract": false,
               "kind": "method",
               "name": "frameLoop",
               "scope": "instance",
@@ -34118,7 +34127,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99",
+          "sha256": "c389f8960c3658f3733bf7821423a1ab6383f8680f15f47e554c367d81d77f28",
           "heritage": [
             {
               "kind": "extends",
@@ -34134,7 +34143,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
+          "sha256": "c389f8960c3658f3733bf7821423a1ab6383f8680f15f47e554c367d81d77f28"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -34144,7 +34153,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
+          "sha256": "c389f8960c3658f3733bf7821423a1ab6383f8680f15f47e554c367d81d77f28"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -34154,7 +34163,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
+          "sha256": "c389f8960c3658f3733bf7821423a1ab6383f8680f15f47e554c367d81d77f28"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -37205,7 +37214,7 @@
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
             "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
-            "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99",
+            "c389f8960c3658f3733bf7821423a1ab6383f8680f15f47e554c367d81d77f28",
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
           ]
         }
@@ -43189,14 +43198,14 @@
           "export": "AuthoredFontBinding",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontBindingCancelledError",
           "kind": "class",
           "signature": "typeof AuthoredFontBindingCancelledError",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab",
           "members": [
             {
               "abstract": false,
@@ -43269,28 +43278,28 @@
           "export": "AuthoredFontKey",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontManifest",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontManifestEntry",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontRegistry",
           "kind": "class",
           "signature": "typeof AuthoredFontRegistry",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab",
           "members": [
             {
               "abstract": false,
@@ -43412,7 +43421,7 @@
           "export": "AuthoredTextProviderConsumer",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         }
       ],
       "evidence": [
@@ -43422,7 +43431,7 @@
           "sha256": "483569ec786959bb2c90c3b6568831baf6534e77bf63f36741e4904824e46852",
           "capability": "text.authored-font-registry",
           "covers": [
-            "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+            "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
           ]
         }
       ]
@@ -45147,14 +45156,14 @@
           "export": "AuthoredPublishedFontSelection",
           "kind": "interface",
           "signature": "any",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da"
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab"
         },
         {
           "module": "src/layaAir/laya/platform/AuthoredFontRegistry.ts",
           "export": "AuthoredFontRegistry",
           "kind": "class",
           "signature": "typeof AuthoredFontRegistry",
-          "sha256": "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
+          "sha256": "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab",
           "members": [
             {
               "abstract": false,
@@ -45280,8 +45289,8 @@
           "capability": "text.authored-embedded-ttf-dynamic-field",
           "covers": [
             "24aed1b6912334b5f33f04f37ac5c89ee4f0564d6c93066d5d13875dc18e96ec",
-            "465165d1dab8ea764daa91a4568b7a9e2ad29df9451eaca0a9034f63c2a3c0da",
             "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87",
+            "b8d009ce393b19d8970efefe114301f9dd6b6bb6dc9e84155e157b8010d6b7ab",
             "d374c49acf9602af71e744209055f4ad877f6d7fc6a62b3e38f676a9ae7b31ee"
           ]
         }

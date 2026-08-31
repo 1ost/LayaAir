@@ -21,6 +21,7 @@ import {
     type TextGlyphAlignmentZone,
     type TextRasterizationSettings,
 } from "./TextRasterizationSettings";
+import type { TrueTypeGlyphOutline } from "./TrueTypeOutline";
 
 const ITALIC_ANGLE = 13;
 const ITALIC_SKEW_RATIO = 0.231; // Math.tan(13 * Math.PI / 180)
@@ -270,10 +271,20 @@ export class TextRender {
         offsetLeft: number, offsetTop: number, offsetRight: number, offsetBottom: number, charMode: boolean, italic: boolean,
         rasterization: TextRasterizationSettings): ITextRenderInfo {
         const metrics = ctx.measureText(text);
-        const boundsLeft = Math.max(0, metrics.actualBoundingBoxLeft || 0);
-        const boundsRight = Math.max(width, metrics.actualBoundingBoxRight || width);
-        const boundsTop = Math.max(0, metrics.actualBoundingBoxAscent || height * 0.8);
-        const boundsBottom = Math.max(0, metrics.actualBoundingBoxDescent || height * 0.2);
+        const outline = resolveGlyphOutline(text, rasterization);
+        const outlineScale = outline ? height / outline.unitsPerEm : 0;
+        const boundsLeft = outline
+            ? Math.max(0, -outline.bounds.xMin * outlineScale)
+            : Math.max(0, metrics.actualBoundingBoxLeft || 0);
+        const boundsRight = outline
+            ? Math.max(width, outline.bounds.xMax * outlineScale)
+            : Math.max(width, metrics.actualBoundingBoxRight || width);
+        const boundsTop = outline
+            ? Math.max(0, outline.bounds.yMax * outlineScale)
+            : Math.max(0, metrics.actualBoundingBoxAscent || height * 0.8);
+        const boundsBottom = outline
+            ? Math.max(0, -outline.bounds.yMin * outlineScale)
+            : Math.max(0, metrics.actualBoundingBoxDescent || height * 0.2);
         // Two CSS pixels retain antialiased edge coverage and leave room for
         // platform font rasterizers whose reported ink bounds round inward.
         const edgePadding = 2;
@@ -295,8 +306,14 @@ export class TextRender {
             this.resizeCanvas(ctx, needCanvW, needCanvH);
 
         ctx.clearRect(0, 0, Math.ceil(needCanvW / fontScale), Math.ceil(needCanvH / fontScale));
-        lineWidth > 0 && ctx.strokeText(text, drawX, drawY);
-        ctx.fillText(text, drawX, drawY);
+        if (outline) {
+            appendTrueTypePath(ctx, outline, drawX, drawY, outlineScale);
+            if (lineWidth > 0) ctx.stroke();
+            ctx.fill();
+        } else {
+            lineWidth > 0 && ctx.strokeText(text, drawX, drawY);
+            ctx.fillText(text, drawX, drawY);
+        }
         const imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
         remapTextCoverage(imgdt, rasterization, fontScale);
 
@@ -581,6 +598,36 @@ export class TextRender {
         }
         for (let ri of toClearChars) {
             this.free(ri);
+        }
+    }
+}
+
+function resolveGlyphOutline(text: string, settings: TextRasterizationSettings): TrueTypeGlyphOutline | null {
+    if (!settings?.outlineProvider) return null;
+    const characters = Array.from(text);
+    return characters.length === 1 ? settings.outlineProvider(characters[0].codePointAt(0)!) : null;
+}
+
+function appendTrueTypePath(
+    context: CanvasRenderingContext2D,
+    outline: TrueTypeGlyphOutline,
+    originX: number,
+    baselineY: number,
+    scale: number,
+): void {
+    context.beginPath();
+    for (const command of outline.commands) {
+        if (command.op === "close") {
+            context.closePath();
+        } else if (command.op === "move") {
+            context.moveTo(originX + command.x * scale, baselineY - command.y * scale);
+        } else if (command.op === "line") {
+            context.lineTo(originX + command.x * scale, baselineY - command.y * scale);
+        } else {
+            context.quadraticCurveTo(
+                originX + command.cx * scale, baselineY - command.cy * scale,
+                originX + command.x * scale, baselineY - command.y * scale,
+            );
         }
     }
 }

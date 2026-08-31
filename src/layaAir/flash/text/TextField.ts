@@ -7,6 +7,7 @@ import {
     type TextAdvanceProvider,
     type TextFontFamilyResolver,
     type TextFontMetricsProvider,
+    type TextGlyphOutlineProvider,
 } from "../../laya/display/Text";
 import { Event as LayaEvent } from "../../laya/events/Event";
 import { HtmlParseOptions } from "../../laya/html/HtmlParseOptions";
@@ -453,6 +454,10 @@ export class TextField extends InteractiveObject {
     /** @internal Canonical native authored-font advance seam. */
     get textAdvanceProvider(): TextAdvanceProvider { return this._nativeInput.textAdvanceProvider; }
     set textAdvanceProvider(value: TextAdvanceProvider) { this._nativeInput.textAdvanceProvider = value; }
+
+    /** @internal Canonical native authenticated outline seam. */
+    get fontOutlineProvider(): TextGlyphOutlineProvider { return this._nativeInput.fontOutlineProvider; }
+    set fontOutlineProvider(value: TextGlyphOutlineProvider) { this._nativeInput.fontOutlineProvider = value; }
 
     get focus(): boolean { return this._focusRequested || this._nativeInput.focus; }
     set focus(value: boolean) {

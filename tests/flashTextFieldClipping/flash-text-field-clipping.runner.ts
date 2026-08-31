@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ILaya } from "../../src/layaAir/ILaya";
-import { TextField, TextFormat, TextFormatAlign } from "../../src/layaAir/flash";
+import { AntiAliasType, TextField, TextFormat, TextFormatAlign } from "../../src/layaAir/flash";
 import { Input as LayaInput } from "../../src/layaAir/laya/display/Input";
 import { Render2DProcessor } from "../../src/layaAir/laya/display/Render2DProcessor";
 import { PAL } from "../../src/layaAir/laya/platform/PlatformAdapters";
@@ -13,6 +13,7 @@ import { NoRender2DProcess } from
 import { NoRenderDeviceFactory } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
 import { remapTextCoverage, textRasterizationScale } from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
+import { parseTrueTypeOutlineFont } from "../../src/layaAir/laya/webgl/text/TrueTypeOutline";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -44,6 +45,77 @@ class ProbeTextField extends TextField {
     get nativeInput(): LayaInput { return this._nativeTextInput; }
 }
 
+test("native TrueType outline parsing preserves consecutive off-curve quadratic segments", () => {
+    const source = simpleTrueTypeFont();
+    const font = parseTrueTypeOutlineFont(source);
+    assert.ok(font);
+    assert.equal(font.unitsPerEm, 1000);
+    assert.deepEqual(font.glyph(1), {
+        unitsPerEm: 1000,
+        bounds: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 },
+        commands: [
+            { op: "move", x: 1000, y: 0 },
+            { op: "quadratic", cx: 0, cy: 0, x: 250, y: 500 },
+            { op: "quadratic", cx: 500, cy: 1000, x: 1000, y: 0 },
+            { op: "close" },
+        ],
+    });
+    assert.equal(font.glyph(0), null);
+    assert.deepEqual(font.glyphForCodePoint(0x41), font.glyph(1));
+    assert.equal(font.glyphForCodePoint(0x42), null);
+
+    const composite = source.slice(0);
+    new DataView(composite).setInt16(168, -1);
+    assert.equal(parseTrueTypeOutlineFont(composite)?.glyph(1), null,
+        "composite placement remains on the authenticated platform fallback");
+    assert.equal(parseTrueTypeOutlineFont(new ArrayBuffer(12)), null);
+});
+
+function simpleTrueTypeFont(): ArrayBuffer {
+    const bytes = new Uint8Array(240);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, 0x00010000);
+    view.setUint16(4, 5);
+    const tables = [
+        ["head", 92, 54], ["maxp", 148, 6], ["loca", 156, 12], ["glyf", 168, 25], ["cmap", 196, 44],
+    ] as const;
+    tables.forEach(([tag, offset, length], index) => {
+        const cursor = 12 + index * 16;
+        for (let position = 0; position < 4; position++) view.setUint8(cursor + position, tag.charCodeAt(position));
+        view.setUint32(cursor + 8, offset);
+        view.setUint32(cursor + 12, length);
+    });
+    view.setUint16(110, 1000);
+    view.setInt16(142, 1);
+    view.setUint16(152, 2);
+    view.setUint32(164, 25);
+    view.setInt16(168, 1);
+    view.setInt16(174, 1000);
+    view.setInt16(176, 1000);
+    view.setUint16(178, 2);
+    bytes.set([0x30, 0x00, 0x01], 182);
+    view.setInt16(185, 500);
+    view.setInt16(187, 500);
+    view.setInt16(189, 1000);
+    view.setInt16(191, -1000);
+    view.setUint16(198, 1);
+    view.setUint16(200, 3);
+    view.setUint16(202, 1);
+    view.setUint32(204, 12);
+    view.setUint16(208, 4);
+    view.setUint16(210, 32);
+    view.setUint16(214, 4);
+    view.setUint16(216, 4);
+    view.setUint16(218, 1);
+    view.setUint16(222, 0x41);
+    view.setUint16(224, 0xffff);
+    view.setUint16(228, 0x41);
+    view.setUint16(230, 0xffff);
+    view.setInt16(232, -64);
+    view.setInt16(234, 1);
+    return bytes.buffer;
+}
+
 test("advanced CSM oversamples small embedded glyph masks before applying cutoffs", () => {
     assert.equal(textRasterizationScale(null, 1), 1);
     assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 1), 2);
@@ -67,6 +139,34 @@ test("advanced CSM derives signed outline distance before applying cutoffs", () 
     });
     assert.equal(hole[(1 * 3 + 1) * 4 + 3], 0, "a counter remains outside rather than being filled");
     assert.equal(hole[3], 255, "interior coverage remains opaque beyond the inside cutoff");
+});
+
+test("advanced TextField commands snapshot the authenticated outline selection", () => {
+    const font = parseTrueTypeOutlineFont(simpleTrueTypeFont());
+    assert.ok(font);
+    const calls: unknown[][] = [];
+    const field = new ProbeTextField();
+    try {
+        field.fontOutlineProvider = (codePoint, family, bold, italic) => {
+            calls.push([codePoint, family, bold, italic]);
+            return font.glyphForCodePoint(codePoint);
+        };
+        field.defaultTextFormat = new TextFormat("Body", 10, 0xffffff, false, false);
+        field.embedFonts = true;
+        field.antiAliasType = AntiAliasType.ADVANCED;
+        field.text = "A";
+        void field.numLines;
+        const command = (field.nativeInput.graphics.cmds ?? []).find(candidate =>
+            (candidate as { text?: unknown }).text === "A") as { rasterizationSettings?: {
+                outlineProvider?: (codePoint: number) => unknown;
+            } };
+        assert.ok(command?.rasterizationSettings?.outlineProvider);
+        assert.deepEqual(command.rasterizationSettings.outlineProvider(0x41), font.glyphForCodePoint(0x41));
+        assert.deepEqual(calls, [[0x41, "Body", false, false]],
+            "render commands retain their immutable style instead of closing over the layout cursor");
+    } finally {
+        field.destroy(true);
+    }
 });
 
 function fieldAtHeight(height: number): ProbeTextField {

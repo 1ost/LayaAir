@@ -71,6 +71,51 @@ function bytes(token: string): ArrayBuffer {
     return Uint8Array.from(Buffer.from(`font:${token}`, "utf8")).buffer;
 }
 
+function simpleTrueTypeFont(): ArrayBuffer {
+    const bytes = new Uint8Array(240);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, 0x00010000);
+    view.setUint16(4, 5);
+    const tables = [
+        ["head", 92, 54], ["maxp", 148, 6], ["loca", 156, 12], ["glyf", 168, 25], ["cmap", 196, 44],
+    ] as const;
+    tables.forEach(([tag, offset, length], index) => {
+        const cursor = 12 + index * 16;
+        for (let position = 0; position < 4; position++) view.setUint8(cursor + position, tag.charCodeAt(position));
+        view.setUint32(cursor + 8, offset);
+        view.setUint32(cursor + 12, length);
+    });
+    view.setUint16(110, 1000);
+    view.setInt16(142, 1);
+    view.setUint16(152, 2);
+    view.setUint32(164, 25);
+    view.setInt16(168, 1);
+    view.setInt16(174, 1000);
+    view.setInt16(176, 1000);
+    view.setUint16(178, 2);
+    bytes.set([0x30, 0x00, 0x01], 182);
+    view.setInt16(185, 500);
+    view.setInt16(187, 500);
+    view.setInt16(189, 1000);
+    view.setInt16(191, -1000);
+    view.setUint16(198, 1);
+    view.setUint16(200, 3);
+    view.setUint16(202, 1);
+    view.setUint32(204, 12);
+    view.setUint16(208, 4);
+    view.setUint16(210, 32);
+    view.setUint16(214, 4);
+    view.setUint16(216, 4);
+    view.setUint16(218, 1);
+    view.setUint16(222, 0x41);
+    view.setUint16(224, 0xffff);
+    view.setUint16(228, 0x41);
+    view.setUint16(230, 0xffff);
+    view.setInt16(232, -64);
+    view.setInt16(234, 1);
+    return bytes.buffer;
+}
+
 function sha(value: ArrayBuffer): string {
     return createHash("sha256").update(new Uint8Array(value)).digest("hex");
 }
@@ -265,6 +310,47 @@ test("style selection binds exact metrics and scalar advances to Text and TextFi
         binding.cancel();
         consumer.destroy();
     }
+    await registry.dispose();
+});
+
+test("authenticated TrueType cmap outlines require manifest admission and restore atomically", async () => {
+    const source = simpleTrueTypeFont();
+    const authored = entry("outlined", 1, "regular", "placeholder", {
+        sourceUrl: "fonts/outlined.ttf",
+        sourceSha256: sha(source),
+        glyphs: [{
+            codePoint: 0x41, advance: 1000, index: 0,
+            bounds: { xmin: 0, xmax: 1000, ymin: 0, ymax: 1000 },
+        }],
+        leading: 0,
+        kerning: [],
+        alignZones: {
+            tableHint: 0, tableHintName: "thin",
+            zones: [{
+                data: [
+                    { alignmentCoordinate: 0, alignmentCoordinateBits: 0, range: 0, rangeBits: 0 },
+                    { alignmentCoordinate: 0, alignmentCoordinateBits: 0, range: 0, rangeBits: 0 },
+                ],
+                maskX: false, maskY: false,
+            }],
+        },
+    });
+    ASSETS.set(authored.sourceUrl, source);
+    new FontHarness();
+    const registry = new AuthoredFontRegistry(manifest([authored]));
+    await registry.preload(authored.documentId);
+    const consumer = new Text();
+    const previous: typeof consumer.fontOutlineProvider = () => null;
+    consumer.fontOutlineProvider = previous;
+    const binding = registry.bindText(consumer, authored.documentId);
+    const outline = consumer.fontOutlineProvider(0x41, authored.fontName, false, false);
+    assert.deepEqual(outline?.bounds, { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 });
+    assert.equal(consumer.fontOutlineProvider(0x56, authored.fontName, false, false), null,
+        "undeclared glyphs cannot acquire an outline by raw font index");
+    assert.throws(() => consumer.fontOutlineProvider(0xd800, authored.fontName, false, false), /Unicode scalar/);
+    binding.cancel();
+    assert.equal(consumer.fontOutlineProvider, previous);
+    consumer.destroy();
     await registry.dispose();
 });
 

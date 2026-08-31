@@ -3,12 +3,14 @@ import type {
     TextAdvanceProvider,
     TextFontFamilyResolver,
     TextFontMetricsProvider,
+    TextGlyphOutlineProvider,
 } from "../display/Text";
 import { Loader, type ILoadTask, type ILoadURL } from "../net/Loader";
 import { URL } from "../net/URL";
 import { Browser } from "../utils/Browser";
 import { Utils } from "../utils/Utils";
 import { PAL } from "./PlatformAdapters";
+import { parseTrueTypeOutlineFont, type TrueTypeOutlineFont } from "../webgl/text/TrueTypeOutline";
 
 export type AuthoredFontStyle = "regular" | "bold" | "italic" | "boldItalic";
 
@@ -30,6 +32,7 @@ export type FontLoadResult = { family: string } | AuthenticatedFontLoadReceipt;
 
 interface PreparedFontResource {
     readonly sourceSha256: string;
+    readonly outlineFont?: TrueTypeOutlineFont;
     commit(): void | Promise<void>;
     dispose(): void | Promise<void>;
 }
@@ -110,6 +113,7 @@ export interface AuthoredTextProviderConsumer {
     fontMetricsProvider: TextFontMetricsProvider;
     fontFamilyResolver: TextFontFamilyResolver;
     textAdvanceProvider: TextAdvanceProvider;
+    fontOutlineProvider?: TextGlyphOutlineProvider;
 }
 
 export interface AuthoredFontBinding {
@@ -135,9 +139,11 @@ type BindingState = {
     readonly previousMetrics: TextFontMetricsProvider;
     readonly previousFamily: TextFontFamilyResolver;
     readonly previousAdvance: TextAdvanceProvider;
+    readonly previousOutline: TextGlyphOutlineProvider;
     readonly metrics: TextFontMetricsProvider;
     readonly family: TextFontFamilyResolver;
     readonly advance: TextAdvanceProvider;
+    readonly outline: TextGlyphOutlineProvider;
 };
 
 type ActiveFlashFontRecord = FrozenEntry & { readonly receipt: AuthenticatedFontLoadReceipt };
@@ -157,6 +163,7 @@ const publishedFontAuthorities = new WeakMap<ActiveFlashFontRecord, AuthoredPubl
 const FONT_TRANSACTION_PERMIT = Symbol("Laya font transaction permit");
 const fontTransactionPermits = new WeakSet<object>();
 const authenticatedFontReceipts = new WeakSet<object>();
+const authenticatedFontOutlines = new WeakMap<object, TrueTypeOutlineFont>();
 
 /** @internal Read-only adapter ingress; it consumes but cannot mint an authorization. */
 function consumeFontTransactionPermit(task: ILoadTask): boolean {
@@ -268,6 +275,7 @@ export class AuthoredFontRegistry {
     private readonly bindingOnlyDocuments = new Set<string>();
     private readonly loadedDocuments = new Set<string>();
     private readonly receiptsByKey = new Map<string, AuthenticatedFontLoadReceipt>();
+    private readonly outlinesByKey = new Map<string, TrueTypeOutlineFont>();
     private readonly bindings = new WeakMap<object, BindingState>();
     private readonly bindingStates = new Set<BindingState>();
     private disposePromise: Promise<void> | null = null;
@@ -370,6 +378,16 @@ export class AuthoredFontRegistry {
             });
             return Object.freeze(values);
         };
+        const outline: TextGlyphOutlineProvider = (codePoint, font, bold, italic) => {
+            if (!Number.isInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff
+                || codePoint >= 0xd800 && codePoint <= 0xdfff)
+                throw new TypeError("codePoint must be a Unicode scalar value");
+            const entry = resolve(font, bold, italic);
+            const outlineFont = this.outlinesByKey.get(fontKey(entry));
+            if (!outlineFont) return null;
+            const metric = entry.glyphs.find(candidate => candidate.codePoint === codePoint);
+            return Number.isInteger(metric?.index) ? outlineFont.glyphForCodePoint(codePoint) : null;
+        };
         const state: BindingState = {
             active: true,
             documentId,
@@ -377,13 +395,16 @@ export class AuthoredFontRegistry {
             previousMetrics: consumer.fontMetricsProvider,
             previousFamily: consumer.fontFamilyResolver,
             previousAdvance: consumer.textAdvanceProvider,
+            previousOutline: consumer.fontOutlineProvider,
             metrics,
             family,
             advance,
+            outline,
         };
         consumer.fontMetricsProvider = metrics;
         consumer.fontFamilyResolver = family;
         consumer.textAdvanceProvider = advance;
+        consumer.fontOutlineProvider = outline;
         this.bindings.set(consumer, state);
         this.bindingStates.add(state);
         const binding = {
@@ -498,6 +519,7 @@ export class AuthoredFontRegistry {
             for (const entry of entries) {
                 const key = fontKey(entry);
                 this.receiptsByKey.delete(key);
+                this.outlinesByKey.delete(key);
                 this.loadedByKey.delete(key);
                 if (this.loadedRuntimeFamilies.get(entry.runtimeFamily) === key)
                     this.loadedRuntimeFamilies.delete(entry.runtimeFamily);
@@ -594,6 +616,8 @@ export class AuthoredFontRegistry {
             this.loadedByKey.set(key, entry);
             this.loadedRuntimeFamilies.set(entry.runtimeFamily, key);
             this.receiptsByKey.set(key, receipt);
+            const outlineFont = authenticatedFontOutlines.get(receipt);
+            if (outlineFont) this.outlinesByKey.set(key, outlineFont);
         }
         this.loadedDocuments.add(documentId);
         return records(entries);
@@ -622,6 +646,7 @@ export class AuthoredFontRegistry {
         if (consumer.fontMetricsProvider === state.metrics) consumer.fontMetricsProvider = state.previousMetrics;
         if (consumer.fontFamilyResolver === state.family) consumer.fontFamilyResolver = state.previousFamily;
         if (consumer.textAdvanceProvider === state.advance) consumer.textAdvanceProvider = state.previousAdvance;
+        if (consumer.fontOutlineProvider === state.outline) consumer.fontOutlineProvider = state.previousOutline;
         if (this.bindings.get(consumer) === state) this.bindings.delete(consumer);
         this.bindingStates.delete(state);
     }
@@ -681,8 +706,10 @@ export class FontAdapter {
         const fontFace: any = new Browser.window.FontFace(fontName, authenticated.bytes);
         await fontFace.load();
         const fonts = Browser.document.fonts as any;
+        const outlineFont = parseTrueTypeOutlineFont(authenticated.bytes);
         return {
             sourceSha256: authenticated.sourceSha256,
+            outlineFont: outlineFont ?? undefined,
             commit: () => { fonts.add(fontFace); },
             dispose: () => { fonts.delete?.(fontFace); },
         };
@@ -730,10 +757,15 @@ export class FontAdapter {
             async dispose() {
                 if (disposed) return;
                 try { await prepared.dispose(); }
-                finally { disposed = true; committed = false; }
+                finally {
+                    authenticatedFontOutlines.delete(receipt);
+                    disposed = true;
+                    committed = false;
+                }
             },
         });
         authenticatedFontReceipts.add(receipt);
+        if (prepared.outlineFont) authenticatedFontOutlines.set(receipt, prepared.outlineFont);
         return receipt;
     }
 

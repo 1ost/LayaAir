@@ -24,6 +24,7 @@ import { IGraphicsCmd } from "./IGraphics";
 import { FillTextCmd } from "./cmd/FillTextCmd";
 import { Render2DProcessor } from "./Render2DProcessor";
 import { type TextRasterizationSettings } from "../webgl/text/TextRasterizationSettings";
+import type { TrueTypeGlyphOutline } from "../webgl/text/TrueTypeOutline";
 
 /** @blueprintIgnore */
 export interface TextFontMetrics {
@@ -39,6 +40,9 @@ export type TextFontFamilyResolver = (font: string, bold: boolean, italic: boole
 
 /** @blueprintIgnore */
 export type TextAdvanceProvider = (text: string, font: string, fontSize: number, bold: boolean, italic: boolean, kerning: boolean) => readonly number[] | null;
+
+/** @blueprintIgnore */
+export type TextGlyphOutlineProvider = (codePoint: number, font: string, bold: boolean, italic: boolean) => TrueTypeGlyphOutline | null;
 
 /**
  * @en The Text class is used to create display objects to show text.
@@ -134,6 +138,9 @@ export class Text extends Sprite {
      * @blueprintIgnore
      */
     textAdvanceProvider: TextAdvanceProvider;
+
+    /** Authenticated native glyph outlines used by advanced authored text rasterization. */
+    fontOutlineProvider: TextGlyphOutlineProvider;
 
     /**
      * @en Represents the text content string.
@@ -2002,7 +2009,17 @@ export class Text extends Sprite {
                         gcmd.letterSpacing = cmd.style.letterSpacing;
                         gcmd.kerning = cmd.style.kerning;
                         gcmd.glyphAdvances = cmd.glyphAdvances;
-                        gcmd.rasterizationSettings = this._rasterizationSettings;
+                        const outlineProvider = this.fontOutlineProvider;
+                        const outlineBold = cmd.style.bold;
+                        const outlineItalic = cmd.style.italic;
+                        gcmd.rasterizationSettings = this._rasterizationSettings && outlineProvider
+                            ? {
+                                ...this._rasterizationSettings,
+                                outlineProvider: (codePoint: number) => outlineProvider(
+                                    codePoint, authoredFont, outlineBold, outlineItalic,
+                                ),
+                            }
+                            : this._rasterizationSettings;
                         if (cmd.baseline != null)
                             gcmd.textBaseline = "alphabetic";
                         if (shadow) {
