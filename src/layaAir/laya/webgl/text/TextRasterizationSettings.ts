@@ -25,6 +25,8 @@ export type TextGridFitMode = "none" | "pixel" | "subpixel";
 /** @internal */
 export function textRasterizationScale(settings: TextRasterizationSettings, configuredScale: number): number {
     const scale = Number.isFinite(configuredScale) ? configuredScale : 1;
+    if (settings?.outlineProvider)
+        return Math.max(scale, 4);
     // Flash CSM samples an outline distance field before applying its cutoffs.
     // Oversampling the native outline mask preserves that ordering at small sizes.
     return settings?.coverageMode === "linear-cutoff" || settings?.coverageMode === "signed-distance-cutoff"
@@ -45,8 +47,10 @@ export interface TextGlyphAlignmentZone {
 
 /** @internal */
 export function textRasterizationCacheKey(settings: TextRasterizationSettings): string {
-    if (!settings || settings.coverageMode === "platform")
+    if (!settings)
         return "";
+    if (settings.coverageMode === "platform")
+        return settings.outlineProvider ? `rc_platform_${settings.gridFit ?? "none"}_outline_` : "";
 
     const outside = finite(settings.outsideCutoff, 0);
     const inside = finite(settings.insideCutoff, 1);

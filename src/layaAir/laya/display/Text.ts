@@ -2015,6 +2015,11 @@ export class Text extends Sprite {
                         gcmd.rasterizationSettings = this._rasterizationSettings && outlineProvider
                             ? {
                                 ...this._rasterizationSettings,
+                                // Authenticated SWF glyph outlines already carry their authored geometry.
+                                // Render them as supersampled vectors; CSM grid fitting is only meaningful
+                                // to Flash's unavailable proprietary rasterizer and distorts these outlines.
+                                coverageMode: "platform",
+                                gridFit: "none",
                                 outlineProvider: (codePoint: number) => outlineProvider(
                                     codePoint, authoredFont, outlineBold, outlineItalic,
                                 ),

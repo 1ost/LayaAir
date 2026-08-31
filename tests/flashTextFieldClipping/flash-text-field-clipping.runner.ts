@@ -12,7 +12,11 @@ import { NoRender2DProcess } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
-import { remapTextCoverage, textRasterizationScale } from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
+import {
+    remapTextCoverage,
+    textRasterizationCacheKey,
+    textRasterizationScale,
+} from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
 import { parseTrueTypeOutlineFont } from "../../src/layaAir/laya/webgl/text/TrueTypeOutline";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
@@ -121,6 +125,13 @@ test("advanced CSM oversamples small embedded glyph masks before applying cutoff
     assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 1), 2);
     assert.equal(textRasterizationScale({ coverageMode: "signed-distance-cutoff" }, 1), 2);
     assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 3), 3);
+    const outlineProvider = (): null => null;
+    assert.equal(textRasterizationScale({ coverageMode: "platform", outlineProvider }, 1), 4,
+        "authenticated vector outlines use the established four-times supersampled raster path");
+    assert.equal(textRasterizationScale({ coverageMode: "platform", outlineProvider }, 6), 6);
+    assert.equal(textRasterizationCacheKey({ coverageMode: "platform" }), "");
+    assert.match(textRasterizationCacheKey({ coverageMode: "platform", outlineProvider }), /outline/,
+        "outline-backed platform glyphs cannot alias ordinary platform text in the atlas cache");
 });
 
 test("advanced CSM derives signed outline distance before applying cutoffs", () => {
@@ -161,6 +172,10 @@ test("advanced TextField commands snapshot the authenticated outline selection",
                 outlineProvider?: (codePoint: number) => unknown;
             } };
         assert.ok(command?.rasterizationSettings?.outlineProvider);
+        assert.equal((command.rasterizationSettings as { coverageMode?: string }).coverageMode, "platform",
+            "authenticated outlines bypass the proprietary CSM distance remap");
+        assert.equal((command.rasterizationSettings as { gridFit?: string }).gridFit, "none",
+            "authenticated outlines retain their source geometry instead of CSM alignment-zone snapping");
         assert.deepEqual(command.rasterizationSettings.outlineProvider(0x41), font.glyphForCodePoint(0x41));
         assert.deepEqual(calls, [[0x41, "Body", false, false]],
             "render commands retain their immutable style instead of closing over the layout cursor");
