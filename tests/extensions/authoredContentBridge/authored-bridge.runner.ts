@@ -2837,9 +2837,12 @@ test("embedded advanced text maps CSM tables, grid fit, sharpness, and thickness
     field.sharpness = 50;
     field.thickness = 80;
     const settings = field.nativeInput.rasterizationSettings;
-    assert.equal(settings.coverageMode, "linear-cutoff");
+    assert.equal(settings.coverageMode, "signed-distance-cutoff");
     assert.equal(settings.gridFit, GridFitType.PIXEL);
-    assert.ok(settings.outsideCutoff! < settings.insideCutoff!);
+    assert.equal(settings.outsideCutoff, -0.15 + (25 - 80) / 900,
+        "authored outside ADF distance remains negative before CSM modulation");
+    assert.equal(settings.insideCutoff, 0.25 + (-25 - 80) / 900,
+        "authored inside ADF distance remains positive before CSM modulation");
     field.antiAliasType = AntiAliasType.NORMAL;
     assert.equal(field.nativeInput.rasterizationSettings, null);
     assert.throws(() => field.antiAliasType = "lcd", /AntiAliasType/);

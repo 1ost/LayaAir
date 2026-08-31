@@ -34118,7 +34118,7 @@
             "new (): TextField"
           ],
           "indexSignatures": [],
-          "sha256": "aac1855289951f47d3115c2c688122bb3b82577e7082a6490f150c2854e73dd3",
+          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99",
           "heritage": [
             {
               "kind": "extends",
@@ -34134,7 +34134,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "aac1855289951f47d3115c2c688122bb3b82577e7082a6490f150c2854e73dd3"
+          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -34144,7 +34144,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "aac1855289951f47d3115c2c688122bb3b82577e7082a6490f150c2854e73dd3"
+          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
         },
         {
           "module": "src/layaAir/flash/text/TextField.ts",
@@ -34154,7 +34154,7 @@
           "members": [],
           "constructors": [],
           "indexSignatures": [],
-          "sha256": "aac1855289951f47d3115c2c688122bb3b82577e7082a6490f150c2854e73dd3"
+          "sha256": "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99"
         },
         {
           "module": "src/layaAir/flash/text/TextFormat.ts",
@@ -37205,7 +37205,7 @@
             "382da8733e5ba9f3d9c5515dbeee604e14e0ed7be8b3e55a0265e17ea0fcaa74",
             "7d9a6bebb303cb274b5a61b06afa72105add788d22049c1f8da67d6b7f330542",
             "87b263b4e05f8bbc8ceaf567dfee280cab16a6bd1efcba4745ea12c7bd6fa305",
-            "aac1855289951f47d3115c2c688122bb3b82577e7082a6490f150c2854e73dd3",
+            "c96f41c9fc89ac509418e78c3695bc213c23be50d96af81c61fff0f57a4a8a99",
             "fbac1d1afab91eb52e8c48871857528bdc8bb6a76c3bfa784bb728c9a6770e17"
           ]
         }

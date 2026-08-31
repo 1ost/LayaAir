@@ -224,7 +224,7 @@ export class TextRender {
         ctx.fillText(text, margin, margin + height / 2);
 
         let imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
-        remapTextCoverage(imgdt, rasterization);
+        remapTextCoverage(imgdt, rasterization, fontScale);
 
         //预乘一下
         if (TextRenderConfig.premultiplyAlpha) {
@@ -298,7 +298,7 @@ export class TextRender {
         lineWidth > 0 && ctx.strokeText(text, drawX, drawY);
         ctx.fillText(text, drawX, drawY);
         const imgdt = ctx.getImageData(rectX, rectY, rectW, rectH);
-        remapTextCoverage(imgdt, rasterization);
+        remapTextCoverage(imgdt, rasterization, fontScale);
 
         if (TextRenderConfig.premultiplyAlpha) {
             const data = imgdt.data;

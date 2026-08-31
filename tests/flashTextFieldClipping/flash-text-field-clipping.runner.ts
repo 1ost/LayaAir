@@ -12,7 +12,7 @@ import { NoRender2DProcess } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/2DRenderPass/NoRender2DProcess";
 import { NoRenderDeviceFactory } from
     "../../src/layaAir/laya/RenderDriver/NoRenderDriver/DriverDevice/NoRenderDeviceFactory";
-import { textRasterizationScale } from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
+import { remapTextCoverage, textRasterizationScale } from "../../src/layaAir/laya/webgl/text/TextRasterizationSettings";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -47,7 +47,26 @@ class ProbeTextField extends TextField {
 test("advanced CSM oversamples small embedded glyph masks before applying cutoffs", () => {
     assert.equal(textRasterizationScale(null, 1), 1);
     assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 1), 2);
+    assert.equal(textRasterizationScale({ coverageMode: "signed-distance-cutoff" }, 1), 2);
     assert.equal(textRasterizationScale({ coverageMode: "linear-cutoff" }, 3), 3);
+});
+
+test("advanced CSM derives signed outline distance before applying cutoffs", () => {
+    const alphas = [0, 0, 64, 128, 192, 255, 255];
+    const data = new Uint8ClampedArray(alphas.flatMap(alpha => [255, 255, 255, alpha]));
+    const image = { data, width: alphas.length, height: 1 } as ImageData;
+    remapTextCoverage(image, {
+        coverageMode: "signed-distance-cutoff", outsideCutoff: -0.25, insideCutoff: 0.25,
+    });
+    assert.deepEqual(Array.from(data).filter((_, index) => index % 4 === 3), [0, 0, 0, 129, 255, 255, 255]);
+
+    const hole = new Uint8ClampedArray(3 * 3 * 4).fill(255);
+    hole[(1 * 3 + 1) * 4 + 3] = 0;
+    remapTextCoverage({ data: hole, width: 3, height: 3 } as ImageData, {
+        coverageMode: "signed-distance-cutoff", outsideCutoff: -0.25, insideCutoff: 0.25,
+    });
+    assert.equal(hole[(1 * 3 + 1) * 4 + 3], 0, "a counter remains outside rather than being filled");
+    assert.equal(hole[3], 255, "interior coverage remains opaque beyond the inside cutoff");
 });
 
 function fieldAtHeight(height: number): ProbeTextField {

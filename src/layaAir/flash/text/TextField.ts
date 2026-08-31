@@ -969,13 +969,13 @@ export class TextField extends InteractiveObject {
         const color = this._defaultFormat.color ?? colorNumber(input.color) ?? 0;
         const colorType = colorLuminance(color) > 0.5 ? TextColorType.LIGHT_COLOR : TextColorType.DARK_COLOR;
         const table = TextRenderer.resolveAdvancedAntiAliasing(input.font, style, colorType, input.fontSize);
-        let outsideCutoff = table ? clamp01(0.5 + table.outsideCutoff) : 0.40;
-        let insideCutoff = table ? clamp01(0.5 + table.insideCutoff) : 0.84;
-        outsideCutoff = clamp01(outsideCutoff + (0.5 * this._sharpness - this._thickness) / 900);
-        insideCutoff = clamp01(insideCutoff + (-0.5 * this._sharpness - this._thickness) / 900);
+        let outsideCutoff = table ? table.outsideCutoff : -0.10;
+        let insideCutoff = table ? table.insideCutoff : 0.34;
+        outsideCutoff += (0.5 * this._sharpness - this._thickness) / 900;
+        insideCutoff += (-0.5 * this._sharpness - this._thickness) / 900;
         if (insideCutoff < outsideCutoff) [outsideCutoff, insideCutoff] = [insideCutoff, outsideCutoff];
         input.rasterizationSettings = {
-            coverageMode: "linear-cutoff",
+            coverageMode: "signed-distance-cutoff",
             outsideCutoff,
             insideCutoff,
             gridFit: input.align === TextFormatAlign.LEFT ? this._gridFitType
