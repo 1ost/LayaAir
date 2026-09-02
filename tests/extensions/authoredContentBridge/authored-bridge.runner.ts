@@ -2671,7 +2671,7 @@ test("TextField preserves nullable defaults, character ranges, replacement, and 
     assert.equal(field.caretIndex, 2, "caret uses normalized UTF-16 replacement length");
 
     field.htmlText = "<p><b>A&amp;</b><sbr>B</p>";
-    assert.equal(field.text, "A&\rB");
+    assert.equal(field.text, "A&B");
     assert.equal(field.htmlText, "<p><b>A&amp;</b><sbr>B</p>");
     field.text = "<literal>\nvalue";
     assert.equal(field.text, "<literal>\rvalue");

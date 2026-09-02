@@ -183,8 +183,10 @@ function decodeContent(source: string): { readonly plainText: string; readonly b
             cursor += 7;
             continue;
         }
-        const breakMatch = /^<(?:br|sbr)\s*\/?>/.exec(source.slice(cursor));
+        const breakMatch = /^<br\s*\/?>/.exec(source.slice(cursor));
         if (breakMatch) { plainText += "\r"; cursor += breakMatch[0].length; continue; }
+        const softBreakMatch = /^<sbr\s*\/?>/.exec(source.slice(cursor));
+        if (softBreakMatch) { cursor += softBreakMatch[0].length; continue; }
         if (source[cursor] === "<")
             throw new Error("AUTHORED_CONTENT_HTML_TEXT_TAG_UNSUPPORTED: only b, br, sbr, and color-, face-, or letterSpacing-only font runs are allowed in font content.");
         let character: string;

@@ -1007,7 +1007,11 @@ export class TextField extends InteractiveObject {
 export function flashHtmlToText(value: string, condenseWhite = false): string {
     const lineBreak = "\ufdd0";
     let result = stripTrailingEmptyFlashBlocks(value)
-        .replace(/<(?:br|sbr)\b[^>]*\/?>/gi, lineBreak)
+        .replace(/<br\b[^>]*\/?>/gi, lineBreak)
+        // Flash's SBR is a soft formatting boundary, not a hard newline.
+        // Translating it to BR makes authored labels wrap even when wordWrap
+        // is disabled.
+        .replace(/<sbr\b[^>]*\/?>/gi, "")
         .replace(/<\/(?:p|li)>\s*/gi, lineBreak)
         .replace(/<[^>]*>/g, "")
         .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
@@ -1029,7 +1033,7 @@ export function flashTextToHtml(value: string): string {
 }
 
 function flashHtmlForLaya(source: string, condenseWhite: boolean): string {
-    let value = stripTrailingEmptyFlashBlocks(source).replace(/<sbr\b[^>]*\/?>/gi, "<br>");
+    let value = stripTrailingEmptyFlashBlocks(source).replace(/<sbr\b[^>]*\/?>/gi, "");
     if (condenseWhite) {
         let whitespacePending = false;
         value = value.replace(/<[^>]*>|[^<]+/g, token => {

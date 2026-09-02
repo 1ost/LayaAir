@@ -122,7 +122,7 @@ test("restricted Flash HTML preserves adjacent same-format paragraph runs", () =
 
 test("restricted Flash HTML preserves authenticated empty trailing paragraphs", () => {
     assert.deepEqual(parseRestrictedFlashHtmlText(EMPTY_TRAILING_PARAGRAPH_MARKUP), {
-        markup: EMPTY_TRAILING_PARAGRAPH_MARKUP, plainText: "Consumes Basic \rGikogan\r",
+        markup: EMPTY_TRAILING_PARAGRAPH_MARKUP, plainText: "Consumes Basic Gikogan\r",
         align: "right", font: "Arial", size: 10, color: 0xdea05d,
         letterSpacing: 0, kerning: false, bold: false,
     });
@@ -153,7 +153,7 @@ test("restricted Flash HTML preserves authored input fields", () => {
 
 test("restricted Flash HTML preserves authenticated nested letter-spacing runs", () => {
     assert.deepEqual(parseRestrictedFlashHtmlText(LETTER_SPACING_RUN_MARKUP), {
-        markup: LETTER_SPACING_RUN_MARKUP, plainText: "Hueco Mundo \rShinigami", align: "left", font: "Arial", size: 14,
+        markup: LETTER_SPACING_RUN_MARKUP, plainText: "Hueco Mundo Shinigami", align: "left", font: "Arial", size: 14,
         color: 0xffffff, letterSpacing: 2, kerning: false, bold: true,
     });
     const base = configuration(LETTER_SPACING_RUN_MARKUP);
@@ -168,7 +168,7 @@ test("restricted Flash HTML preserves authenticated nested letter-spacing runs",
     });
     try {
         assert.equal(field.htmlText, LETTER_SPACING_RUN_MARKUP);
-        assert.equal(field.text.replace(/\n/g, "\r"), "Hueco Mundo \rShinigami");
+        assert.equal(field.text.replace(/\n/g, "\r"), "Hueco Mundo Shinigami");
     } finally { field.destroy(true); }
 });
 
