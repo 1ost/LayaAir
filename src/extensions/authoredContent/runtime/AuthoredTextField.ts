@@ -8,7 +8,9 @@ import { AuthoredFontRegistry, type AuthoredTextFontBinding } from "../../../lay
 import {
     createFlashAuthoredBevelFilter, type FlashAuthoredBevelFilterOptions,
 } from "../../../layaAir/laya/display/effect2d/FlashBevelEffects";
-import { parseRestrictedFlashHtmlText } from "../core/RestrictedFlashHtmlText";
+import {
+    parseRestrictedFlashHtmlText, type RestrictedFlashHtmlTextFormatAuthority,
+} from "../core/RestrictedFlashHtmlText";
 
 export interface AuthoredGlowFilterConfiguration {
     readonly kind: "glow";
@@ -212,7 +214,7 @@ const BEVEL_FILTER_KEYS = Object.freeze([
 ]);
 const COLOR_MATRIX_FILTER_KEYS = Object.freeze(["kind", "matrix"]);
 const authoredFontBindings = new WeakMap<TextField, AuthoredTextFontBinding>();
-const authoredHtmlFields = new WeakSet<TextField>();
+const authoredHtmlAuthorities = new WeakMap<TextField, RestrictedFlashHtmlTextFormatAuthority>();
 const normalizedAuthoredTextConfigurations = new WeakSet<object>();
 
 /**
@@ -232,8 +234,16 @@ export function configureAuthoredTextField(
     if (!(field instanceof TextField) || field.destroyed)
         throw new TypeError("Authored TextField target must be a live TextField");
     const value = normalizeAuthoredTextFieldConfiguration(configuration);
-    if (value.html) authoredHtmlFields.add(field);
-    else authoredHtmlFields.delete(field);
+    if (value.html) authoredHtmlAuthorities.set(field, Object.freeze({
+        align: value.format.align,
+        font: value.format.font,
+        size: value.format.size,
+        color: value.format.color,
+        letterSpacing: value.format.letterSpacing ?? 0,
+        kerning: value.format.kerning ?? false,
+        bold: value.format.bold,
+    }));
+    else authoredHtmlAuthorities.delete(field);
     const previousBinding = authoredFontBindings.get(field);
     let fontBinding: AuthoredTextFontBinding | undefined;
     if (value.format.fontMode === "embedded") {
@@ -296,7 +306,7 @@ export function configureAuthoredTextField(
 export function releaseAuthoredTextFieldFontBinding(field: TextField): void {
     authoredFontBindings.get(field)?.cancel();
     authoredFontBindings.delete(field);
-    authoredHtmlFields.delete(field);
+    authoredHtmlAuthorities.delete(field);
 }
 
 /**
@@ -309,8 +319,9 @@ export function applyAuthoredLocaleText(field: TextField, text: string): void {
     if (!(field instanceof TextField) || field.destroyed)
         throw new TypeError("Authored locale text target must be a live TextField");
     if (typeof text !== "string") throw new TypeError("Authored locale text must be a string");
-    const html = authoredHtmlFields.has(field);
-    const visibleText = html ? parseRestrictedFlashHtmlText(text).plainText : text;
+    const htmlAuthority = authoredHtmlAuthorities.get(field);
+    const html = htmlAuthority !== undefined;
+    const visibleText = html ? parseRestrictedFlashHtmlText(text, htmlAuthority).plainText : text;
     const binding = authoredFontBindings.get(field);
     if (binding?.active) {
         const format = field.defaultTextFormat;

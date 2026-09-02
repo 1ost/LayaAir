@@ -9,7 +9,9 @@ import { NoRenderDeviceFactory } from "../../src/layaAir/laya/RenderDriver/NoRen
 import { PAL } from "../../src/layaAir/laya/platform/PlatformAdapters";
 import { Browser } from "../../src/layaAir/laya/utils/Browser";
 import { parseRestrictedFlashHtmlText } from "../../src/extensions/authoredContent/core/RestrictedFlashHtmlText";
-import { createAuthoredTextField, type AuthoredTextFieldConfiguration } from "../../src/extensions/authoredContent/runtime/AuthoredTextField";
+import {
+    applyAuthoredLocaleText, createAuthoredTextField, type AuthoredTextFieldConfiguration,
+} from "../../src/extensions/authoredContent/runtime/AuthoredTextField";
 
 LayaGL.render2DRenderPassFactory = new NoRender2DProcess();
 LayaGL.renderDeviceFactory = new NoRenderDeviceFactory();
@@ -33,6 +35,7 @@ const REDUNDANT_FONT_MARKUP = '<p align="right"><font face="Arial" size="12" col
 const FALLBACK_FONT_MARKUP = '<p align="left"><font face="Arial" size="12" color="#ffc867" letterSpacing="0.000000" kerning="0">Today&apos;s remaining reward chances<font face="MS PGothic">ï¼š</font></font></p>';
 const MULTI_PARAGRAPH_MARKUP = '<p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Do not start fighting </font></p><p align="center"><font face="Arial" size="10" color="#ffffff" letterSpacing="0.000000" kerning="0">Then kicked captain</font></p>';
 const EMPTY_TRAILING_PARAGRAPH_MARKUP = '<p align="right"><font face="Arial" size="10" color="#dea05d" letterSpacing="0.000000" kerning="0">Consumes Basic <sbr />Gikogan</font></p><p align="right"></p>';
+const EMPTY_ONLY_PARAGRAPHS_MARKUP = '<p align="center"></p><p align="center"></p>';
 const LETTER_SPACING_RUN_MARKUP = '<p align="left"><font face="Arial" size="14" color="#ffffff" letterSpacing="2.000000" kerning="0"><b>Hueco Mundo <sbr />Shinigam</b><font letterSpacing="0.000000"><b>i</b></font></font></p>';
 const BOLD_FONT_WITH_FALLBACK_MARKUP = '<p align="left"><font face="Arial" size="14" color="#ff8448" letterSpacing="1.000000" kerning="0"><b>Introduction</b><font face="SimSun">\uff1a</font></font></p>';
 
@@ -138,6 +141,18 @@ test("restricted Flash HTML preserves authenticated nested face and mixed bold r
         ...configuration(markup),
         format: { ...configuration(markup).format, font: "MS PGothic", size: 12, color: 0x00dedb, bold: false, align: "left", kerning: false },
     }).htmlText, markup);
+});
+
+test("authored HTML uses field authority for empty-only initial and localized paragraphs", () => {
+    const field = createAuthoredTextField(configuration(EMPTY_ONLY_PARAGRAPHS_MARKUP));
+    try {
+        assert.equal(field.htmlText, EMPTY_ONLY_PARAGRAPHS_MARKUP);
+        assert.equal(field.text, "");
+        const localized = '<p align="center"></p>';
+        applyAuthoredLocaleText(field, localized);
+        assert.equal(field.htmlText, localized);
+        assert.equal(field.text, "");
+    } finally { field.destroy(true); }
 });
 
 test("restricted Flash HTML preserves authored input fields", () => {
