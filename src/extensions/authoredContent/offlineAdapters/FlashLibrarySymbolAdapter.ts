@@ -66,6 +66,18 @@ type FlashLibraryShapeProjection = {
     readonly flipX: boolean;
     readonly flipY: boolean;
 };
+type FlashLibrarySolidFillProjection = {
+    readonly sourcePath: string;
+    readonly styleIndex: number;
+    readonly alpha: number;
+    readonly color: number;
+    readonly rectangles: ReadonlyArray<{
+        readonly x: number;
+        readonly y: number;
+        readonly width: number;
+        readonly height: number;
+    }>;
+};
 
 const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio", "visible"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
@@ -883,7 +895,8 @@ export class FlashLibrarySymbolAdapter {
         }
 
         const projections = resolveFlashLibraryShapeProjections(asset, assets, resourceAuthorities);
-        if (projections.length === 1 && !projections[0].flipX && !projections[0].flipY) {
+        const solidProjections = resolveFlashLibrarySolidFillProjections(asset, resourceAuthorities);
+        if (solidProjections.length === 0 && projections.length === 1 && !projections[0].flipX && !projections[0].flipY) {
             const projection = projections[0];
             const authority = resourceAuthorities.get(projection.sourcePath);
             if (!authority || authority.sourcePath !== projection.sourcePath)
@@ -900,18 +913,18 @@ export class FlashLibrarySymbolAdapter {
             };
         }
 
-        const children = projections.map((projection, index): NeutralAuthoredNode => {
+        const bitmapChildren = projections.map((projection): { readonly styleIndex: number; readonly nodes: ReadonlyArray<NeutralAuthoredNode> } => {
             const authority = resourceAuthorities.get(projection.sourcePath);
             if (!authority || authority.sourcePath !== projection.sourcePath)
                 fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
             const resourceId = registerBitmapResource(
                 resources, projection.bitmapId, authority, projection.smoothing,
             );
-            return {
+            return { styleIndex: projection.styleIndex, nodes: [{
                 linkage: `${linkage}_fill_${projection.styleIndex}`,
                 instanceId: `fill_${projection.styleIndex}`,
                 kind: "image",
-                depth: index + 1,
+                depth: projection.styleIndex,
                 x: projection.x - boundsX + (projection.flipX ? projection.width : 0),
                 y: projection.y - boundsY + (projection.flipY ? projection.height : 0),
                 ...(projection.flipX || projection.flipY ? {
@@ -927,8 +940,36 @@ export class FlashLibrarySymbolAdapter {
                 resourceId,
                 smoothing: projection.smoothing,
                 children: [],
+            }] };
+        });
+        const solidChildren = solidProjections.map((projection): { readonly styleIndex: number; readonly nodes: ReadonlyArray<NeutralAuthoredNode> } => {
+            const authority = resourceAuthorities.get(projection.sourcePath);
+            if (!authority || authority.sourcePath !== projection.sourcePath)
+                fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${projection.sourcePath}'.`);
+            const resourceId = `flash-solid-fill-${characterId}-${projection.styleIndex}`;
+            registerResource(resources, resourceId, authority);
+            return {
+                styleIndex: projection.styleIndex,
+                nodes: projection.rectangles.map((rectangle, index): NeutralAuthoredNode => ({
+                    linkage: `${linkage}_fill_${projection.styleIndex}_${index + 1}`,
+                    instanceId: `fill_${projection.styleIndex}_${index + 1}`,
+                    kind: "image",
+                    depth: projection.styleIndex,
+                    x: rectangle.x - boundsX,
+                    y: rectangle.y - boundsY,
+                    width: rectangle.width,
+                    height: rectangle.height,
+                    alpha: projection.alpha,
+                    resourceId,
+                    smoothing: false,
+                    children: [],
+                })),
             };
         });
+        const children = [...bitmapChildren, ...solidChildren]
+            .sort((left, right) => left.styleIndex - right.styleIndex)
+            .flatMap(value => value.nodes)
+            .map((node, index) => ({ ...node, depth: index + 1 }));
         return {
             ...common,
             kind: "container",
@@ -1886,15 +1927,18 @@ function resolveFlashLibraryShapeProjections(
 
     const bounds = object(asset.bounds, `library.assets.${characterId}.bounds`);
     const shape = object(asset.shape, `library.assets.${characterId}.shape`);
-    const fillStyles = array(shape.fillStyles, `library.assets.${characterId}.shape.fillStyles`)
-        .map((value, index) => ({ value: object(value, `shape ${characterId} fill ${index}`), styleIndex: index + 1 }))
-        .filter(value => !(value.value.kind === "bitmap" && value.value.bitmapId === 65535));
+    const allFillStyles = array(shape.fillStyles, `library.assets.${characterId}.shape.fillStyles`)
+        .map((value, index) => ({ value: object(value, `shape ${characterId} fill ${index}`), styleIndex: index + 1 }));
+    const fillStyles = allFillStyles
+        .filter(value => value.value.kind === "bitmap" && value.value.bitmapId !== 65535);
     if (fillStyles.length === 0)
         fail("FLASH_LIBRARY_BITMAP_FILL_PROJECTION_UNSUPPORTED", `Shape ${characterId} must contain at least one non-sentinel bitmap fill.`);
     if (array(shape.lineStyles, `shape ${characterId}.lineStyles`).length !== 0 || shape.usesFillWindingRule !== false)
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} is not an axis-aligned bitmap projection.`);
     const segments = array(shape.segments, `shape ${characterId}.segments`);
-    const realStyleIndices = new Set(fillStyles.map(value => value.styleIndex));
+    const realStyleIndices = new Set(allFillStyles
+        .filter(({ value }) => value.kind === "solid" || (value.kind === "bitmap" && value.bitmapId !== 65535))
+        .map(value => value.styleIndex));
     for (const value of segments) {
         const segment = object(value, `shape ${characterId} segment`);
         const fillStyle0 = nonnegativeInteger(segment.fillStyle0, `shape ${characterId} segment.fillStyle0`);
@@ -1967,6 +2011,138 @@ function resolveFlashLibraryShapeProjections(
     if (!rectanglesTileBounds(projections, bounds))
         fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
     return projections;
+}
+
+function resolveFlashLibrarySolidFillProjections(
+    assetValue: unknown,
+    resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+): ReadonlyArray<FlashLibrarySolidFillProjection> {
+    const asset = object(assetValue, "shape asset");
+    const characterId = positiveInteger(asset.characterId, "shape.characterId");
+    const shape = object(asset.shape, `library.assets.${characterId}.shape`);
+    const fillStyles = array(shape.fillStyles, `library.assets.${characterId}.shape.fillStyles`)
+        .map((value, index) => ({ value: object(value, `shape ${characterId} fill ${index}`), styleIndex: index + 1 }))
+        .filter(({ value }) => value.kind === "solid");
+    if (fillStyles.length === 0) return [];
+    if (shape.usesFillWindingRule !== false)
+        fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fills require even-odd geometry.`);
+
+    const runtime = object(asset.bitmapFillRuntime, `library.assets.${characterId}.bitmapFillRuntime`);
+    const runtimeStyles = array(runtime.solidFillStyles, `library.assets.${characterId}.bitmapFillRuntime.solidFillStyles`);
+    if (runtimeStyles.length !== fillStyles.length)
+        fail("FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} solid-fill runtime closure is incomplete.`);
+    const segments = array(shape.segments, `shape ${characterId}.segments`);
+    return fillStyles.map(({ value: fill, styleIndex }, index): FlashLibrarySolidFillProjection => {
+        const label = `shape ${characterId} solid fill ${styleIndex}`;
+        const startColor = object(fill.startColor, `${label}.startColor`);
+        const endColor = object(fill.endColor, `${label}.endColor`);
+        exactKeys(startColor, new Set(["alpha", "color"]), `${label}.startColor`, "FLASH_LIBRARY_SOLID_FILL_COLOR_UNSUPPORTED");
+        exactKeys(endColor, new Set(["alpha", "color"]), `${label}.endColor`, "FLASH_LIBRARY_SOLID_FILL_COLOR_UNSUPPORTED");
+        const color = nonnegativeInteger(startColor.color, `${label}.color`);
+        const alpha = finite(startColor.alpha, `${label}.alpha`);
+        if (color > 0xffffff || alpha < 0 || alpha > 1
+            || endColor.color !== color || endColor.alpha !== alpha)
+            fail("FLASH_LIBRARY_SOLID_FILL_COLOR_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} is animated or invalid.`);
+
+        const runtimeStyle = object(runtimeStyles[index], `${label}.runtime`);
+        exactKeys(runtimeStyle, new Set(["alpha", "color", "path", "rectangles", "styleIndex"]),
+            `${label}.runtime`, "FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH");
+        if (runtimeStyle.styleIndex !== styleIndex || runtimeStyle.color !== color || runtimeStyle.alpha !== alpha)
+            fail("FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} solid fill ${styleIndex} runtime identity drifted.`);
+        const rectangles = rectanglesForSolidFill(segments, styleIndex, characterId);
+        const runtimeRectangles = array(runtimeStyle.rectangles, `${label}.runtime.rectangles`).map((value, rectangleIndex) => {
+            const rectangle = object(value, `${label}.runtime.rectangles[${rectangleIndex}]`);
+            exactKeys(rectangle, BOUNDS_FIELDS, `${label}.runtime.rectangles[${rectangleIndex}]`, "FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH");
+            return {
+                x: finite(rectangle.x, `${label}.runtime.rectangles[${rectangleIndex}].x`),
+                y: finite(rectangle.y, `${label}.runtime.rectangles[${rectangleIndex}].y`),
+                width: positive(rectangle.width, `${label}.runtime.rectangles[${rectangleIndex}].width`),
+                height: positive(rectangle.height, `${label}.runtime.rectangles[${rectangleIndex}].height`),
+            };
+        });
+        if (JSON.stringify(runtimeRectangles) !== JSON.stringify(rectangles))
+            fail("FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} solid fill ${styleIndex} geometry drifted.`);
+        const sourcePath = string(runtimeStyle.path, `${label}.runtime.path`);
+        const authority = resourceAuthorities.get(sourcePath);
+        if (!authority || authority.sourcePath !== sourcePath || authority.mediaType !== "image/png"
+            || !sourcePath.replace(/\\/g, "/").toLowerCase().endsWith(".png"))
+            fail("FLASH_LIBRARY_SOLID_FILL_RESOURCE_UNRESOLVED", `Shape ${characterId} solid fill ${styleIndex} has no exact PNG authority.`);
+        return { sourcePath, styleIndex, alpha, color, rectangles };
+    });
+}
+
+function rectanglesForSolidFill(
+    segmentsValue: ReadonlyArray<unknown>,
+    styleIndex: number,
+    characterId: number,
+): ReadonlyArray<{ readonly x: number; readonly y: number; readonly width: number; readonly height: number }> {
+    const edges = segmentsValue.flatMap(value => {
+        const segment = object(value, `shape ${characterId} segment`);
+        if (segment.fillStyle0 !== styleIndex && segment.fillStyle1 !== styleIndex) return [];
+        if (segment.kind !== "line" || segment.lineStyle !== 0 || segment.fillStyle0 === segment.fillStyle1)
+            fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} contains unsupported geometry.`);
+        const edge = object(segment.start, `shape ${characterId} segment.start`);
+        const from = array(edge.from, `shape ${characterId} segment.start.from`);
+        const to = array(edge.to, `shape ${characterId} segment.start.to`);
+        if (from.length !== 2 || to.length !== 2)
+            fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} has incomplete geometry.`);
+        const x0 = finite(from[0], `shape ${characterId} solid x`);
+        const y0 = finite(from[1], `shape ${characterId} solid y`);
+        const x1 = finite(to[0], `shape ${characterId} solid x`);
+        const y1 = finite(to[1], `shape ${characterId} solid y`);
+        if ((x0 === x1) === (y0 === y1))
+            fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} is not axis-aligned.`);
+        return [{ x0, y0, x1, y1 }];
+    });
+    if (edges.length === 0)
+        fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} has no geometry.`);
+    const xs = [...new Set(edges.flatMap(edge => [edge.x0, edge.x1]))].sort((a, b) => a - b);
+    const ys = [...new Set(edges.flatMap(edge => [edge.y0, edge.y1]))].sort((a, b) => a - b);
+    const filled = new Set<string>();
+    for (let yIndex = 0; yIndex < ys.length - 1; yIndex++) {
+        const sampleY = (ys[yIndex] + ys[yIndex + 1]) / 2;
+        for (let xIndex = 0; xIndex < xs.length - 1; xIndex++) {
+            const sampleX = (xs[xIndex] + xs[xIndex + 1]) / 2;
+            const crossings = edges.filter(edge => edge.x0 === edge.x1 && edge.x0 > sampleX
+                && Math.min(edge.y0, edge.y1) <= sampleY && sampleY < Math.max(edge.y0, edge.y1)).length;
+            if (crossings % 2 === 1) filled.add(`${xIndex}:${yIndex}`);
+        }
+    }
+    if (filled.size === 0)
+        fail("FLASH_LIBRARY_SOLID_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} solid fill ${styleIndex} has no covered region.`);
+
+    const rows: Array<Array<readonly [number, number]>> = [];
+    for (let yIndex = 0; yIndex < ys.length - 1; yIndex++) {
+        const runs: Array<readonly [number, number]> = [];
+        let start: number | undefined;
+        for (let xIndex = 0; xIndex < xs.length - 1; xIndex++) {
+            const occupied = filled.has(`${xIndex}:${yIndex}`);
+            if (occupied && start === undefined) start = xs[xIndex];
+            if (start !== undefined && (!occupied || xIndex === xs.length - 2)) {
+                runs.push([start, occupied ? xs[xIndex + 1] : xs[xIndex]]);
+                start = undefined;
+            }
+        }
+        rows.push(runs);
+    }
+    const rectangles: Array<{ x: number; y: number; width: number; height: number }> = [];
+    const active = new Map<string, { x: number; y: number; width: number; height: number }>();
+    rows.forEach((runs, yIndex) => {
+        const current = new Set(runs.map(run => `${run[0]}:${run[1]}`));
+        [...active.keys()].filter(key => !current.has(key)).sort().forEach(key => {
+            rectangles.push(active.get(key)!);
+            active.delete(key);
+        });
+        runs.forEach(run => {
+            const key = `${run[0]}:${run[1]}`;
+            const prior = active.get(key);
+            if (prior) prior.height = ys[yIndex + 1] - prior.y;
+            else active.set(key, { x: run[0], y: ys[yIndex], width: run[1] - run[0], height: ys[yIndex + 1] - ys[yIndex] });
+        });
+    });
+    [...active.keys()].sort().forEach(key => rectangles.push(active.get(key)!));
+    return rectangles.sort((left, right) => left.y - right.y || left.x - right.x
+        || left.height - right.height || left.width - right.width);
 }
 
 /**

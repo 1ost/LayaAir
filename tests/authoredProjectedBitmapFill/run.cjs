@@ -107,6 +107,50 @@ function mosaicFixture() {
     return value;
 }
 
+function mixedSolidFixture() {
+    const value = fixture();
+    const shapeBounds = { x: 0, y: 0, width: 100, height: 100 };
+    value.library.assets["2"].bounds = shapeBounds;
+    value.library.assets["3"].bounds = shapeBounds;
+    value.library.assets["2"].shape.fillStyles = [
+        { kind: "bitmap", bitmapId: 1, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 } },
+        { kind: "solid", startColor: { alpha: 1, color: 0x972aa9 }, endColor: { alpha: 1, color: 0x972aa9 } },
+        { kind: "solid", startColor: { alpha: 0.5, color: 0 }, endColor: { alpha: 0.5, color: 0 } },
+    ];
+    value.library.assets["2"].shape.segments = [
+        ...tileEdges(0, 0, 100, 100, 1),
+        ...tileEdges(20, 20, 60, 60, 3).map(edge => ({ ...edge, fillStyle0: 2 })),
+        ...tileEdges(10, 10, 80, 80, 2),
+    ];
+    value.library.assets["2"].bitmapFillRuntime = {
+        bitmapCharacterIds: [1], projection: "rectangular-mosaic",
+        visualAuthority: "bitmap-character-export",
+        solidFillStyles: [
+            {
+                alpha: 1, color: 0x972aa9, path: "assets/2-solid-fill-2.png", styleIndex: 2,
+                rectangles: [
+                    { x: 10, y: 10, width: 80, height: 10 },
+                    { x: 10, y: 20, width: 10, height: 60 },
+                    { x: 80, y: 20, width: 10, height: 60 },
+                    { x: 10, y: 80, width: 80, height: 10 },
+                ],
+            },
+            {
+                alpha: 0.5, color: 0, path: "assets/2-solid-fill-3.png", styleIndex: 3,
+                rectangles: [{ x: 20, y: 20, width: 60, height: 60 }],
+            },
+        ],
+    };
+    value.resources.set("assets/2-solid-fill-2.png", {
+        sourcePath: "assets/2-solid-fill-2.png", mediaType: "image/png", byteLength: 69, sha256: "2".repeat(64),
+    });
+    value.resources.set("assets/2-solid-fill-3.png", {
+        sourcePath: "assets/2-solid-fill-3.png", mediaType: "image/png", byteLength: 69, sha256: "3".repeat(64),
+    });
+    value.timelines.get(3).frames[0].operations.splice(1);
+    return value;
+}
+
 const adapter = new FlashLibrarySymbolAdapter();
 const content = adapter.parse(fixture());
 assert.equal(content.root.linkage, "BootShadow");
@@ -147,6 +191,26 @@ assert.deepEqual(mosaic.children.map(child => child.resourceId), [
 ]);
 assert.deepEqual(mosaic.children.map(child => child.smoothing), [false, false, false]);
 
+const mixedContent = adapter.parse(mixedSolidFixture());
+const mixed = mixedContent.root.children[0];
+assert.equal(mixed.kind, "container");
+assert.deepEqual(mixed.children.map(child => [child.x, child.y, child.width, child.height, child.alpha]), [
+    [0, 0, 100, 100, undefined],
+    [10, 10, 80, 10, 1],
+    [10, 20, 10, 60, 1],
+    [80, 20, 10, 60, 1],
+    [10, 80, 80, 10, 1],
+    [20, 20, 60, 60, 0.5],
+]);
+assert.deepEqual(mixed.children.map(child => child.resourceId), [
+    "flash-bitmap-1",
+    "flash-solid-fill-2-2", "flash-solid-fill-2-2", "flash-solid-fill-2-2", "flash-solid-fill-2-2",
+    "flash-solid-fill-2-3",
+]);
+const mixedDrift = mixedSolidFixture();
+mixedDrift.library.assets["2"].bitmapFillRuntime.solidFillStyles[0].rectangles[0].width = 79;
+assert.throws(() => adapter.parse(mixedDrift), /FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH/);
+
 const incompleteMosaic = mosaicFixture();
 incompleteMosaic.library.assets["2"].shape.segments.splice(0, 4, ...tileEdges(0, 0, 99, 10, 1));
 incompleteMosaic.library.assets["2"].shape.segments.splice(-4, 4, ...tileEdges(15, 10, 84, 50, 5));
@@ -178,4 +242,4 @@ for (const [label, mutate, expected] of [
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored projected bitmap fill: 14/14 passed\n");
+process.stdout.write("authored projected bitmap fill: 16/16 passed\n");

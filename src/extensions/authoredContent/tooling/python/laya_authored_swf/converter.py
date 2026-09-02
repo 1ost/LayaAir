@@ -205,6 +205,23 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_solid_color_png(path: Path, color: int) -> None:
+    """Write one deterministic opaque RGB texel derived from an authored fill."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        body = kind + payload
+        return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    pixel = bytes((0, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF))
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(pixel, 9))
+        + chunk(b"IEND", b"")
+    )
+
+
 def prepare_owned_output(output: Path, marker_name: str, schema: str, force: bool) -> None:
     """Require an empty or provably tool-owned output; refresh it without stale files."""
     if not output.exists():
@@ -1913,8 +1930,13 @@ def direct_bitmap_fill_runtime_value(
     bitmap_fills = [style for _, style in indexed_bitmap_fills]
     if not bitmap_fills:
         return None, None
-    if len(bitmap_fills) != len(fill_styles):
-        return None, "bitmap-filled shape mixes bitmap and non-bitmap fills"
+    solid_fills = [
+        (index, style)
+        for index, style in enumerate(fill_styles, start=1)
+        if isinstance(style, dict) and style.get("kind") == "solid"
+    ]
+    if len(bitmap_fills) + len(solid_fills) != len(fill_styles):
+        return None, "bitmap-filled shape mixes unsupported fill kinds"
     real_bitmap_fills = [
         (index, style)
         for index, style in indexed_bitmap_fills
@@ -1923,7 +1945,17 @@ def direct_bitmap_fill_runtime_value(
     if not real_bitmap_fills:
         return None, "bitmap-filled shape has no non-sentinel bitmap fill"
     if len(fill_styles) != 1 or len(real_bitmap_fills) != 1:
-        return bitmap_fill_mosaic_runtime_value(asset, assets, real_bitmap_fills)
+        runtime, issue = bitmap_fill_mosaic_runtime_value(
+            asset, assets, real_bitmap_fills, solid_fills,
+        )
+        if runtime is None:
+            return None, issue
+        if solid_fills:
+            solid_runtime, solid_issue = solid_fill_runtime_values(asset, solid_fills)
+            if solid_runtime is None:
+                return None, solid_issue
+            runtime["solidFillStyles"] = solid_runtime
+        return runtime, None
 
     fill = bitmap_fills[0]
     if fill.get("repeat") is not False or fill.get("smooth") is not False:
@@ -2071,10 +2103,135 @@ def _bitmap_fill_rectangle(
     return {"x": x, "y": y, "width": right - x, "height": bottom - y}
 
 
+def _merge_filled_cells(
+    xs: list[float], ys: list[float], filled: set[tuple[int, int]],
+) -> list[dict[str, float]]:
+    """Merge an exact axis-aligned cell partition into deterministic rectangles."""
+    rows: list[list[tuple[float, float]]] = []
+    for y_index in range(len(ys) - 1):
+        runs: list[tuple[float, float]] = []
+        start: float | None = None
+        for x_index in range(len(xs) - 1):
+            occupied = (x_index, y_index) in filled
+            if occupied and start is None:
+                start = xs[x_index]
+            if start is not None and (not occupied or x_index == len(xs) - 2):
+                end = xs[x_index] if not occupied else xs[x_index + 1]
+                runs.append((start, end))
+                start = None
+        rows.append(runs)
+
+    rectangles: list[dict[str, float]] = []
+    active: dict[tuple[float, float], dict[str, float]] = {}
+    for y_index, runs in enumerate(rows):
+        current = set(runs)
+        for run in sorted(set(active) - current):
+            rectangles.append(active.pop(run))
+        for run in runs:
+            if run in active:
+                active[run]["height"] = ys[y_index + 1] - active[run]["y"]
+            else:
+                active[run] = {
+                    "x": run[0], "y": ys[y_index],
+                    "width": run[1] - run[0], "height": ys[y_index + 1] - ys[y_index],
+                }
+    rectangles.extend(active[run] for run in sorted(active))
+    return sorted(rectangles, key=lambda value: (
+        value["y"], value["x"], value["height"], value["width"],
+    ))
+
+
+def _solid_fill_rectangles(
+    segments: list[dict[str, Any]], style_index: int,
+) -> list[dict[str, float]] | None:
+    """Resolve one even-odd solid fill into exact axis-aligned rectangles."""
+    edges: list[tuple[float, float, float, float]] = []
+    for segment in segments:
+        if not isinstance(segment, dict):
+            return None
+        fill0 = integer(segment.get("fillStyle0"))
+        fill1 = integer(segment.get("fillStyle1"))
+        if fill0 != style_index and fill1 != style_index:
+            continue
+        if (
+            segment.get("kind") != "line"
+            or integer(segment.get("lineStyle")) != 0 or fill0 == fill1
+        ):
+            return None
+        edge = segment.get("start")
+        if not isinstance(edge, dict):
+            return None
+        start = edge.get("from")
+        end = edge.get("to")
+        if (
+            not isinstance(start, list) or not isinstance(end, list)
+            or len(start) != 2 or len(end) != 2
+        ):
+            return None
+        x0, y0 = map(float, start)
+        x1, y1 = map(float, end)
+        if (x0 == x1) == (y0 == y1):
+            return None
+        edges.append((x0, y0, x1, y1))
+    if not edges:
+        return None
+
+    xs = sorted({value for edge in edges for value in (edge[0], edge[2])})
+    ys = sorted({value for edge in edges for value in (edge[1], edge[3])})
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+    filled: set[tuple[int, int]] = set()
+    for y_index in range(len(ys) - 1):
+        sample_y = (ys[y_index] + ys[y_index + 1]) / 2
+        for x_index in range(len(xs) - 1):
+            sample_x = (xs[x_index] + xs[x_index + 1]) / 2
+            crossings = sum(
+                1 for x0, y0, x1, y1 in edges
+                if x0 == x1 and x0 > sample_x
+                and min(y0, y1) <= sample_y < max(y0, y1)
+            )
+            if crossings % 2:
+                filled.add((x_index, y_index))
+    if not filled:
+        return None
+    return _merge_filled_cells(xs, ys, filled)
+
+
+def solid_fill_runtime_values(
+    asset: dict[str, Any], solid_fills: list[tuple[int, dict[str, Any]]],
+) -> tuple[list[dict[str, Any]] | None, str | None]:
+    shape = asset["shape"]
+    segments = shape.get("segments")
+    if not isinstance(segments, list) or shape.get("usesFillWindingRule") is not False:
+        return None, "solid fills require even-odd axis-aligned geometry"
+    values: list[dict[str, Any]] = []
+    for style_index, fill in solid_fills:
+        start_color = fill.get("startColor")
+        if not isinstance(start_color, dict) or start_color != fill.get("endColor"):
+            return None, f"solid fill {style_index} is animated or incomplete"
+        color = start_color.get("color")
+        alpha = start_color.get("alpha")
+        if (
+            type(color) is not int or not 0 <= color <= 0xFFFFFF
+            or not isinstance(alpha, (int, float)) or isinstance(alpha, bool)
+            or not math.isfinite(float(alpha)) or not 0 <= float(alpha) <= 1
+        ):
+            return None, f"solid fill {style_index} has an invalid color"
+        rectangles = _solid_fill_rectangles(segments, style_index)
+        if rectangles is None:
+            return None, f"solid fill {style_index} is not exact axis-aligned even-odd geometry"
+        values.append({
+            "alpha": float(alpha), "color": color,
+            "rectangles": rectangles, "styleIndex": style_index,
+        })
+    return values, None
+
+
 def bitmap_fill_mosaic_runtime_value(
     asset: dict[str, Any],
     assets: dict[str, dict[str, Any]],
     bitmap_fills: list[tuple[int, dict[str, Any]]],
+    solid_fills: list[tuple[int, dict[str, Any]]] | None = None,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Admit the exact rectangular bitmap mosaics supported by the emitter.
 
@@ -2091,6 +2248,9 @@ def bitmap_fill_mosaic_runtime_value(
     ):
         return None, "bitmap-filled shape is not an axis-aligned mosaic"
     real_indices = {index for index, _ in bitmap_fills}
+    supported_indices = real_indices | {
+        index for index, _ in (solid_fills or [])
+    }
     for segment in segments:
         if not isinstance(segment, dict):
             return None, "bitmap-filled shape has malformed edge geometry"
@@ -2098,8 +2258,8 @@ def bitmap_fill_mosaic_runtime_value(
         fill1 = integer(segment.get("fillStyle1"))
         if (
             segment.get("kind") != "line" or integer(segment.get("lineStyle")) != 0
-            or fill0 == fill1 or (fill0 and fill0 not in real_indices)
-            or (fill1 and fill1 not in real_indices) or (fill0 == 0 and fill1 == 0)
+            or fill0 == fill1 or (fill0 and fill0 not in supported_indices)
+            or (fill1 and fill1 not in supported_indices) or (fill0 == 0 and fill1 == 0)
         ):
             return None, "bitmap-filled shape contains non-mosaic geometry"
 
@@ -3306,8 +3466,16 @@ def convert_bundle(
                 if isinstance(bitmap_id, int):
                     bitmap_asset = assets[str(bitmap_id)]
                     asset["path"] = bitmap_asset["path"]
+                for solid_fill in bitmap_fill_runtime.get("solidFillStyles", []):
+                    style_index = solid_fill["styleIndex"]
+                    relative = f"assets/{tag_id}-solid-fill-{style_index}.png"
+                    write_solid_color_png(output / relative, solid_fill["color"])
+                    solid_fill["path"] = relative
+                    asset.setdefault("paths", []).append(relative)
                 asset["bitmapFillRuntime"] = bitmap_fill_runtime
                 verification.add("bitmap-fill-point-clamp-sampling")
+                if bitmap_fill_runtime.get("solidFillStyles"):
+                    verification.add("solid-fill-axis-aligned-geometry")
             else:
                 holds.append({
                     "feature": "bitmap-fill-runtime-projection",

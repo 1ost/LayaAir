@@ -114,7 +114,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "d0941890864b3588c4a86f1c5a77c3ed8438210be0d956d13f59d5a7c8d3798a",
+          "sha256": "33c7424b2695eb9df197449fa87572f5cf9d6bf1def4b334daafd85df1139eaf",
           "members": [
             {
               "abstract": false,
@@ -140,7 +140,7 @@
           "sha256": "f87fd5abce3f3521891d7cd3a19f2d3d005e786402f4a71fd4aa12be125e3183",
           "capability": "display.place-remove-depth",
           "covers": [
-            "d0941890864b3588c4a86f1c5a77c3ed8438210be0d956d13f59d5a7c8d3798a"
+            "33c7424b2695eb9df197449fa87572f5cf9d6bf1def4b334daafd85df1139eaf"
           ]
         }
       ]
@@ -290,7 +290,7 @@
           "export": "FlashLibrarySymbolAdapter",
           "kind": "class",
           "signature": "typeof FlashLibrarySymbolAdapter",
-          "sha256": "d0941890864b3588c4a86f1c5a77c3ed8438210be0d956d13f59d5a7c8d3798a",
+          "sha256": "33c7424b2695eb9df197449fa87572f5cf9d6bf1def4b334daafd85df1139eaf",
           "members": [
             {
               "abstract": false,
@@ -330,9 +330,9 @@
           "sha256": "71de67c092957ce51cb39c48490064488e2501164fcf06a3536ad4a100c70311",
           "capability": "interaction.button-states",
           "covers": [
+            "33c7424b2695eb9df197449fa87572f5cf9d6bf1def4b334daafd85df1139eaf",
             "9357d28060359519addf18419ca3a58a7916bc9076b3620b6963371e90b1fd87",
             "9ec383cd3c3d309a17ea768d2a70e19eba9b18f887f05dc1b68432bce805a82e",
-            "d0941890864b3588c4a86f1c5a77c3ed8438210be0d956d13f59d5a7c8d3798a",
             "dd757182a9f8fd0955651c6feae0743cea479e7092ed8e8a4593183bd0e5caec"
           ]
         }

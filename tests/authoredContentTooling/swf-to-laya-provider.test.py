@@ -323,6 +323,37 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
         self.assertIsNone(runtime)
         self.assertEqual("bitmap character 2 has no runtime image export", issue)
 
+        mixed = json.loads(json.dumps(asset))
+        mixed["bounds"] = {"x": 0.0, "y": 0.0, "width": 100.0, "height": 100.0}
+        mixed["shape"]["fillStyles"] = [
+            {"kind": "bitmap", "bitmapId": 1, "repeat": False, "smooth": False,
+             "startMatrix": matrix},
+            {"kind": "solid", "startColor": {"alpha": 1.0, "color": 0x972AA9},
+             "endColor": {"alpha": 1.0, "color": 0x972AA9}},
+            {"kind": "solid", "startColor": {"alpha": 0.5, "color": 0},
+             "endColor": {"alpha": 0.5, "color": 0}},
+        ]
+        inner_edges = edges(20, 20, 60, 60, 3)
+        for edge in inner_edges:
+            edge["fillStyle0"] = 2
+        mixed["shape"]["segments"] = [
+            *edges(0, 0, 100, 100, 1), *inner_edges, *edges(10, 10, 80, 80, 2),
+        ]
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(mixed, assets)
+        self.assertIsNone(issue)
+        self.assertEqual([1], runtime["bitmapCharacterIds"])
+        self.assertEqual([
+            {"alpha": 1.0, "color": 0x972AA9, "styleIndex": 2, "rectangles": [
+                {"x": 10.0, "y": 10.0, "width": 80.0, "height": 10.0},
+                {"x": 10.0, "y": 20.0, "width": 10.0, "height": 60.0},
+                {"x": 80.0, "y": 20.0, "width": 10.0, "height": 60.0},
+                {"x": 10.0, "y": 80.0, "width": 80.0, "height": 10.0},
+            ]},
+            {"alpha": 0.5, "color": 0, "styleIndex": 3, "rectangles": [
+                {"x": 20.0, "y": 20.0, "width": 60.0, "height": 60.0},
+            ]},
+        ], runtime["solidFillStyles"])
+
     def test_stable_executable_supports_module_version_and_inspect(self) -> None:
         script = REPOSITORY_ROOT / "src" / "extensions" / "authoredContent" / "scripts" / "swfToLaya.py"
         version = subprocess.run([sys.executable, str(script), "--version"], check=True, capture_output=True, text=True)
