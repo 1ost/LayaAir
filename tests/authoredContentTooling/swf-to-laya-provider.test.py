@@ -261,6 +261,68 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             self.assertTrue(admitted_validation["ok"])
             self.assertTrue(any("unsupported features" in warning for warning in admitted_validation["warnings"]))
 
+    def test_bitmap_fill_runtime_admits_exact_rectangular_mosaics(self) -> None:
+        def edges(x: float, y: float, width: float, height: float, style: int) -> list[dict[str, object]]:
+            points = (
+                ((x + width, y + height), (x, y + height)),
+                ((x, y + height), (x, y)),
+                ((x, y), (x + width, y)),
+                ((x + width, y), (x + width, y + height)),
+            )
+            return [
+                {
+                    "kind": "line", "fillStyle0": 0, "fillStyle1": style,
+                    "lineStyle": 0,
+                    "start": {"from": list(start), "to": list(end)},
+                    "end": {"from": list(start), "to": list(end)},
+                }
+                for start, end in points
+            ]
+
+        matrix = {"a": 20.0, "b": 0, "c": 0, "d": 20.0, "tx": 0.0, "ty": 0.0}
+        assets = {
+            "1": {"characterId": 1, "kind": "image", "path": "assets/1.png",
+                  "bitmap": {"width": 100, "height": 10}},
+            "2": {"characterId": 2, "kind": "image", "path": "assets/2.png",
+                  "bitmap": {"width": 20, "height": 50}},
+        }
+        asset = {
+            "characterId": 3,
+            "kind": "shape",
+            "bounds": {"x": 0.0, "y": 0.0, "width": 100.0, "height": 60.0},
+            "shape": {
+                "fillStyles": [
+                    {"kind": "bitmap", "bitmapId": 1, "repeat": False, "smooth": False,
+                     "startMatrix": matrix},
+                    {"kind": "bitmap", "bitmapId": 65535, "repeat": False, "smooth": False,
+                     "startMatrix": matrix},
+                    {"kind": "bitmap", "bitmapId": 2, "repeat": False, "smooth": True,
+                     "startMatrix": {**matrix, "ty": 10.0}},
+                ],
+                "lineStyles": [],
+                "segments": [*edges(0, 0, 100, 10, 1), *edges(0, 10, 20, 50, 3)],
+                "usesFillWindingRule": False,
+            },
+        }
+
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(asset, assets)
+        self.assertIsNone(issue)
+        self.assertEqual({
+            "bitmapCharacterIds": [1, 2],
+            "projection": "rectangular-mosaic",
+            "visualAuthority": "bitmap-character-export",
+        }, runtime)
+
+        malformed = json.loads(json.dumps(asset))
+        malformed["shape"]["segments"][0]["start"]["to"] = [50, 5]
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(malformed, assets)
+        self.assertIsNone(runtime)
+        self.assertIn("not one exact rectangle", issue)
+
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(asset, {"1": assets["1"]})
+        self.assertIsNone(runtime)
+        self.assertEqual("bitmap character 2 has no runtime image export", issue)
+
     def test_stable_executable_supports_module_version_and_inspect(self) -> None:
         script = REPOSITORY_ROOT / "src" / "extensions" / "authoredContent" / "scripts" / "swfToLaya.py"
         version = subprocess.run([sys.executable, str(script), "--version"], check=True, capture_output=True, text=True)

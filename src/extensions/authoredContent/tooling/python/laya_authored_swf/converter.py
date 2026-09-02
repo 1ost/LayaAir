@@ -1905,11 +1905,25 @@ def direct_bitmap_fill_runtime_value(
     fill_styles = shape.get("fillStyles")
     if not isinstance(fill_styles, list):
         return None, None
-    bitmap_fills = [style for style in fill_styles if isinstance(style, dict) and style.get("kind") == "bitmap"]
+    indexed_bitmap_fills = [
+        (index, style)
+        for index, style in enumerate(fill_styles, start=1)
+        if isinstance(style, dict) and style.get("kind") == "bitmap"
+    ]
+    bitmap_fills = [style for _, style in indexed_bitmap_fills]
     if not bitmap_fills:
         return None, None
-    if len(fill_styles) != 1 or len(bitmap_fills) != 1:
-        return None, "bitmap-filled shape is not a single-fill projection"
+    if len(bitmap_fills) != len(fill_styles):
+        return None, "bitmap-filled shape mixes bitmap and non-bitmap fills"
+    real_bitmap_fills = [
+        (index, style)
+        for index, style in indexed_bitmap_fills
+        if integer(style.get("bitmapId"), -1) != 65535
+    ]
+    if not real_bitmap_fills:
+        return None, "bitmap-filled shape has no non-sentinel bitmap fill"
+    if len(fill_styles) != 1 or len(real_bitmap_fills) != 1:
+        return bitmap_fill_mosaic_runtime_value(asset, assets, real_bitmap_fills)
 
     fill = bitmap_fills[0]
     if fill.get("repeat") is not False or fill.get("smooth") is not False:
@@ -1972,6 +1986,236 @@ def direct_bitmap_fill_runtime_value(
         "filter": "point",
         "visualAuthority": "bitmap-character-export",
         "wrap": "clamp",
+    }, None
+
+
+def _intervals_cover_exactly(
+    intervals: list[tuple[float, float]], start: float, end: float,
+) -> bool:
+    cursor = start
+    for interval_start, interval_end in sorted(intervals):
+        if interval_start != cursor or interval_end <= interval_start:
+            return False
+        cursor = interval_end
+    return cursor == end
+
+
+def _bitmap_fill_rectangle(
+    segments: list[dict[str, Any]], style_index: int,
+) -> dict[str, float] | None:
+    selected = [
+        segment for segment in segments
+        if integer(segment.get("fillStyle0")) == style_index
+        or integer(segment.get("fillStyle1")) == style_index
+    ]
+    points: list[tuple[float, float]] = []
+    for segment in selected:
+        edge = segment.get("start")
+        if not isinstance(edge, dict):
+            return None
+        start = edge.get("from")
+        end = edge.get("to")
+        if (
+            not isinstance(start, list) or not isinstance(end, list)
+            or len(start) != 2 or len(end) != 2
+        ):
+            return None
+        points.extend(((float(start[0]), float(start[1])), (float(end[0]), float(end[1]))))
+    if not points:
+        return None
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    x, y = min(xs), min(ys)
+    right, bottom = max(xs), max(ys)
+    if right <= x or bottom <= y:
+        return None
+    top: list[tuple[float, float]] = []
+    right_edges: list[tuple[float, float]] = []
+    bottom_edges: list[tuple[float, float]] = []
+    left: list[tuple[float, float]] = []
+    for segment in selected:
+        if segment.get("kind") != "line" or integer(segment.get("lineStyle")) != 0:
+            return None
+        edge = segment["start"]
+        from_x, from_y = map(float, edge["from"])
+        to_x, to_y = map(float, edge["to"])
+        if from_x == to_x:
+            interval = (min(from_y, to_y), max(from_y, to_y))
+            if interval[0] == interval[1]:
+                return None
+            if from_x == x:
+                left.append(interval)
+            elif from_x == right:
+                right_edges.append(interval)
+            else:
+                return None
+        elif from_y == to_y:
+            interval = (min(from_x, to_x), max(from_x, to_x))
+            if interval[0] == interval[1]:
+                return None
+            if from_y == y:
+                top.append(interval)
+            elif from_y == bottom:
+                bottom_edges.append(interval)
+            else:
+                return None
+        else:
+            return None
+    if not (
+        _intervals_cover_exactly(top, x, right)
+        and _intervals_cover_exactly(right_edges, y, bottom)
+        and _intervals_cover_exactly(bottom_edges, x, right)
+        and _intervals_cover_exactly(left, y, bottom)
+    ):
+        return None
+    return {"x": x, "y": y, "width": right - x, "height": bottom - y}
+
+
+def bitmap_fill_mosaic_runtime_value(
+    asset: dict[str, Any],
+    assets: dict[str, dict[str, Any]],
+    bitmap_fills: list[tuple[int, dict[str, Any]]],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Admit the exact rectangular bitmap mosaics supported by the emitter.
+
+    Flash applies every fill style independently with its own bitmap matrix and
+    sampler.  The native adapter preserves that model as one or more exact
+    image tiles; diagnostic FFDec shape previews never become runtime artwork.
+    """
+    shape = asset["shape"]
+    bounds = asset.get("bounds")
+    segments = shape.get("segments")
+    if (
+        not isinstance(bounds, dict) or not isinstance(segments, list)
+        or shape.get("lineStyles") or shape.get("usesFillWindingRule") is not False
+    ):
+        return None, "bitmap-filled shape is not an axis-aligned mosaic"
+    real_indices = {index for index, _ in bitmap_fills}
+    for segment in segments:
+        if not isinstance(segment, dict):
+            return None, "bitmap-filled shape has malformed edge geometry"
+        fill0 = integer(segment.get("fillStyle0"))
+        fill1 = integer(segment.get("fillStyle1"))
+        if (
+            segment.get("kind") != "line" or integer(segment.get("lineStyle")) != 0
+            or fill0 == fill1 or (fill0 and fill0 not in real_indices)
+            or (fill1 and fill1 not in real_indices) or (fill0 == 0 and fill1 == 0)
+        ):
+            return None, "bitmap-filled shape contains non-mosaic geometry"
+
+    rectangles: dict[int, dict[str, float]] = {}
+    for style_index, _ in bitmap_fills:
+        rectangle = _bitmap_fill_rectangle(segments, style_index)
+        if rectangle is None:
+            return None, f"bitmap fill {style_index} is not one exact rectangle"
+        rectangles[style_index] = rectangle
+
+    bounds_x = float(bounds.get("x"))
+    bounds_y = float(bounds.get("y"))
+    bounds_width = float(bounds.get("width"))
+    bounds_height = float(bounds.get("height"))
+    if bounds_width <= 0 or bounds_height <= 0:
+        return None, "bitmap-filled shape bounds are empty"
+    if any(
+        rectangle["width"] <= 0 or rectangle["height"] <= 0
+        or rectangle["x"] < bounds_x or rectangle["y"] < bounds_y
+        or rectangle["x"] + rectangle["width"] > bounds_x + bounds_width
+        or rectangle["y"] + rectangle["height"] > bounds_y + bounds_height
+        for rectangle in rectangles.values()
+    ):
+        return None, "bitmap fill rectangle exceeds the shape bounds"
+    if (
+        min(rectangle["x"] for rectangle in rectangles.values()) != bounds_x
+        or min(rectangle["y"] for rectangle in rectangles.values()) != bounds_y
+        or max(rectangle["x"] + rectangle["width"] for rectangle in rectangles.values())
+        != bounds_x + bounds_width
+        or max(rectangle["y"] + rectangle["height"] for rectangle in rectangles.values())
+        != bounds_y + bounds_height
+    ):
+        return None, "bitmap fill rectangles do not span the shape bounds"
+
+    repeating = any(fill.get("repeat") is True for _, fill in bitmap_fills)
+    if repeating and not all(
+        fill.get("repeat") is True and fill.get("smooth") is False
+        for _, fill in bitmap_fills
+    ):
+        return None, "bitmap-filled shape mixes incompatible repeating fill modes"
+
+    bitmap_ids: list[int] = []
+    matrix_identity: dict[str, Any] | None = None
+    for style_index, fill in bitmap_fills:
+        if not repeating and (
+            fill.get("repeat") is not False or not isinstance(fill.get("smooth"), bool)
+        ):
+            return None, "bitmap-filled shape uses an unsupported sampler mode"
+        matrix = fill.get("startMatrix")
+        if not isinstance(matrix, dict) or set(matrix) != {"a", "b", "c", "d", "tx", "ty"}:
+            return None, "bitmap-filled shape has an incomplete bitmap matrix"
+        scale_x = float(matrix["a"])
+        scale_y = float(matrix["d"])
+        if scale_x == 0 or scale_y == 0 or float(matrix["b"]) != 0 or float(matrix["c"]) != 0:
+            return None, "bitmap-filled shape matrix is not signed axis-aligned"
+        bitmap_id = integer(fill.get("bitmapId"), -1)
+        bitmap_asset = assets.get(str(bitmap_id))
+        if (
+            not isinstance(bitmap_asset, dict) or bitmap_asset.get("kind") != "image"
+            or not bitmap_asset.get("path")
+        ):
+            return None, f"bitmap character {bitmap_id} has no runtime image export"
+        bitmap_ids.append(bitmap_id)
+        rectangle = rectangles[style_index]
+        if repeating:
+            if matrix_identity is None:
+                matrix_identity = matrix
+            elif matrix != matrix_identity or bitmap_id != bitmap_ids[0]:
+                return None, "repeating bitmap fills do not share one exact source projection"
+        legacy_unit = (
+            scale_x == 20 and scale_y == 20
+            and float(matrix["tx"]) == rectangle["x"]
+            and float(matrix["ty"]) == rectangle["y"]
+        )
+        if not legacy_unit or repeating:
+            bitmap = bitmap_asset.get("bitmap")
+            if not isinstance(bitmap, dict):
+                return None, f"bitmap character {bitmap_id} has no authenticated dimensions"
+            projected_x = sorted((
+                float(matrix["tx"]),
+                float(matrix["tx"]) + float(bitmap.get("width")) * scale_x / 20,
+            ))
+            projected_y = sorted((
+                float(matrix["ty"]),
+                float(matrix["ty"]) + float(bitmap.get("height")) * scale_y / 20,
+            ))
+            target = (
+                bounds if repeating else rectangle
+            )
+            if (
+                abs(projected_x[0] - float(target["x"])) > 0.05
+                or abs(projected_x[1] - (float(target["x"]) + float(target["width"]))) > 0.05
+                or abs(projected_y[0] - float(target["y"])) > 0.05
+                or abs(projected_y[1] - (float(target["y"]) + float(target["height"]))) > 0.05
+            ):
+                return None, "bitmap matrix does not project its authenticated image into the tile"
+
+    if repeating:
+        area = sum(rectangle["width"] * rectangle["height"] for rectangle in rectangles.values())
+        for index, rectangle in enumerate(rectangles.values()):
+            for other in list(rectangles.values())[index + 1:]:
+                overlap_width = min(
+                    rectangle["x"] + rectangle["width"], other["x"] + other["width"],
+                ) - max(rectangle["x"], other["x"])
+                overlap_height = min(
+                    rectangle["y"] + rectangle["height"], other["y"] + other["height"],
+                ) - max(rectangle["y"], other["y"])
+                if overlap_width > 0 and overlap_height > 0:
+                    return None, "repeating bitmap rectangles overlap"
+        if abs(area - bounds_width * bounds_height) > 0.0001:
+            return None, "repeating bitmap rectangles do not partition the shape bounds"
+
+    return {
+        "bitmapCharacterIds": sorted(set(bitmap_ids)),
+        "projection": "rectangular-mosaic",
+        "visualAuthority": "bitmap-character-export",
     }, None
 
 
@@ -3058,8 +3302,10 @@ def convert_bundle(
         if bitmap_fill_preview:
             bitmap_fill_runtime, bitmap_fill_issue = direct_bitmap_fill_runtime_value(asset, assets)
             if bitmap_fill_runtime is not None:
-                bitmap_asset = assets[str(bitmap_fill_runtime["bitmapCharacterId"])]
-                asset["path"] = bitmap_asset["path"]
+                bitmap_id = bitmap_fill_runtime.get("bitmapCharacterId")
+                if isinstance(bitmap_id, int):
+                    bitmap_asset = assets[str(bitmap_id)]
+                    asset["path"] = bitmap_asset["path"]
                 asset["bitmapFillRuntime"] = bitmap_fill_runtime
                 verification.add("bitmap-fill-point-clamp-sampling")
             else:
@@ -3071,7 +3317,8 @@ def convert_bundle(
                 })
 
         required_evidence_missing = (
-            (kind in {"image", "shape", "morph", "sound", "video", "binary"} and not asset.get("path"))
+            (kind in {"image", "shape", "morph", "sound", "video", "binary"}
+             and not asset.get("path") and not asset.get("bitmapFillRuntime"))
             or (kind == "font" and asset.get("font", {}).get("embedded") and not asset.get("path"))
             or (kind == "button" and not asset.get("button", {}).get("records"))
         )
