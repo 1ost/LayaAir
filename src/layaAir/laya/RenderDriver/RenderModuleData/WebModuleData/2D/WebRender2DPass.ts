@@ -167,6 +167,7 @@ export class WebRender2DPass implements IRender2DPass {
          !struct.enabled
          || struct.globalAlpha < 0.01
          || this._mask === struct
+         || (struct._maskParentPass && struct._maskParentPass !== this)
       )
          return;
 
