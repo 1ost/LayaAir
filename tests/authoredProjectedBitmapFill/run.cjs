@@ -151,6 +151,34 @@ function mixedSolidFixture() {
     return value;
 }
 
+function solidBackedBitmapFixture() {
+    const value = fixture();
+    const shapeBounds = { x: 0, y: 0, width: 100, height: 20 };
+    value.library.assets["2"].bounds = shapeBounds;
+    value.library.assets["3"].bounds = shapeBounds;
+    value.library.assets["2"].shape.fillStyles = [
+        { kind: "solid", startColor: { alpha: 1, color: 0x202020 }, endColor: { alpha: 1, color: 0x202020 } },
+        { kind: "bitmap", bitmapId: 1, repeat: false, smooth: false, startMatrix: { a: 20, b: 0, c: 0, d: 20, tx: 0, ty: 0 } },
+    ];
+    value.library.assets["2"].shape.segments = [
+        ...tileEdges(0, 0, 100, 20, 1),
+        ...tileEdges(0, 0, 10, 20, 2),
+    ];
+    value.library.assets["2"].bitmapFillRuntime = {
+        bitmapCharacterIds: [1], projection: "rectangular-mosaic",
+        visualAuthority: "bitmap-character-export",
+        solidFillStyles: [{
+            alpha: 1, color: 0x202020, path: "assets/2-solid-fill-1.png", styleIndex: 1,
+            rectangles: [{ x: 0, y: 0, width: 100, height: 20 }],
+        }],
+    };
+    value.resources.set("assets/2-solid-fill-1.png", {
+        sourcePath: "assets/2-solid-fill-1.png", mediaType: "image/png", byteLength: 69, sha256: "4".repeat(64),
+    });
+    value.timelines.get(3).frames[0].operations.splice(1);
+    return value;
+}
+
 const adapter = new FlashLibrarySymbolAdapter();
 const content = adapter.parse(fixture());
 assert.equal(content.root.linkage, "BootShadow");
@@ -207,6 +235,14 @@ assert.deepEqual(mixed.children.map(child => child.resourceId), [
     "flash-solid-fill-2-2", "flash-solid-fill-2-2", "flash-solid-fill-2-2", "flash-solid-fill-2-2",
     "flash-solid-fill-2-3",
 ]);
+const solidBacked = adapter.parse(solidBackedBitmapFixture()).root.children[0];
+assert.equal(solidBacked.kind, "container");
+assert.deepEqual(solidBacked.children.map(child => [child.x, child.y, child.width, child.height]), [
+    [0, 0, 100, 20], [0, 0, 10, 20],
+]);
+assert.deepEqual(solidBacked.children.map(child => child.resourceId), [
+    "flash-solid-fill-2-1", "flash-bitmap-1",
+]);
 const mixedDrift = mixedSolidFixture();
 mixedDrift.library.assets["2"].bitmapFillRuntime.solidFillStyles[0].rectangles[0].width = 79;
 assert.throws(() => adapter.parse(mixedDrift), /FLASH_LIBRARY_SOLID_FILL_AUTHORITY_MISMATCH/);
@@ -242,4 +278,4 @@ for (const [label, mutate, expected] of [
     assert.throws(() => adapter.parse(value), expected, label);
 }
 
-process.stdout.write("authored projected bitmap fill: 16/16 passed\n");
+process.stdout.write("authored projected bitmap fill: 19/19 passed\n");

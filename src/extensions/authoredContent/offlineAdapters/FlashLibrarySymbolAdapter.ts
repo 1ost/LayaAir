@@ -78,6 +78,12 @@ type FlashLibrarySolidFillProjection = {
         readonly height: number;
     }>;
 };
+type FlashLibraryRectangleProjection = {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+};
 
 const PLACEMENT_FIELDS = new Set(["blendMode", "blendModeCode", "characterId", "clipDepth", "colorTransform", "depth", "filters", "matrix", "move", "name", "op", "ratio", "visible"]);
 const REMOVE_FIELDS = new Set(["depth", "op"]);
@@ -2008,8 +2014,10 @@ function resolveFlashLibraryShapeProjections(
         return { bitmapId, sourcePath, styleIndex, smoothing: fill.smooth, ...tile,
             flipX: scaleX < 0, flipY: scaleY < 0 };
     });
-    if (!rectanglesTileBounds(projections, bounds))
-        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap tiles do not exactly cover its bounds.`);
+    const solidRectangles = resolveFlashLibrarySolidFillProjections(asset, resourceAuthorities)
+        .flatMap(projection => projection.rectangles);
+    if (!rectanglesTileBounds([...projections, ...solidRectangles], bounds))
+        fail("FLASH_LIBRARY_BITMAP_FILL_GEOMETRY_UNSUPPORTED", `Shape ${characterId} bitmap and solid rectangles do not cover its bounds.`);
     return projections;
 }
 
@@ -2260,7 +2268,7 @@ function rectangleForFill(
 }
 
 function rectanglesTileBounds(
-    projections: ReadonlyArray<FlashLibraryShapeProjection>,
+    projections: ReadonlyArray<FlashLibraryRectangleProjection>,
     bounds: Record<string, any>,
 ): boolean {
     const x = finite(bounds.x, "shape.bounds.x");
