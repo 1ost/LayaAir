@@ -2284,15 +2284,21 @@ def bitmap_fill_mosaic_runtime_value(
         for rectangle in rectangles.values()
     ):
         return None, "bitmap fill rectangle exceeds the shape bounds"
+    coverage_rectangles = list(rectangles.values())
+    for style_index, _ in solid_fills or []:
+        solid_rectangles = _solid_fill_rectangles(segments, style_index)
+        if solid_rectangles is None:
+            return None, f"solid fill {style_index} is not exact axis-aligned even-odd geometry"
+        coverage_rectangles.extend(solid_rectangles)
     if (
-        min(rectangle["x"] for rectangle in rectangles.values()) != bounds_x
-        or min(rectangle["y"] for rectangle in rectangles.values()) != bounds_y
-        or max(rectangle["x"] + rectangle["width"] for rectangle in rectangles.values())
+        min(rectangle["x"] for rectangle in coverage_rectangles) != bounds_x
+        or min(rectangle["y"] for rectangle in coverage_rectangles) != bounds_y
+        or max(rectangle["x"] + rectangle["width"] for rectangle in coverage_rectangles)
         != bounds_x + bounds_width
-        or max(rectangle["y"] + rectangle["height"] for rectangle in rectangles.values())
+        or max(rectangle["y"] + rectangle["height"] for rectangle in coverage_rectangles)
         != bounds_y + bounds_height
     ):
-        return None, "bitmap fill rectangles do not span the shape bounds"
+        return None, "fill rectangles do not span the shape bounds"
 
     repeating = any(fill.get("repeat") is True for _, fill in bitmap_fills)
     if repeating and not all(

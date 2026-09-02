@@ -354,6 +354,38 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             ]},
         ], runtime["solidFillStyles"])
 
+        solid_backed = {
+            "characterId": 4,
+            "kind": "shape",
+            "bounds": {"x": 0.0, "y": 0.0, "width": 100.0, "height": 20.0},
+            "shape": {
+                "fillStyles": [
+                    {"kind": "solid", "startColor": {"alpha": 1.0, "color": 0x502D00},
+                     "endColor": {"alpha": 1.0, "color": 0x502D00}},
+                    {"kind": "bitmap", "bitmapId": 3, "repeat": False, "smooth": False,
+                     "startMatrix": {**matrix, "tx": 90.0, "ty": 5.0}},
+                    {"kind": "bitmap", "bitmapId": 3, "repeat": False, "smooth": False,
+                     "startMatrix": {**matrix, "tx": 0.0, "ty": 5.0}},
+                ],
+                "lineStyles": [],
+                "segments": [
+                    *edges(0, 0, 100, 20, 1),
+                    *edges(90, 5, 10, 15, 2),
+                    *edges(0, 5, 10, 15, 3),
+                ],
+                "usesFillWindingRule": False,
+            },
+        }
+        assets["3"] = {"characterId": 3, "kind": "image", "path": "assets/3.png",
+                       "bitmap": {"width": 10, "height": 15}}
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(solid_backed, assets)
+        self.assertIsNone(issue)
+        self.assertEqual([3], runtime["bitmapCharacterIds"])
+        self.assertEqual([{
+            "alpha": 1.0, "color": 0x502D00, "styleIndex": 1,
+            "rectangles": [{"x": 0.0, "y": 0.0, "width": 100.0, "height": 20.0}],
+        }], runtime["solidFillStyles"])
+
     def test_stable_executable_supports_module_version_and_inspect(self) -> None:
         script = REPOSITORY_ROOT / "src" / "extensions" / "authoredContent" / "scripts" / "swfToLaya.py"
         version = subprocess.run([sys.executable, str(script), "--version"], check=True, capture_output=True, text=True)
