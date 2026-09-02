@@ -44,6 +44,33 @@ def _minimal_swf() -> bytes:
 
 
 class ProviderOwnedSwfToolTests(unittest.TestCase):
+    def test_timeline_discards_avm2_without_hiding_avm1_callback_obligations(self) -> None:
+        tags = [
+            ET.fromstring('<item type="DoABC2Tag" />'),
+            ET.fromstring('<item type="ShowFrameTag" />'),
+        ]
+        timeline, issues = swf.timeline_from_tags(tags, 0, None, 24, 1)
+        self.assertEqual([], issues)
+        self.assertEqual(
+            {
+                "op": "script",
+                "kind": "avm2",
+                "sourceTag": "DoABC2Tag",
+                "executable": False,
+                "nativeCallbackRequired": False,
+                "policy": "discard-abc",
+            },
+            timeline["frames"][0]["operations"][0],
+        )
+
+        tags = [
+            ET.fromstring('<item type="DoActionTag" />'),
+            ET.fromstring('<item type="ShowFrameTag" />'),
+        ]
+        timeline, issues = swf.timeline_from_tags(tags, 5, None, 24, 1)
+        self.assertTrue(timeline["frames"][0]["operations"][0]["nativeCallbackRequired"])
+        self.assertEqual("native-callback-required", issues[0]["policy"])
+
     def test_color_transform_canonicalizes_flash_identity_defaults(self) -> None:
         self.assertIsNone(swf.color_transform_value(None))
         self.assertIsNone(swf.color_transform_value(ET.fromstring("<colorTransform />")))

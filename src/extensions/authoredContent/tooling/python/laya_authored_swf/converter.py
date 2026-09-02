@@ -2580,6 +2580,7 @@ def symbol_map(root: ET.Element) -> dict[str, int]:
 
 
 SCRIPT_TYPES = {"DoActionTag", "DoInitActionTag", "DoABCTag", "DoABC2Tag"}
+AVM2_SCRIPT_TYPES = {"DoABCTag", "DoABC2Tag"}
 
 
 def timeline_from_tags(tags: list[ET.Element], symbol_id: int, symbol_name: str | None, frame_rate: float, declared_frames: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -2696,21 +2697,24 @@ def timeline_from_tags(tags: list[ET.Element], symbol_id: int, symbol_name: str 
                 active_stream["endFrame"] = index
                 active_stream["streamInfo"]["blockCount"] += 1
         elif kind in SCRIPT_TYPES:
-            script_kind = "avm2" if "ABC" in kind else "avm1"
+            script_kind = "avm2" if kind in AVM2_SCRIPT_TYPES else "avm1"
+            native_callback_required = script_kind == "avm1"
             operations.append({
                 "op": "script",
                 "kind": script_kind,
                 "sourceTag": kind,
                 "executable": False,
-                "nativeCallbackRequired": True,
+                "nativeCallbackRequired": native_callback_required,
+                "policy": "discard-abc" if script_kind == "avm2" else "native-callback-required",
             })
-            issues.append({
-                "feature": "frame-script",
-                "tagType": kind,
-                "symbolId": symbol_id,
-                "frame": index,
-                "policy": "never-execute-abc" if script_kind == "avm2" else "native-callback-required",
-            })
+            if native_callback_required:
+                issues.append({
+                    "feature": "frame-script",
+                    "tagType": kind,
+                    "symbolId": symbol_id,
+                    "frame": index,
+                    "policy": "native-callback-required",
+                })
     if operations or label or not frames:
         finish()
     required = max(declared_frames, len(frames))
