@@ -147,7 +147,10 @@ export class HtmlParser {
                         let face: string = XMLIterator.getAttribute("face");
                         if (face != null && face.length > 0)
                             this._style.font = face;
-                        this._style.letterSpacing = XMLUtils.getFloat(XMLIterator.attributes, "letterSpacing", this._style.letterSpacing);
+                        // XMLIterator lowercases HTML attribute names. Reading the
+                        // camel-cased Flash spelling here silently discarded authored
+                        // letterSpacing during native layout.
+                        this._style.letterSpacing = XMLUtils.getFloat(XMLIterator.attributes, "letterspacing", this._style.letterSpacing);
                         this._style.kerning = XMLUtils.getBool(XMLIterator.attributes, "kerning", this._style.kerning);
                         let color: string = XMLIterator.getAttribute("color");
                         if (color != null) {

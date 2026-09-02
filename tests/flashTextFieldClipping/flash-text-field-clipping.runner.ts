@@ -210,6 +210,22 @@ function renderedLines(field: ProbeTextField): string[] {
         .filter((value): value is string => typeof value === "string");
 }
 
+test("Flash HTML letterSpacing survives native HTML parsing", () => {
+    const unspaced = new TextField();
+    unspaced.htmlText = '<font face="Arial" size="20" letterSpacing="0">00</font>';
+    const spaced = new TextField();
+    spaced.htmlText = '<font face="Arial" size="20" letterSpacing="4">00</font>';
+    const unspacedFirst = unspaced.getCharBoundaries(0)!;
+    const unspacedSecond = unspaced.getCharBoundaries(1)!;
+    const spacedFirst = spaced.getCharBoundaries(0)!;
+    const spacedSecond = spaced.getCharBoundaries(1)!;
+    assert.equal(
+        (spacedSecond.x - spacedFirst.x) - (unspacedSecond.x - unspacedFirst.x),
+        4,
+        "XMLIterator lowercases HTML attributes without dropping the authored spacing",
+    );
+});
+
 test("Flash gutter admits a complete first line without admitting later overflow", () => {
     const compact = fieldAtHeight(17);
     const lineY = compact.nativeInput.lines.map(line => line.y);
