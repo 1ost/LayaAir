@@ -30,8 +30,9 @@ const frame = (index, operations = []) => ({ index, operations });
 const timeline = (symbolId, frameCount, frames) => ({
     schema: "flash-timeline@1", symbolId, frameRate: 24, frameCount, frames,
 });
-const authority = (sourcePath, byteLength = 1) => ({
+const authority = (sourcePath, byteLength = 1, pixelWidth = 40, pixelHeight = 36) => ({
     sourcePath, mediaType: "image/png", byteLength, sha256: String(byteLength).repeat(64).slice(0, 64),
+    pixelWidth, pixelHeight,
 });
 const rasterFrame = (sourcePath, x, y, width, height) => ({
     ...authority(sourcePath), x, y, width, height,
@@ -218,6 +219,18 @@ assert.deepEqual(textureContent.root.scale9Grid, {
     x: 12, y: 12, width: 18, height: 12, sizeGrid: [12, 10, 12, 12, 0], target: "character_3$d1$f1$i1",
 });
 
+const coveredEdgeTextureContent = adapter.parse({
+    ...texture,
+    entrySymbolId: 20,
+    runtimeLinkage: "fixtures.CoveredEdgeTextureRoot",
+    rasterizedShapes: new Map([[3, authority("shapes/covered-edge.png", 2, 41, 37)]]),
+});
+assert.deepEqual(
+    [coveredEdgeTextureContent.root.children[0].width, coveredEdgeTextureContent.root.children[0].height],
+    [41, 37],
+);
+assert.deepEqual(coveredEdgeTextureContent.root.scale9Grid, textureContent.root.scale9Grid);
+
 const negativeOriginTexture = fixture();
 negativeOriginTexture.library.stage.width = 53;
 negativeOriginTexture.library.stage.height = 53;
@@ -229,7 +242,7 @@ const negativeOriginTextureContent = adapter.parse({
     ...negativeOriginTexture,
     entrySymbolId: 20,
     runtimeLinkage: "fixtures.NegativeOriginTextureRoot",
-    rasterizedShapes: new Map([[3, authority("shapes/negative-origin.png", 2)]]),
+    rasterizedShapes: new Map([[3, authority("shapes/negative-origin.png", 2, 53, 53)]]),
 });
 assert.deepEqual(
     [negativeOriginTextureContent.root.children[0].x, negativeOriginTextureContent.root.children[0].y,
@@ -247,7 +260,7 @@ assert.throws(() => adapter.parse({
     ...shiftedNegativeOriginRaster,
     entrySymbolId: 20,
     runtimeLinkage: "fixtures.ShiftedNegativeOriginRaster",
-    rasterizedShapes: new Map([[3, authority("shapes/shifted-negative-origin.png", 2)]]),
+    rasterizedShapes: new Map([[3, authority("shapes/shifted-negative-origin.png", 2, 53, 53)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_RASTER_BOUNDS_MISMATCH/);
 
 const outOfBoundsNegativeOriginGrid = structuredClone(negativeOriginTexture);
@@ -259,7 +272,7 @@ assert.throws(() => adapter.parse({
     ...outOfBoundsNegativeOriginGrid,
     entrySymbolId: 20,
     runtimeLinkage: "fixtures.OutOfBoundsNegativeOriginGrid",
-    rasterizedShapes: new Map([[3, authority("shapes/out-of-bounds-negative-origin.png", 2)]]),
+    rasterizedShapes: new Map([[3, authority("shapes/out-of-bounds-negative-origin.png", 2, 53, 53)]]),
 }), /FLASH_LIBRARY_SCALING_GRID_RECT_INVALID/);
 
 const missingBounds = fixture();

@@ -1700,7 +1700,8 @@ function authoredScale9Grid(
     const boundsWidth = finite(bounds.width, `library.assets.${characterId}.bounds.width`);
     const boundsHeight = finite(bounds.height, `library.assets.${characterId}.bounds.height`);
     if ((child.x ?? 0) !== boundsX || (child.y ?? 0) !== boundsY
-        || child.width !== boundsWidth || child.height !== boundsHeight)
+        || !isCoveredEdgeRasterExtent(child.width, boundsWidth)
+        || !isCoveredEdgeRasterExtent(child.height, boundsHeight))
         fail("FLASH_LIBRARY_SCALING_GRID_RASTER_BOUNDS_MISMATCH", `Scaling grid ${characterId} image child does not cover the authored bounds.`);
     const rect = object(source.rect, `library.assets.${characterId}.scalingGrid.rect`);
     exactKeys(rect, SCALING_GRID_RECT_FIELDS, `library.assets.${characterId}.scalingGrid.rect`, "FLASH_LIBRARY_SCALING_GRID_RECT_FIELD_UNSUPPORTED");
@@ -1728,6 +1729,16 @@ function authoredScale9Grid(
         sizeGrid: sizeGrid as [number, number, number, number, 0],
         target: child.name ?? child.instanceId ?? child.linkage,
     };
+}
+
+function isCoveredEdgeRasterExtent(rasterExtent: number | undefined, authoredExtent: number): boolean {
+    if (rasterExtent === undefined || !Number.isFinite(rasterExtent)) return false;
+    // JPEXS may retain the covered terminal edge of an integer Flash bound as
+    // one additional pixel. Non-integral extents round up to that same covered
+    // pixel. Both representations cover the authored logical extent without
+    // admitting unrelated padding into a scale-9 texture.
+    return rasterExtent === Math.ceil(authoredExtent)
+        || (Number.isInteger(authoredExtent) && rasterExtent === authoredExtent + 1);
 }
 
 function spriteBounds(
