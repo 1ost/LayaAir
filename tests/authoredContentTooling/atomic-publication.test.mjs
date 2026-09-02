@@ -168,6 +168,19 @@ test("public check-delivery authenticates the stored receipt, provider, ledger, 
     await assert.rejects(api.checkAuthoredContentDelivery({ deliveryRoot: root, providerRoot: repositoryRoot }));
 });
 
+test("delivery verification reports absent roots and publication authority as expected missing deliveries", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "laya-authored-missing-delivery-"));
+    const missing = path.join(parent, "not-published");
+    await assert.rejects(
+        publisher.checkPublishedAuthoredContentGeneration(missing),
+        error => error.code === "AUTHORED_CONTENT_DELIVERY_MISSING" && /root does not exist/.test(error.message)
+    );
+    await assert.rejects(
+        publisher.checkPublishedAuthoredContentGeneration(parent),
+        error => error.code === "AUTHORED_CONTENT_DELIVERY_MISSING" && /no publication authority/.test(error.message)
+    );
+});
+
 test("provider evidence receives the one authenticated ledger identity across a path swap and restore", async () => {
     const provider = await actualProvider();
     const ledgerFile = path.join(repositoryRoot, provider.capabilityLedger.path);

@@ -212,9 +212,24 @@ export async function rollbackAuthoredContentGeneration(destinationRootValue: st
 }
 
 export async function checkPublishedAuthoredContentGeneration(destinationRootValue: string): Promise<AuthoredContentConversionReceipt> {
-    const destinationRoot = await existingRealLocalRoot(destinationRootValue);
+    let destinationRoot: string;
+    try {
+        destinationRoot = await existingRealLocalRoot(destinationRootValue);
+    }
+    catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT")
+            throw new AuthoredContentToolError("AUTHORED_CONTENT_DELIVERY_MISSING", "delivery root does not exist.");
+        throw error;
+    }
     const authorityRoot = path.join(destinationRoot, ".laya-authored-content");
-    await rejectSymlink(authorityRoot, "publication authority root");
+    try {
+        await rejectSymlink(authorityRoot, "publication authority root");
+    }
+    catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT")
+            throw new AuthoredContentToolError("AUTHORED_CONTENT_DELIVERY_MISSING", "delivery has no publication authority.");
+        throw error;
+    }
     const pointer = await readCurrent(path.join(authorityRoot, "current.json"));
     if (!pointer) throw new AuthoredContentToolError("AUTHORED_CONTENT_DELIVERY_MISSING", "delivery has no current publication pointer.");
     const generationRoot = path.join(authorityRoot, "generations", pointer.generation);

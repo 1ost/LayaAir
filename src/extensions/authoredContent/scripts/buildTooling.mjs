@@ -13,17 +13,22 @@ const require = createRequire(import.meta.url);
 const { build } = require("esbuild");
 
 const providerCommit = await capture("git", ["rev-parse", "HEAD"]);
-const providerStatus = await capture("git", ["status", "--porcelain=v1", "--untracked-files=all"]);
-if (providerStatus)
-    throw new Error("Refusing to build @layabox/laya-authored-content from a dirty provider checkout.");
-const toolingListing = await capture("git", ["ls-tree", "-r", "--full-tree", "HEAD", "--",
+const provenancePaths = [
     "package.json",
     "src/extensions/authoredContent/scripts/buildTooling.mjs",
     "src/extensions/authoredContent/tooling",
     "src/extensions/authoredContent/tsconfig.tooling.json",
-    "tooling/layaAuthoredContent"]);
+    "tooling/layaAuthoredContent"
+];
+const providerStatus = await capture("git", ["status", "--porcelain=v1", "--untracked-files=all", "--", ...provenancePaths]);
+const toolingListing = await capture("git", ["ls-tree", "-r", "--full-tree", "HEAD", "--", ...provenancePaths]);
 const { createHash } = await import("node:crypto");
-const toolingSourceSha256 = createHash("sha256").update(`${toolingListing.replace(/\r\n?/g, "\n")}\n`).digest("hex");
+const toolingSourceIdentity = providerStatus
+    ? `dirty-worktree\n${providerCommit}\n${toolingListing}\n${providerStatus}\n`
+    : `${toolingListing}\n`;
+const toolingSourceSha256 = createHash("sha256").update(toolingSourceIdentity.replace(/\r\n?/g, "\n")).digest("hex");
+if (providerStatus)
+    process.stderr.write("Building a non-admissible development package from modified authored-content tooling.\n");
 
 await rm(packageRoot, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
