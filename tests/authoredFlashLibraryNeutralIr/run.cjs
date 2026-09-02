@@ -74,6 +74,22 @@ try {
     assert.equal(repaired.status, 0, repaired.stderr);
     assert.equal(fs.readFileSync(output, "utf8"), bytes.toString("utf8"));
 
+    const auxiliaryEvidence = path.join(temporary, "auxiliary-evidence");
+    fs.cpSync(evidence, auxiliaryEvidence, { recursive: true });
+    fs.mkdirSync(path.join(auxiliaryEvidence, "assets"));
+    const auxiliaryPng = Buffer.from("89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c4944415408d763f8cfc0000003010100c9fe92ef0000000049454e44ae426082", "hex");
+    fs.writeFileSync(path.join(auxiliaryEvidence, "assets", "solid.png"), auxiliaryPng);
+    const auxiliaryLibrary = JSON.parse(fs.readFileSync(path.join(auxiliaryEvidence, "library.json")));
+    auxiliaryLibrary.assets[8].paths = ["assets/solid.png"];
+    fs.writeFileSync(path.join(auxiliaryEvidence, "library.json"), JSON.stringify(auxiliaryLibrary, null, 2));
+    const auxiliaryOutput = path.join(temporary, "neutral", "auxiliary.neutral.json");
+    const auxiliary = invoke([auxiliaryEvidence, "-", "8", "Fixture.Root", "fixture-root", "library-symbol", "--neutral-output", auxiliaryOutput, "--neutral-only"]);
+    assert.equal(auxiliary.status, 0, auxiliary.stderr);
+    fs.rmSync(path.join(auxiliaryEvidence, "assets", "solid.png"));
+    const missingAuxiliary = invoke([auxiliaryEvidence, "-", "8", "Fixture.Root", "fixture-root", "library-symbol", "--neutral-output", auxiliaryOutput, "--neutral-only"]);
+    assert.equal(missingAuxiliary.status, 1);
+    assert.match(missingAuxiliary.stderr, /ENOENT/);
+
     const invalid = invoke([...common, "--invented"]);
     assert.equal(invalid.status, 2);
     assert.match(invalid.stderr, /^usage:/);
@@ -128,7 +144,7 @@ try {
     assert.equal(textMapContent.root.scale9Grid, undefined);
     assert.deepEqual(textMapContent.resources, []);
 
-    process.stdout.write("authored Flash-library neutral IR emitter: 26/26 passed\n");
+    process.stdout.write("authored Flash-library neutral IR emitter: 28/28 passed\n");
 }
 finally {
     fs.rmSync(temporary, { recursive: true, force: true });

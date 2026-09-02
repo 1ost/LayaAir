@@ -1120,6 +1120,8 @@ export class FlashLibrarySymbolAdapter {
             `Text ${characterId} lacks exact glyph evidence.`);
         if (issues.length !== 0)
             fail("FLASH_LIBRARY_STATIC_TEXT_ISSUES", `Text ${characterId} contains unresolved extraction issues.`);
+        if (this.textMapOnly)
+            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         const staticMatrix = object(staticText.matrix, `library.assets.${characterId}.staticText.matrix`);
         exactKeys(staticMatrix, MATRIX_FIELDS, `library.assets.${characterId}.staticText.matrix`, "FLASH_LIBRARY_STATIC_TEXT_MATRIX_UNSUPPORTED");
         // DefineText bounds already contain the text-matrix transform. Project
@@ -1133,8 +1135,6 @@ export class FlashLibrarySymbolAdapter {
             return this.createPositionedStaticTextRuns(
                 asset, operation, instanceId, assets, projection, runs, initialText,
             );
-        if (this.textMapOnly)
-            return this.createTextMapNode(asset, operation, instanceId, characterId, false);
         if (runs.length !== 1)
             fail("FLASH_LIBRARY_STATIC_TEXT_RUNS_UNSUPPORTED", `Text ${characterId} must contain at least one authenticated run.`);
         const run = object(runs[0], `library.assets.${characterId}.staticText.runs[0]`);

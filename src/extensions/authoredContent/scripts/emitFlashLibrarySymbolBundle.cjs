@@ -49,16 +49,33 @@ async function main() {
         Number(id),
         readJson(resolveInside(sourceRoot, relative)),
     ]));
-    const authorities = new Map();
+    if (library.resources !== undefined
+        && (!Array.isArray(library.resources) || library.resources.some(value => typeof value !== "string")))
+        throw new Error("FLASH_LIBRARY_RESOURCE_CLOSURE_INVALID");
+    const resourcePaths = new Set(library.resources ?? []);
     for (const asset of Object.values(library.assets)) {
-        if ((asset.kind !== "shape" && asset.kind !== "image" && asset.kind !== "font") || typeof asset.path !== "string") continue;
-        const bytes = fs.readFileSync(resolveInside(sourceRoot, asset.path));
-        const lowerPath = asset.path.toLowerCase();
-        if (asset.kind === "font" && (!lowerPath.endsWith(".ttf") || !isTrueType(bytes)))
-            throw new Error(`FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED: ${asset.path}`);
-        authorities.set(asset.path, {
-            sourcePath: asset.path,
-            mediaType: asset.kind === "font" ? "font/ttf" : lowerPath.endsWith(".png") ? "image/png" : "image/jpeg",
+        if (typeof asset.path === "string") resourcePaths.add(asset.path);
+        if (asset.paths !== undefined) {
+            if (!Array.isArray(asset.paths) || asset.paths.some(value => typeof value !== "string"))
+                throw new Error(`FLASH_LIBRARY_ASSET_RESOURCE_CLOSURE_INVALID: ${asset.characterId}`);
+            for (const resourcePath of asset.paths) resourcePaths.add(resourcePath);
+        }
+    }
+    const fontPaths = new Set(Object.values(library.assets)
+        .filter(asset => asset.kind === "font" && typeof asset.path === "string")
+        .map(asset => asset.path));
+    const authorities = new Map();
+    for (const resourcePath of resourcePaths) {
+        const bytes = fs.readFileSync(resolveInside(sourceRoot, resourcePath));
+        const lowerPath = resourcePath.toLowerCase();
+        const isFont = fontPaths.has(resourcePath);
+        if (isFont && (!lowerPath.endsWith(".ttf") || !isTrueType(bytes)))
+            throw new Error(`FLASH_LIBRARY_FONT_RESOURCE_FORMAT_UNSUPPORTED: ${resourcePath}`);
+        if (!isFont && !lowerPath.endsWith(".png") && !lowerPath.endsWith(".jpg") && !lowerPath.endsWith(".jpeg"))
+            throw new Error(`FLASH_LIBRARY_IMAGE_RESOURCE_FORMAT_UNSUPPORTED: ${resourcePath}`);
+        authorities.set(resourcePath, {
+            sourcePath: resourcePath,
+            mediaType: isFont ? "font/ttf" : lowerPath.endsWith(".png") ? "image/png" : "image/jpeg",
             byteLength: bytes.byteLength,
             sha256: hash(bytes),
         });
