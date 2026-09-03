@@ -94,4 +94,24 @@ const documentFixture = fixture();
 documentFixture.projection = "document";
 assert.deepEqual(new FlashLibrarySymbolAdapter().parse(documentFixture).stage.backgroundColor, { alpha: 1, color: 0xffffff });
 
-process.stdout.write("authored library symbol projection: 10/10 passed\n");
+const bitmapFixture = fixture();
+bitmapFixture.library.assets[9] = {
+    characterId: 9,
+    kind: "image",
+    path: "assets/9.png",
+    symbolName: "ExportedBitmap",
+    bitmap: { width: 17, height: 11 },
+};
+bitmapFixture.entrySymbolId = 9;
+bitmapFixture.resources.set("assets/9.png", {
+    sourcePath: "assets/9.png", mediaType: "image/png", byteLength: 6, sha256: "9".repeat(64),
+});
+const bitmapContent = new FlashLibrarySymbolAdapter().parse(bitmapFixture);
+assert.equal(bitmapContent.root.linkage, "ExportedBitmap");
+assert.equal(bitmapContent.root.kind, "container");
+assert.deepEqual([bitmapContent.root.width, bitmapContent.root.height], [17, 11]);
+assert.equal(bitmapContent.root.children[0].kind, "image");
+assert.equal(bitmapContent.root.children[0].resourceId, "flash-character-9");
+assert.equal(bitmapContent.timeline.duration, 1 / 30);
+
+process.stdout.write("authored library symbol projection: 16/16 passed\n");

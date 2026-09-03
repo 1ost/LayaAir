@@ -208,11 +208,6 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_STAGE_BACKGROUND_ALPHA_UNSUPPORTED", "Only an opaque authored stage background is supported.");
         if (!Number.isInteger(stageBackgroundColor) || stageBackgroundColor < 0 || stageBackgroundColor > 0xffffff)
             fail("FLASH_LIBRARY_STAGE_BACKGROUND_COLOR_INVALID", "Stage background color must be an RGB integer.");
-        const entryTimeline = timeline(request.timelines, request.entrySymbolId);
-        const entryFrameRate = positiveInteger(entryTimeline.frameRate, `timeline ${request.entrySymbolId}.frameRate`);
-        const entryFrameCount = positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
-        if (entryFrameRate !== stageFrameRate)
-            fail("FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH", "Stage frame rate must match the entry-symbol timeline.");
         const projection = request.projection ?? "document";
         if (projection !== "document" && projection !== "library-symbol")
             fail("FLASH_LIBRARY_PROJECTION_UNSUPPORTED", `Projection '${String(projection)}' is unsupported.`);
@@ -221,20 +216,42 @@ export class FlashLibrarySymbolAdapter {
             fail("FLASH_LIBRARY_FRAME_LABELS_UNSUPPORTED", "This native projection requires an empty frame-label set.");
         const resources = new Map<string, NeutralResourceInput>();
         const inertPlacementRatios = new Map<string, NeutralInertPlacementRatio>();
-        const root = this.createSprite(
-            request.entrySymbolId,
-            undefined,
-            undefined,
-            undefined,
-            assets,
-            request.timelines,
-            request.resources,
-            request.rasterizedShapes ?? new Map(),
-            request.rasterizedSprites ?? new Map(),
-            resources,
-            inertPlacementRatios,
-            true,
-        );
+        const entryAsset = object(assets[String(request.entrySymbolId)], `library.assets.${request.entrySymbolId}`);
+        const entryTimeline = entryAsset.kind === "sprite" ? timeline(request.timelines, request.entrySymbolId) : undefined;
+        const entryFrameRate = entryTimeline === undefined
+            ? stageFrameRate
+            : positiveInteger(entryTimeline.frameRate, `timeline ${request.entrySymbolId}.frameRate`);
+        const entryFrameCount = entryTimeline === undefined
+            ? 1
+            : positiveInteger(entryTimeline.frameCount, `timeline ${request.entrySymbolId}.frameCount`);
+        if (entryFrameRate !== stageFrameRate)
+            fail("FLASH_LIBRARY_STAGE_FRAME_RATE_MISMATCH", "Stage frame rate must match the entry-symbol timeline.");
+        const root = entryAsset.kind === "sprite"
+            ? this.createSprite(
+                request.entrySymbolId,
+                undefined,
+                undefined,
+                undefined,
+                assets,
+                request.timelines,
+                request.resources,
+                request.rasterizedShapes ?? new Map(),
+                request.rasterizedSprites ?? new Map(),
+                resources,
+                inertPlacementRatios,
+                true,
+            )
+            : entryAsset.kind === "image"
+                ? this.createStandaloneBitmap(entryAsset, request.resources, resources)
+                : fail("FLASH_LIBRARY_ROOT_KIND_UNSUPPORTED",
+                    `Exported root ${request.entrySymbolId} kind '${String(entryAsset.kind)}' is unsupported.`);
+        const rootTimeline = root.timeline ?? {
+            frameRate: stageFrameRate,
+            duration: 1 / stageFrameRate,
+            loop: false,
+            frameLabels: {},
+            tracks: [],
+        };
         const content = {
             schema: "neutral-authored-content@1",
             documentId: `flash-library-symbol-${request.entrySymbolId}`,
@@ -244,7 +261,7 @@ export class FlashLibrarySymbolAdapter {
                 runtimeLinkage: request.runtimeLinkage,
                 timeline: undefined,
             },
-            timeline: root.timeline,
+            timeline: rootTimeline,
             ...(inertPlacementRatios.size === 0 ? {} : { inertPlacementRatios: [...inertPlacementRatios.values()] }),
             stage: {
                 width: root.width,
@@ -258,6 +275,51 @@ export class FlashLibrarySymbolAdapter {
             },
         };
         return normalizeNeutralAuthoredContent(content);
+    }
+
+    private createStandaloneBitmap(
+        asset: Record<string, any>,
+        resourceAuthorities: ReadonlyMap<string, FlashLibraryResourceAuthority>,
+        resources: Map<string, NeutralResourceInput>,
+    ): NeutralAuthoredNode {
+        const characterId = positiveInteger(asset.characterId, "bitmap.characterId");
+        const bitmap = object(asset.bitmap, `library.assets.${characterId}.bitmap`);
+        const width = positiveInteger(bitmap.width, `library.assets.${characterId}.bitmap.width`);
+        const height = positiveInteger(bitmap.height, `library.assets.${characterId}.bitmap.height`);
+        const sourcePath = string(asset.path, `library.assets.${characterId}.path`);
+        const authority = resourceAuthorities.get(sourcePath);
+        if (!authority || authority.sourcePath !== sourcePath)
+            fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
+        const linkage = flashLibraryAssetName(asset, characterId);
+        const resourceId = `flash-character-${characterId}`;
+        registerResource(resources, resourceId, authority);
+        const image: NeutralAuthoredNode = {
+            linkage: `character_${characterId}`,
+            instanceId: `bitmap_${characterId}`,
+            name: `bitmap_${characterId}`,
+            kind: "image",
+            depth: 1,
+            x: 0,
+            y: 0,
+            width,
+            height,
+            resourceId,
+            smoothing: false,
+            variable: false,
+            children: [],
+        };
+        return {
+            linkage,
+            instanceId: linkage,
+            name: linkage,
+            kind: "container",
+            x: 0,
+            y: 0,
+            width,
+            height,
+            variable: false,
+            children: [image],
+        };
     }
 
     private createSprite(
