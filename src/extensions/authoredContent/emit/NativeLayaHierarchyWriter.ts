@@ -209,9 +209,9 @@ export function prepareNativeLayaHierarchy(
     if (hierarchy._$ver !== 1)
         fail("AUTHORED_CONTENT_NATIVE_HIERARCHY_VERSION", "HierarchyWriter must emit Laya hierarchy version 1.");
     canonicalizeHierarchyIds(hierarchy);
-    bindAuthoredDepthMasks(content.root, hierarchy, "root");
     decorateAuthoredRuntime(content.root, hierarchy, content.documentId, content.timeline.frameLabels);
     validateHierarchyNode(content.root, hierarchy, resourceAssetIds, "root", true);
+    bindAuthoredDepthMasks(content.root, hierarchy, "root");
     sealTimelineAssetReferences(hierarchy, timelineAssetId, nestedTimelineAssetIds);
     hierarchy._$authoredContent = NativeLayaEmitter.createMetadataWithResourceBindings(
         content,
@@ -233,17 +233,40 @@ export function prepareNativeLayaHierarchy(
     return hierarchy;
 }
 
-/** Binds validated Flash depth-mask ranges to deterministic local Laya node references. */
+/**
+ * Binds validated Flash depth-mask ranges to deterministic local Laya node
+ * references. Flash applies one depth mask to every sibling in its clipDepth
+ * range. Laya gives a native mask Sprite exactly one owner, so every target
+ * after the first receives an inert hierarchy clone of the same mask. This
+ * preserves authored paths and transforms while avoiding mask ownership
+ * transfer between covered siblings at HierarchyParser decode time.
+ */
 function bindAuthoredDepthMasks(
     source: NeutralAuthoredNode,
     value: Record<string, unknown>,
     path: string,
+    state: { nextClone: number; readonly ids: Set<string> } = {
+        nextClone: 1,
+        ids: collectHierarchyIds(value),
+    },
 ): void {
     const childrenValue = value._$child;
     const children = childrenValue === undefined ? [] : childrenValue;
     if (!Array.isArray(children) || children.length !== source.children.length)
         fail("AUTHORED_CONTENT_NATIVE_CHILD_CLOSURE_MISMATCH", `${path} child count/order closure drifted before mask binding.`);
+    source.children.forEach((childSource, index) => {
+        const childValue = children[index];
+        if (childValue && typeof childValue === "object" && !Array.isArray(childValue))
+            bindAuthoredDepthMasks(
+                childSource,
+                childValue as Record<string, unknown>,
+                `${path}/${childSource.name ?? childSource.instanceId ?? childSource.linkage}`,
+                state,
+            );
+    });
+
     const maskedDepths = new Set<number>();
+    const maskClones: Record<string, unknown>[] = [];
     source.children.forEach((maskSource, maskIndex) => {
         if (maskSource.clipDepth === undefined) return;
         const maskValue = children[maskIndex];
@@ -252,6 +275,7 @@ function bindAuthoredDepthMasks(
         const maskId = (maskValue as Record<string, unknown>)._$id;
         if (typeof maskId !== "string" || maskId.length === 0)
             fail("AUTHORED_CONTENT_NATIVE_MASK_ID_REQUIRED", `${path} mask depth ${maskSource.depth} requires a local hierarchy ID.`);
+        let targetCount = 0;
         source.children.forEach((targetSource, targetIndex) => {
             if (targetSource.depth! <= maskSource.depth! || targetSource.depth! > maskSource.clipDepth!) return;
             if (maskedDepths.has(targetSource.depth!))
@@ -259,15 +283,56 @@ function bindAuthoredDepthMasks(
             const targetValue = children[targetIndex];
             if (!targetValue || typeof targetValue !== "object" || Array.isArray(targetValue))
                 fail("AUTHORED_CONTENT_NATIVE_MASK_TARGET_INVALID", `${path} mask target depth ${targetSource.depth} is not a hierarchy node.`);
-            (targetValue as Record<string, unknown>).mask = { _$ref: maskId };
+            const targetMaskId = targetCount++ === 0
+                ? maskId
+                : cloneHierarchyMask(maskValue as Record<string, unknown>, state, maskClones);
+            (targetValue as Record<string, unknown>).mask = { _$ref: targetMaskId };
             maskedDepths.add(targetSource.depth!);
         });
     });
-    source.children.forEach((childSource, index) => {
-        const childValue = children[index];
-        if (childValue && typeof childValue === "object" && !Array.isArray(childValue))
-            bindAuthoredDepthMasks(childSource, childValue as Record<string, unknown>, `${path}/${childSource.name ?? childSource.instanceId ?? childSource.linkage}`);
+    children.push(...maskClones);
+}
+
+function collectHierarchyIds(value: Record<string, unknown>): Set<string> {
+    const ids = new Set<string>();
+    visitJsonObjects(value, candidate => {
+        if (typeof candidate._$id === "string") ids.add(candidate._$id);
     });
+    return ids;
+}
+
+function cloneHierarchyMask(
+    source: Record<string, unknown>,
+    state: { nextClone: number; readonly ids: Set<string> },
+    clones: Record<string, unknown>[],
+): string {
+    const clone = canonicalClone(source, "mask hierarchy clone") as Record<string, unknown>;
+    const replacements = new Map<string, string>();
+    visitJsonObjects(clone, value => {
+        if (typeof value._$id !== "string") return;
+        const original = value._$id;
+        let replacement: string;
+        do {
+            replacement = `authored-mask-clone-${(state.nextClone++).toString(36).padStart(8, "0")}`;
+        } while (state.ids.has(replacement));
+        state.ids.add(replacement);
+        replacements.set(original, replacement);
+        value._$id = replacement;
+        // A clone is an engine implementation detail, never a second source
+        // linkage variable that may overwrite the authenticated owner binding.
+        delete value._$var;
+        delete value._$varOwner;
+    });
+    visitJsonObjects(clone, value => {
+        if (typeof value._$ref !== "string") return;
+        const replacement = replacements.get(value._$ref);
+        if (replacement !== undefined) value._$ref = replacement;
+    });
+    const cloneId = clone._$id;
+    if (typeof cloneId !== "string" || cloneId.length === 0)
+        fail("AUTHORED_CONTENT_NATIVE_MASK_ID_REQUIRED", "A cloned mask requires a local hierarchy ID.");
+    clones.push(clone);
+    return cloneId;
 }
 
 /**

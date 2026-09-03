@@ -1184,7 +1184,7 @@ async function main(): Promise<void> {
         }), "FLASH_LIBRARY_SPRITE_BOUNDS_MISSING");
     });
 
-    await test("Flash static depth masks bind one deterministic local Laya reference", () => {
+    await test("Flash static depth masks bind one distinct deterministic Laya mask per covered sibling", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const library: any = {
             schema: "flash-library@1", frameLabels: [],
@@ -1193,7 +1193,8 @@ async function main(): Promise<void> {
                 "1": { characterId: 1, kind: "sprite", symbolName: "MaskedRoot", bounds: { x: 0, y: 0, width: 100, height: 80 } },
                 "2": { characterId: 2, kind: "shape", symbolName: "Mask", path: "assets/2.png", bounds: { x: 0, y: 0, width: 40, height: 30 } },
                 "3": { characterId: 3, kind: "shape", symbolName: "Content", path: "assets/3.png", bounds: { x: 0, y: 0, width: 60, height: 40 } },
-                "4": { characterId: 4, kind: "shape", symbolName: "Outside", path: "assets/4.png", bounds: { x: 0, y: 0, width: 10, height: 10 } },
+                "4": { characterId: 4, kind: "shape", symbolName: "ContentTwo", path: "assets/4.png", bounds: { x: 0, y: 0, width: 20, height: 20 } },
+                "5": { characterId: 5, kind: "shape", symbolName: "Outside", path: "assets/5.png", bounds: { x: 0, y: 0, width: 10, height: 10 } },
             },
         };
         const timeline = {
@@ -1201,10 +1202,11 @@ async function main(): Promise<void> {
             frames: [{ index: 1, operations: [
                 { op: "place", characterId: 2, depth: 1, clipDepth: 4, move: false, ratio: 0 },
                 { op: "place", characterId: 3, depth: 2, move: false, ratio: 0, name: "mc_list" },
-                { op: "place", characterId: 4, depth: 5, move: false, ratio: 0, name: "outside" },
+                { op: "place", characterId: 4, depth: 3, move: false, ratio: 0, name: "mc_list_2" },
+                { op: "place", characterId: 5, depth: 5, move: false, ratio: 0, name: "outside" },
             ], labels: [], sounds: [] }],
         };
-        const resources = new Map([2, 3, 4].map(id => [`assets/${id}.png`, {
+        const resources = new Map([2, 3, 4, 5].map(id => [`assets/${id}.png`, {
             sourcePath: `assets/${id}.png`, mediaType: "image/png" as const,
             byteLength: payload.byteLength, sha256: sha256(payload),
         }]));
@@ -1219,15 +1221,23 @@ async function main(): Promise<void> {
             "_$child": [
                 { "_$id": "mask", "_$type": "Image", name: "Mask$d1$f1$i1", width: 40, height: 30, skin: "res://2.png" },
                 { "_$id": "content", "_$type": "Image", name: "mc_list", width: 60, height: 40, skin: "res://3.png" },
-                { "_$id": "outside", "_$type": "Image", name: "outside", width: 10, height: 10, skin: "res://4.png" },
+                { "_$id": "content-two", "_$type": "Image", name: "mc_list_2", width: 20, height: 20, skin: "res://4.png" },
+                { "_$id": "outside", "_$type": "Image", name: "outside", width: 10, height: 10, skin: "res://5.png" },
             ],
         }, "masked-root.mc", new Map([
-            ["flash-character-2", "2.png"], ["flash-character-3", "3.png"], ["flash-character-4", "4.png"],
+            ["flash-character-2", "2.png"], ["flash-character-3", "3.png"],
+            ["flash-character-4", "4.png"], ["flash-character-5", "5.png"],
         ]));
         const children = hierarchy._$child as any[];
         assert(children[1].mask._$ref === children[0]._$id,
-            "masked child did not reference the canonicalized local mask node");
-        assert(children[2].mask === undefined, "a sibling beyond clipDepth was incorrectly masked");
+            "first masked child did not reference the canonicalized source mask node");
+        assert(children[2].mask._$ref === children[4]._$id,
+            "second masked child did not reference its deterministic mask clone");
+        assert(children[2].mask._$ref !== children[1].mask._$ref,
+            "covered siblings incorrectly reused one single-owner native Laya mask");
+        assert(children[3].mask === undefined, "a sibling beyond clipDepth was incorrectly masked");
+        assert(children[4].skin === children[0].skin && children[4].name === children[0].name,
+            "mask clone drifted from the authenticated source hierarchy");
 
         timeline.frames[0].operations[0].clipDepth = 1;
         assertThrows(() => new FlashLibrarySymbolAdapter().parse(request), "FLASH_LIBRARY_MASK_RANGE_INVALID");
