@@ -63,6 +63,8 @@ function fixture() {
                 place(2, 1),
                 place(5, 2, { name: "MC_Effect", matrix: { a: 1, b: 0, c: 0, d: 1, tx: -5, ty: 6 } }),
                 place(7, 4, { name: "TF_Name", matrix: { a: 1, b: 0, c: 0, d: 1, tx: 8, ty: -2 } }),
+                { op: "script", kind: "avm2", executable: false, nativeCallbackRequired: false,
+                    policy: "discard-abc", sourceTag: "DoABC2Tag" },
             ], [replace(4, 1)]], "ExportedClip")],
         ]),
         entrySymbolId: 8,

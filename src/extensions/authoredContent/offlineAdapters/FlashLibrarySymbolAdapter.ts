@@ -2823,7 +2823,9 @@ function indexedDisplayOperations(
             operation: object(value, `timeline ${symbolId} operation ${operationIndex}`),
             operationIndex,
         }))
-        .filter(value => value.operation.op !== "label");
+        // Timeline metadata and inert/discarded script evidence are not display-list
+        // operations. Only placements and removals may participate in depth state.
+        .filter(value => value.operation.op === "place" || value.operation.op === "remove");
 }
 
 function extractFrameLabels(sourceTimeline: Record<string, any>): Readonly<Record<string, number>> {
