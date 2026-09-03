@@ -331,6 +331,16 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             "wrap": "clamp",
         }, runtime)
 
+        assets["1"]["bitmap"]["width"] = 382
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(asset, assets)
+        self.assertIsNone(issue)
+        self.assertEqual(1, runtime["bitmapCharacterId"])
+
+        assets["1"]["bitmap"]["width"] = 383
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(asset, assets)
+        self.assertIsNone(runtime)
+        self.assertEqual("bitmap character dimensions do not match the shape bounds", issue)
+
     def test_bitmap_fill_runtime_admits_exact_rectangular_mosaics(self) -> None:
         def edges(x: float, y: float, width: float, height: float, style: int) -> list[dict[str, object]]:
             points = (

@@ -1979,11 +1979,15 @@ def direct_bitmap_fill_runtime_value(
     bounds = asset.get("bounds")
     if not isinstance(bitmap, dict) or not isinstance(bounds, dict):
         return None, "bitmap-filled shape has incomplete bitmap or bounds metadata"
+    bounds_width = float(bounds.get("width", 0))
+    bounds_height = float(bounds.get("height", 0))
+    bitmap_width = integer(bitmap.get("width"), -1)
+    bitmap_height = integer(bitmap.get("height"), -1)
     if (
         bounds.get("x") != 0.0
         or bounds.get("y") != 0.0
-        or bounds.get("width") != bitmap.get("width")
-        or bounds.get("height") != bitmap.get("height")
+        or not covered_edge_bitmap_extent(bitmap_width, bounds_width)
+        or not covered_edge_bitmap_extent(bitmap_height, bounds_height)
     ):
         return None, "bitmap character dimensions do not match the shape bounds"
 
@@ -2019,6 +2023,15 @@ def direct_bitmap_fill_runtime_value(
         "visualAuthority": "bitmap-character-export",
         "wrap": "clamp",
     }, None
+
+
+def covered_edge_bitmap_extent(bitmap_extent: int, authored_extent: float) -> bool:
+    """Accept only the exact pixel extents that cover a Flash terminal edge."""
+    if bitmap_extent <= 0 or not math.isfinite(authored_extent) or authored_extent <= 0:
+        return False
+    return bitmap_extent == math.ceil(authored_extent) or (
+        authored_extent.is_integer() and bitmap_extent == int(authored_extent) + 1
+    )
 
 
 def _intervals_cover_exactly(

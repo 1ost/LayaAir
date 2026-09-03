@@ -1009,6 +1009,48 @@ async function main(): Promise<void> {
         }
     });
 
+    await test("Flash direct bitmap fills retain covered-edge pixels and sampling", () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const library: any = {
+            schema: "flash-library@1", frameLabels: [],
+            stage: { width: 200, height: 60, frameRate: 24, frameCount: 1, backgroundColor: { alpha: 1, color: 0 } },
+            assets: {
+                "1": { characterId: 1, kind: "sprite", symbolName: "Root", bounds: { x: 0, y: 0, width: 200, height: 60 } },
+                "2": {
+                    characterId: 2, kind: "shape", path: "assets/3.jpg",
+                    bounds: { x: 0, y: 0, width: 153, height: 40 },
+                    bitmapFillRuntime: {
+                        bitmapCharacterId: 3, filter: "point",
+                        visualAuthority: "bitmap-character-export", wrap: "clamp",
+                    },
+                },
+                "3": {
+                    characterId: 3, kind: "image", path: "assets/3.jpg",
+                    bitmap: { width: 154, height: 40 },
+                },
+            },
+        };
+        const timelines = new Map([[1, {
+            schema: "flash-timeline@1", symbolId: 1, symbolName: "Root", frameRate: 24, frameCount: 1,
+            frames: [{ index: 1, operations: [{
+                op: "place", characterId: 2, depth: 1, move: false, ratio: 0,
+                matrix: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+            }], labels: [], sounds: [] }],
+        }]]);
+        const content = new FlashLibrarySymbolAdapter().parse({
+            library, timelines, entrySymbolId: 1, runtimeLinkage: "Game.Root",
+            resources: new Map([["assets/3.jpg", {
+                sourcePath: "assets/3.jpg", mediaType: "image/jpeg" as const,
+                byteLength: payload.byteLength, sha256: sha256(payload),
+            }]]),
+        });
+        const shape = content.root.children[0];
+        assert(shape.kind === "image" && shape.width === 154 && shape.height === 40,
+            "direct bitmap fill was resampled into its smaller logical bounds");
+        assert(shape.smoothing === false,
+            "direct point-sampled bitmap fill lost its authored sampler mode");
+    });
+
     await test("Flash library RGB placement transforms emit exact native MovieClip configuration", () => {
         const payload = new Uint8Array([1, 2, 3, 4]);
         const colorTransform = {

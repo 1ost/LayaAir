@@ -897,6 +897,37 @@ export class FlashLibrarySymbolAdapter {
                 fail("FLASH_LIBRARY_RESOURCE_AUTHORITY_MISSING", `No authenticated resource authority exists for '${sourcePath}'.`);
             const resourceId = `flash-character-${characterId}`;
             registerResource(resources, resourceId, authority);
+            if (asset.bitmapFillRuntime !== undefined) {
+                const runtime = object(asset.bitmapFillRuntime, `library.assets.${characterId}.bitmapFillRuntime`);
+                exactKeys(runtime, new Set(["bitmapCharacterId", "filter", "visualAuthority", "wrap"]),
+                    `library.assets.${characterId}.bitmapFillRuntime`, "FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH");
+                exactValue(runtime.visualAuthority, "bitmap-character-export", "FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH",
+                    `Shape ${characterId} bitmap fill has an unsupported visual authority.`);
+                exactValue(runtime.wrap, "clamp", "FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH",
+                    `Shape ${characterId} bitmap fill is not clamped.`);
+                const bitmapId = positiveInteger(runtime.bitmapCharacterId, `shape ${characterId}.bitmapCharacterId`);
+                const bitmapAsset = object(assets[String(bitmapId)], `library.assets.${bitmapId}`);
+                if (bitmapAsset.kind !== "image" || bitmapAsset.characterId !== bitmapId || bitmapAsset.path !== sourcePath)
+                    fail("FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} bitmap authority does not match image ${bitmapId}.`);
+                const bitmap = object(bitmapAsset.bitmap, `library.assets.${bitmapId}.bitmap`);
+                const bitmapWidth = positiveInteger(bitmap.width, `library.assets.${bitmapId}.bitmap.width`);
+                const bitmapHeight = positiveInteger(bitmap.height, `library.assets.${bitmapId}.bitmap.height`);
+                if (!isCoveredEdgeRasterExtent(bitmapWidth, boundsWidth)
+                    || !isCoveredEdgeRasterExtent(bitmapHeight, boundsHeight))
+                    fail("FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} bitmap extent does not cover its authored bounds.`);
+                const filter = string(runtime.filter, `shape ${characterId}.bitmapFillRuntime.filter`);
+                if (filter !== "point" && filter !== "linear")
+                    fail("FLASH_LIBRARY_BITMAP_FILL_AUTHORITY_MISMATCH", `Shape ${characterId} bitmap filter is unsupported.`);
+                return {
+                    ...common,
+                    kind: "image",
+                    resourceId,
+                    width: bitmapWidth,
+                    height: bitmapHeight,
+                    smoothing: filter === "linear",
+                    children: [],
+                };
+            }
             return { ...common, kind: "image", resourceId, children: [] };
         }
 
