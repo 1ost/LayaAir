@@ -383,6 +383,14 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             "visualAuthority": "bitmap-character-export",
         }, runtime)
 
+        # SWF twips converted through decimal JSON can put a rectangle edge a
+        # fraction beyond an arithmetically equivalent declared bound.
+        rounded = json.loads(json.dumps(asset))
+        rounded["bounds"]["width"] = 99.99999999999999
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(rounded, assets)
+        self.assertIsNone(issue)
+        self.assertEqual("rectangular-mosaic", runtime["projection"])
+
         malformed = json.loads(json.dumps(asset))
         malformed["shape"]["segments"][0]["start"]["to"] = [50, 5]
         runtime, issue = swf.direct_bitmap_fill_runtime_value(malformed, assets)

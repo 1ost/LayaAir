@@ -2276,11 +2276,15 @@ def bitmap_fill_mosaic_runtime_value(
     bounds_height = float(bounds.get("height"))
     if bounds_width <= 0 or bounds_height <= 0:
         return None, "bitmap-filled shape bounds are empty"
+    # Coordinates originate as integer twips (0.05 px). Decimal JSON
+    # round-trips may move an otherwise identical edge by a floating ULP.
+    bounds_tolerance = 0.05
     if any(
         rectangle["width"] <= 0 or rectangle["height"] <= 0
-        or rectangle["x"] < bounds_x or rectangle["y"] < bounds_y
-        or rectangle["x"] + rectangle["width"] > bounds_x + bounds_width
-        or rectangle["y"] + rectangle["height"] > bounds_y + bounds_height
+        or rectangle["x"] < bounds_x - bounds_tolerance
+        or rectangle["y"] < bounds_y - bounds_tolerance
+        or rectangle["x"] + rectangle["width"] > bounds_x + bounds_width + bounds_tolerance
+        or rectangle["y"] + rectangle["height"] > bounds_y + bounds_height + bounds_tolerance
         for rectangle in rectangles.values()
     ):
         return None, "bitmap fill rectangle exceeds the shape bounds"
@@ -2291,12 +2295,12 @@ def bitmap_fill_mosaic_runtime_value(
             return None, f"solid fill {style_index} is not exact axis-aligned even-odd geometry"
         coverage_rectangles.extend(solid_rectangles)
     if (
-        min(rectangle["x"] for rectangle in coverage_rectangles) != bounds_x
-        or min(rectangle["y"] for rectangle in coverage_rectangles) != bounds_y
-        or max(rectangle["x"] + rectangle["width"] for rectangle in coverage_rectangles)
-        != bounds_x + bounds_width
-        or max(rectangle["y"] + rectangle["height"] for rectangle in coverage_rectangles)
-        != bounds_y + bounds_height
+        abs(min(rectangle["x"] for rectangle in coverage_rectangles) - bounds_x) > bounds_tolerance
+        or abs(min(rectangle["y"] for rectangle in coverage_rectangles) - bounds_y) > bounds_tolerance
+        or abs(max(rectangle["x"] + rectangle["width"] for rectangle in coverage_rectangles)
+               - (bounds_x + bounds_width)) > bounds_tolerance
+        or abs(max(rectangle["y"] + rectangle["height"] for rectangle in coverage_rectangles)
+               - (bounds_y + bounds_height)) > bounds_tolerance
     ):
         return None, "fill rectangles do not span the shape bounds"
 
