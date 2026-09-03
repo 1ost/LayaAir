@@ -288,6 +288,16 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             self.assertTrue(admitted_validation["ok"])
             self.assertTrue(any("unsupported features" in warning for warning in admitted_validation["warnings"]))
 
+            structure.write_text(valid_xml, encoding="utf-8")
+            nested_output = bundle / "neutral"
+            nested = swf.convert_bundle(bundle, nested_output, "auto", False, False)
+            self.assertTrue(swf.validate_conversion(nested.output)["ok"])
+            rebuilt_nested = swf.convert_bundle(bundle, nested_output, "auto", False, True)
+            self.assertTrue(swf.validate_conversion(rebuilt_nested.output)["ok"])
+
+            with self.assertRaisesRegex(swf.SwfToolError, "must not contain"):
+                swf.convert_bundle(bundle, root, "auto", False, True)
+
     def test_bitmap_fill_runtime_preserves_single_rectangle_smoothing(self) -> None:
         matrix = {"a": 20.0, "b": 0, "c": 0, "d": 20.0, "tx": 0.0, "ty": 0.0}
         edges = [

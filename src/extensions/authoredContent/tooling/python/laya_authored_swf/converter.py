@@ -3186,8 +3186,13 @@ def convert_bundle(
         raise SwfToolError(f"missing JPEXS structure.xml in {bundle}; run extract first")
     structure_bytes = structure.read_bytes()
     structure_sha256 = hashlib.sha256(structure_bytes).hexdigest()
-    if output == bundle or output in bundle.parents or bundle in output.parents:
-        raise SwfToolError("conversion bundle and output must be disjoint directories")
+    # A generated child (for example ``evidence/neutral``) is safe: owned-output
+    # preparation clears that child before evidence discovery, and this layout
+    # keeps an authenticated extraction with its deterministic neutral IR.
+    # The inverse remains destructive because preparing an output ancestor could
+    # erase the extraction bundle itself.
+    if output == bundle or output in bundle.parents:
+        raise SwfToolError("conversion output must not contain or replace its evidence bundle")
     prepare_owned_output(output, "conversion-manifest.json", "swf-conversion@1", force)
     manifest_path = output / "conversion-manifest.json"
     output.mkdir(parents=True, exist_ok=True)
