@@ -44,10 +44,15 @@ assert.deepEqual(ids(second), [
 assert.equal(ids(first).some(value => ids(second).includes(value)), false, "two bundles shared a serialized asset UUID");
 assert.equal(first.resourceAssetIds.get("bitmap"), "boot-shadow/resources/bitmap.png");
 assert.equal(first.nestedTimelineAssetIds.get("Root/Child"), "boot-shadow/timelines/nested-1.mc");
+assert.deepEqual(ids(binding("_Timeline_1")), [
+    "_Timeline_1/root.mc",
+    "_Timeline_1/resources/bitmap.png",
+    "_Timeline_1/timelines/nested-1.mc",
+]);
 
 for (const [label, invoke, expected] of [
     ["path traversal", () => createNativeBundleAssetBindings("bundle", "../root.mc", [], []), /AUTHORED_CONTENT_NATIVE_BUNDLE_PATH_INVALID/],
     ["duplicate serialized reference", () => createNativeBundleAssetBindings("bundle", "same.mc", [], [{ semanticPath: "Root", outputPath: "same.mc" }]), /AUTHORED_CONTENT_NATIVE_BUNDLE_ASSET_ID_COLLISION/],
 ]) assert.throws(invoke, expected, label);
 
-process.stdout.write("authored bundle asset identity: 6/6 passed\n");
+process.stdout.write("authored bundle asset identity: 7/7 passed\n");

@@ -14,7 +14,7 @@ export interface NativeBundleAssetBindings {
     readonly nestedTimelineAssetIds: ReadonlyMap<string, string>;
 }
 
-const BUNDLE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const BUNDLE_ID = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 
 /**
  * Creates globally unique serialized UUIDs for one native authored bundle.
