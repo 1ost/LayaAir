@@ -163,7 +163,7 @@ async function main() {
             resourcePayloads,
             sha256: hash,
         });
-        fs.mkdirSync(outputRoot);
+        fs.mkdirSync(outputRoot, { recursive: true });
         for (const file of bundle.files) {
             const target = path.join(outputRoot, ...file.path.split("/"));
             fs.mkdirSync(path.dirname(target), { recursive: true });
