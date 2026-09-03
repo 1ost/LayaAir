@@ -13,7 +13,12 @@ const dir = await mkdtemp(join(tmpdir(), "laya-flash-layer-gpu-"));
 try {
   await build({ entryPoints:[join(root,"tests/flashDisplayObject/flash-layer.gpu.ts")], outfile:join(dir,"gate.js"), bundle:true, platform:"browser", format:"iife", target:"chrome100", loader:{".glsl":"text",".vs":"text",".fs":"text"} });
   await writeFile(join(dir,"index.html"), "<!doctype html><body><script src=gate.js></script>");
-  const r=spawnSync(chrome,["--headless=new","--disable-gpu-sandbox","--enable-unsafe-swiftshader","--allow-file-access-from-files","--virtual-time-budget=10000","--dump-dom",`file:///${join(dir,"index.html").replaceAll("\\","/")}`],{encoding:"utf8",timeout:60000,maxBuffer:8*1024*1024});
-  assert.equal(r.status,0,r.stderr); const m=r.stdout.match(/<pre id="flash-layer-gpu-result">([^<]+)<\/pre>/); assert.ok(m,r.stdout.slice(-2000));
+  let r; let m;
+  for (let attempt = 1; attempt <= 3 && !m; attempt++) {
+    r=spawnSync(chrome,["--headless=new","--disable-gpu-sandbox","--enable-unsafe-swiftshader","--allow-file-access-from-files","--virtual-time-budget=10000","--dump-dom",`file:///${join(dir,"index.html").replaceAll("\\","/")}`],{encoding:"utf8",timeout:60000,maxBuffer:8*1024*1024});
+    assert.equal(r.status,0,r.stderr);
+    m=r.stdout.match(/<pre id="flash-layer-gpu-result">([^<]+)<\/pre>/);
+  }
+  assert.ok(m,r.stdout.slice(-2000));
   const payload=JSON.parse(m[1].replaceAll("&quot;",'"').replaceAll("&amp;","&")); assert.equal(payload.ok,true,payload.error); console.log(JSON.stringify(payload.result));
 } finally { await rm(dir,{recursive:true,force:true}); }

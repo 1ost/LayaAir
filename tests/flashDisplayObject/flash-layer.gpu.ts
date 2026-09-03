@@ -35,7 +35,12 @@ async function main() {
         throw new Error(`empty masked sprite erased an earlier sibling: ${JSON.stringify(emptyMask)}`);
     if (!equal(emptyMask.inside, emptyMask.outside))
         throw new Error(`empty masked sprite changed pixels inside its mask: ${JSON.stringify(emptyMask)}`);
-    return { renderer: "WebGL", normal, layer, emptyMask };
+    const siblingMask = await renderSiblingImageMask();
+    if (!(siblingMask.inside[0] > 245 && siblingMask.inside[1] < 10 && siblingMask.inside[2] < 10))
+        throw new Error(`sibling image mask lost covered content: ${JSON.stringify(siblingMask)}`);
+    if (!(siblingMask.outside[0] > 245 && siblingMask.outside[1] > 245 && siblingMask.outside[2] > 245))
+        throw new Error(`sibling image mask leaked outside content: ${JSON.stringify(siblingMask)}`);
+    return { renderer: "WebGL", normal, layer, emptyMask, siblingMask };
 }
 
 function assertForeignMaskPassIsCulled(): void {
@@ -84,6 +89,33 @@ async function renderEmptyMaskedSprite(): Promise<{ inside: number[]; outside: n
         || document.querySelector("canvas")!.getContext("webgl", { preserveDrawingBuffer: true })!;
     gl.finish();
     return { inside: readPixel(gl, 12, 32), outside: readPixel(gl, 40, 32) };
+}
+
+async function renderSiblingImageMask(): Promise<{ inside: number[]; outside: number[] }> {
+    Laya.stage.removeChildren();
+    Laya.stage.bgColor = "#ffffff";
+    const container = new Sprite();
+    const mask = new Image();
+    mask.source = new Texture(Texture2D.whiteTexture);
+    mask.size(16, 40);
+    mask.pos(24, 12);
+    mask.zOrder = 1;
+    const clipped = new MovieClip();
+    clipped.graphics.drawRect(0, 0, 64, 64, "#ff0000");
+    clipped.zOrder = 2;
+    container.addChild(mask);
+    container.addChild(clipped);
+    const assigned = (clipped as unknown as {
+        _assignHierarchyNodeReference(key: string, value: unknown): boolean;
+    })._assignHierarchyNodeReference("mask", mask);
+    if (!assigned) throw new Error("authored native mask reference was not assigned");
+    Laya.stage.addChild(container);
+    Laya.stage.render(performance.now());
+    Laya.stage.render(performance.now());
+    const gl = document.querySelector("canvas")!.getContext("webgl2", { preserveDrawingBuffer: true })
+        || document.querySelector("canvas")!.getContext("webgl", { preserveDrawingBuffer: true })!;
+    gl.finish();
+    return { inside: readPixel(gl, 32, 32), outside: readPixel(gl, 8, 32) };
 }
 
 async function render(mode: "normal" | "layer"): Promise<number[]> {

@@ -167,7 +167,10 @@ export class WebRender2DPass implements IRender2DPass {
          !struct.enabled
          || struct.globalAlpha < 0.01
          || this._mask === struct
-         || (struct._maskParentPass && struct._maskParentPass !== this)
+         // A cached mask owns a dedicated pass whose root still points at the
+         // masked owner's pass. Cull it only while traversing a foreign pass;
+         // its own cache pass must render that root into the mask texture.
+         || (struct !== this.root && struct._maskParentPass && struct._maskParentPass !== this)
       )
          return;
 
