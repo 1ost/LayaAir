@@ -36,7 +36,7 @@ async function main() {
     } = options;
     if (!path.isAbsolute(sourceRoot) || (!neutralOnly && !path.isAbsolute(outputRoot))
         || !Number.isSafeInteger(entrySymbolId) || entrySymbolId < 1 || !runtimeLinkage
-        || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(assetBaseName)
+        || !/^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(assetBaseName)
         || !["document", "library-symbol"].includes(projection)) {
         usage();
         return;

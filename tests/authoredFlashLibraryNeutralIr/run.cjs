@@ -74,6 +74,14 @@ try {
     assert.equal(repaired.status, 0, repaired.stderr);
     assert.equal(fs.readFileSync(output, "utf8"), bytes.toString("utf8"));
 
+    const underscoreOutput = path.join(temporary, "neutral", "underscore.neutral.json");
+    const underscore = invoke([
+        evidence, "-", "8", "Fixture._Timeline_1", "_Timeline_1", "library-symbol",
+        "--neutral-output", underscoreOutput, "--neutral-only",
+    ]);
+    assert.equal(underscore.status, 0, underscore.stderr);
+    assert.equal(JSON.parse(underscore.stdout).status, "written");
+
     const auxiliaryEvidence = path.join(temporary, "auxiliary-evidence");
     fs.cpSync(evidence, auxiliaryEvidence, { recursive: true });
     fs.mkdirSync(path.join(auxiliaryEvidence, "assets"));
@@ -144,7 +152,7 @@ try {
     assert.equal(textMapContent.root.scale9Grid, undefined);
     assert.deepEqual(textMapContent.resources, []);
 
-    process.stdout.write("authored Flash-library neutral IR emitter: 28/28 passed\n");
+    process.stdout.write("authored Flash-library neutral IR emitter: 29/29 passed\n");
 }
 finally {
     fs.rmSync(temporary, { recursive: true, force: true });
