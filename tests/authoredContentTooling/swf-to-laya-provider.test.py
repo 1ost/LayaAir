@@ -288,6 +288,49 @@ class ProviderOwnedSwfToolTests(unittest.TestCase):
             self.assertTrue(admitted_validation["ok"])
             self.assertTrue(any("unsupported features" in warning for warning in admitted_validation["warnings"]))
 
+    def test_bitmap_fill_runtime_preserves_single_rectangle_smoothing(self) -> None:
+        matrix = {"a": 20.0, "b": 0, "c": 0, "d": 20.0, "tx": 0.0, "ty": 0.0}
+        edges = [
+            ((381.0, 364.0), (0.0, 364.0)),
+            ((0.0, 364.0), (0.0, 0.0)),
+            ((0.0, 0.0), (381.0, 0.0)),
+            ((381.0, 0.0), (381.0, 364.0)),
+        ]
+        asset = {
+            "characterId": 2,
+            "kind": "shape",
+            "bounds": {"x": 0.0, "y": 0.0, "width": 381.0, "height": 364.0},
+            "shape": {
+                "fillStyles": [{
+                    "kind": "bitmap", "bitmapId": 1, "repeat": False, "smooth": True,
+                    "startMatrix": matrix, "endMatrix": matrix,
+                }],
+                "lineStyles": [],
+                "segments": [{
+                    "kind": "line", "fillStyle0": 0, "fillStyle1": 1, "lineStyle": 0,
+                    "start": {"from": list(start), "to": list(end)},
+                    "end": {"from": list(start), "to": list(end)},
+                } for start, end in edges],
+                "usesFillWindingRule": False,
+            },
+        }
+        assets = {
+            "1": {
+                "characterId": 1, "kind": "image", "path": "assets/1.png",
+                "bitmap": {"width": 381, "height": 364},
+            },
+        }
+
+        runtime, issue = swf.direct_bitmap_fill_runtime_value(asset, assets)
+
+        self.assertIsNone(issue)
+        self.assertEqual({
+            "bitmapCharacterId": 1,
+            "filter": "linear",
+            "visualAuthority": "bitmap-character-export",
+            "wrap": "clamp",
+        }, runtime)
+
     def test_bitmap_fill_runtime_admits_exact_rectangular_mosaics(self) -> None:
         def edges(x: float, y: float, width: float, height: float, style: int) -> list[dict[str, object]]:
             points = (

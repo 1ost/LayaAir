@@ -1958,8 +1958,8 @@ def direct_bitmap_fill_runtime_value(
         return runtime, None
 
     fill = bitmap_fills[0]
-    if fill.get("repeat") is not False or fill.get("smooth") is not False:
-        return None, "bitmap-filled shape requires unsupported repeat or smooth sampling"
+    if fill.get("repeat") is not False or not isinstance(fill.get("smooth"), bool):
+        return None, "bitmap-filled shape requires clamped sampling with an explicit smoothing mode"
     matrix = fill.get("startMatrix")
     if matrix != fill.get("endMatrix") or matrix != {
         "a": 20.0,
@@ -2015,7 +2015,7 @@ def direct_bitmap_fill_runtime_value(
 
     return {
         "bitmapCharacterId": bitmap_id,
-        "filter": "point",
+        "filter": "linear" if fill["smooth"] else "point",
         "visualAuthority": "bitmap-character-export",
         "wrap": "clamp",
     }, None
